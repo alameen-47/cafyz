@@ -39,10 +39,8 @@ function Navigator() {
   const { width } = useWindowDimensions();
   const isTablet = width >= 768;
 
-  // Smart default: show mobile orders on small screens, manager on tablet
-  const [screen, setScreen] = useState<Screen>(
-    isTablet ? 'manager' : 'mobileOrders',
-  );
+  // Default to manager panel (WebView dashboard)
+  const [screen, setScreen] = useState<Screen>('manager');
   // Locked when entering mobileOrders so rotation does not swap screens mid-session
   const [mobileOrdersVariant, setMobileOrdersVariant] = useState<MobileOrdersVariant>(
     () => mobileOrdersVariantForWidth(width),
