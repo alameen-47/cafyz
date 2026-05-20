@@ -33,14 +33,14 @@ export function getManagerPanelHtml(activeSection = 'manager'): string {
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     html, body {
-      background: #0A0A0F; color: #F5F5F0;
+      background: #07060F; color: #F5F5F0;
       font-family: Inter, system-ui, sans-serif;
       -webkit-font-smoothing: antialiased;
     }
     .panel { padding: 20px 24px 40px; max-width: 1200px; margin: 0 auto; }
     .eyebrow {
       font-size: 10px; font-weight: 600; letter-spacing: 2px;
-      text-transform: uppercase; color: #C9A84C; margin-bottom: 6px;
+      text-transform: uppercase; color: #8B5CF6; margin-bottom: 6px;
     }
     h1 {
       font-family: 'Playfair Display', Georgia, serif;
@@ -56,20 +56,20 @@ export function getManagerPanelHtml(activeSection = 'manager'): string {
       text-transform: uppercase; border: 0.5px solid rgba(255,255,255,0.1);
       background: transparent; color: #B8B8C2; cursor: pointer;
     }
-    .btn-secondary { border-color: rgba(201,168,76,0.28); color: #E8D5A3; }
-    .btn-primary { background: #C9A84C; border-color: #C9A84C; color: #0A0A0F; }
+    .btn-secondary { border-color: rgba(139,92,246,0.28); color: #C4B5FD; }
+    .btn-primary { background: #8B5CF6; border-color: #8B5CF6; color: #07060F; }
     .metrics {
       display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
       gap: 14px; margin-bottom: 20px;
     }
     .card {
-      background: #12121A; border: 0.5px solid rgba(201,168,76,0.15);
+      background: #0E0B1C; border: 0.5px solid rgba(139,92,246,0.15);
       border-radius: 12px; padding: 16px;
     }
     .metric-top { display: flex; justify-content: space-between; margin-bottom: 12px; }
     .metric-icon {
       width: 36px; height: 36px; border-radius: 8px;
-      background: rgba(201,168,76,0.08);
+      background: rgba(139,92,246,0.08);
       display: flex; align-items: center; justify-content: center; font-size: 18px;
     }
     .delta { font-size: 10px; font-weight: 600; padding: 4px 8px; border-radius: 6px; }
@@ -80,7 +80,7 @@ export function getManagerPanelHtml(activeSection = 'manager'): string {
       letter-spacing: 1.5px; margin-bottom: 4px;
     }
     .metric-value {
-      font-family: 'Playfair Display', serif; font-size: 28px; color: #C9A84C;
+      font-family: 'Playfair Display', serif; font-size: 28px; color: #8B5CF6;
     }
     .metric-sub { font-size: 12px; color: #5A5A6A; margin-top: 8px; }
     .chart-row { display: grid; grid-template-columns: 1fr; gap: 14px; margin-bottom: 20px; }
@@ -99,10 +99,10 @@ export function getManagerPanelHtml(activeSection = 'manager'): string {
       background: transparent; color: #8A8A9A; font-size: 11px;
       font-weight: 600; cursor: pointer; text-transform: uppercase;
     }
-    .range.active { background: rgba(201,168,76,0.12); color: #C9A84C; }
+    .range.active { background: rgba(139,92,246,0.12); color: #8B5CF6; }
     .bars { display: flex; align-items: flex-end; gap: 3px; height: 160px; }
-    .bar { flex: 1; min-width: 4px; border-radius: 3px 3px 0 0; background: rgba(201,168,76,0.25); }
-    .bar.peak { background: #C9A84C; }
+    .bar { flex: 1; min-width: 4px; border-radius: 3px 3px 0 0; background: rgba(139,92,246,0.25); }
+    .bar.peak { background: #8B5CF6; }
     .x-labels {
       display: flex; justify-content: space-between; margin-top: 8px;
       font-family: 'JetBrains Mono', monospace; font-size: 10px; color: #5A5A6A;
@@ -116,39 +116,39 @@ export function getManagerPanelHtml(activeSection = 'manager'): string {
     .performer:last-child { border: none; }
     .performer-row { display: flex; justify-content: space-between; margin-bottom: 6px; font-size: 13px; }
     .bar-track { height: 4px; background: rgba(255,255,255,0.06); border-radius: 2px; overflow: hidden; }
-    .bar-fill { height: 100%; background: linear-gradient(90deg, #C9A84C, #E8D5A3); }
+    .bar-fill { height: 100%; background: linear-gradient(90deg, #8B5CF6, #C4B5FD); }
     .res-row {
       display: flex; gap: 12px; align-items: center; padding: 12px 0;
       border-bottom: 0.5px solid rgba(255,255,255,0.06);
     }
-    .res-time { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #C9A84C; width: 44px; }
+    .res-time { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #8B5CF6; width: 44px; }
     .res-note { font-size: 11px; color: #8A8A9A; margin-top: 2px; }
     .orders-card { padding: 0; overflow: hidden; }
     .orders-head {
       padding: 20px; display: flex; justify-content: space-between;
-      flex-wrap: wrap; gap: 12px; border-bottom: 0.5px solid rgba(201,168,76,0.15);
+      flex-wrap: wrap; gap: 12px; border-bottom: 0.5px solid rgba(139,92,246,0.15);
     }
     .table { width: 100%; border-collapse: collapse; font-size: 13px; }
     .table th {
       text-align: left; padding: 12px 16px; font-size: 9px; font-weight: 600;
       color: #5A5A6A; text-transform: uppercase; letter-spacing: 1.5px;
-      border-bottom: 0.5px solid rgba(201,168,76,0.15);
+      border-bottom: 0.5px solid rgba(139,92,246,0.15);
     }
     .table td { padding: 14px 16px; border-bottom: 0.5px solid rgba(255,255,255,0.04); }
     .table tr:nth-child(even) td { background: rgba(255,255,255,0.02); }
-    .ticket { font-family: 'JetBrains Mono', monospace; color: #C9A84C; font-weight: 500; }
+    .ticket { font-family: 'JetBrains Mono', monospace; color: #8B5CF6; font-weight: 500; }
     .badge {
       display: inline-block; padding: 4px 10px; border-radius: 6px;
       font-size: 10px; font-weight: 600; text-transform: uppercase;
     }
     .badge-paid { background: rgba(46,204,138,0.16); color: #2ECC8A; }
     .badge-pending { background: rgba(240,165,0,0.16); color: #F0A500; }
-    .badge-new { background: rgba(201,168,76,0.16); color: #C9A84C; }
+    .badge-new { background: rgba(139,92,246,0.16); color: #8B5CF6; }
     .badge-cancel { background: rgba(232,69,69,0.18); color: #E84545; }
     .hidden { display: none !important; }
     .placeholder {
       padding: 48px 24px; text-align: center; color: #8A8A9A;
-      border: 0.5px dashed rgba(201,168,76,0.28); border-radius: 12px; margin-top: 8px;
+      border: 0.5px dashed rgba(139,92,246,0.28); border-radius: 12px; margin-top: 8px;
     }
   </style>
 </head>
@@ -193,7 +193,7 @@ export function getManagerPanelHtml(activeSection = 'manager'): string {
             <div class="performer"><div class="performer-row"><span>Tarte Tatin</span><span>22×</span></div><div class="bar-track"><div class="bar-fill" style="width:52%"></div></div></div>
           </div>
           <div class="card">
-            <p class="side-label">Reservations · Tonight <span style="float:right;color:#C9A84C">18 / 22</span></p>
+            <p class="side-label">Reservations · Tonight <span style="float:right;color:#8B5CF6">18 / 22</span></p>
             <div class="res-row"><span class="res-time">20:15</span><div><div>Bernard, J. · 2 cov</div><div class="res-note">Anniversary</div></div></div>
             <div class="res-row"><span class="res-time">20:30</span><div><div>Park, S. · 4 cov</div><div class="res-note">VIP · No nuts</div></div></div>
             <div class="res-row"><span class="res-time">21:00</span><div><div>Wei, L. · 6 cov</div><div class="res-note">Private corner</div></div></div>
@@ -221,7 +221,7 @@ export function getManagerPanelHtml(activeSection = 'manager'): string {
 
     <div id="alt-section" class="${showOverview ? 'hidden' : ''}">
       <div class="placeholder">
-        <p style="font-size:18px;color:#C9A84C;margin-bottom:8px">${section.title}</p>
+        <p style="font-size:18px;color:#8B5CF6;margin-bottom:8px">${section.title}</p>
         <p>Module view · connect Turso for live data. Use Overview in the sidebar to return.</p>
       </div>
     </div>

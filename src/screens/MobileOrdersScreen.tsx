@@ -233,7 +233,7 @@ const styles = StyleSheet.create({
     color: Colors.text3,
   },
   pillCountActive: {
-    color: 'rgba(10,10,15,0.65)',
+    color: 'rgba(7,6,15,0.65)',
   },
   list: {
     flex: 1,
@@ -260,7 +260,7 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 12,
-    backgroundColor: 'rgba(201,168,76,0.06)',
+    backgroundColor: 'rgba(139,92,246,0.06)',
     borderWidth: 0.5,
     borderColor: Colors.goldLine2,
     alignItems: 'center',

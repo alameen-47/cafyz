@@ -350,7 +350,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   pinDotFilled: {
-    backgroundColor: 'rgba(201,168,76,0.1)',
+    backgroundColor: 'rgba(139,92,246,0.1)',
     borderColor: Colors.gold,
   },
   pinDotInner: {
@@ -520,7 +520,7 @@ const dl = StyleSheet.create({
     borderWidth: 0.5,
     borderColor: Colors.goldLine,
     borderRadius: 12,
-    backgroundColor: 'rgba(18,18,26,0.6)',
+    backgroundColor: 'rgba(14,11,28,0.6)',
     maxWidth: 440,
   },
   quoteText: {
@@ -540,7 +540,7 @@ const dl = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: '#14101a',
+    backgroundColor: '#130F28',
     borderWidth: 0.5,
     borderColor: Colors.goldLine2,
     alignItems: 'center',

@@ -448,7 +448,7 @@ function KPI({ label, value, tone }: { label: string; value: string; tone?: 'amb
 const kds = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: '#070709',
+    backgroundColor: '#07060F',
     flexDirection: 'column',
   },
   header: {
@@ -459,7 +459,7 @@ const kds = StyleSheet.create({
     paddingHorizontal: 24,
     borderBottomWidth: 0.5,
     borderBottomColor: Colors.goldLine,
-    backgroundColor: 'rgba(10,10,15,0.7)',
+    backgroundColor: 'rgba(7,6,15,0.7)',
   },
   headerLeft: {
     flexDirection: 'row',
@@ -520,7 +520,7 @@ const kds = StyleSheet.create({
     justifyContent: 'center',
   },
   stationBtnActive: {
-    backgroundColor: 'rgba(201,168,76,0.12)',
+    backgroundColor: 'rgba(139,92,246,0.12)',
     borderWidth: 0.5,
     borderColor: Colors.goldLine2,
   },
@@ -770,7 +770,7 @@ const kds = StyleSheet.create({
     position: 'absolute',
     bottom: 20,
     right: 20,
-    backgroundColor: 'rgba(18,18,26,0.9)',
+    backgroundColor: 'rgba(14,11,28,0.9)',
     borderWidth: 0.5,
     borderColor: Colors.goldLine,
     borderRadius: Radius.md,

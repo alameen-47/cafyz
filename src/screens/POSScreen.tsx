@@ -414,7 +414,7 @@ const styles = StyleSheet.create({
     color: Colors.text3,
   },
   pillCountActive: {
-    color: 'rgba(10,10,15,0.6)',
+    color: 'rgba(7,6,15,0.6)',
   },
   searchBox: {
     flexDirection: 'row',
@@ -463,7 +463,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   dishCardActive: {
-    borderColor: 'rgba(201,168,76,0.55)',
+    borderColor: 'rgba(139,92,246,0.55)',
   },
   plateArea: {
     height: 120,
@@ -478,7 +478,7 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: '#2a1f10',
+    backgroundColor: '#130F2A',
     alignItems: 'center',
     justifyContent: 'center',
     position: 'relative',
@@ -497,13 +497,13 @@ const styles = StyleSheet.create({
   plateSym: {
     fontFamily: Typography.serif,
     fontSize: 24,
-    color: 'rgba(232,213,163,0.8)',
+    color: 'rgba(196,181,253,0.8)',
   },
   popularBadge: {
     position: 'absolute',
     top: 8,
     left: 8,
-    backgroundColor: 'rgba(10,10,15,0.8)',
+    backgroundColor: 'rgba(7,6,15,0.8)',
     borderRadius: 6,
     paddingHorizontal: 8,
     paddingVertical: 3,
@@ -663,7 +663,7 @@ const os = StyleSheet.create({
     width: 28,
     height: 28,
     borderRadius: 6,
-    backgroundColor: 'rgba(201,168,76,0.1)',
+    backgroundColor: 'rgba(139,92,246,0.1)',
     borderWidth: 0.5,
     borderColor: Colors.goldLine2,
     alignItems: 'center',
@@ -741,7 +741,7 @@ const os = StyleSheet.create({
   },
   extraBtnActive: {
     borderColor: Colors.goldLine2,
-    backgroundColor: 'rgba(201,168,76,0.1)',
+    backgroundColor: 'rgba(139,92,246,0.1)',
   },
   tableNote: {
     fontFamily: Typography.sans,
@@ -817,7 +817,7 @@ const os = StyleSheet.create({
     fontWeight: '600',
   },
   chargeSep: {
-    color: 'rgba(10,10,15,0.55)',
+    color: 'rgba(7,6,15,0.55)',
     fontSize: 16,
   },
   chargeTotal: {
@@ -840,7 +840,7 @@ const os = StyleSheet.create({
   },
   altPayBtnActive: {
     borderColor: Colors.goldLine2,
-    backgroundColor: 'rgba(201,168,76,0.1)',
+    backgroundColor: 'rgba(139,92,246,0.1)',
   },
   altPayText: {
     fontFamily: Typography.sansMedium,

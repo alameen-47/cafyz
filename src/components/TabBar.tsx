@@ -55,7 +55,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingBottom: 20,
     paddingTop: 6,
-    backgroundColor: 'rgba(10,10,15,0.92)',
+    backgroundColor: 'rgba(7,6,15,0.92)',
   },
   tab: {
     flex: 1,
