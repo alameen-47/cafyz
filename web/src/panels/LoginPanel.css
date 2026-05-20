@@ -24,7 +24,7 @@
   height: 44px;
   border-radius: 12px;
   background: var(--gold);
-  color: #0a0a0f;
+  color: #07060f;
   font-family: var(--font-serif);
   font-size: 24px;
   font-weight: 700;
@@ -128,7 +128,7 @@
   margin-top: 12px;
   border-radius: var(--radius-md);
   background: var(--gold);
-  color: #0a0a0f;
+  color: #07060f;
   font-family: var(--font-serif);
   font-size: 17px;
   font-weight: 600;
@@ -233,7 +233,7 @@
     border: 0.5px solid var(--line2);
   }
   .login-pin-dots div.filled {
-    background: rgba(201, 168, 76, 0.1);
+    background: rgba(139, 92, 246, 0.1);
     border-color: var(--gold);
     box-shadow: inset 0 0 0 4px var(--gold);
   }

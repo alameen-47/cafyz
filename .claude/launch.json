@@ -2,10 +2,10 @@
   "version": "0.0.1",
   "configurations": [
     {
-      "name": "cafyz-web",
-      "runtimeExecutable": "node",
-      "runtimeArgs": ["serve-web.js"],
-      "port": 3456
+      "name": "cafyz-vite",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "web"],
+      "port": 5173
     }
   ]
 }

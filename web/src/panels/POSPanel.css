@@ -36,7 +36,7 @@
 .pos-pill.active {
   background: var(--gold);
   border-color: var(--gold);
-  color: #0a0a0f;
+  color: #07060f;
 }
 
 .pos-pill span {
@@ -88,7 +88,7 @@
 }
 
 .pos-dish.selected {
-  border-color: rgba(201, 168, 76, 0.55);
+  border-color: rgba(139, 92, 246, 0.55);
 }
 
 .pos-dish-plate {
@@ -279,7 +279,7 @@
   height: 52px;
   border-radius: var(--radius-md);
   background: var(--gold);
-  color: #0a0a0f;
+  color: #07060f;
   font-weight: 600;
   font-size: 14px;
   margin-bottom: 10px;
