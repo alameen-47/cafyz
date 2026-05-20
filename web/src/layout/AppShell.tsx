@@ -3,14 +3,15 @@ import { Sidebar } from './Sidebar';
 import { TopBar } from './TopBar';
 
 const CRUMBS: Partial<Record<Screen, [string, string]>> = {
-  manager: ['Operations', 'Overview'],
+  manager:   ['Operations', 'Overview'],
   inventory: ['Operations', 'Inventory'],
-  staff: ['Operations', 'Staff'],
-  reports: ['Operations', 'Reports'],
-  pos: ['Service', 'Point of Sale'],
-  menu: ['Service', 'Menu'],
-  kds: ['Kitchen', 'Expedite'],
-  waiter: ['Service', 'Floor Plan'],
+  staff:     ['Operations', 'Staff'],
+  reports:   ['Operations', 'Reports'],
+  roles:     ['Operations', 'Role Management'],
+  pos:       ['Service', 'Point of Sale'],
+  menu:      ['Service', 'Menu'],
+  kds:       ['Kitchen', 'Expedite'],
+  waiter:    ['Service', 'Floor Plan'],
 };
 
 const COVERS: Partial<Record<Screen, string>> = {

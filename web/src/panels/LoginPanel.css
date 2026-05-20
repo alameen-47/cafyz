@@ -162,6 +162,70 @@
   flex: 1;
 }
 
+/* Role quick-login */
+.login-roles {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.login-role-btn {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  border-radius: var(--radius-md);
+  border: 0.5px solid var(--line2);
+  text-align: left;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.login-role-btn:hover {
+  border-color: var(--rc, var(--gold));
+  background: color-mix(in srgb, var(--rc, var(--gold)) 6%, transparent);
+}
+
+.login-role-init {
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--rc, var(--gold)) 14%, transparent);
+  color: var(--rc, var(--gold));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.login-role-btn span:last-child {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.login-role-name {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text0);
+}
+
+.login-role-label {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--rc, var(--gold));
+}
+
+.login-error {
+  font-size: 12px;
+  color: var(--danger);
+  margin-top: -4px;
+  margin-bottom: 4px;
+}
+
 .login-quick {
   margin-top: 32px;
   padding-top: 24px;

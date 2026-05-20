@@ -8,6 +8,7 @@ export type Screen =
   | 'inventory'
   | 'staff'
   | 'reports'
+  | 'roles'
   | 'mobileOrders'
   | 'mobileTableDetail'
   | 'mobileAddItem';
