@@ -79,3 +79,6 @@ backend/.env
 !.yarn/releases
 !.yarn/sdks
 !.yarn/versions
+
+# Vite web build
+web/dist

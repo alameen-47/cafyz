@@ -1,6 +1,28 @@
 This is a new [**React Native**](https://reactnative.dev) project, bootstrapped using [`@react-native-community/cli`](https://github.com/react-native-community/cli).
 
-# Getting Started
+# Web app (all panels)
+
+Run every Cafyz panel in the browser — no iOS/Android simulator required:
+
+```sh
+npm install
+npm run web
+```
+
+Opens at [http://localhost:5173](http://localhost:5173). Default route is the **cashier / POS** panel (`/pos`). Other routes:
+
+| Panel | URL |
+|-------|-----|
+| Login | `/login` |
+| Overview (manager) | `/` |
+| Point of Sale (cashier) | `/pos` |
+| Menu | `/menu` |
+| Kitchen (KDS) | `/kds` |
+| Tables (waiter) | `/tables` |
+| Inventory / Staff / Reports | `/inventory`, `/staff`, `/reports` |
+| Waiter mobile | `/mobile/orders` |
+
+# Getting Started (React Native — optional)
 
 > **Note**: Make sure you have completed the [Set Up Your Environment](https://reactnative.dev/docs/set-up-your-environment) guide before proceeding.
 

@@ -247,6 +247,9 @@ export function getManagerPanelHtml(activeSection = 'manager'): string {
       if (window.ReactNativeWebView) {
         window.ReactNativeWebView.postMessage(JSON.stringify(payload));
       }
+      if (screen && type === 'navigate') {
+        window.dispatchEvent(new CustomEvent('cafyz-navigate', { detail: { screen: screen } }));
+      }
     }
     window.setManagerSection = function(section) {
       var overview = document.getElementById('overview');

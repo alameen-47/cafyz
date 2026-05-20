@@ -1,0 +1,257 @@
+.login-root {
+  display: flex;
+  min-height: 100vh;
+  background: var(--bg0);
+}
+
+.login-left {
+  flex: 1;
+  padding: 56px;
+  border-right: 0.5px solid var(--gold-line);
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+}
+
+.login-brand {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.login-logo {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: var(--gold);
+  color: #0a0a0f;
+  font-family: var(--font-serif);
+  font-size: 24px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.login-brand-name {
+  font-size: 22px;
+}
+
+.login-brand-sub {
+  font-size: 10px;
+  color: var(--text3);
+  letter-spacing: 2px;
+  margin-top: 4px;
+}
+
+.login-stats {
+  display: flex;
+  gap: 28px;
+}
+
+.login-stat-n {
+  font-size: 32px;
+  color: var(--gold);
+}
+
+.login-stat-l {
+  font-size: 10px;
+  color: var(--text2);
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  margin-top: 6px;
+}
+
+.login-hero h1 {
+  font-size: clamp(32px, 4vw, 48px);
+  line-height: 1.1;
+  margin: 12px 0 16px;
+}
+
+.login-hero em {
+  color: var(--gold);
+  font-style: italic;
+}
+
+.login-hero-sub {
+  font-size: 15px;
+  color: var(--text2);
+  line-height: 1.6;
+  max-width: 420px;
+}
+
+.login-right {
+  flex: 0.85;
+  padding: 64px;
+  max-width: 520px;
+}
+
+.login-title {
+  font-size: 36px;
+  margin: 8px 0 12px;
+}
+
+.login-sub {
+  font-size: 14px;
+  color: var(--text2);
+  margin-bottom: 32px;
+  line-height: 1.5;
+}
+
+.login-field {
+  display: block;
+  margin-bottom: 18px;
+}
+
+.login-field span {
+  display: block;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--gold);
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  margin-bottom: 8px;
+}
+
+.login-field input {
+  width: 100%;
+  height: 44px;
+  padding: 0 16px;
+  border-radius: var(--radius-md);
+  border: 0.5px solid var(--line2);
+  background: var(--bg2);
+}
+
+.login-submit {
+  width: 100%;
+  height: 56px;
+  margin-top: 12px;
+  border-radius: var(--radius-md);
+  background: var(--gold);
+  color: #0a0a0f;
+  font-family: var(--font-serif);
+  font-size: 17px;
+  font-weight: 600;
+}
+
+.login-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 24px 0;
+}
+
+.login-divider span {
+  flex: 1;
+  height: 0.5px;
+  background: var(--gold-line);
+}
+
+.login-divider p {
+  font-size: 10px;
+  color: var(--text3);
+  text-transform: uppercase;
+}
+
+.login-alt {
+  display: flex;
+  gap: 10px;
+}
+
+.login-alt .btn-outline {
+  flex: 1;
+}
+
+.login-quick {
+  margin-top: 32px;
+  padding-top: 24px;
+  border-top: 0.5px solid var(--gold-line);
+}
+
+.login-quick-btns {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.login-quick-btns button {
+  padding: 10px 14px;
+  border-radius: var(--radius-md);
+  border: 0.5px solid var(--gold-line);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text1);
+}
+
+.login-quick-btns button:hover {
+  border-color: var(--gold);
+  color: var(--gold);
+}
+
+.login-mobile-only {
+  display: none;
+}
+
+@media (max-width: 900px) {
+  .login-left,
+  .login-right {
+    display: none;
+  }
+  .login-mobile-only {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    padding: 28px;
+    max-width: 480px;
+    margin: 0 auto;
+  }
+  .login-mobile-head {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 40px;
+  }
+  .login-pin-label {
+    margin: 24px 0 12px;
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--gold);
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+  }
+  .login-pin-dots {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 24px;
+  }
+  .login-pin-dots div {
+    flex: 1;
+    height: 56px;
+    border-radius: 10px;
+    background: var(--bg2);
+    border: 0.5px solid var(--line2);
+  }
+  .login-pin-dots div.filled {
+    background: rgba(201, 168, 76, 0.1);
+    border-color: var(--gold);
+    box-shadow: inset 0 0 0 4px var(--gold);
+  }
+  .login-numpad {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    margin-top: auto;
+  }
+  .login-numpad button {
+    aspect-ratio: 1.8;
+    border-radius: 14px;
+    background: var(--bg1);
+    border: 0.5px solid var(--gold-line);
+    font-family: var(--font-serif);
+    font-size: 22px;
+  }
+  .login-numpad button.hidden {
+    visibility: hidden;
+  }
+}

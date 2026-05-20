@@ -7,7 +7,9 @@
     "ios": "react-native run-ios",
     "lint": "eslint .",
     "start": "react-native start",
-    "test": "jest"
+    "test": "jest",
+    "web": "vite --config web/vite.config.ts",
+    "web:build": "vite build --config web/vite.config.ts"
   },
   "dependencies": {
     "@react-native/new-app-screen": "0.85.3",
@@ -17,6 +19,11 @@
     "react-native-webview": "^13.16.1"
   },
   "devDependencies": {
+    "@types/react-dom": "^19.2.0",
+    "@vitejs/plugin-react": "^4.3.4",
+    "react-dom": "19.2.3",
+    "react-router-dom": "^7.6.2",
+    "vite": "^6.3.5",
     "@babel/core": "^7.25.2",
     "@babel/preset-env": "^7.25.3",
     "@babel/runtime": "^7.25.0",
