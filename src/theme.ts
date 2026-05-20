@@ -5,19 +5,19 @@
 //   JetBrains Mono (monospace IDs/timers)
 
 export const Colors = {
-  bg0: '#0A0A0F',       // deep space background
-  bg1: '#12121A',       // card surface
-  bg2: '#0D0D14',       // input surface
-  bg3: '#1A1A26',       // empty / inert
-  bgSidebar: '#0B0B11',
+  bg0: '#07060F',       // deep space background
+  bg1: '#0E0B1C',       // card surface
+  bg2: '#0A0816',       // input surface
+  bg3: '#17122A',       // empty / inert
+  bgSidebar: '#060410',
 
-  gold: '#C9A84C',
-  goldSoft: '#E8D5A3',
-  goldLine: 'rgba(201, 168, 76, 0.15)',
-  goldLine2: 'rgba(201, 168, 76, 0.28)',
-  goldGlow: 'rgba(201, 168, 76, 0.45)',
-  goldBg: 'rgba(201, 168, 76, 0.08)',
-  goldBg2: 'rgba(201, 168, 76, 0.12)',
+  gold: '#8B5CF6',
+  goldSoft: '#C4B5FD',
+  goldLine: 'rgba(139, 92, 246, 0.15)',
+  goldLine2: 'rgba(139, 92, 246, 0.28)',
+  goldGlow: 'rgba(139, 92, 246, 0.45)',
+  goldBg: 'rgba(139, 92, 246, 0.08)',
+  goldBg2: 'rgba(139, 92, 246, 0.12)',
 
   text0: '#F5F5F0',     // primary text
   text1: '#B8B8C2',
@@ -86,8 +86,8 @@ export const BadgeVariants = {
     text: '#E84545',
   },
   new: {
-    bg: 'rgba(201, 168, 76, 0.16)',
-    text: '#C9A84C',
+    bg: 'rgba(139, 92, 246, 0.16)',
+    text: '#8B5CF6',
   },
   open: {
     bg: 'rgba(240, 165, 0, 0.16)',

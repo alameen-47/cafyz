@@ -149,7 +149,7 @@ const styles = StyleSheet.create({
     gap: 14,
   },
   navItemActive: {
-    backgroundColor: 'rgba(201, 168, 76, 0.08)',
+    backgroundColor: 'rgba(139, 92, 246, 0.08)',
   },
   navItemCollapsed: {
     justifyContent: 'center',
@@ -195,7 +195,7 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: Radius.md,
-    backgroundColor: '#14141c',
+    backgroundColor: '#100B1E',
     borderWidth: 0.5,
     borderColor: Colors.goldLine2,
     alignItems: 'center',

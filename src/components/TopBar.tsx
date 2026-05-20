@@ -47,7 +47,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 28,
     borderBottomWidth: 0.5,
     borderBottomColor: Colors.goldLine,
-    backgroundColor: 'rgba(10,10,15,0.6)',
+    backgroundColor: 'rgba(7,6,15,0.6)',
   },
   breadcrumb: {
     flexDirection: 'row',
@@ -81,7 +81,7 @@ const styles = StyleSheet.create({
     borderRadius: Radius.pill,
     borderWidth: 0.5,
     borderColor: Colors.goldLine,
-    backgroundColor: 'rgba(201,168,76,0.04)',
+    backgroundColor: 'rgba(139,92,246,0.04)',
   },
   statusDot: {
     width: 6,
