@@ -164,7 +164,7 @@
 
 .kds-action.new {
   background: var(--gold);
-  color: #07060f;
+  color: var(--on-gold);
 }
 
 .kds-action.prep {

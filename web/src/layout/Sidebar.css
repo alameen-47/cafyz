@@ -1,11 +1,12 @@
 .sidebar {
   width: 240px;
   min-width: 240px;
-  background: var(--bg-sidebar);
+  background: var(--sidebar-grad);
   border-right: 0.5px solid var(--gold-line);
   padding: 20px 12px;
   display: flex;
   flex-direction: column;
+  transition: background 0.3s ease;
 }
 
 .sidebar-brand {
@@ -22,7 +23,7 @@
   height: 36px;
   border-radius: var(--radius-md);
   background: var(--gold);
-  color: #07060f;
+  color: var(--on-gold);
   font-family: var(--font-serif);
   font-size: 20px;
   font-weight: 700;
@@ -65,6 +66,7 @@
 .sidebar-nav-item.active {
   background: var(--gold-bg);
   color: var(--gold);
+  box-shadow: var(--gold-glow);
 }
 
 .sidebar-nav-item.active::before {
@@ -74,8 +76,9 @@
   top: 8px;
   bottom: 8px;
   width: 2px;
-  background: var(--gold);
+  background: linear-gradient(180deg, var(--gold-soft), var(--gold));
   border-radius: 2px;
+  box-shadow: 0 0 8px var(--gold);
 }
 
 .sidebar-nav-label {

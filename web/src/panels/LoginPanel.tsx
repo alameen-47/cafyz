@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth, DEMO_ACCOUNTS, ROLE_LABELS, ROLE_DEFAULT_PATH, type Role } from '../context/AuthContext';
+import { useTheme } from '../context/ThemeContext';
 import './LoginPanel.css';
 
 const ROLE_COLORS: Record<Role, string> = {
@@ -14,6 +15,7 @@ const ROLE_COLORS: Record<Role, string> = {
 export function LoginPanel() {
   const navigate = useNavigate();
   const { login, loginWithPin, error, clearError } = useAuth();
+  const { theme, toggleTheme } = useTheme();
 
   const [email,    setEmail]    = useState('mireille@saint.paris');
   const [password, setPassword] = useState('cafyz2026');
@@ -67,6 +69,15 @@ export function LoginPanel() {
 
   return (
     <div className="login-root">
+      {/* Theme toggle — top right corner */}
+      <button
+        className="login-theme-toggle theme-toggle"
+        onClick={toggleTheme}
+        title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+      >
+        {theme === 'dark' ? '☀︎' : '◗'}
+      </button>
+
       {/* ── Desktop left pane ─────────────────────────────────────── */}
       <section className="login-left">
         <div className="login-brand">

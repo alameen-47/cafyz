@@ -2,6 +2,7 @@ import { NavLink, useNavigate } from 'react-router-dom';
 import type { Screen } from '@shared/types';
 import { pathForScreen } from '../routes';
 import { useAuth, ROLE_LABELS, ROLE_NAV } from '../context/AuthContext';
+import { useTheme } from '../context/ThemeContext';
 import './Sidebar.css';
 
 const ALL_NAV: { id: Screen; label: string; badge?: string }[] = [
@@ -18,6 +19,7 @@ const ALL_NAV: { id: Screen; label: string; badge?: string }[] = [
 
 export function Sidebar({ active }: { active: Screen }) {
   const { user, logout } = useAuth();
+  const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
 
   const allowed  = user ? ROLE_NAV[user.role] : ALL_NAV.map(n => n.id);
@@ -65,6 +67,14 @@ export function Sidebar({ active }: { active: Screen }) {
           <p className="sidebar-footer-name">{user ? user.name : 'Guest'}</p>
           <p className="sidebar-footer-role">{user ? ROLE_LABELS[user.role] : '—'}</p>
         </div>
+        <button
+          className="theme-toggle"
+          onClick={toggleTheme}
+          title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+          aria-label="Toggle theme"
+        >
+          {theme === 'dark' ? '☀︎' : '◗'}
+        </button>
         {user && (
           <button className="sidebar-logout" onClick={handleLogout} title="Sign out">⏏</button>
         )}

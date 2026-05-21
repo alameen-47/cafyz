@@ -26,7 +26,7 @@
   height: 40px;
   padding: 0 20px;
   background: var(--gold);
-  color: #07060f;
+  color: var(--on-gold);
   border-radius: var(--radius-md);
   font-size: 13px;
   font-weight: 600;
@@ -281,7 +281,7 @@
   height: 36px;
   padding: 0 18px;
   background: var(--gold);
-  color: #07060f;
+  color: var(--on-gold);
   border-radius: var(--radius-md);
   font-size: 13px;
   font-weight: 600;

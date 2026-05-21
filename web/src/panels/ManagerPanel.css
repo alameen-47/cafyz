@@ -100,7 +100,7 @@
   color: var(--text2);
 }
 
-.mgr-range.active { background: var(--gold); color: #07060f; border-color: var(--gold); }
+.mgr-range.active { background: var(--gold); color: var(--on-gold); border-color: var(--gold); }
 
 .mgr-bars {
   height: 100px;
