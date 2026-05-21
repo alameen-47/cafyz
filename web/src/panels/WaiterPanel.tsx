@@ -5,22 +5,28 @@ import type { TableStatus } from '@shared/types';
 import './WaiterPanel.css';
 
 const STATUS_CLASS: Record<TableStatus, string> = {
-  empty: 'empty', reserved: 'reserved', occupied: 'occupied', paying: 'paying', attention: 'attention',
+  empty: 'empty', reserved: 'reserved', occupied: 'occupied',
+  paying: 'paying', attention: 'attention',
 };
-
 
 export function WaiterPanel() {
   const { user } = useAuth();
-  const [tables,   setTables]   = useState<ApiTable[]>([]);
-  const [orders,   setOrders]   = useState<ApiOrder[]>([]);
-  const [selected, setSelected] = useState<string | null>(null);
-  const [sheetOpen,setSheetOpen]= useState(false);
-  const [busy,     setBusy]     = useState(false);
-  const [error,    setError]    = useState('');
-  const [loading,  setLoading]  = useState(true);
+  const [tables,     setTables]     = useState<ApiTable[]>([]);
+  const [orders,     setOrders]     = useState<ApiOrder[]>([]);   // open/sent orders (for table→order lookup)
+  const [fullOrder,  setFullOrder]  = useState<ApiOrder | null>(null); // full order with items
+  const [selected,   setSelected]   = useState<string | null>(null);
+  const [sheetOpen,  setSheetOpen]  = useState(false);
+  const [busy,       setBusy]       = useState(false);
+  const [error,      setError]      = useState('');
+  const [loading,    setLoading]    = useState(true);
+  const [orderLoading, setOrderLoading] = useState(false);
 
-  // Load tables + open orders on mount
+  // ── Initial load ────────────────────────────────────────────────────────────
   useEffect(() => {
+    loadFloor();
+  }, []);
+
+  function loadFloor() {
     Promise.all([
       tablesApi.list(),
       ordersApi.list({ status: 'open' }),
@@ -28,23 +34,40 @@ export function WaiterPanel() {
       .then(([t, o]) => { setTables(t); setOrders(o); })
       .catch(e => setError(e.message))
       .finally(() => setLoading(false));
-  }, []);
-
-  function refresh() {
-    Promise.all([tablesApi.list(), ordersApi.list({ status: 'open' })])
-      .then(([t, o]) => { setTables(t); setOrders(o); });
   }
 
-  const selectedTable = tables.find(t => t.id === selected);
-  const tableOrder    = orders.find(o => o.table_id === selected);
+  // ── Fetch full order with items when table selection changes ────────────────
+  useEffect(() => {
+    if (!selected) { setFullOrder(null); return; }
 
+    const tableOrder = orders.find(
+      o => o.table_id === selected && (o.status === 'open' || o.status === 'sent'),
+    );
+
+    if (!tableOrder) { setFullOrder(null); return; }
+
+    setOrderLoading(true);
+    ordersApi.get(tableOrder.id)
+      .then(setFullOrder)
+      .catch(console.error)
+      .finally(() => setOrderLoading(false));
+  }, [selected, orders]);
+
+  const selectedTable = tables.find(t => t.id === selected);
+  const orderItems    = fullOrder?.items ?? [];
+  const total         = orderItems.reduce((s, i) => s + (i.price ?? 0) * i.qty, 0);
+
+  // ── Actions ─────────────────────────────────────────────────────────────────
   async function sendToKitchen() {
-    if (!tableOrder) return;
+    if (!fullOrder) return;
     setBusy(true);
     try {
-      await ordersApi.updateStatus(tableOrder.id, 'sent');
+      await ordersApi.updateStatus(fullOrder.id, 'sent'); // backend auto-creates KDS ticket
       await tablesApi.updateStatus(selected!, { status: 'occupied', course: 'Sent to kitchen' });
-      refresh();
+      // Refresh floor
+      const [t, o] = await Promise.all([tablesApi.list(), ordersApi.list({ status: 'open' })]);
+      setTables(t);
+      setOrders(o);
     } catch (e) { setError((e as Error).message); }
     finally { setBusy(false); }
   }
@@ -53,35 +76,45 @@ export function WaiterPanel() {
     if (!selected) return;
     setBusy(true);
     try {
-      await tablesApi.updateStatus(selected, { status: 'paying', course: 'Bill' });
-      refresh();
+      await tablesApi.updateStatus(selected, { status: 'paying', course: 'Bill requested' });
+      const [t, o] = await Promise.all([tablesApi.list(), ordersApi.list({ status: 'open' })]);
+      setTables(t);
+      setOrders(o);
     } catch (e) { setError((e as Error).message); }
     finally { setBusy(false); }
   }
 
-  const orderItems = tableOrder?.items ?? [];
-  const total = orderItems.reduce((s, i) => s + (i.price ?? 0) * i.qty, 0);
+  function selectTable(tableId: string) {
+    setSelected(tableId);
+    setSheetOpen(true);
+  }
 
-  if (loading) return <div className="waiter-layout"><p style={{ color: 'var(--text2)', padding: 32 }}>Loading floor…</p></div>;
+  if (loading) return (
+    <div className="waiter-layout">
+      <p style={{ color: 'var(--text2)', padding: 32 }}>Loading floor…</p>
+    </div>
+  );
 
   return (
     <div className="waiter-layout">
-      {/* ── Floor map ────────────────────────────────────────────── */}
+
+      {/* ── Floor map ───────────────────────────────────────────────── */}
       <div className="waiter-floor">
         <div className="waiter-floor-head">
           <p className="eyebrow">Floor · {user?.restaurant_name || 'Service'}</p>
           <h2 className="serif">Table map</h2>
           {error && <p style={{ color: 'var(--danger)', fontSize: 12 }}>{error}</p>}
         </div>
+
         <div className="waiter-grid">
           {tables.map(t => {
-            const isRound = ['T·09','T·10','T·11'].includes(t.name);
+            const isRound = t.name?.includes('·0') && ['09', '10', '11'].some(n => t.name.endsWith(n));
             return (
               <button
                 key={t.id}
                 type="button"
                 className={`waiter-table ${STATUS_CLASS[t.status]} ${isRound ? 'round' : ''} ${selected === t.id ? 'selected' : ''}`}
-                onClick={() => { setSelected(t.id); setSheetOpen(true); }}
+                onClick={() => selectTable(t.id)}
               >
                 <span className="waiter-table-id">{t.name}</span>
                 <span className="waiter-table-course">
@@ -97,7 +130,7 @@ export function WaiterPanel() {
         </div>
       </div>
 
-      {/* ── Order sheet ──────────────────────────────────────────── */}
+      {/* ── Order sheet ─────────────────────────────────────────────── */}
       {sheetOpen && selectedTable && (
         <aside className="waiter-sheet card">
           <header>
@@ -117,31 +150,37 @@ export function WaiterPanel() {
             </button>
           </header>
 
-          {tableOrder && orderItems.length > 0 ? (
+          {orderLoading ? (
+            <p style={{ color: 'var(--text2)', fontSize: 13, padding: '12px 0' }}>Loading order…</p>
+          ) : fullOrder && orderItems.length > 0 ? (
             <ul>
               {orderItems.map(item => (
                 <li key={item.id}>
                   <span>{item.qty}×</span>
                   {item.name ?? item.menu_item_id}
-                  {item.price ? <span className="mono">${(item.price * item.qty).toFixed(2)}</span> : null}
+                  {item.price ? (
+                    <span className="mono">${(item.price * item.qty).toFixed(2)}</span>
+                  ) : null}
                 </li>
               ))}
             </ul>
           ) : (
             <p style={{ color: 'var(--text3)', padding: '12px 0', fontSize: 13 }}>
-              {selectedTable.status === 'empty' ? 'Table is empty.' : 'No open order on this table.'}
+              {selectedTable.status === 'empty'
+                ? 'Table is empty.'
+                : 'No open order on this table.'}
             </p>
           )}
 
           <footer>
             {total > 0 && <p className="waiter-total serif">${total.toFixed(2)}</p>}
             <div style={{ display: 'flex', gap: 8 }}>
-              {tableOrder && tableOrder.status === 'open' && (
+              {fullOrder && fullOrder.status === 'open' && (
                 <button type="button" className="btn-gold" onClick={sendToKitchen} disabled={busy}>
                   {busy ? '…' : 'Send to kitchen'}
                 </button>
               )}
-              {selectedTable.status === 'occupied' && (
+              {(selectedTable.status === 'occupied' || selectedTable.status === 'attention') && (
                 <button type="button" className="btn-outline" onClick={markPaying} disabled={busy}>
                   Request bill
                 </button>

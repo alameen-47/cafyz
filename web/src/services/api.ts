@@ -22,7 +22,10 @@ async function request<T = unknown>(
   if (res.status === 401) {
     localStorage.removeItem('cafyz_token');
     localStorage.removeItem('cafyz_user');
-    window.location.href = '/login';
+    // Only hard-redirect on interactive requests (not background polling /me validation)
+    if (!path.includes('/api/auth/me')) {
+      window.location.href = '/login';
+    }
     throw new Error('Session expired — please sign in again.');
   }
 

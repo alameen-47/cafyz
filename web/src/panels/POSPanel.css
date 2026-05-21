@@ -325,3 +325,25 @@
     max-height: 45vh;
   }
 }
+
+/* Note editor inline */
+.pos-note-editor {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 0;
+  border-bottom: 0.5px solid var(--line);
+}
+
+/* Charge button when order already sent */
+.pos-charge.sent {
+  background: linear-gradient(135deg, var(--gold-soft) 0%, var(--gold) 60%, var(--gold-dim) 100%);
+  color: var(--on-gold);
+}
+
+/* Disable overlay for sold cards */
+.pos-dish.disabled { opacity: 0.45; pointer-events: none; }
+
+/* 4-button alt-pay row */
+.pos-alt-pay { display: flex; gap: 6px; flex-wrap: wrap; }
+.pos-alt-pay button { flex: 1; min-width: 60px; }

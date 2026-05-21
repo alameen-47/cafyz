@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   dashboardApi, inventoryApi, usersApi, reservationsApi,
-  type ApiDashboardStats, type ApiInventoryItem, type ApiUser, type ApiReservation,
+  type ApiDashboardStats, type ApiInventoryItem, type ApiUser,
+  type ApiReservation, type ApiRevenueRow,
 } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { RolesPanel } from './RolesPanel';
@@ -250,43 +251,93 @@ function StaffTab({ onNav }: { onNav: (s: Section) => void }) {
 
 // ── Reports ───────────────────────────────────────────────────────────────────
 function Reports() {
-  const [stats, setStats]  = useState<ApiDashboardStats | null>(null);
+  const [stats,   setStats]   = useState<ApiDashboardStats | null>(null);
+  const [revenue, setRevenue] = useState<ApiRevenueRow[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    dashboardApi.stats().then(setStats).catch(console.error).finally(() => setLoading(false));
+    Promise.all([dashboardApi.stats(), dashboardApi.revenue()])
+      .then(([s, r]) => { setStats(s); setRevenue(r); })
+      .catch(console.error)
+      .finally(() => setLoading(false));
   }, []);
 
-  const rows = stats ? [
-    { label: 'Orders Today',     value: String(stats.orders_today),   delta: '',      up: true },
-    { label: 'Orders Paid',      value: String(stats.orders_paid),    delta: '',      up: true },
-    { label: 'Tables Total',     value: String(stats.tables_total),   delta: '',      up: true },
-    { label: 'Tables Occupied',  value: String(stats.tables_occupied),delta: '',      up: true },
-    { label: 'Staff Active',     value: String(stats.staff_active),   delta: '',      up: true },
-    { label: 'Staff On Break',   value: String(stats.staff_on_break), delta: '',      up: false },
-    { label: 'Low Inventory',    value: String(stats.inventory_low),  delta: stats.inventory_low > 0 ? '⚠' : '', up: false },
+  const statsRows = stats ? [
+    { label: 'Orders Today',    value: String(stats.orders_today),    delta: '',      up: true  },
+    { label: 'Orders Paid',     value: String(stats.orders_paid),     delta: '',      up: true  },
+    { label: 'Tables Total',    value: String(stats.tables_total),    delta: '',      up: true  },
+    { label: 'Tables Occupied', value: String(stats.tables_occupied), delta: '',      up: true  },
+    { label: 'Staff Active',    value: String(stats.staff_active),    delta: '',      up: true  },
+    { label: 'Staff On Break',  value: String(stats.staff_on_break),  delta: '',      up: false },
+    { label: 'Low Inventory',   value: String(stats.inventory_low),
+      delta: stats.inventory_low > 0 ? '⚠' : '', up: false },
   ] : [];
+
+  // Total revenue last 30 days
+  const totalRevenue = revenue.reduce((s, r) => s + (r.revenue ?? 0), 0);
 
   return (
     <div className="mgr-overview">
       <p className="eyebrow">Finance · Daily P&L</p>
       <h1 className="serif mgr-greeting">Reports</h1>
-      <p className="mgr-sub">Live service metrics from Turso DB.</p>
+      <p className="mgr-sub">Live service metrics · last 30 days.</p>
+
       {loading ? (
         <p style={{ color: 'var(--text2)', fontSize: 13, marginTop: 16 }}>Loading reports…</p>
       ) : (
-        <div className="mgr-report-table card">
-          <div className="mgr-report-head">
-            <span>Metric</span><span>Live Value</span><span>Note</span>
-          </div>
-          {rows.map(r => (
-            <div key={r.label} className="mgr-report-row">
-              <span className="mgr-report-label">{r.label}</span>
-              <span className="serif mgr-report-val">{r.value}</span>
-              <span className={`mgr-report-delta ${r.up ? 'up' : 'dn'}`}>{r.delta}</span>
+        <>
+          {/* Revenue summary */}
+          {revenue.length > 0 && (
+            <div className="card" style={{ padding: '16px 20px', marginBottom: 20, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div>
+                <p className="eyebrow" style={{ marginBottom: 4 }}>Revenue · 30 days</p>
+                <p className="serif" style={{ fontSize: 28, color: 'var(--gold)' }}>
+                  ${totalRevenue.toFixed(2)}
+                </p>
+              </div>
+              <div style={{ textAlign: 'right' }}>
+                <p style={{ fontSize: 11, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: 1 }}>
+                  {revenue.length} days tracked
+                </p>
+                <p style={{ fontSize: 13, color: 'var(--text1)', marginTop: 4 }}>
+                  avg ${revenue.length ? (totalRevenue / revenue.length).toFixed(0) : 0}/day
+                </p>
+              </div>
             </div>
-          ))}
-        </div>
+          )}
+
+          {/* Service metrics */}
+          <div className="mgr-report-table card">
+            <div className="mgr-report-head">
+              <span>Metric</span><span>Live Value</span><span>Flag</span>
+            </div>
+            {statsRows.map(r => (
+              <div key={r.label} className="mgr-report-row">
+                <span className="mgr-report-label">{r.label}</span>
+                <span className="serif mgr-report-val">{r.value}</span>
+                <span className={`mgr-report-delta ${r.up ? 'up' : 'dn'}`}>{r.delta}</span>
+              </div>
+            ))}
+          </div>
+
+          {/* Daily revenue breakdown */}
+          {revenue.length > 0 && (
+            <div className="mgr-report-table card" style={{ marginTop: 20 }}>
+              <div className="mgr-report-head">
+                <span>Date</span><span>Orders</span><span>Revenue</span>
+              </div>
+              {[...revenue].reverse().slice(0, 14).map(r => (
+                <div key={r.day} className="mgr-report-row">
+                  <span className="mgr-report-label mono" style={{ fontSize: 12 }}>{r.day}</span>
+                  <span className="mgr-report-val">{r.order_count}</span>
+                  <span className="serif mgr-report-val" style={{ color: 'var(--gold)' }}>
+                    ${(r.revenue ?? 0).toFixed(2)}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </>
       )}
     </div>
   );

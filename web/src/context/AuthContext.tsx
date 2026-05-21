@@ -92,15 +92,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [error,   setError]   = useState('');
 
-  // Restore persisted session on mount
+  // Restore persisted session on mount, validate token silently in background
   useEffect(() => {
     const stored = localStorage.getItem(KEY_USER);
     const token  = localStorage.getItem(KEY_TOKEN);
     if (stored && token) {
-      try { setUser(JSON.parse(stored)); }
-      catch { localStorage.removeItem(KEY_USER); localStorage.removeItem(KEY_TOKEN); }
+      try {
+        // Render immediately from cache, then verify token is still valid
+        setUser(JSON.parse(stored));
+        setLoading(false);
+        authApi.me().catch(() => {
+          // Token expired or revoked — clear session
+          localStorage.removeItem(KEY_TOKEN);
+          localStorage.removeItem(KEY_USER);
+          setUser(null);
+        });
+      } catch {
+        localStorage.removeItem(KEY_USER);
+        localStorage.removeItem(KEY_TOKEN);
+        setLoading(false);
+      }
+    } else {
+      setLoading(false);
     }
-    setLoading(false);
   }, []);
 
   async function login(email: string, password: string) {

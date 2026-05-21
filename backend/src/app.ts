@@ -20,7 +20,11 @@ const app = express();
 // ── Security ───────────────────────────────────────────────────────────────────
 app.use(helmet());
 app.use(cors({
-  origin: process.env.ALLOWED_ORIGIN ?? '*',
+  // Allow comma-separated prod origins via ALLOWED_ORIGIN env var.
+  // In dev, allow both default Vite ports.
+  origin: process.env.ALLOWED_ORIGIN
+    ? process.env.ALLOWED_ORIGIN.split(',').map(s => s.trim())
+    : ['http://localhost:5173', 'http://localhost:5174', 'http://127.0.0.1:5173'],
   credentials: true,
 }));
 app.use(rateLimit({ windowMs: 15 * 60 * 1000, max: 500, standardHeaders: true }));
