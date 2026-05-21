@@ -347,3 +347,105 @@
 /* 4-button alt-pay row */
 .pos-alt-pay { display: flex; gap: 6px; flex-wrap: wrap; }
 .pos-alt-pay button { flex: 1; min-width: 60px; }
+
+/* ── Printer bar ──────────────────────────────────────────────────────────── */
+.pos-printer-bar {
+  padding: 8px 16px;
+  border-bottom: 0.5px solid var(--gold-line);
+  font-size: 12px;
+  position: relative;
+}
+
+.pos-printer-connect-btn {
+  height: 28px;
+  padding: 0 12px;
+  border-radius: var(--radius-pill);
+  border: 0.5px dashed var(--gold-line);
+  background: transparent;
+  color: var(--text2);
+  font-size: 11px;
+  cursor: pointer;
+  transition: border-color 0.2s, color 0.2s;
+  width: 100%;
+  text-align: left;
+}
+.pos-printer-connect-btn:hover {
+  border-color: var(--gold);
+  color: var(--text1);
+}
+
+.pos-printer-connected {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--success, #4ade80);
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.pos-printer-disconnect {
+  background: none;
+  border: none;
+  color: var(--text3);
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1;
+  padding: 0 2px;
+  margin-left: auto;
+}
+.pos-printer-disconnect:hover { color: var(--danger); }
+
+.pos-printer-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 16px;
+  right: 16px;
+  background: var(--bg1);
+  border: 0.5px solid var(--gold-line);
+  border-radius: var(--radius-card);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.35);
+  z-index: 50;
+  overflow: hidden;
+}
+.pos-printer-menu button {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 10px 14px;
+  background: none;
+  border: none;
+  color: var(--text1);
+  font-size: 13px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.pos-printer-menu button:hover { background: var(--hover); }
+
+.pos-printer-error {
+  color: var(--danger);
+  font-size: 11px;
+  margin-top: 4px;
+}
+.pos-printer-ok {
+  color: var(--success, #4ade80);
+  font-size: 11px;
+  margin-top: 4px;
+}
+
+/* Print receipt button — shown after payment */
+.pos-print-receipt {
+  display: block;
+  width: 100%;
+  padding: 10px;
+  margin-bottom: 8px;
+  border-radius: var(--radius-btn);
+  border: 0.5px solid var(--gold-line);
+  background: transparent;
+  color: var(--text1);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s;
+}
+.pos-print-receipt:hover { background: var(--hover); border-color: var(--gold); }
+.pos-print-receipt:disabled { opacity: 0.5; cursor: not-allowed; }

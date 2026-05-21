@@ -1,5 +1,10 @@
 import { useState, useEffect, useRef } from 'react';
 import { menuApi, ordersApi, tablesApi, type ApiMenuItem, type ApiTable } from '../services/api';
+import { useAuth } from '../context/AuthContext';
+import {
+  connectBluetooth, connectUSB, disconnectPrinter, printerStatus, print as printReceipt,
+  type ReceiptData,
+} from '../services/PrintService';
 import './POSPanel.css';
 
 type CartItem     = { menuItem: ApiMenuItem; qty: number; mods: string[] };
@@ -15,6 +20,8 @@ const CATS = [
 ];
 
 export function POSPanel() {
+  const { user } = useAuth();
+
   const [menu,          setMenu]          = useState<ApiMenuItem[]>([]);
   const [tables,        setTables]        = useState<ApiTable[]>([]);
   const [cat,           setCat]           = useState('mains');
@@ -30,6 +37,16 @@ export function POSPanel() {
   const [error,         setError]         = useState('');
   const [loading,       setLoading]       = useState(true);
   const noteRef = useRef<HTMLInputElement>(null);
+
+  // ── Printer state ──────────────────────────────────────────────────────────
+  const [printer,      setPrinter]      = useState<{ type: 'none' | 'bluetooth' | 'usb'; name: string }>({ type: 'none', name: '' });
+  const [printBusy,    setPrintBusy]    = useState(false);
+  const [printError,   setPrintError]   = useState('');
+  const [printOk,      setPrintOk]      = useState(false);
+  const [showConnect,  setShowConnect]  = useState(false);
+
+  // Sync printer status on mount (in case a previous session still has a device)
+  useEffect(() => { setPrinter(printerStatus()); }, []);
 
   useEffect(() => {
     Promise.all([menuApi.list(), tablesApi.list()])
@@ -104,6 +121,8 @@ export function POSPanel() {
     setNote('');
     setNoteOpen(false);
     setError('');
+    setPrintOk(false);
+    setPrintError('');
   }
 
   // When table selection changes, reset the order state (keep cart)
@@ -166,6 +185,59 @@ export function POSPanel() {
       setActiveOrderId(null);
     } catch (e) { setError((e as Error).message); }
     finally { setBusy(false); }
+  }
+
+  // ── Printer helpers ────────────────────────────────────────────────────────
+  async function handleConnectBluetooth() {
+    setPrintBusy(true); setPrintError(''); setShowConnect(false);
+    try {
+      const name = await connectBluetooth();
+      setPrinter({ type: 'bluetooth', name });
+    } catch (e) { setPrintError((e as Error).message); }
+    finally { setPrintBusy(false); }
+  }
+
+  async function handleConnectUSB() {
+    setPrintBusy(true); setPrintError(''); setShowConnect(false);
+    try {
+      const name = await connectUSB();
+      setPrinter({ type: 'usb', name });
+    } catch (e) { setPrintError((e as Error).message); }
+    finally { setPrintBusy(false); }
+  }
+
+  function handleDisconnect() {
+    disconnectPrinter();
+    setPrinter({ type: 'none', name: '' });
+  }
+
+  function buildReceiptData(payMethod?: string): ReceiptData {
+    return {
+      restaurantName: user?.restaurant_name || 'Restaurant',
+      tableName:      tableObj?.name ?? selectedTable ?? '',
+      serverName:     user?.name,
+      covers:         tableObj?.covers || undefined,
+      items:          cart.map(c => ({ name: c.menuItem.name, qty: c.qty, price: c.menuItem.price })),
+      subtotal,
+      service,
+      tax,
+      total,
+      payMethod,
+      note: note || undefined,
+    };
+  }
+
+  async function handlePrint(payMethod?: string) {
+    if (cart.length === 0) return;
+    setPrintBusy(true); setPrintError(''); setPrintOk(false);
+    try {
+      const method = await printReceipt(buildReceiptData(payMethod));
+      setPrintOk(true);
+      if (method !== 'dialog') {
+        setTimeout(() => setPrintOk(false), 3000);
+      }
+    } catch (e) { setPrintError((e as Error).message); }
+    finally { setPrintBusy(false); }
   }
 
   // ── Comp ───────────────────────────────────────────────────────────────────
@@ -250,6 +322,47 @@ export function POSPanel() {
 
       {/* ── Order sidebar ──────────────────────────────────────────────── */}
       <aside className="pos-order">
+
+        {/* ── Printer status bar ─────────────────────────────────────────── */}
+        <div className="pos-printer-bar">
+          {printer.type !== 'none' ? (
+            <span className="pos-printer-connected">
+              {printer.type === 'bluetooth' ? '🔵' : '🔌'} {printer.name}
+              <button type="button" className="pos-printer-disconnect" onClick={handleDisconnect}>×</button>
+            </span>
+          ) : (
+            <button
+              type="button"
+              className="pos-printer-connect-btn"
+              onClick={() => setShowConnect(c => !c)}
+              disabled={printBusy}
+            >
+              {printBusy ? '…' : '🖨 Connect Printer'}
+            </button>
+          )}
+
+          {showConnect && printer.type === 'none' && (
+            <div className="pos-printer-menu">
+              <button type="button" onClick={handleConnectBluetooth}>🔵 Bluetooth</button>
+              <button type="button" onClick={handleConnectUSB}>🔌 USB</button>
+              <button
+                type="button"
+                onClick={() => { setShowConnect(false); handlePrint(); }}
+                style={{ borderTop: '0.5px solid var(--gold-line)', marginTop: 4, paddingTop: 6, color: 'var(--text3)' }}
+              >
+                🖥 Print via Browser
+              </button>
+            </div>
+          )}
+
+          {printError && (
+            <p className="pos-printer-error">{printError}</p>
+          )}
+          {printOk && (
+            <p className="pos-printer-ok">✓ Sent to printer</p>
+          )}
+        </div>
+
         <header className="pos-order-head">
           <div>
             <p className="eyebrow">Active Check</p>
@@ -337,7 +450,7 @@ export function POSPanel() {
           )}
         </ul>
 
-        {/* Extras: note / comp / split */}
+        {/* Extras: note / split / print */}
         {!isPaid && (
           <div className="pos-extras">
             <button type="button" className="btn-outline"
@@ -348,6 +461,14 @@ export function POSPanel() {
               className={`btn-outline ${splitMode ? 'active' : ''}`}
               onClick={() => setSplitMode(s => !s)}>
               {splitMode ? 'Split · 2' : 'Split'}
+            </button>
+            <button type="button"
+              className="btn-outline"
+              disabled={cart.length === 0 || printBusy}
+              onClick={() => handlePrint()}
+              title={printer.type !== 'none' ? `Print via ${printer.name}` : 'Print via browser dialog'}
+            >
+              {printBusy ? '…' : '🖨'}
             </button>
           </div>
         )}
@@ -361,9 +482,21 @@ export function POSPanel() {
 
           {/* New Check button — shown after payment is finalised */}
           {isPaid ? (
-            <button type="button" className="pos-charge done" onClick={resetCheck}>
-              ✓ Done · New Check
-            </button>
+            <>
+              <button
+                type="button"
+                className="pos-print-receipt"
+                disabled={printBusy}
+                onClick={() => handlePrint(
+                  payState === 'card' ? 'Card' : payState === 'cash' ? 'Cash' : payState === 'comped' ? 'Complimentary' : undefined
+                )}
+              >
+                {printBusy ? '…' : '🖨 Print Receipt'}
+              </button>
+              <button type="button" className="pos-charge done" onClick={resetCheck}>
+                ✓ Done · New Check
+              </button>
+            </>
           ) : (
             <>
               <button type="button"
