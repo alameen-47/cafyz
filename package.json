@@ -3,13 +3,15 @@
   "version": "0.0.1",
   "private": true,
   "scripts": {
+    "dev": "concurrently --names \"API,WEB\" --prefix-colors \"cyan,magenta\" \"npm run api\" \"npm run web\"",
+    "api": "npm --prefix backend run dev",
+    "web": "vite --config web/vite.config.ts",
+    "web:build": "vite build --config web/vite.config.ts",
     "android": "react-native run-android",
     "ios": "react-native run-ios",
     "lint": "eslint .",
     "start": "react-native start",
-    "test": "jest",
-    "web": "vite --config web/vite.config.ts",
-    "web:build": "vite build --config web/vite.config.ts"
+    "test": "jest"
   },
   "dependencies": {
     "@react-native/new-app-screen": "0.85.3",
@@ -19,11 +21,6 @@
     "react-native-webview": "^13.16.1"
   },
   "devDependencies": {
-    "@types/react-dom": "^19.2.0",
-    "@vitejs/plugin-react": "^4.3.4",
-    "react-dom": "19.2.3",
-    "react-router-dom": "^7.6.2",
-    "vite": "^6.3.5",
     "@babel/core": "^7.25.2",
     "@babel/preset-env": "^7.25.3",
     "@babel/runtime": "^7.25.0",
@@ -37,12 +34,18 @@
     "@react-native/typescript-config": "0.85.3",
     "@types/jest": "^29.5.13",
     "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0",
     "@types/react-test-renderer": "^19.1.0",
+    "@vitejs/plugin-react": "^4.3.4",
+    "concurrently": "^9.2.1",
     "eslint": "^8.19.0",
     "jest": "^29.6.3",
     "prettier": "2.8.8",
+    "react-dom": "19.2.3",
+    "react-router-dom": "^7.6.2",
     "react-test-renderer": "19.2.3",
-    "typescript": "^5.8.3"
+    "typescript": "^5.8.3",
+    "vite": "^6.3.5"
   },
   "engines": {
     "node": ">= 22.11.0"
