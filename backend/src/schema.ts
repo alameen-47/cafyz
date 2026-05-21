@@ -1,0 +1,117 @@
+import { getDb } from './db.js';
+
+export async function runMigrations() {
+  const db = getDb();
+
+  await db.executeMultiple(`
+    CREATE TABLE IF NOT EXISTS users (
+      id           TEXT PRIMARY KEY,
+      name         TEXT NOT NULL,
+      initials     TEXT NOT NULL,
+      email        TEXT NOT NULL UNIQUE,
+      password_hash TEXT NOT NULL,
+      role         TEXT NOT NULL CHECK(role IN ('manager','cashier','waiter','kitchen')),
+      status       TEXT NOT NULL DEFAULT 'active' CHECK(status IN ('active','break','off')),
+      start_time   TEXT NOT NULL DEFAULT '—',
+      pin_hash     TEXT,
+      created_at   TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+
+    CREATE TABLE IF NOT EXISTS restaurant_tables (
+      id           TEXT PRIMARY KEY,
+      name         TEXT NOT NULL,
+      zone         TEXT NOT NULL,
+      capacity     INTEGER NOT NULL DEFAULT 2,
+      status       TEXT NOT NULL DEFAULT 'empty'
+                     CHECK(status IN ('empty','reserved','occupied','paying','attention')),
+      server_id    TEXT REFERENCES users(id) ON DELETE SET NULL,
+      course       TEXT,
+      covers       INTEGER DEFAULT 0,
+      elapsed_min  INTEGER DEFAULT 0,
+      created_at   TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+
+    CREATE TABLE IF NOT EXISTS menu_items (
+      id           TEXT PRIMARY KEY,
+      name         TEXT NOT NULL,
+      category     TEXT NOT NULL CHECK(category IN ('starters','mains','desserts','wine','drinks')),
+      price        REAL NOT NULL,
+      description  TEXT NOT NULL DEFAULT '',
+      symbol       TEXT NOT NULL DEFAULT '○',
+      is_popular   INTEGER NOT NULL DEFAULT 0,
+      is_available INTEGER NOT NULL DEFAULT 1,
+      created_at   TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+
+    CREATE TABLE IF NOT EXISTS orders (
+      id           TEXT PRIMARY KEY,
+      table_id     TEXT REFERENCES restaurant_tables(id) ON DELETE SET NULL,
+      server_id    TEXT REFERENCES users(id) ON DELETE SET NULL,
+      status       TEXT NOT NULL DEFAULT 'open'
+                     CHECK(status IN ('open','sent','paid','voided','comped')),
+      covers       INTEGER NOT NULL DEFAULT 1,
+      note         TEXT,
+      created_at   TEXT NOT NULL DEFAULT (datetime('now')),
+      updated_at   TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+
+    CREATE TABLE IF NOT EXISTS order_items (
+      id           TEXT PRIMARY KEY,
+      order_id     TEXT NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
+      menu_item_id TEXT NOT NULL REFERENCES menu_items(id),
+      qty          INTEGER NOT NULL DEFAULT 1,
+      mods         TEXT NOT NULL DEFAULT '[]',
+      is_done      INTEGER NOT NULL DEFAULT 0,
+      created_at   TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+
+    CREATE TABLE IF NOT EXISTS kds_tickets (
+      id           TEXT PRIMARY KEY,
+      order_id     TEXT NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
+      table_name   TEXT NOT NULL,
+      server_name  TEXT NOT NULL,
+      covers       INTEGER NOT NULL DEFAULT 1,
+      status       TEXT NOT NULL DEFAULT 'new'
+                     CHECK(status IN ('new','prep','ready','delivered')),
+      vip          INTEGER NOT NULL DEFAULT 0,
+      elapsed_min  INTEGER NOT NULL DEFAULT 0,
+      station      TEXT,
+      created_at   TEXT NOT NULL DEFAULT (datetime('now')),
+      updated_at   TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+
+    CREATE TABLE IF NOT EXISTS kds_ticket_items (
+      id           TEXT PRIMARY KEY,
+      ticket_id    TEXT NOT NULL REFERENCES kds_tickets(id) ON DELETE CASCADE,
+      name         TEXT NOT NULL,
+      qty          INTEGER NOT NULL DEFAULT 1,
+      station      TEXT NOT NULL DEFAULT 'GARDE',
+      mods         TEXT NOT NULL DEFAULT '[]',
+      alert        INTEGER NOT NULL DEFAULT 0,
+      is_done      INTEGER NOT NULL DEFAULT 0
+    );
+
+    CREATE TABLE IF NOT EXISTS reservations (
+      id           TEXT PRIMARY KEY,
+      table_id     TEXT REFERENCES restaurant_tables(id) ON DELETE SET NULL,
+      guest_name   TEXT NOT NULL,
+      covers       INTEGER NOT NULL DEFAULT 2,
+      res_time     TEXT NOT NULL,
+      note         TEXT,
+      status       TEXT NOT NULL DEFAULT 'confirmed'
+                     CHECK(status IN ('confirmed','seated','cancelled','no-show')),
+      created_at   TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+
+    CREATE TABLE IF NOT EXISTS inventory (
+      id           TEXT PRIMARY KEY,
+      name         TEXT NOT NULL,
+      par          REAL NOT NULL,
+      current      REAL NOT NULL,
+      unit         TEXT NOT NULL,
+      alert        INTEGER NOT NULL DEFAULT 0,
+      created_at   TEXT NOT NULL DEFAULT (datetime('now')),
+      updated_at   TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+  `);
+}
