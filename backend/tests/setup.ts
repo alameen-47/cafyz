@@ -25,26 +25,32 @@ export async function setupTestDb() {
   const waiterId  = uid();
   const kitchenId = uid();
 
+  // Insert test restaurant first
+  await db.execute({
+    sql: `INSERT INTO restaurants(id,name,slug) VALUES('TEST_REST','Test Restaurant','test-restaurant')`,
+    args: [],
+  });
+
   await db.executeMultiple(`
-    INSERT INTO users(id,name,initials,email,password_hash,role,status,start_time,pin_hash)
-    VALUES('${managerId}','Test Manager','TM','manager@test.com','${pw}','manager','active','18:00','${pin1}');
-    INSERT INTO users(id,name,initials,email,password_hash,role,status,start_time)
-    VALUES('${cashierId}','Test Cashier','TC','cashier@test.com','${pw}','cashier','active','18:00');
-    INSERT INTO users(id,name,initials,email,password_hash,role,status,start_time)
-    VALUES('${waiterId}','Test Waiter','TW','waiter@test.com','${pw}','waiter','active','18:00');
-    INSERT INTO users(id,name,initials,email,password_hash,role,status,start_time)
-    VALUES('${kitchenId}','Test Kitchen','TK','kitchen@test.com','${pw}','kitchen','active','16:00');
+    INSERT INTO users(id,restaurant_id,name,initials,email,password_hash,role,status,start_time,pin_hash)
+    VALUES('${managerId}','TEST_REST','Test Manager','TM','manager@test.com','${pw}','manager','active','18:00','${pin1}');
+    INSERT INTO users(id,restaurant_id,name,initials,email,password_hash,role,status,start_time)
+    VALUES('${cashierId}','TEST_REST','Test Cashier','TC','cashier@test.com','${pw}','cashier','active','18:00');
+    INSERT INTO users(id,restaurant_id,name,initials,email,password_hash,role,status,start_time)
+    VALUES('${waiterId}','TEST_REST','Test Waiter','TW','waiter@test.com','${pw}','waiter','active','18:00');
+    INSERT INTO users(id,restaurant_id,name,initials,email,password_hash,role,status,start_time)
+    VALUES('${kitchenId}','TEST_REST','Test Kitchen','TK','kitchen@test.com','${pw}','kitchen','active','16:00');
   `);
 
   // Seed a table and menu item for tests
-  await db.execute({ sql: `INSERT INTO restaurant_tables(id,name,zone,capacity) VALUES('TST1','T·01','Main',4)`, args: [] });
+  await db.execute({ sql: `INSERT INTO restaurant_tables(id,restaurant_id,name,zone,capacity) VALUES('TST1','TEST_REST','T·01','Main',4)`, args: [] });
   await db.execute({
-    sql: `INSERT INTO menu_items(id,name,category,price,description,symbol) VALUES('ITEM1','Burrata','starters',18,'Test item','○')`,
+    sql: `INSERT INTO menu_items(id,restaurant_id,name,category,price,description,symbol) VALUES('ITEM1','TEST_REST','Burrata','starters',18,'Test item','○')`,
     args: [],
   });
   // Seed an order so KDS FK constraint (kds_tickets.order_id REFERENCES orders) passes
   await db.execute({
-    sql: `INSERT INTO orders(id,covers,status,server_id) VALUES('test-order-kds',2,'open','${managerId}')`,
+    sql: `INSERT INTO orders(id,restaurant_id,covers,status,server_id) VALUES('test-order-kds','TEST_REST',2,'open','${managerId}')`,
     args: [],
   });
 

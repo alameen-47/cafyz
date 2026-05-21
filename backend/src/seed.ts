@@ -5,15 +5,42 @@ import { setDb } from './db.js';
 import { runMigrations } from './schema.js';
 import { uid } from './utils.js';
 
+const DEMO_REST = 'DEMO_REST';
+
 async function seed() {
+  // Force HTTPS (HTTP/2) protocol instead of WebSocket to avoid IPv6 timeout
+  const rawUrl = process.env.TURSO_URL!;
+  const httpUrl = rawUrl.startsWith('libsql://') ? rawUrl.replace('libsql://', 'https://') : rawUrl;
   const client = createClient({
-    url: process.env.TURSO_URL!,
+    url: httpUrl,
     authToken: process.env.TURSO_AUTH_TOKEN,
   });
   setDb(client);
+
+  // Drop all tables in dependency order so we can recreate with new schema
+  await client.executeMultiple(`
+    DROP TABLE IF EXISTS kds_ticket_items;
+    DROP TABLE IF EXISTS kds_tickets;
+    DROP TABLE IF EXISTS order_items;
+    DROP TABLE IF EXISTS orders;
+    DROP TABLE IF EXISTS reservations;
+    DROP TABLE IF EXISTS inventory;
+    DROP TABLE IF EXISTS menu_items;
+    DROP TABLE IF EXISTS restaurant_tables;
+    DROP TABLE IF EXISTS users;
+    DROP TABLE IF EXISTS restaurants;
+  `);
+
   await runMigrations();
 
   const db = client;
+
+  // ── Demo Restaurant ────────────────────────────────────────────────
+  await db.execute({
+    sql: `INSERT OR IGNORE INTO restaurants(id,name,slug,plan,timezone) VALUES(?,?,?,?,?)`,
+    args: [DEMO_REST, 'Saint Paris 6e', 'saint-paris-6e', 'growth', 'Europe/Paris'],
+  });
+  console.log('✓ Restaurant seeded');
 
   // ── Users ──────────────────────────────────────────────────────────
   const users = [
@@ -31,9 +58,9 @@ async function seed() {
     const ph = await bcrypt.hash(u.password, 10);
     const ph2 = await bcrypt.hash(u.pin, 10);
     await db.execute({
-      sql: `INSERT OR IGNORE INTO users(id,name,initials,email,password_hash,role,status,start_time,pin_hash)
-            VALUES(?,?,?,?,?,?,?,?,?)`,
-      args: [u.id, u.name, u.initials, u.email, ph, u.role, u.status, u.start_time, ph2],
+      sql: `INSERT OR IGNORE INTO users(id,restaurant_id,name,initials,email,password_hash,role,status,start_time,pin_hash)
+            VALUES(?,?,?,?,?,?,?,?,?,?)`,
+      args: [u.id, DEMO_REST, u.name, u.initials, u.email, ph, u.role, u.status, u.start_time, ph2],
     });
   }
   console.log('✓ Users seeded');
@@ -63,9 +90,9 @@ async function seed() {
 
   for (const t of tables) {
     await db.execute({
-      sql: `INSERT OR IGNORE INTO restaurant_tables(id,name,zone,capacity,status,course,covers,elapsed_min)
-            VALUES(?,?,?,?,?,?,?,?)`,
-      args: [t.id, t.name, t.zone, t.capacity, t.status, t.course, t.covers, t.elapsed_min],
+      sql: `INSERT OR IGNORE INTO restaurant_tables(id,restaurant_id,name,zone,capacity,status,course,covers,elapsed_min)
+            VALUES(?,?,?,?,?,?,?,?,?)`,
+      args: [t.id, DEMO_REST, t.name, t.zone, t.capacity, t.status, t.course, t.covers, t.elapsed_min],
     });
   }
   console.log('✓ Tables seeded');
@@ -90,9 +117,9 @@ async function seed() {
 
   for (const m of menu) {
     await db.execute({
-      sql: `INSERT OR IGNORE INTO menu_items(id,name,category,price,description,symbol,is_popular)
-            VALUES(?,?,?,?,?,?,?)`,
-      args: [m.id, m.name, m.category, m.price, m.description, m.symbol, m.is_popular],
+      sql: `INSERT OR IGNORE INTO menu_items(id,restaurant_id,name,category,price,description,symbol,is_popular)
+            VALUES(?,?,?,?,?,?,?,?)`,
+      args: [m.id, DEMO_REST, m.name, m.category, m.price, m.description, m.symbol, m.is_popular],
     });
   }
   console.log('✓ Menu seeded');
@@ -113,8 +140,8 @@ async function seed() {
 
   for (const i of inv) {
     await db.execute({
-      sql: `INSERT OR IGNORE INTO inventory(id,name,par,current,unit,alert) VALUES(?,?,?,?,?,?)`,
-      args: [i.id, i.name, i.par, i.current, i.unit, i.alert],
+      sql: `INSERT OR IGNORE INTO inventory(id,restaurant_id,name,par,current,unit,alert) VALUES(?,?,?,?,?,?,?)`,
+      args: [i.id, DEMO_REST, i.name, i.par, i.current, i.unit, i.alert],
     });
   }
   console.log('✓ Inventory seeded');
@@ -130,9 +157,9 @@ async function seed() {
 
   for (const r of res) {
     await db.execute({
-      sql: `INSERT OR IGNORE INTO reservations(id,table_id,guest_name,covers,res_time,note,status)
-            VALUES(?,?,?,?,?,?,?)`,
-      args: [r.id, r.table_id, r.guest_name, r.covers, r.res_time, r.note, r.status],
+      sql: `INSERT OR IGNORE INTO reservations(id,restaurant_id,table_id,guest_name,covers,res_time,note,status)
+            VALUES(?,?,?,?,?,?,?,?)`,
+      args: [r.id, DEMO_REST, r.table_id, r.guest_name, r.covers, r.res_time, r.note, r.status],
     });
   }
   console.log('✓ Reservations seeded');

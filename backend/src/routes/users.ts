@@ -2,7 +2,7 @@ import { Router } from 'express';
 import bcrypt from 'bcryptjs';
 import { z } from 'zod';
 import { getDb } from '../db.js';
-import { requireAuth } from '../middleware/auth.js';
+import { requireAuth, type AuthRequest } from '../middleware/auth.js';
 import { requireRole } from '../middleware/rbac.js';
 import { uid } from '../utils.js';
 
@@ -21,33 +21,42 @@ const UserSchema = z.object({
 });
 
 // GET /api/users
-router.get('/', requireRole('manager','cashier'), async (_req, res, next) => {
+router.get('/', requireRole('manager','cashier'), async (req: AuthRequest, res, next) => {
   try {
-    const rows = await getDb().execute('SELECT id,name,initials,email,role,status,start_time,created_at FROM users ORDER BY name');
+    const rid = req.user!.restaurant_id;
+    const rows = await getDb().execute({
+      sql: 'SELECT id,name,initials,email,role,status,start_time,created_at FROM users WHERE restaurant_id=? ORDER BY name',
+      args: [rid],
+    });
     res.json(rows.rows);
   } catch (e) { next(e); }
 });
 
 // GET /api/users/:id
-router.get('/:id', requireRole('manager','cashier'), async (req, res, next) => {
+router.get('/:id', requireRole('manager','cashier'), async (req: AuthRequest, res, next) => {
   try {
-    const row = await getDb().execute({ sql: 'SELECT id,name,initials,email,role,status,start_time,created_at FROM users WHERE id=?', args: [(req.params.id as string)] });
+    const rid = req.user!.restaurant_id;
+    const row = await getDb().execute({
+      sql: 'SELECT id,name,initials,email,role,status,start_time,created_at FROM users WHERE id=? AND restaurant_id=?',
+      args: [(req.params.id as string), rid],
+    });
     if (!row.rows.length) { res.status(404).json({ error: 'User not found' }); return; }
     res.json(row.rows[0]);
   } catch (e) { next(e); }
 });
 
 // POST /api/users
-router.post('/', requireRole('manager','cashier'), async (req, res, next) => {
+router.post('/', requireRole('manager','cashier'), async (req: AuthRequest, res, next) => {
   try {
+    const rid = req.user!.restaurant_id;
     const data = UserSchema.parse(req.body);
     const id = uid();
     const pw = data.password ? await bcrypt.hash(data.password, 10) : await bcrypt.hash('cafyz2026', 10);
     const ph = data.pin ? await bcrypt.hash(data.pin, 10) : null;
     const initials = data.initials ?? data.name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0,2);
     await getDb().execute({
-      sql: `INSERT INTO users(id,name,initials,email,password_hash,role,status,start_time,pin_hash) VALUES(?,?,?,?,?,?,?,?,?)`,
-      args: [id, data.name, initials, data.email, pw, data.role, data.status??'active', data.start_time??'—', ph],
+      sql: `INSERT INTO users(id,restaurant_id,name,initials,email,password_hash,role,status,start_time,pin_hash) VALUES(?,?,?,?,?,?,?,?,?,?)`,
+      args: [id, rid, data.name, initials, data.email, pw, data.role, data.status??'active', data.start_time??'—', ph],
     });
     const row = await getDb().execute({ sql: 'SELECT id,name,initials,email,role,status,start_time FROM users WHERE id=?', args: [id] });
     res.status(201).json(row.rows[0]);
@@ -55,11 +64,12 @@ router.post('/', requireRole('manager','cashier'), async (req, res, next) => {
 });
 
 // PUT /api/users/:id
-router.put('/:id', requireRole('manager','cashier'), async (req, res, next) => {
+router.put('/:id', requireRole('manager','cashier'), async (req: AuthRequest, res, next) => {
   try {
+    const rid = req.user!.restaurant_id;
     const data = UserSchema.partial().parse(req.body);
     const db = getDb();
-    const existing = await db.execute({ sql: 'SELECT * FROM users WHERE id=?', args: [(req.params.id as string)] });
+    const existing = await db.execute({ sql: 'SELECT * FROM users WHERE id=? AND restaurant_id=?', args: [(req.params.id as string), rid] });
     if (!existing.rows.length) { res.status(404).json({ error: 'User not found' }); return; }
 
     const sets: string[] = [];
@@ -76,31 +86,34 @@ router.put('/:id', requireRole('manager','cashier'), async (req, res, next) => {
 
     if (!sets.length) { res.status(400).json({ error: 'No fields to update' }); return; }
     args.push((req.params.id as string));
-    await db.execute({ sql: `UPDATE users SET ${sets.join(',')} WHERE id=?`, args });
+    args.push(rid);
+    await db.execute({ sql: `UPDATE users SET ${sets.join(',')} WHERE id=? AND restaurant_id=?`, args });
     const row = await db.execute({ sql: 'SELECT id,name,initials,email,role,status,start_time FROM users WHERE id=?', args: [(req.params.id as string)] });
     res.json(row.rows[0]);
   } catch (e) { next(e); }
 });
 
 // PATCH /api/users/:id/status
-router.patch('/:id/status', requireRole('manager','cashier'), async (req, res, next) => {
+router.patch('/:id/status', requireRole('manager','cashier'), async (req: AuthRequest, res, next) => {
   try {
+    const rid = req.user!.restaurant_id;
     const { status } = z.object({ status: z.enum(['active','break','off']) }).parse(req.body);
     const db = getDb();
-    const ex = await db.execute({ sql: 'SELECT id FROM users WHERE id=?', args: [(req.params.id as string)] });
+    const ex = await db.execute({ sql: 'SELECT id FROM users WHERE id=? AND restaurant_id=?', args: [(req.params.id as string), rid] });
     if (!ex.rows.length) { res.status(404).json({ error: 'User not found' }); return; }
-    await db.execute({ sql: 'UPDATE users SET status=? WHERE id=?', args: [status, (req.params.id as string)] });
+    await db.execute({ sql: 'UPDATE users SET status=? WHERE id=? AND restaurant_id=?', args: [status, (req.params.id as string), rid] });
     res.json({ id: (req.params.id as string), status });
   } catch (e) { next(e); }
 });
 
 // DELETE /api/users/:id
-router.delete('/:id', requireRole('manager'), async (req, res, next) => {
+router.delete('/:id', requireRole('manager'), async (req: AuthRequest, res, next) => {
   try {
+    const rid = req.user!.restaurant_id;
     const db = getDb();
-    const ex = await db.execute({ sql: 'SELECT id FROM users WHERE id=?', args: [(req.params.id as string)] });
+    const ex = await db.execute({ sql: 'SELECT id FROM users WHERE id=? AND restaurant_id=?', args: [(req.params.id as string), rid] });
     if (!ex.rows.length) { res.status(404).json({ error: 'User not found' }); return; }
-    await db.execute({ sql: 'DELETE FROM users WHERE id=?', args: [(req.params.id as string)] });
+    await db.execute({ sql: 'DELETE FROM users WHERE id=? AND restaurant_id=?', args: [(req.params.id as string), rid] });
     res.status(204).end();
   } catch (e) { next(e); }
 });

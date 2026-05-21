@@ -18,14 +18,27 @@ router.post('/login', async (req, res, next) => {
   try {
     const { email, password } = LoginSchema.parse(req.body);
     const db = getDb();
-    const row = await db.execute({ sql: 'SELECT * FROM users WHERE email=?', args: [email] });
+    const row = await db.execute({
+      sql: `SELECT u.*, r.name as restaurant_name
+            FROM users u
+            JOIN restaurants r ON r.id = u.restaurant_id
+            WHERE u.email=?`,
+      args: [email],
+    });
     if (!row.rows.length) { res.status(401).json({ error: 'Invalid credentials' }); return; }
     const user = row.rows[0] as Record<string, unknown>;
     const ok = await bcrypt.compare(password, String(user.password_hash));
     if (!ok) { res.status(401).json({ error: 'Invalid credentials' }); return; }
-    const token = signToken({ id: String(user.id), role: String(user.role), email: String(user.email) });
+    const token = signToken({
+      id: String(user.id),
+      role: String(user.role),
+      email: String(user.email),
+      restaurant_id: String(user.restaurant_id),
+    });
     res.json({
       token,
+      restaurant_id: user.restaurant_id,
+      restaurant_name: user.restaurant_name,
       user: { id: user.id, name: user.name, initials: user.initials, email: user.email, role: user.role, status: user.status },
     });
   } catch (e) { next(e); }
@@ -36,13 +49,25 @@ router.post('/pin', async (req, res, next) => {
   try {
     const { pin } = PinSchema.parse(req.body);
     const db = getDb();
-    const rows = await db.execute('SELECT * FROM users WHERE pin_hash IS NOT NULL AND status != \'off\'');
+    const rows = await db.execute(`
+      SELECT u.*, r.name as restaurant_name
+      FROM users u
+      JOIN restaurants r ON r.id = u.restaurant_id
+      WHERE u.pin_hash IS NOT NULL AND u.status != 'off'
+    `);
     for (const row of rows.rows) {
       const u = row as Record<string, unknown>;
       if (u.pin_hash && await bcrypt.compare(pin, String(u.pin_hash))) {
-        const token = signToken({ id: String(u.id), role: String(u.role), email: String(u.email) });
+        const token = signToken({
+          id: String(u.id),
+          role: String(u.role),
+          email: String(u.email),
+          restaurant_id: String(u.restaurant_id),
+        });
         res.json({
           token,
+          restaurant_id: u.restaurant_id,
+          restaurant_name: u.restaurant_name,
           user: { id: u.id, name: u.name, initials: u.initials, email: u.email, role: u.role, status: u.status },
         });
         return;

@@ -12,6 +12,7 @@ import kdsRoutes         from './routes/kds.js';
 import reservationRoutes from './routes/reservations.js';
 import inventoryRoutes   from './routes/inventory.js';
 import dashboardRoutes   from './routes/dashboard.js';
+import restaurantRoutes  from './routes/restaurants.js';
 import { errorHandler, notFound } from './middleware/errorHandler.js';
 
 const app = express();
@@ -41,6 +42,7 @@ app.use('/api/kds',          kdsRoutes);
 app.use('/api/reservations', reservationRoutes);
 app.use('/api/inventory',    inventoryRoutes);
 app.use('/api/dashboard',    dashboardRoutes);
+app.use('/api/restaurants',  restaurantRoutes);
 
 // ── Error handling ──────────────────────────────────────────────────────────────
 app.use(notFound);

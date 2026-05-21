@@ -1,14 +1,14 @@
 import { NavLink, useNavigate } from 'react-router-dom';
 import type { Screen } from '@shared/types';
 import { pathForScreen } from '../routes';
-import { useAuth, ROLE_LABELS, ROLE_NAV, ROLE_DEFAULT_PATH } from '../context/AuthContext';
+import { useAuth, ROLE_LABELS, ROLE_NAV } from '../context/AuthContext';
 import './Sidebar.css';
 
 const ALL_NAV: { id: Screen; label: string; badge?: string }[] = [
   { id: 'manager',   label: 'Overview' },
   { id: 'pos',       label: 'Point of Sale' },
   { id: 'waiter',    label: 'Tables' },
-  { id: 'kds',       label: 'Kitchen', badge: '14' },
+  { id: 'kds',       label: 'Kitchen' },
   { id: 'menu',      label: 'Menu' },
   { id: 'inventory', label: 'Inventory' },
   { id: 'staff',     label: 'Staff' },
@@ -20,8 +20,12 @@ export function Sidebar({ active }: { active: Screen }) {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
 
-  const allowed = user ? ROLE_NAV[user.role] : ALL_NAV.map(n => n.id);
+  const allowed  = user ? ROLE_NAV[user.role] : ALL_NAV.map(n => n.id);
   const navItems = ALL_NAV.filter(n => allowed.includes(n.id));
+
+  // Use real restaurant name from auth context, fall back gracefully
+  const restaurantName = user?.restaurant_name || 'Cafyz';
+  const restaurantSub  = restaurantName.toUpperCase();
 
   function handleLogout() {
     logout();
@@ -33,8 +37,8 @@ export function Sidebar({ active }: { active: Screen }) {
       <div className="sidebar-brand">
         <div className="sidebar-logo">C</div>
         <div>
-          <p className="sidebar-brand-name serif">Cafyz</p>
-          <p className="sidebar-brand-sub mono">SAINT · PARIS 6e</p>
+          <p className="sidebar-brand-name serif">{restaurantName}</p>
+          <p className="sidebar-brand-sub mono">{restaurantSub}</p>
         </div>
       </div>
 

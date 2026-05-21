@@ -1,7 +1,7 @@
 import type { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 
-export interface AuthPayload { id: string; role: string; email: string; }
+export interface AuthPayload { id: string; role: string; email: string; restaurant_id: string; }
 export interface AuthRequest extends Request { user?: AuthPayload; }
 
 export const JWT_SECRET = process.env.JWT_SECRET ?? 'cafyz-dev-secret-change-in-prod';
