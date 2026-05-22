@@ -121,7 +121,7 @@ export const reservationsApi = {
     get<ApiReservation[]>(`/api/reservations${p ? `?${new URLSearchParams(p as Record<string, string>)}` : ''}`),
   create: (d: { guest_name: string; covers: number; res_time: string; note?: string; table_id?: string }) =>
     post<ApiReservation>('/api/reservations', d),
-  update: (id: string, d: Partial<{ status: string; covers: number; note: string; table_id: string }>) =>
+  update: (id: string, d: Partial<{ guest_name: string; status: string; covers: number; res_time: string; note: string; table_id: string }>) =>
     put<ApiReservation>(`/api/reservations/${id}`, d),
   delete: (id: string) => del(`/api/reservations/${id}`),
 };

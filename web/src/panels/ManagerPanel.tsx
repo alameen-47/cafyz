@@ -1,22 +1,24 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  dashboardApi, inventoryApi, usersApi, reservationsApi,
+  dashboardApi, inventoryApi, usersApi, reservationsApi, tablesApi,
   type ApiDashboardStats, type ApiInventoryItem, type ApiUser,
-  type ApiReservation, type ApiRevenueRow,
+  type ApiReservation, type ApiRevenueRow, type ApiTable,
 } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { RolesPanel } from './RolesPanel';
 import './ManagerPanel.css';
 
-type Section = 'overview' | 'inventory' | 'staff' | 'reports' | 'roles';
+type Section = 'overview' | 'inventory' | 'tables' | 'reservations' | 'staff' | 'reports' | 'roles';
 
 const SECTIONS: { id: Section; label: string }[] = [
-  { id: 'overview',  label: 'Overview' },
-  { id: 'inventory', label: 'Inventory' },
-  { id: 'staff',     label: 'Staff' },
-  { id: 'reports',   label: 'Reports' },
-  { id: 'roles',     label: 'Role Management' },
+  { id: 'overview',     label: 'Overview'       },
+  { id: 'inventory',   label: 'Inventory'       },
+  { id: 'tables',      label: 'Tables'          },
+  { id: 'reservations',label: 'Reservations'    },
+  { id: 'staff',       label: 'Staff'           },
+  { id: 'reports',     label: 'Reports'         },
+  { id: 'roles',       label: 'Role Management' },
 ];
 
 // ── Overview ──────────────────────────────────────────────────────────────────
@@ -114,24 +116,43 @@ function Overview({ onNav }: { onNav: (s: Section) => void }) {
 
 // ── Inventory ─────────────────────────────────────────────────────────────────
 function InventoryTab() {
-  const [rows,    setRows]    = useState<ApiInventoryItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [adding,  setAdding]  = useState(false);
-  const [editId,  setEditId]  = useState<string | null>(null);
-  const [draft,   setDraft]   = useState({ name: '', par: 0, current: 0, unit: 'kg' });
-  const [busy,    setBusy]    = useState(false);
-  const [error,   setError]   = useState('');
+  const [rows,          setRows]          = useState<ApiInventoryItem[]>([]);
+  const [loading,       setLoading]       = useState(true);
+  const [adding,        setAdding]        = useState(false);
+  const [editId,        setEditId]        = useState<string | null>(null);
+  const [draft,         setDraft]         = useState({ name: '', par: 0, current: 0, unit: 'kg' });
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
+  const [busy,          setBusy]          = useState(false);
+  const [error,         setError]         = useState('');
 
   useEffect(() => {
     inventoryApi.list().then(setRows).catch(e => setError(e.message)).finally(() => setLoading(false));
   }, []);
 
+  function startEdit(r: ApiInventoryItem) {
+    setEditId(r.id);
+    setDraft({ name: r.name, par: r.par, current: r.current, unit: r.unit });
+    setAdding(false);
+  }
+
   async function saveEdit(id: string) {
     setBusy(true);
     try {
-      const updated = await inventoryApi.update(id, { current: draft.current });
+      const updated = await inventoryApi.update(id, {
+        name: draft.name, par: draft.par, current: draft.current, unit: draft.unit,
+      });
       setRows(prev => prev.map(r => r.id === id ? updated : r));
       setEditId(null);
+    } catch (e) { setError((e as Error).message); }
+    finally { setBusy(false); }
+  }
+
+  async function deleteItem(id: string) {
+    setBusy(true);
+    try {
+      await inventoryApi.delete(id);
+      setRows(prev => prev.filter(r => r.id !== id));
+      setConfirmDelete(null);
     } catch (e) { setError((e as Error).message); }
     finally { setBusy(false); }
   }
@@ -152,17 +173,17 @@ function InventoryTab() {
       <p className="eyebrow">Stock · Par Levels</p>
       <h1 className="serif mgr-greeting">Inventory</h1>
       {error && <p style={{ color: 'var(--danger)', fontSize: 13 }}>{error}</p>}
-      <button className="btn-gold" style={{ marginBottom: 16 }} onClick={() => setAdding(a => !a)}>
+      <button className="btn-gold" style={{ marginBottom: 16 }} onClick={() => { setAdding(a => !a); setEditId(null); }}>
         {adding ? 'Cancel' : '+ Add Item'}
       </button>
 
       {adding && (
         <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
-          <input className="roles-input" placeholder="Item name" value={draft.name}    onChange={e => setDraft(d => ({ ...d, name: e.target.value }))} />
-          <input className="roles-input" placeholder="Par"       value={draft.par}     onChange={e => setDraft(d => ({ ...d, par: +e.target.value }))}     type="number" style={{ width: 80 }} />
-          <input className="roles-input" placeholder="Current"   value={draft.current} onChange={e => setDraft(d => ({ ...d, current: +e.target.value }))} type="number" style={{ width: 80 }} />
+          <input className="roles-input" placeholder="Item name *" value={draft.name}    onChange={e => setDraft(d => ({ ...d, name: e.target.value }))} />
+          <input className="roles-input" placeholder="Par"       value={draft.par || ''}     onChange={e => setDraft(d => ({ ...d, par: +e.target.value }))}     type="number" style={{ width: 80 }} />
+          <input className="roles-input" placeholder="Current"   value={draft.current || ''} onChange={e => setDraft(d => ({ ...d, current: +e.target.value }))} type="number" style={{ width: 80 }} />
           <input className="roles-input" placeholder="Unit"      value={draft.unit}    onChange={e => setDraft(d => ({ ...d, unit: e.target.value }))}      style={{ width: 60 }} />
-          <button className="roles-save-btn" onClick={addItem} disabled={busy}>{busy ? '…' : 'Save'}</button>
+          <button className="roles-save-btn" onClick={addItem} disabled={!draft.name || busy}>{busy ? '…' : 'Save'}</button>
         </div>
       )}
 
@@ -171,39 +192,401 @@ function InventoryTab() {
       ) : (
         <div className="mgr-inv-table card">
           <div className="mgr-inv-head">
-            <span>Item</span><span>Par</span><span>Current</span><span>Status</span>
+            <span>Item</span><span>Par</span><span>Current</span><span>Status</span><span>Actions</span>
           </div>
           {rows.map(r => {
-            const pct = (r.current / r.par) * 100;
+            const pct = r.par > 0 ? (r.current / r.par) * 100 : 0;
             const low = pct < 40;
             return (
               <div key={r.id} className="mgr-inv-row">
-                <span className="mgr-inv-name">{r.name}</span>
-                <span className="mono mgr-inv-par">{r.par} {r.unit}</span>
-                <div className="mgr-inv-current">
-                  <div className="mgr-inv-bar-bg">
-                    <div className="mgr-inv-bar-fill"
-                      style={{ width: `${Math.min(pct, 100)}%`, background: low ? 'var(--danger)' : 'var(--gold)' }} />
-                  </div>
-                  {editId === r.id ? (
+                {editId === r.id ? (
+                  /* Full inline edit */
+                  <>
+                    <input className="roles-input-sm" value={draft.name}    onChange={e => setDraft(d => ({ ...d, name: e.target.value }))}    placeholder="Name" />
                     <div style={{ display: 'flex', gap: 4 }}>
-                      <input type="number" style={{ width: 60, background: 'var(--bg3)', color: 'var(--text1)', border: '1px solid var(--gold-line2)', borderRadius: 4, padding: '2px 6px' }}
-                        value={draft.current} onChange={e => setDraft(d => ({ ...d, current: +e.target.value }))} />
+                      <input type="number" className="roles-input-sm" value={draft.par || ''}     onChange={e => setDraft(d => ({ ...d, par: +e.target.value }))}     style={{ width: 60 }} placeholder="Par" />
+                      <input className="roles-input-sm" value={draft.unit} onChange={e => setDraft(d => ({ ...d, unit: e.target.value }))} style={{ width: 50 }} placeholder="unit" />
+                    </div>
+                    <input type="number" className="roles-input-sm" value={draft.current || ''} onChange={e => setDraft(d => ({ ...d, current: +e.target.value }))} style={{ width: 80 }} placeholder="Current" />
+                    <span />
+                    <div style={{ display: 'flex', gap: 4 }}>
                       <button className="roles-save-btn sm" onClick={() => saveEdit(r.id)} disabled={busy}>✓</button>
                       <button className="roles-cancel-btn sm" onClick={() => setEditId(null)}>✕</button>
                     </div>
-                  ) : (
-                    <span className={`mono ${low ? 'mgr-inv-low' : ''}`}
-                      style={{ cursor: 'pointer' }} title="Click to edit"
-                      onClick={() => { setEditId(r.id); setDraft(d => ({ ...d, current: r.current })); }}>
-                      {r.current} {r.unit}
-                    </span>
-                  )}
-                </div>
-                <span className={`mgr-inv-status ${low ? 'low' : 'ok'}`}>{low ? '⚠ Low' : '✓ OK'}</span>
+                  </>
+                ) : (
+                  /* Display view */
+                  <>
+                    <span className="mgr-inv-name">{r.name}</span>
+                    <span className="mono mgr-inv-par">{r.par} {r.unit}</span>
+                    <div className="mgr-inv-current">
+                      <div className="mgr-inv-bar-bg">
+                        <div className="mgr-inv-bar-fill"
+                          style={{ width: `${Math.min(pct, 100)}%`, background: low ? 'var(--danger)' : 'var(--gold)' }} />
+                      </div>
+                      <span className={`mono ${low ? 'mgr-inv-low' : ''}`}>{r.current} {r.unit}</span>
+                    </div>
+                    <span className={`mgr-inv-status ${low ? 'low' : 'ok'}`}>{low ? '⚠ Low' : '✓ OK'}</span>
+                    <div style={{ display: 'flex', gap: 4 }}>
+                      <button className="roles-edit-btn" onClick={() => startEdit(r)}>Edit</button>
+                      {confirmDelete === r.id ? (
+                        <>
+                          <button className="roles-del-confirm" onClick={() => deleteItem(r.id)} disabled={busy}>{busy ? '…' : 'OK'}</button>
+                          <button className="roles-cancel-btn sm" onClick={() => setConfirmDelete(null)}>✕</button>
+                        </>
+                      ) : (
+                        <button className="roles-del-btn" onClick={() => setConfirmDelete(r.id)}>Del</button>
+                      )}
+                    </div>
+                  </>
+                )}
               </div>
             );
           })}
+          {rows.length === 0 && (
+            <p style={{ color: 'var(--text3)', padding: '16px 0', fontSize: 13, gridColumn: '1/-1' }}>
+              No inventory items. Add some above.
+            </p>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Tables management ─────────────────────────────────────────────────────────
+function TablesTab() {
+  const [tables,        setTables]        = useState<ApiTable[]>([]);
+  const [loading,       setLoading]       = useState(true);
+  const [adding,        setAdding]        = useState(false);
+  const [draft,         setDraft]         = useState({ name: '', zone: 'Main', capacity: 2 });
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
+  const [busy,          setBusy]          = useState(false);
+  const [error,         setError]         = useState('');
+
+  useEffect(() => {
+    tablesApi.list().then(setTables).catch(e => setError(e.message)).finally(() => setLoading(false));
+  }, []);
+
+  async function addTable() {
+    if (!draft.name) return;
+    setBusy(true); setError('');
+    try {
+      const created = await tablesApi.create(draft);
+      setTables(prev => [...prev, created]);
+      setAdding(false); setDraft({ name: '', zone: 'Main', capacity: 2 });
+    } catch (e) { setError((e as Error).message); }
+    finally { setBusy(false); }
+  }
+
+  async function deleteTable(id: string) {
+    setBusy(true); setError('');
+    try {
+      await tablesApi.delete(id);
+      setTables(prev => prev.filter(t => t.id !== id));
+      setConfirmDelete(null);
+    } catch (e) { setError((e as Error).message); }
+    finally { setBusy(false); }
+  }
+
+  const zones = [...new Set(tables.map(t => t.zone))].sort();
+
+  return (
+    <div className="mgr-overview">
+      <p className="eyebrow">Floor · Zones</p>
+      <h1 className="serif mgr-greeting">Tables</h1>
+      <p className="mgr-sub">{tables.length} tables across {zones.length || 0} zones</p>
+      {error && <p style={{ color: 'var(--danger)', fontSize: 13, margin: '4px 0' }}>{error}</p>}
+
+      <button className="btn-gold" style={{ marginBottom: 16 }}
+        onClick={() => setAdding(a => !a)}>
+        {adding ? 'Cancel' : '+ Add Table'}
+      </button>
+
+      {adding && (
+        <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap', alignItems: 'center' }}>
+          <input className="roles-input" placeholder="Table name (e.g. T-01)" value={draft.name}
+            onChange={e => setDraft(d => ({ ...d, name: e.target.value }))} />
+          <input className="roles-input" placeholder="Zone" value={draft.zone}
+            onChange={e => setDraft(d => ({ ...d, zone: e.target.value }))} style={{ width: 100 }} />
+          <input className="roles-input" placeholder="Capacity" type="number" min="1"
+            value={draft.capacity} onChange={e => setDraft(d => ({ ...d, capacity: +e.target.value }))}
+            style={{ width: 80 }} />
+          <button className="roles-save-btn" onClick={addTable} disabled={!draft.name || busy}>
+            {busy ? '…' : 'Save'}
+          </button>
+        </div>
+      )}
+
+      {loading ? (
+        <p style={{ color: 'var(--text2)', fontSize: 13 }}>Loading tables…</p>
+      ) : (
+        <div className="mgr-inv-table card">
+          <div className="mgr-inv-head" style={{ gridTemplateColumns: '1fr 100px 80px 100px 140px' }}>
+            <span>Table</span><span>Zone</span><span>Capacity</span><span>Status</span><span>Actions</span>
+          </div>
+          {tables.map(t => {
+            const statusColor =
+              t.status === 'occupied' ? 'var(--gold)' :
+              t.status === 'paying'   ? 'var(--warning, #facc15)' :
+              t.status === 'reserved' ? '#60a5fa' :
+              t.status === 'attention'? 'var(--danger)' : 'var(--text3)';
+            return (
+              <div key={t.id} className="mgr-inv-row" style={{ gridTemplateColumns: '1fr 100px 80px 100px 140px' }}>
+                <span className="mgr-inv-name mono">{t.name}</span>
+                <span style={{ fontSize: 12, color: 'var(--text2)' }}>{t.zone}</span>
+                <span className="mono" style={{ fontSize: 12 }}>{t.capacity}</span>
+                <span style={{ fontSize: 12, color: statusColor, textTransform: 'capitalize' }}>{t.status}</span>
+                <div style={{ display: 'flex', gap: 4 }}>
+                  {confirmDelete === t.id ? (
+                    <>
+                      <button className="roles-del-confirm" onClick={() => deleteTable(t.id)} disabled={busy}>
+                        {busy ? '…' : 'Confirm'}
+                      </button>
+                      <button className="roles-cancel-btn sm" onClick={() => setConfirmDelete(null)}>✕</button>
+                    </>
+                  ) : (
+                    <button className="roles-del-btn"
+                      onClick={() => setConfirmDelete(t.id)}
+                      disabled={t.status !== 'empty'}
+                      title={t.status !== 'empty' ? 'Can only delete empty tables' : 'Delete table'}
+                    >
+                      Delete
+                    </button>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+          {tables.length === 0 && (
+            <p style={{ color: 'var(--text3)', padding: '16px 0', fontSize: 13 }}>No tables yet.</p>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Reservations ──────────────────────────────────────────────────────────────
+function ReservationsTab() {
+  const [res,           setRes]           = useState<ApiReservation[]>([]);
+  const [tables,        setTables]        = useState<ApiTable[]>([]);
+  const [loading,       setLoading]       = useState(true);
+  const [adding,        setAdding]        = useState(false);
+  const [editId,        setEditId]        = useState<string | null>(null);
+  const [draft,         setDraft]         = useState({
+    guest_name: '', covers: 2, res_time: '', note: '', table_id: '', status: 'confirmed',
+  });
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
+  const [busy,          setBusy]          = useState(false);
+  const [error,         setError]         = useState('');
+
+  useEffect(() => {
+    Promise.all([reservationsApi.list(), tablesApi.list()])
+      .then(([r, t]) => { setRes(r); setTables(t); })
+      .catch(e => setError(e.message))
+      .finally(() => setLoading(false));
+  }, []);
+
+  const blankDraft = () => ({
+    guest_name: '', covers: 2, res_time: '19:00',
+    note: '', table_id: '', status: 'confirmed',
+  });
+
+  function startEdit(r: ApiReservation) {
+    setEditId(r.id);
+    setDraft({
+      guest_name: r.guest_name, covers: r.covers,
+      res_time: r.res_time,
+      note: r.note ?? '', table_id: r.table_id ?? '', status: r.status,
+    });
+    setAdding(false);
+  }
+
+  async function saveEdit() {
+    if (!editId || !draft.guest_name || !draft.res_time) return;
+    setBusy(true); setError('');
+    try {
+      const updated = await reservationsApi.update(editId, {
+        guest_name: draft.guest_name, covers: draft.covers,
+        res_time: draft.res_time, note: draft.note || undefined,
+        table_id: draft.table_id || undefined, status: draft.status,
+      });
+      setRes(prev => prev.map(r => r.id === editId ? updated : r));
+      setEditId(null);
+    } catch (e) { setError((e as Error).message); }
+    finally { setBusy(false); }
+  }
+
+  async function addRes() {
+    if (!draft.guest_name || !draft.res_time) return;
+    setBusy(true); setError('');
+    try {
+      const created = await reservationsApi.create({
+        guest_name: draft.guest_name, covers: draft.covers,
+        res_time: draft.res_time, note: draft.note || undefined,
+        table_id: draft.table_id || undefined,
+      });
+      setRes(prev => [...prev, created].sort((a, b) => a.res_time.localeCompare(b.res_time)));
+      setAdding(false); setDraft(blankDraft());
+    } catch (e) { setError((e as Error).message); }
+    finally { setBusy(false); }
+  }
+
+  async function deleteRes(id: string) {
+    setBusy(true); setError('');
+    try {
+      await reservationsApi.delete(id);
+      setRes(prev => prev.filter(r => r.id !== id));
+      setConfirmDelete(null);
+    } catch (e) { setError((e as Error).message); }
+    finally { setBusy(false); }
+  }
+
+  async function quickStatus(id: string, status: string) {
+    setBusy(true); setError('');
+    try {
+      const updated = await reservationsApi.update(id, { status });
+      setRes(prev => prev.map(r => r.id === id ? updated : r));
+    } catch (e) { setError((e as Error).message); }
+    finally { setBusy(false); }
+  }
+
+  const statusColor: Record<string, string> = {
+    confirmed: 'var(--gold)',
+    seated:    'var(--success, #4ade80)',
+    cancelled: 'var(--danger)',
+    'no-show': 'var(--text3)',
+  };
+
+  const ResForm = () => (
+    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginBottom: 12 }}>
+      <input className="roles-input" placeholder="Guest name *"
+        value={draft.guest_name} onChange={e => setDraft(d => ({ ...d, guest_name: e.target.value }))} />
+      <input className="roles-input" placeholder="Covers" type="number" min="1"
+        value={draft.covers} onChange={e => setDraft(d => ({ ...d, covers: +e.target.value }))}
+        style={{ width: 80 }} />
+      <input className="roles-input" placeholder="Time (e.g. 19:30)"
+        value={draft.res_time} onChange={e => setDraft(d => ({ ...d, res_time: e.target.value }))} />
+      <select className="roles-select" value={draft.table_id}
+        onChange={e => setDraft(d => ({ ...d, table_id: e.target.value }))}>
+        <option value="">— No table assigned —</option>
+        {tables.filter(t => t.status === 'empty' || t.status === 'reserved').map(t => (
+          <option key={t.id} value={t.id}>{t.name} · {t.capacity}-top</option>
+        ))}
+      </select>
+      <input className="roles-input" placeholder="Note / dietary"
+        value={draft.note} onChange={e => setDraft(d => ({ ...d, note: e.target.value }))}
+        style={{ gridColumn: '2 / -1' }} />
+    </div>
+  );
+
+  return (
+    <div className="mgr-overview">
+      <p className="eyebrow">Bookings · Tonight</p>
+      <h1 className="serif mgr-greeting">Reservations</h1>
+      <p className="mgr-sub">{res.filter(r => r.status === 'confirmed').length} confirmed · {res.length} total</p>
+      {error && <p style={{ color: 'var(--danger)', fontSize: 13, margin: '4px 0' }}>{error}</p>}
+
+      <button className="btn-gold" style={{ marginBottom: 16 }}
+        onClick={() => { setAdding(a => !a); setEditId(null); setDraft(blankDraft()); }}>
+        {adding ? 'Cancel' : '+ New Reservation'}
+      </button>
+
+      {adding && (
+        <div className="card" style={{ padding: 16, marginBottom: 16 }}>
+          <p className="eyebrow" style={{ marginBottom: 10 }}>New reservation</p>
+          <ResForm />
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button className="roles-save-btn" onClick={addRes}
+              disabled={!draft.guest_name || !draft.res_time || busy}>
+              {busy ? 'Saving…' : 'Save'}
+            </button>
+            <button className="roles-cancel-btn" onClick={() => setAdding(false)}>Cancel</button>
+          </div>
+        </div>
+      )}
+
+      {loading ? (
+        <p style={{ color: 'var(--text2)', fontSize: 13 }}>Loading reservations…</p>
+      ) : (
+        <div className="card" style={{ overflow: 'hidden' }}>
+          {res.length === 0 && (
+            <p style={{ color: 'var(--text3)', padding: 16, fontSize: 13 }}>No reservations.</p>
+          )}
+          {res.map(r => (
+            <div key={r.id} style={{
+              padding: '12px 16px', borderBottom: '0.5px solid var(--line)',
+              background: editId === r.id ? 'var(--hover)' : undefined,
+            }}>
+              {editId === r.id ? (
+                <>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginBottom: 8 }}>
+                    <input className="roles-input" value={draft.guest_name}
+                      onChange={e => setDraft(d => ({ ...d, guest_name: e.target.value }))} />
+                    <input className="roles-input" type="number" value={draft.covers}
+                      onChange={e => setDraft(d => ({ ...d, covers: +e.target.value }))} style={{ width: 80 }} />
+                    <input className="roles-input" type="datetime-local" value={draft.res_time}
+                      onChange={e => setDraft(d => ({ ...d, res_time: e.target.value }))} />
+                    <select className="roles-select" value={draft.table_id}
+                      onChange={e => setDraft(d => ({ ...d, table_id: e.target.value }))}>
+                      <option value="">— No table —</option>
+                      {tables.map(t => (
+                        <option key={t.id} value={t.id}>{t.name}</option>
+                      ))}
+                    </select>
+                    <select className="roles-select" value={draft.status}
+                      onChange={e => setDraft(d => ({ ...d, status: e.target.value }))}>
+                      <option value="confirmed">Confirmed</option>
+                      <option value="seated">Seated</option>
+                      <option value="cancelled">Cancelled</option>
+                      <option value="no-show">No-show</option>
+                    </select>
+                    <input className="roles-input" placeholder="Note"
+                      value={draft.note} onChange={e => setDraft(d => ({ ...d, note: e.target.value }))} />
+                  </div>
+                  <div style={{ display: 'flex', gap: 6 }}>
+                    <button className="roles-save-btn sm" onClick={saveEdit} disabled={busy}>✓ Save</button>
+                    <button className="roles-cancel-btn sm" onClick={() => setEditId(null)}>✕</button>
+                  </div>
+                </>
+              ) : (
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
+                  <div>
+                    <p style={{ fontWeight: 600, fontSize: 14, margin: 0 }}>{r.guest_name}</p>
+                    <p style={{ fontSize: 12, color: 'var(--text2)', margin: '2px 0' }}>
+                      {r.covers} covers · {r.res_time}
+                      {r.table_name ? ` · ${r.table_name}` : ''}
+                    </p>
+                    {r.note && <p style={{ fontSize: 11, color: 'var(--text3)', margin: 0 }}>📝 {r.note}</p>}
+                  </div>
+                  <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexShrink: 0 }}>
+                    <span style={{ fontSize: 11, color: statusColor[r.status] ?? 'var(--text3)',
+                      fontWeight: 600, textTransform: 'capitalize', padding: '2px 8px',
+                      border: `0.5px solid ${statusColor[r.status] ?? 'var(--line)'}`,
+                      borderRadius: 100 }}>{r.status}</span>
+                    {r.status === 'confirmed' && (
+                      <button className="roles-edit-btn"
+                        onClick={() => quickStatus(r.id, 'seated')} disabled={busy}>
+                        Seat
+                      </button>
+                    )}
+                    <button className="roles-edit-btn" onClick={() => startEdit(r)}>Edit</button>
+                    {confirmDelete === r.id ? (
+                      <>
+                        <button className="roles-del-confirm" onClick={() => deleteRes(r.id)} disabled={busy}>
+                          {busy ? '…' : 'Confirm'}
+                        </button>
+                        <button className="roles-cancel-btn sm" onClick={() => setConfirmDelete(null)}>✕</button>
+                      </>
+                    ) : (
+                      <button className="roles-del-btn" onClick={() => setConfirmDelete(r.id)}>Delete</button>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          ))}
         </div>
       )}
     </div>
@@ -346,7 +729,12 @@ function Reports() {
 // ── Manager Panel shell ───────────────────────────────────────────────────────
 export function ManagerPanel({ section: initialSection }: { section?: string }) {
   const sectionMap: Record<string, Section> = {
-    inventory: 'inventory', staff: 'staff', reports: 'reports', roles: 'roles',
+    inventory:    'inventory',
+    tables:       'tables',
+    reservations: 'reservations',
+    staff:        'staff',
+    reports:      'reports',
+    roles:        'roles',
   };
   const [active, setActive] = useState<Section>(
     (sectionMap[initialSection ?? ''] ?? 'overview') as Section,
@@ -365,11 +753,13 @@ export function ManagerPanel({ section: initialSection }: { section?: string }) 
         ))}
       </div>
       <div className="mgr-body">
-        {active === 'overview'  && <Overview     onNav={setActive} />}
-        {active === 'inventory' && <InventoryTab />}
-        {active === 'staff'     && <StaffTab     onNav={setActive} />}
-        {active === 'reports'   && <Reports />}
-        {active === 'roles'     && <RolesPanel />}
+        {active === 'overview'     && <Overview      onNav={setActive} />}
+        {active === 'inventory'    && <InventoryTab />}
+        {active === 'tables'       && <TablesTab />}
+        {active === 'reservations' && <ReservationsTab />}
+        {active === 'staff'        && <StaffTab      onNav={setActive} />}
+        {active === 'reports'      && <Reports />}
+        {active === 'roles'        && <RolesPanel />}
       </div>
     </div>
   );

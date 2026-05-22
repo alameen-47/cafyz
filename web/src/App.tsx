@@ -5,6 +5,7 @@ import { ManagerPanel } from './panels/ManagerPanel';
 import { POSPanel } from './panels/POSPanel';
 import { KDSPanel } from './panels/KDSPanel';
 import { WaiterPanel } from './panels/WaiterPanel';
+import { MenuPanel } from './panels/MenuPanel';
 import { MobileOrdersPanel } from './panels/MobileOrdersPanel';
 import { MobileTablePanel } from './panels/MobileTablePanel';
 import { RolesPanel } from './panels/RolesPanel';
@@ -27,7 +28,7 @@ export default function App() {
         <Route path="/staff"     element={<ManagerPanel section="staff" />} />
         <Route path="/reports"   element={<ManagerPanel section="reports" />} />
         <Route path="/pos"       element={<POSPanel />} />
-        <Route path="/menu"      element={<POSPanel />} />
+        <Route path="/menu"      element={<MenuPanel />} />
         <Route path="/kds"       element={<KDSPanel />} />
         <Route path="/tables"    element={<WaiterPanel />} />
         <Route path="/roles"     element={<RolesPanel />} />

@@ -197,7 +197,6 @@ router.patch('/:id/status', async (req: AuthRequest, res, next) => {
               Number(it.qty),
               catToStation(String(it.category)),
               String(it.mods ?? '[]'),
-              0,
             ],
           });
         }

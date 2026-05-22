@@ -162,7 +162,7 @@
 
 .mgr-inv-head {
   display: grid;
-  grid-template-columns: 2fr 1fr 2fr 80px;
+  grid-template-columns: 2fr 1fr 2fr 80px 120px;
   padding: 12px 20px;
   border-bottom: 0.5px solid var(--line);
   font-size: 10px;
@@ -174,7 +174,7 @@
 
 .mgr-inv-row {
   display: grid;
-  grid-template-columns: 2fr 1fr 2fr 80px;
+  grid-template-columns: 2fr 1fr 2fr 80px 120px;
   align-items: center;
   padding: 12px 20px;
   border-bottom: 0.5px solid var(--line);

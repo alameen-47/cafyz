@@ -92,7 +92,7 @@ export function POSPanel() {
 
   // ── Cart helpers ───────────────────────────────────────────────────────────
   function addItem(item: ApiMenuItem) {
-    if (isPaid) return;
+    if (isPaid || payState === 'sent') return; // lock cart once order is sent
     setCart(prev => {
       const i = prev.findIndex(c => c.menuItem.id === item.id);
       if (i >= 0) {
@@ -105,6 +105,7 @@ export function POSPanel() {
   }
 
   function changeQty(id: string, delta: number) {
+    if (isPaid || payState === 'sent') return;
     setCart(prev =>
       prev.map(c => c.menuItem.id === id ? { ...c, qty: c.qty + delta } : c)
           .filter(c => c.qty > 0)
@@ -296,9 +297,9 @@ export function POSPanel() {
         <div className="pos-dishes">
           {visible.map(d => (
             <button key={d.id} type="button"
-              className={`pos-dish card ${cartMap[d.id] ? 'selected' : ''} ${isPaid ? 'disabled' : ''}`}
+              className={`pos-dish card ${cartMap[d.id] ? 'selected' : ''} ${isPaid || payState === 'sent' ? 'disabled' : ''}`}
               onClick={() => addItem(d)}
-              disabled={isPaid}
+              disabled={isPaid || payState === 'sent'}
             >
               <div className="pos-dish-plate">
                 <span className="pos-dish-sym serif">{d.symbol || '○'}</span>
@@ -434,7 +435,7 @@ export function POSPanel() {
                   <span className="mono">${(c.menuItem.price * c.qty).toFixed(2)}</span>
                 </div>
                 {c.mods.map(m => <p key={m} className="pos-mod">· {m}</p>)}
-                {!isPaid && (
+                {!isPaid && payState !== 'sent' && (
                   <div className="pos-qty-btns">
                     <button type="button" onClick={() => changeQty(c.menuItem.id, -1)}>−</button>
                     <button type="button" onClick={() => changeQty(c.menuItem.id, +1)}>+</button>
@@ -450,8 +451,15 @@ export function POSPanel() {
           )}
         </ul>
 
+        {/* Sent banner */}
+        {payState === 'sent' && (
+          <p style={{ fontSize: 12, color: 'var(--success, #4ade80)', padding: '6px 0', borderTop: '0.5px solid var(--line)' }}>
+            ✓ Sent to kitchen — awaiting payment
+          </p>
+        )}
+
         {/* Extras: note / split / print */}
-        {!isPaid && (
+        {!isPaid && payState !== 'sent' && (
           <div className="pos-extras">
             <button type="button" className="btn-outline"
               onClick={() => setNoteOpen(o => !o)}>

@@ -1,0 +1,173 @@
+/* ── Menu Management Panel ───────────────────────────────────────────────── */
+
+.menu-root {
+  padding: 28px 32px;
+  max-width: 1100px;
+  overflow-y: auto;
+  height: 100%;
+}
+
+.menu-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 20px;
+}
+
+.menu-title {
+  font-size: 28px;
+  margin: 4px 0 2px;
+  color: var(--text1);
+}
+
+.menu-sub {
+  font-size: 13px;
+  color: var(--text2);
+}
+
+.menu-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+/* ── Add / Edit form ─────────────────────────────────────────────────────── */
+
+.menu-form {
+  padding: 20px;
+  margin-bottom: 24px;
+}
+
+.menu-form-grid {
+  display: grid;
+  grid-template-columns: 1fr 120px 140px auto;
+  gap: 8px;
+  align-items: center;
+}
+
+@media (max-width: 800px) {
+  .menu-form-grid { grid-template-columns: 1fr 1fr; }
+}
+
+.menu-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--text2);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.menu-checkbox input[type="checkbox"] {
+  accent-color: var(--gold);
+}
+
+/* ── Item grid ────────────────────────────────────────────────────────────── */
+
+.menu-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 16px;
+}
+
+.menu-item {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  transition: opacity 0.2s;
+}
+
+.menu-item.unavailable {
+  opacity: 0.55;
+}
+
+.menu-item-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 4px;
+}
+
+.menu-item-sym {
+  font-size: 28px;
+  line-height: 1;
+}
+
+.menu-item-badges {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 3px;
+}
+
+.menu-badge {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 100px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.menu-badge.popular {
+  background: rgba(167,139,250,0.18);
+  color: var(--gold);
+  border: 0.5px solid var(--gold-line);
+}
+
+.menu-badge.avail {
+  background: rgba(74,222,128,0.12);
+  color: var(--success, #4ade80);
+}
+
+.menu-badge.off {
+  background: rgba(255,255,255,0.06);
+  color: var(--text3);
+}
+
+.menu-item-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text1);
+  margin: 0;
+}
+
+.menu-item-cat {
+  font-size: 10px;
+  color: var(--text3);
+  margin: 0;
+}
+
+.menu-item-price {
+  font-size: 15px;
+  color: var(--gold);
+  margin: 2px 0;
+}
+
+.menu-item-desc {
+  font-size: 11px;
+  color: var(--text3);
+  margin: 2px 0 0;
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.menu-item-actions {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 0.5px solid var(--gold-line);
+}
+
+.menu-item-edit {
+  padding: 4px 0;
+}

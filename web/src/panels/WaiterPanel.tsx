@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { tablesApi, ordersApi, type ApiTable, type ApiOrder } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import type { TableStatus } from '@shared/types';
@@ -10,7 +11,8 @@ const STATUS_CLASS: Record<TableStatus, string> = {
 };
 
 export function WaiterPanel() {
-  const { user } = useAuth();
+  const { user }  = useAuth();
+  const navigate  = useNavigate();
   const [tables,     setTables]     = useState<ApiTable[]>([]);
   const [orders,     setOrders]     = useState<ApiOrder[]>([]);   // open/sent orders (for table→order lookup)
   const [fullOrder,  setFullOrder]  = useState<ApiOrder | null>(null); // full order with items
@@ -27,11 +29,16 @@ export function WaiterPanel() {
   }, []);
 
   function loadFloor() {
+    // Fetch all non-archived orders so we can look up 'sent' orders too
     Promise.all([
       tablesApi.list(),
-      ordersApi.list({ status: 'open' }),
+      ordersApi.list(),
     ])
-      .then(([t, o]) => { setTables(t); setOrders(o); })
+      .then(([t, o]) => {
+        setTables(t);
+        // Keep only open/sent orders for table lookups
+        setOrders(o.filter((ord: ApiOrder) => ord.status === 'open' || ord.status === 'sent'));
+      })
       .catch(e => setError(e.message))
       .finally(() => setLoading(false));
   }
@@ -65,9 +72,9 @@ export function WaiterPanel() {
       await ordersApi.updateStatus(fullOrder.id, 'sent'); // backend auto-creates KDS ticket
       await tablesApi.updateStatus(selected!, { status: 'occupied', course: 'Sent to kitchen' });
       // Refresh floor
-      const [t, o] = await Promise.all([tablesApi.list(), ordersApi.list({ status: 'open' })]);
+      const [t, o] = await Promise.all([tablesApi.list(), ordersApi.list()]);
       setTables(t);
-      setOrders(o);
+      setOrders(o.filter((ord: ApiOrder) => ord.status === 'open' || ord.status === 'sent'));
     } catch (e) { setError((e as Error).message); }
     finally { setBusy(false); }
   }
@@ -77,11 +84,28 @@ export function WaiterPanel() {
     setBusy(true);
     try {
       await tablesApi.updateStatus(selected, { status: 'paying', course: 'Bill requested' });
-      const [t, o] = await Promise.all([tablesApi.list(), ordersApi.list({ status: 'open' })]);
+      const [t, o] = await Promise.all([tablesApi.list(), ordersApi.list()]);
       setTables(t);
-      setOrders(o);
+      setOrders(o.filter((ord: ApiOrder) => ord.status === 'open' || ord.status === 'sent'));
     } catch (e) { setError((e as Error).message); }
     finally { setBusy(false); }
+  }
+
+  async function seatReserved() {
+    if (!selected) return;
+    setBusy(true);
+    try {
+      await tablesApi.updateStatus(selected, { status: 'occupied', course: 'Guests seated' });
+      const [t, o] = await Promise.all([tablesApi.list(), ordersApi.list()]);
+      setTables(t);
+      setOrders(o.filter((ord: ApiOrder) => ord.status === 'open' || ord.status === 'sent'));
+    } catch (e) { setError((e as Error).message); }
+    finally { setBusy(false); }
+  }
+
+  function goToPOS() {
+    // Pre-select the table in POS by navigating there; POS will show the table dropdown
+    navigate(`/pos`);
   }
 
   function selectTable(tableId: string) {
@@ -174,12 +198,32 @@ export function WaiterPanel() {
 
           <footer>
             {total > 0 && <p className="waiter-total serif">${total.toFixed(2)}</p>}
-            <div style={{ display: 'flex', gap: 8 }}>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              {/* Reserved → seat guests */}
+              {selectedTable.status === 'reserved' && (
+                <button type="button" className="btn-gold" onClick={seatReserved} disabled={busy}>
+                  {busy ? '…' : '✓ Seat guests'}
+                </button>
+              )}
+              {/* Empty → start new order via POS */}
+              {selectedTable.status === 'empty' && (
+                <button type="button" className="btn-gold" onClick={goToPOS}>
+                  + Start order
+                </button>
+              )}
+              {/* Open order → send to kitchen */}
               {fullOrder && fullOrder.status === 'open' && (
                 <button type="button" className="btn-gold" onClick={sendToKitchen} disabled={busy}>
                   {busy ? '…' : 'Send to kitchen'}
                 </button>
               )}
+              {/* Sent → show status */}
+              {fullOrder && fullOrder.status === 'sent' && (
+                <p style={{ fontSize: 12, color: 'var(--success, #4ade80)', padding: '6px 0' }}>
+                  ✓ Order sent to kitchen
+                </p>
+              )}
+              {/* Request bill */}
               {(selectedTable.status === 'occupied' || selectedTable.status === 'attention') && (
                 <button type="button" className="btn-outline" onClick={markPaying} disabled={busy}>
                   Request bill
