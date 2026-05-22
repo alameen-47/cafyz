@@ -344,3 +344,26 @@
   .roles-table-head { display: none; }
   .roles-row { grid-template-columns: 1fr; gap: 8px; }
 }
+
+/* ── Light-mode overrides ─────────────────────────────────────────────────── */
+[data-theme='light'] .roles-root {
+  background: var(--bg0);
+}
+[data-theme='light'] .roles-card {
+  border: 1px solid rgba(109, 40, 217, 0.22);
+  background: #ffffff;
+}
+[data-theme='light'] .roles-card:hover {
+  border-color: rgba(109, 40, 217, 0.45);
+}
+[data-theme='light'] .roles-table-wrap {
+  border: 1px solid rgba(109, 40, 217, 0.20);
+}
+[data-theme='light'] .roles-row:hover {
+  background: rgba(109, 40, 217, 0.04);
+}
+[data-theme='light'] .roles-form-card {
+  border: 1px solid rgba(109, 40, 217, 0.22);
+  background: #ffffff;
+  box-shadow: 0 2px 16px rgba(109,40,217,0.07), 0 1px 4px rgba(0,0,0,0.07);
+}

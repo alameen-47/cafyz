@@ -449,3 +449,45 @@
 }
 .pos-print-receipt:hover { background: var(--hover); border-color: var(--gold); }
 .pos-print-receipt:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* ── Light-mode overrides ─────────────────────────────────────────────────── */
+[data-theme='light'] .pos-dish {
+  border: 1px solid rgba(109, 40, 217, 0.18);
+  background: #ffffff;
+}
+[data-theme='light'] .pos-dish:hover {
+  border-color: rgba(109, 40, 217, 0.45);
+  box-shadow: 0 4px 16px rgba(109, 40, 217, 0.10);
+}
+[data-theme='light'] .pos-dish.selected {
+  border-color: var(--gold);
+  box-shadow: 0 0 0 2px rgba(109, 40, 217, 0.18);
+}
+[data-theme='light'] .pos-dish-plate {
+  background: #f4f0fe;
+  border-bottom: 1px solid rgba(109, 40, 217, 0.14);
+}
+[data-theme='light'] .pos-search {
+  background: #ffffff;
+  border: 1px solid rgba(0, 0, 0, 0.18);
+}
+[data-theme='light'] .pos-pill {
+  background: #ffffff;
+  border: 1px solid rgba(109, 40, 217, 0.22);
+}
+[data-theme='light'] .pos-alt-pay button {
+  border: 1px solid rgba(0, 0, 0, 0.16);
+  background: #ffffff;
+}
+[data-theme='light'] .pos-qty-btns button {
+  border: 1px solid rgba(0, 0, 0, 0.16);
+  background: #ffffff;
+}
+[data-theme='light'] .pos-printer-menu {
+  border: 1px solid rgba(109, 40, 217, 0.22);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.14);
+}
+[data-theme='light'] .pos-print-receipt {
+  border: 1px solid rgba(109, 40, 217, 0.22);
+  background: #faf8ff;
+}

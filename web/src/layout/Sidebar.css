@@ -144,3 +144,33 @@
 }
 
 .sidebar-logout:hover { border-color: var(--danger); color: var(--danger); }
+
+/* ── Light-mode overrides ─────────────────────────────────────────────────── */
+[data-theme='light'] .sidebar-nav-item {
+  color: var(--text2);
+}
+[data-theme='light'] .sidebar-nav-item:hover {
+  background: rgba(109, 40, 217, 0.06);
+  color: var(--text1);
+}
+[data-theme='light'] .sidebar-nav-item.active {
+  background: rgba(109, 40, 217, 0.10);
+  color: var(--gold);
+  box-shadow: none;
+}
+[data-theme='light'] .sidebar-nav-item.active::before {
+  box-shadow: none;
+}
+[data-theme='light'] .sidebar-avatar {
+  background: rgba(109, 40, 217, 0.10);
+  border: 1px solid rgba(109, 40, 217, 0.22);
+}
+[data-theme='light'] .sidebar-brand {
+  border-bottom: 1px solid rgba(109, 40, 217, 0.18);
+}
+[data-theme='light'] .sidebar-footer {
+  border-top: 1px solid rgba(109, 40, 217, 0.18);
+}
+[data-theme='light'] .sidebar-logout {
+  border: 1px solid rgba(0, 0, 0, 0.14);
+}

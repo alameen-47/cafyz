@@ -33,6 +33,41 @@
   gap: 4px;
   position: relative;
   padding: 8px;
+  transition: background 0.2s, border-color 0.2s;
+}
+
+/* ── Light-mode table tiles — visible borders ─────────────────────────────── */
+[data-theme='light'] .waiter-table {
+  border-color: rgba(0, 0, 0, 0.14);
+  background: #fdfcff;
+}
+[data-theme='light'] .waiter-table.occupied {
+  background: rgba(109, 40, 217, 0.06);
+  border: 1px solid rgba(109, 40, 217, 0.50);
+  border-style: solid;
+  color: var(--gold);
+}
+[data-theme='light'] .waiter-table.paying {
+  background: rgba(5, 150, 105, 0.07);
+  border: 1px solid rgba(5, 150, 105, 0.55);
+  border-style: solid;
+  color: var(--success);
+}
+[data-theme='light'] .waiter-table.attention {
+  background: rgba(204, 31, 31, 0.06);
+  border: 1px solid rgba(204, 31, 31, 0.60);
+  border-style: solid;
+  color: var(--danger);
+}
+[data-theme='light'] .waiter-table.reserved {
+  background: rgba(201, 112, 0, 0.06);
+  border: 1px solid rgba(201, 112, 0, 0.45);
+  border-style: solid;
+  color: var(--warning);
+}
+[data-theme='light'] .waiter-table.selected {
+  border: 2px solid var(--gold) !important;
+  border-style: solid !important;
 }
 
 .waiter-table.round {
@@ -108,6 +143,11 @@
   padding: 20px;
   display: flex;
   flex-direction: column;
+}
+
+[data-theme='light'] .waiter-sheet {
+  border: 1px solid rgba(109, 40, 217, 0.22);
+  box-shadow: 0 4px 24px rgba(109, 40, 217, 0.08), 0 1px 6px rgba(0,0,0,0.08);
 }
 
 .waiter-sheet header {

@@ -11,7 +11,7 @@ const Ctx = createContext<ThemeCtx>({ theme: 'dark', toggleTheme: () => {} });
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [theme, setTheme] = useState<Theme>(() => {
-    return (localStorage.getItem('cafyz_theme') as Theme) ?? 'dark';
+    return (localStorage.getItem('cafyz_theme') as Theme) ?? 'light';
   });
 
   useEffect(() => {

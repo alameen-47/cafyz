@@ -60,49 +60,49 @@
 
 /* ── Light theme ─────────────────────────────────────────────────────────── */
 [data-theme='light'] {
-  /* Backgrounds */
-  --bg0:          #f2effe;
-  --bg1:          #ffffff;
-  --bg2:          #ece7fc;
-  --bg3:          #e4dcfa;
-  --bg-sidebar:   #ffffff;
-  --bg-glass:     rgba(255, 255, 255, 0.85);
+  /* Backgrounds — clean white with distinguishable lavender-tinted layers */
+  --bg0:          #ede8fb;   /* page body — visible lavender-grey */
+  --bg1:          #ffffff;   /* primary surface: cards, panels */
+  --bg2:          #e8e1f8;   /* inputs, search bars, alt rows */
+  --bg3:          #ddd5f5;   /* deeper sections, pressed states */
+  --bg-sidebar:   #f4f0fe;   /* sidebar — distinct from white */
+  --bg-glass:     rgba(255, 255, 255, 0.97);
 
   /* Accent — deep vivid purple */
   --gold:         #6d28d9;
   --gold-dim:     #5b21b6;
   --gold-soft:    #7c3aed;
-  --gold-line:    rgba(109, 40, 217, 0.15);
-  --gold-line2:   rgba(109, 40, 217, 0.28);
-  --gold-bg:      rgba(109, 40, 217, 0.07);
-  --gold-glow:    0 0 18px rgba(109, 40, 217, 0.18);
+  --gold-line:    rgba(109, 40, 217, 0.22);   /* ↑ was 0.15 — now clearly visible */
+  --gold-line2:   rgba(109, 40, 217, 0.40);   /* ↑ was 0.28 */
+  --gold-bg:      rgba(109, 40, 217, 0.08);
+  --gold-glow:    0 0 18px rgba(109, 40, 217, 0.14);
 
-  /* Text */
-  --text0:        #0f0a1e;
-  --text1:        #3a3056;
-  --text2:        #7263a0;
-  --text3:        #a89dcc;
+  /* Text — high-contrast scale */
+  --text0:        #0f0a1e;   /* near-black headings */
+  --text1:        #25184a;   /* body copy */
+  --text2:        #4e4172;   /* secondary labels — was #7263a0, much darker */
+  --text3:        #7360a8;   /* tertiary — was #a89dcc (too pale), now readable */
 
   /* Semantic */
   --success:      #059669;
-  --warning:      #d97706;
-  --danger:       #dc2626;
+  --warning:      #c97000;   /* slightly darker amber for light bg */
+  --danger:       #cc1f1f;   /* slightly darker red for light bg */
 
-  /* Borders */
-  --line:         rgba(0, 0, 0, 0.06);
-  --line2:        rgba(0, 0, 0, 0.10);
+  /* Borders — strong enough to see on white */
+  --line:         rgba(0, 0, 0, 0.11);   /* ↑ was 0.06 */
+  --line2:        rgba(0, 0, 0, 0.18);   /* ↑ was 0.10 */
 
-  /* Gradient mesh — faint lavender tints */
+  /* Gradient mesh */
   --mesh-a:       rgba(140, 80, 255, 0.06);
   --mesh-b:       rgba(180, 120, 255, 0.05);
   --mesh-c:       rgba(100, 60, 200, 0.04);
 
-  /* Sidebar gradient */
-  --sidebar-grad: linear-gradient(170deg, #fdfbff 0%, #ffffff 100%);
+  /* Sidebar gradient — tinted lavender so it reads as separate from main */
+  --sidebar-grad: linear-gradient(170deg, #ede8fb 0%, #f4f0fe 50%, #f9f7ff 100%);
 
-  /* Card */
-  --card-bg:      linear-gradient(135deg, #fdfcff 0%, #ffffff 100%);
-  --card-border:  rgba(109, 40, 217, 0.12);
+  /* Card — full 1px border, noticeable shadow */
+  --card-bg:      #ffffff;
+  --card-border:  rgba(109, 40, 217, 0.22);   /* ↑ was 0.12 */
 
   /* Button text on gold bg */
   --on-gold:      #ffffff;
@@ -262,10 +262,10 @@ a {
 }
 
 [data-theme='light'] .card {
+  border-width: 1px;                           /* thicker border for visibility */
   box-shadow:
-    0 1px 0 0 rgba(255,255,255,0.9) inset,
-    0 2px 12px rgba(109,40,217,0.06),
-    0 1px 3px rgba(0,0,0,0.06);
+    0 2px 20px rgba(109, 40, 217, 0.08),
+    0 1px 5px  rgba(0, 0, 0, 0.09);
 }
 
 /* ── Buttons ──────────────────────────────────────────────────────────────── */
@@ -346,6 +346,73 @@ a {
 :focus-visible {
   outline: 2px solid var(--gold);
   outline-offset: 2px;
+}
+
+/* ── Light-mode component overrides ──────────────────────────────────────── */
+/* These give every structural element a clearly visible boundary in light mode */
+
+/* Topbar — crisp bottom border + drop shadow */
+[data-theme='light'] .topbar {
+  border-bottom: 1px solid rgba(109, 40, 217, 0.18);
+  background: rgba(255, 255, 255, 0.98);
+  box-shadow: 0 1px 8px rgba(0, 0, 0, 0.07);
+}
+
+/* Sidebar — tinted bg + right border */
+[data-theme='light'] .sidebar {
+  border-right: 1px solid rgba(109, 40, 217, 0.18);
+  box-shadow: 2px 0 16px rgba(0, 0, 0, 0.05);
+}
+
+/* Manager tab strip */
+[data-theme='light'] .mgr-tabs {
+  border-bottom: 1px solid rgba(109, 40, 217, 0.18);
+  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.04);
+}
+
+/* POS right-side order panel */
+[data-theme='light'] .pos-order {
+  border-left: 1px solid rgba(109, 40, 217, 0.18);
+  background: #faf8ff;
+}
+
+/* Inputs, selects, textareas — white bg + dark border */
+[data-theme='light'] input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='color']),
+[data-theme='light'] select,
+[data-theme='light'] textarea {
+  background: #ffffff !important;
+  border-color: rgba(0, 0, 0, 0.20) !important;
+  color: var(--text0);
+}
+[data-theme='light'] input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='color']):focus,
+[data-theme='light'] select:focus,
+[data-theme='light'] textarea:focus {
+  border-color: var(--gold) !important;
+  box-shadow: 0 0 0 3px rgba(109, 40, 217, 0.12);
+  outline: none;
+}
+
+/* Btn-outline — visible border */
+[data-theme='light'] .btn-outline {
+  border: 1px solid rgba(0, 0, 0, 0.18);
+  color: var(--text1);
+}
+
+/* Badge "off" fix — uses white bg which disappears in light mode */
+[data-theme='light'] .menu-badge.off {
+  background: rgba(0, 0, 0, 0.07);
+  color: var(--text3);
+}
+
+/* KDS station pills */
+[data-theme='light'] .kds-stations button {
+  border: 1px solid rgba(109, 40, 217, 0.22);
+  background: #ffffff;
+}
+
+/* Waiter floor background */
+[data-theme='light'] .waiter-floor {
+  background: var(--bg0);
 }
 
 /* ── Global theme-switch transitions ─────────────────────────────────────── */

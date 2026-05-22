@@ -115,6 +115,10 @@
   background: rgba(139,92,246,0.25);
 }
 
+[data-theme='light'] .mgr-bar {
+  background: rgba(109, 40, 217, 0.18);
+}
+
 .mgr-bar:hover, .mgr-bar.peak { background: var(--gold); }
 
 .mgr-bar-labels {
@@ -283,6 +287,28 @@
 .mgr-report-delta.dn { color: var(--danger); }
 
 .manager-frame { width: 100%; height: 100%; border: none; }
+
+/* ── Light-mode overrides ─────────────────────────────────────────────────── */
+[data-theme='light'] .mgr-staff-avatar {
+  background: rgba(109, 40, 217, 0.10);
+  border: 1px solid rgba(109, 40, 217, 0.18);
+}
+[data-theme='light'] .mgr-kpi {
+  border: 1px solid rgba(109, 40, 217, 0.22);
+}
+[data-theme='light'] .mgr-chart-card,
+[data-theme='light'] .mgr-res-card,
+[data-theme='light'] .mgr-inv-table,
+[data-theme='light'] .mgr-report-table {
+  border: 1px solid rgba(109, 40, 217, 0.22);
+  box-shadow: 0 2px 16px rgba(109, 40, 217, 0.06), 0 1px 4px rgba(0,0,0,0.07);
+}
+[data-theme='light'] .mgr-range {
+  border: 1px solid rgba(0, 0, 0, 0.16);
+  background: #ffffff;
+}
+[data-theme='light'] .mgr-tab { color: var(--text2); }
+[data-theme='light'] .mgr-tab.active { color: var(--gold); border-bottom-color: var(--gold); }
 
 @media (max-width: 768px) {
   .mgr-kpis       { grid-template-columns: repeat(2, 1fr); }
