@@ -33,7 +33,8 @@ export function MenuPanel() {
   const [busy,    setBusy]    = useState(false);
   const [error,   setError]   = useState('');
 
-  const [adding,        setAdding]        = useState(false);
+  // formMode: null = closed, 'add' = new item, 'edit' = editing existing
+  const [formMode,      setFormMode]      = useState<'add' | 'edit' | null>(null);
   const [editId,        setEditId]        = useState<string | null>(null);
   const [draft,         setDraft]         = useState<Draft>(blank());
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
@@ -57,14 +58,39 @@ export function MenuPanel() {
     count: c.id === 'all' ? items.length : items.filter(i => i.category === c.id).length,
   }));
 
-  // ── Add ────────────────────────────────────────────────────────────────────
+  // ── Open add form ──────────────────────────────────────────────────────────
   function startAdd() {
     setDraft(blank());
-    setAdding(true);
+    setFormMode('add');
     setEditId(null);
     setConfirmDelete(null);
   }
 
+  // ── Open edit form ─────────────────────────────────────────────────────────
+  function startEdit(item: ApiMenuItem) {
+    setEditId(item.id);
+    setDraft({
+      name:         item.name,
+      category:     item.category,
+      price:        String(item.price),
+      description:  item.description ?? '',
+      symbol:       item.symbol ?? '○',
+      is_popular:   item.is_popular === 1,
+      is_available: item.is_available === 1,
+    });
+    setFormMode('edit');
+    setConfirmDelete(null);
+    // Scroll form into view
+    setTimeout(() => document.getElementById('menu-form-anchor')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
+  }
+
+  function closeForm() {
+    setFormMode(null);
+    setEditId(null);
+    setDraft(blank());
+  }
+
+  // ── Save add ───────────────────────────────────────────────────────────────
   async function saveAdd() {
     if (!draft.name || !draft.price) return;
     setBusy(true); setError('');
@@ -79,27 +105,12 @@ export function MenuPanel() {
         is_available: draft.is_available,
       });
       setItems(prev => [...prev, created]);
-      setAdding(false);
+      closeForm();
     } catch (e) { setError((e as Error).message); }
     finally { setBusy(false); }
   }
 
-  // ── Edit ───────────────────────────────────────────────────────────────────
-  function startEdit(item: ApiMenuItem) {
-    setEditId(item.id);
-    setDraft({
-      name:         item.name,
-      category:     item.category,
-      price:        String(item.price),
-      description:  item.description ?? '',
-      symbol:       item.symbol ?? '○',
-      is_popular:   item.is_popular === 1,
-      is_available: item.is_available === 1,
-    });
-    setAdding(false);
-    setConfirmDelete(null);
-  }
-
+  // ── Save edit ──────────────────────────────────────────────────────────────
   async function saveEdit() {
     if (!editId || !draft.name || !draft.price) return;
     setBusy(true); setError('');
@@ -114,7 +125,7 @@ export function MenuPanel() {
         is_available: draft.is_available,
       });
       setItems(prev => prev.map(i => i.id === editId ? updated : i));
-      setEditId(null);
+      closeForm();
     } catch (e) { setError((e as Error).message); }
     finally { setBusy(false); }
   }
@@ -126,6 +137,7 @@ export function MenuPanel() {
       await menuApi.delete(id);
       setItems(prev => prev.filter(i => i.id !== id));
       setConfirmDelete(null);
+      if (editId === id) closeForm();
     } catch (e) { setError((e as Error).message); }
     finally { setBusy(false); }
   }
@@ -137,6 +149,140 @@ export function MenuPanel() {
       const updated = await menuApi.update(item.id, { is_available: item.is_available !== 1 });
       setItems(prev => prev.map(i => i.id === item.id ? updated : i));
     } catch (e) { setError((e as Error).message); }
+  }
+
+  // ── Shared form ────────────────────────────────────────────────────────────
+  const editingItem = editId ? items.find(i => i.id === editId) : null;
+  const formOpen    = formMode !== null;
+
+  function FormPanel() {
+    const isEdit = formMode === 'edit';
+    return (
+      <div className="menu-form card" id="menu-form-anchor">
+
+        {/* Form header */}
+        <div className="menu-form-header">
+          <div>
+            <p className="eyebrow">{isEdit ? 'Editing item' : 'New item'}</p>
+            <h3 className="menu-form-title serif">
+              {isEdit ? editingItem?.name ?? 'Edit item' : 'Add a menu item'}
+            </h3>
+          </div>
+          <button className="menu-form-close" onClick={closeForm} title="Discard">✕</button>
+        </div>
+
+        {/* Form body */}
+        <div className="menu-form-grid">
+
+          {/* Item Name */}
+          <div className="menu-field">
+            <label htmlFor="mf-name">Item Name <span className="menu-field-req">*</span></label>
+            <input
+              id="mf-name"
+              className="menu-field-input"
+              placeholder="e.g. Soufflé Grand Marnier"
+              value={draft.name}
+              onChange={e => setDraft(d => ({ ...d, name: e.target.value }))}
+            />
+          </div>
+
+          {/* Price */}
+          <div className="menu-field">
+            <label htmlFor="mf-price">Price ($) <span className="menu-field-req">*</span></label>
+            <input
+              id="mf-price"
+              className="menu-field-input"
+              type="number" min="0" step="0.01"
+              placeholder="e.g. 14.50"
+              value={draft.price}
+              onChange={e => setDraft(d => ({ ...d, price: e.target.value }))}
+            />
+          </div>
+
+          {/* Category */}
+          <div className="menu-field">
+            <label htmlFor="mf-cat">Category</label>
+            <select
+              id="mf-cat"
+              className="menu-field-input"
+              value={draft.category}
+              onChange={e => setDraft(d => ({ ...d, category: e.target.value }))}
+            >
+              {CATS.filter(c => c.id !== 'all').map(c => (
+                <option key={c.id} value={c.id}>{c.label}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Symbol */}
+          <div className="menu-field">
+            <label htmlFor="mf-sym">Symbol / Emoji</label>
+            <input
+              id="mf-sym"
+              className="menu-field-input"
+              placeholder="e.g. 🍮 or ○"
+              value={draft.symbol}
+              onChange={e => setDraft(d => ({ ...d, symbol: e.target.value }))}
+            />
+          </div>
+
+          {/* Description — full width */}
+          <div className="menu-field full-width">
+            <label htmlFor="mf-desc">Description</label>
+            <input
+              id="mf-desc"
+              className="menu-field-input"
+              placeholder="Short description shown on POS and receipts…"
+              value={draft.description}
+              onChange={e => setDraft(d => ({ ...d, description: e.target.value }))}
+            />
+          </div>
+
+          {/* Checkboxes — full width */}
+          <div className="menu-form-checks full-width">
+            <label className="menu-check-label">
+              <input
+                type="checkbox"
+                checked={draft.is_popular}
+                onChange={e => setDraft(d => ({ ...d, is_popular: e.target.checked }))}
+              />
+              <span className="menu-check-text">
+                <strong>★ Mark as Popular</strong>
+                <span>Shows a "popular" badge on the POS grid</span>
+              </span>
+            </label>
+            <label className="menu-check-label">
+              <input
+                type="checkbox"
+                checked={draft.is_available}
+                onChange={e => setDraft(d => ({ ...d, is_available: e.target.checked }))}
+              />
+              <span className="menu-check-text">
+                <strong>● Available on Menu</strong>
+                <span>Uncheck to 86 this item temporarily</span>
+              </span>
+            </label>
+          </div>
+
+        </div>
+
+        {/* Form footer */}
+        <div className="menu-form-footer">
+          {error && <p className="menu-form-error">{error}</p>}
+          <div className="menu-form-btns">
+            <button
+              className="btn-gold"
+              onClick={isEdit ? saveEdit : saveAdd}
+              disabled={!draft.name || !draft.price || busy}
+            >
+              {busy ? 'Saving…' : isEdit ? '✓ Save changes' : '+ Add item'}
+            </button>
+            <button className="btn-outline" onClick={closeForm}>Cancel</button>
+          </div>
+        </div>
+
+      </div>
+    );
   }
 
   if (loading) return (
@@ -153,16 +299,19 @@ export function MenuPanel() {
         <div>
           <p className="eyebrow">Menu · Catalogue</p>
           <h1 className="serif menu-title">Menu Management</h1>
-          <p className="menu-sub">{items.length} items · {items.filter(i => i.is_available === 1).length} available</p>
+          <p className="menu-sub">
+            {items.length} items · {items.filter(i => i.is_available === 1).length} available
+          </p>
         </div>
-        {canEdit && (
-          <button className="btn-gold" onClick={startAdd} disabled={busy}>+ Add Item</button>
+        {canEdit && !formOpen && (
+          <button className="btn-gold" onClick={startAdd}>+ Add Item</button>
         )}
       </div>
 
-      {error && <p style={{ color: 'var(--danger)', fontSize: 13, marginBottom: 12 }}>{error}</p>}
+      {/* ── Add / Edit form (top, full-width) ───────────────────────────── */}
+      {formOpen && <FormPanel />}
 
-      {/* ── Category filter + search ─────────────────────────────────── */}
+      {/* ── Category filter + search ─────────────────────────────────────── */}
       <div className="menu-toolbar">
         {catCounts.map(c => (
           <button key={c.id} type="button"
@@ -185,128 +334,66 @@ export function MenuPanel() {
         </div>
       </div>
 
-      {/* ── Add form ────────────────────────────────────────────────────── */}
-      {adding && (
-        <div className="menu-form card">
-          <p className="eyebrow" style={{ marginBottom: 12 }}>New item</p>
-          <div className="menu-form-grid">
-            <input className="roles-input" placeholder="Item name *" value={draft.name}
-              onChange={e => setDraft(d => ({ ...d, name: e.target.value }))} />
-            <input className="roles-input" placeholder="Price *" type="number" min="0" step="0.01"
-              value={draft.price} onChange={e => setDraft(d => ({ ...d, price: e.target.value }))} />
-            <select className="roles-select" value={draft.category}
-              onChange={e => setDraft(d => ({ ...d, category: e.target.value }))}>
-              {CATS.filter(c => c.id !== 'all').map(c => (
-                <option key={c.id} value={c.id}>{c.label}</option>
-              ))}
-            </select>
-            <input className="roles-input" placeholder="Symbol (emoji or char)" value={draft.symbol}
-              onChange={e => setDraft(d => ({ ...d, symbol: e.target.value }))} style={{ width: 80 }} />
-            <input className="roles-input" placeholder="Description" value={draft.description}
-              onChange={e => setDraft(d => ({ ...d, description: e.target.value }))}
-              style={{ gridColumn: '1 / -1' }} />
-            <label className="menu-checkbox">
-              <input type="checkbox" checked={draft.is_popular}
-                onChange={e => setDraft(d => ({ ...d, is_popular: e.target.checked }))} />
-              ★ Popular
-            </label>
-            <label className="menu-checkbox">
-              <input type="checkbox" checked={draft.is_available}
-                onChange={e => setDraft(d => ({ ...d, is_available: e.target.checked }))} />
-              Available
-            </label>
-          </div>
-          <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
-            <button className="roles-save-btn" onClick={saveAdd}
-              disabled={!draft.name || !draft.price || busy}>
-              {busy ? 'Saving…' : 'Save item'}
-            </button>
-            <button className="roles-cancel-btn" onClick={() => setAdding(false)}>Cancel</button>
-          </div>
-        </div>
-      )}
-
       {/* ── Item grid ───────────────────────────────────────────────────── */}
       <div className="menu-grid">
         {visible.map(item => (
-          <div key={item.id} className={`menu-item card ${item.is_available !== 1 ? 'unavailable' : ''}`}>
-            {editId === item.id ? (
-              /* Inline edit form */
-              <div className="menu-item-edit">
-                <div className="menu-form-grid">
-                  <input className="roles-input" placeholder="Name *" value={draft.name}
-                    onChange={e => setDraft(d => ({ ...d, name: e.target.value }))} />
-                  <input className="roles-input" placeholder="Price *" type="number" min="0" step="0.01"
-                    value={draft.price} onChange={e => setDraft(d => ({ ...d, price: e.target.value }))} />
-                  <select className="roles-select" value={draft.category}
-                    onChange={e => setDraft(d => ({ ...d, category: e.target.value }))}>
-                    {CATS.filter(c => c.id !== 'all').map(c => (
-                      <option key={c.id} value={c.id}>{c.label}</option>
-                    ))}
-                  </select>
-                  <input className="roles-input" placeholder="Symbol" value={draft.symbol}
-                    onChange={e => setDraft(d => ({ ...d, symbol: e.target.value }))} style={{ width: 80 }} />
-                  <input className="roles-input" placeholder="Description" value={draft.description}
-                    onChange={e => setDraft(d => ({ ...d, description: e.target.value }))}
-                    style={{ gridColumn: '1 / -1' }} />
-                  <label className="menu-checkbox">
-                    <input type="checkbox" checked={draft.is_popular}
-                      onChange={e => setDraft(d => ({ ...d, is_popular: e.target.checked }))} />
-                    ★ Popular
-                  </label>
-                  <label className="menu-checkbox">
-                    <input type="checkbox" checked={draft.is_available}
-                      onChange={e => setDraft(d => ({ ...d, is_available: e.target.checked }))} />
-                    Available
-                  </label>
-                </div>
-                <div style={{ display: 'flex', gap: 6, marginTop: 10 }}>
-                  <button className="roles-save-btn sm" onClick={saveEdit}
-                    disabled={!draft.name || !draft.price || busy}>{busy ? '…' : '✓ Save'}</button>
-                  <button className="roles-cancel-btn sm" onClick={() => setEditId(null)}>✕</button>
-                </div>
+          <div
+            key={item.id}
+            className={`menu-item card${item.is_available !== 1 ? ' unavailable' : ''}${editId === item.id ? ' editing' : ''}`}
+          >
+            {/* Card header */}
+            <div className="menu-item-top">
+              <span className="menu-item-sym serif">{item.symbol || '○'}</span>
+              <div className="menu-item-badges">
+                {item.is_popular === 1 && <span className="menu-badge popular">★ Popular</span>}
+                <span className={`menu-badge ${item.is_available === 1 ? 'avail' : 'off'}`}>
+                  {item.is_available === 1 ? '● On' : '○ Off'}
+                </span>
               </div>
-            ) : (
-              /* Display view */
-              <>
-                <div className="menu-item-top">
-                  <span className="menu-item-sym serif">{item.symbol || '○'}</span>
-                  <div className="menu-item-badges">
-                    {item.is_popular === 1 && <span className="menu-badge popular">★</span>}
-                    <span className={`menu-badge ${item.is_available === 1 ? 'avail' : 'off'}`}>
-                      {item.is_available === 1 ? '● On' : '○ Off'}
-                    </span>
-                  </div>
-                </div>
-                <p className="menu-item-name">{item.name}</p>
-                <p className="menu-item-cat eyebrow">{item.category}</p>
-                <p className="mono menu-item-price">${item.price.toFixed(2)}</p>
-                {item.description && <p className="menu-item-desc">{item.description}</p>}
+            </div>
 
-                {canEdit && (
-                  <div className="menu-item-actions">
-                    <button className="roles-edit-btn" onClick={() => startEdit(item)}>Edit</button>
-                    <button
-                      className={`btn-outline`}
-                      style={{ fontSize: 11, padding: '3px 8px' }}
-                      onClick={() => toggleAvailable(item)}
-                      title={item.is_available === 1 ? 'Mark unavailable' : 'Mark available'}
-                    >
-                      {item.is_available === 1 ? '86 it' : 'Restore'}
+            {/* Card body */}
+            <p className="menu-item-cat eyebrow">{item.category}</p>
+            <p className="menu-item-name">{item.name}</p>
+            <p className="mono menu-item-price">${item.price.toFixed(2)}</p>
+            {item.description && (
+              <p className="menu-item-desc">{item.description}</p>
+            )}
+
+            {/* Editing indicator */}
+            {editId === item.id && (
+              <p className="menu-item-editing-note">✏ Editing above ↑</p>
+            )}
+
+            {/* Actions */}
+            {canEdit && (
+              <div className="menu-item-actions">
+                <button
+                  className="menu-act-edit"
+                  onClick={() => editId === item.id ? closeForm() : startEdit(item)}
+                  title="Edit this item"
+                >
+                  {editId === item.id ? '✕ Cancel' : '✏ Edit'}
+                </button>
+                <button
+                  className="menu-act-toggle"
+                  onClick={() => toggleAvailable(item)}
+                  title={item.is_available === 1 ? 'Mark unavailable' : 'Mark available'}
+                >
+                  {item.is_available === 1 ? '86 it' : 'Restore'}
+                </button>
+                {confirmDelete === item.id ? (
+                  <div className="menu-act-confirm">
+                    <span>Delete?</span>
+                    <button className="menu-act-confirm-yes" onClick={() => deleteItem(item.id)} disabled={busy}>
+                      {busy ? '…' : 'Yes'}
                     </button>
-                    {confirmDelete === item.id ? (
-                      <>
-                        <button className="roles-del-confirm" onClick={() => deleteItem(item.id)} disabled={busy}>
-                          {busy ? '…' : 'Confirm'}
-                        </button>
-                        <button className="roles-cancel-btn sm" onClick={() => setConfirmDelete(null)}>✕</button>
-                      </>
-                    ) : (
-                      <button className="roles-del-btn" onClick={() => setConfirmDelete(item.id)}>Delete</button>
-                    )}
+                    <button className="menu-act-confirm-no" onClick={() => setConfirmDelete(null)}>No</button>
                   </div>
+                ) : (
+                  <button className="menu-act-delete" onClick={() => setConfirmDelete(item.id)}>Delete</button>
                 )}
-              </>
+              </div>
             )}
           </div>
         ))}
