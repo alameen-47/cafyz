@@ -2,6 +2,90 @@
 // Thermal printer support via Web Bluetooth, Web USB, or browser print dialog.
 // ESC/POS command builder is self-contained — no dependencies.
 
+// ── Printer localStorage persistence ─────────────────────────────────────────
+
+const PRINTER_LS_KEY = 'cafyz_printer';
+
+export function savePrinterPrefs(type: 'none' | 'bluetooth' | 'usb', name: string): void {
+  if (type === 'none') {
+    localStorage.removeItem(PRINTER_LS_KEY);
+  } else {
+    localStorage.setItem(PRINTER_LS_KEY, JSON.stringify({ type, name }));
+  }
+}
+
+export function loadPrinterPrefs(): { type: 'none' | 'bluetooth' | 'usb'; name: string } {
+  try {
+    const raw = localStorage.getItem(PRINTER_LS_KEY);
+    if (!raw) return { type: 'none', name: '' };
+    const parsed = JSON.parse(raw);
+    if (parsed?.type && parsed.name !== undefined) return parsed as { type: 'none' | 'bluetooth' | 'usb'; name: string };
+  } catch { /* ignore */ }
+  return { type: 'none', name: '' };
+}
+
+/**
+ * Silently attempts to reconnect to the previously used printer using
+ * navigator.bluetooth.getDevices() / navigator.usb.getDevices() (Chrome 85+).
+ * No user gesture required for already-authorised devices.
+ * Returns { type: 'none' } if no saved prefs or reconnect fails.
+ */
+export async function tryAutoReconnect(): Promise<{ type: 'none' | 'bluetooth' | 'usb'; name: string }> {
+  const prefs = loadPrinterPrefs();
+  if (prefs.type === 'none') return { type: 'none', name: '' };
+
+  try {
+    if (prefs.type === 'bluetooth' && 'bluetooth' in navigator) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const nav = navigator as any;
+      if (typeof nav.bluetooth?.getDevices === 'function') {
+        const devices: any[] = await nav.bluetooth.getDevices();
+        const target = devices.find(d => d.name === prefs.name) ?? devices[0];
+        if (target) {
+          const server = await target.gatt!.connect();
+          const services = await server.getPrimaryServices();
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          let writable: any = null;
+          for (const svc of services) {
+            if (writable) break;
+            try {
+              const chars = await svc.getCharacteristics();
+              for (const c of chars) {
+                if (c.properties.write || c.properties.writeWithoutResponse) {
+                  writable = c; break;
+                }
+              }
+            } catch { /* skip unreadable services */ }
+          }
+          if (writable) {
+            btChar = writable;
+            btDevice = target;
+            target.addEventListener('gattserverdisconnected', () => { btChar = null; btDevice = null; });
+            return { type: 'bluetooth', name: target.name || prefs.name };
+          }
+        }
+      }
+    } else if (prefs.type === 'usb' && 'usb' in navigator) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const nav = navigator as any;
+      if (typeof nav.usb?.getDevices === 'function') {
+        const devices: any[] = await nav.usb.getDevices();
+        const target = devices.find(d => d.productName === prefs.name) ?? devices[0];
+        if (target) {
+          await target.open();
+          if (target.configuration === null) await target.selectConfiguration(1);
+          const iface = target.configuration.interfaces[0];
+          await target.claimInterface(iface.interfaceNumber);
+          usbDevice = target;
+          return { type: 'usb', name: target.productName || prefs.name };
+        }
+      }
+    }
+  } catch { /* auto-reconnect failed silently */ }
+
+  return { type: 'none', name: '' };
+}
+
 // ── ESC/POS Builder ───────────────────────────────────────────────────────────
 
 const ESC = 0x1b;

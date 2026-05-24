@@ -2,7 +2,8 @@ import { useState, useEffect, useRef } from 'react';
 import { menuApi, ordersApi, tablesApi, type ApiMenuItem, type ApiTable } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import {
-  connectBluetooth, connectUSB, disconnectPrinter, printerStatus, print as printReceipt,
+  connectBluetooth, connectUSB, disconnectPrinter, print as printReceipt,
+  savePrinterPrefs, tryAutoReconnect,
   type ReceiptData,
 } from '../services/PrintService';
 import './POSPanel.css';
@@ -45,8 +46,12 @@ export function POSPanel() {
   const [printOk,      setPrintOk]      = useState(false);
   const [showConnect,  setShowConnect]  = useState(false);
 
-  // Sync printer status on mount (in case a previous session still has a device)
-  useEffect(() => { setPrinter(printerStatus()); }, []);
+  // Auto-reconnect to saved printer on mount (works silently for already-authorised BT/USB devices)
+  useEffect(() => {
+    tryAutoReconnect().then(status => {
+      if (status.type !== 'none') setPrinter(status);
+    }).catch(() => {});
+  }, []);
 
   useEffect(() => {
     Promise.all([menuApi.list(), tablesApi.list()])
@@ -174,16 +179,15 @@ export function POSPanel() {
     if (cart.length === 0 || isPaid) return;
     setBusy(true); setError('');
     try {
-      // If already sent, activeOrderId is set — just mark paid.
-      // If not sent yet, create order + items first.
       const orderId = await ensureOrder();
-      // If the order was only 'sent' so far, mark it paid now
       await ordersApi.updateStatus(orderId, 'paid');
       if (selectedTable) {
         await tablesApi.updateStatus(selectedTable, { status: 'empty', course: '', covers: 0 });
       }
       setPayState(method);
       setActiveOrderId(null);
+      // Auto-print receipt immediately on payment
+      await handlePrint(method === 'card' ? 'Card' : 'Cash');
     } catch (e) { setError((e as Error).message); }
     finally { setBusy(false); }
   }
@@ -194,6 +198,7 @@ export function POSPanel() {
     try {
       const name = await connectBluetooth();
       setPrinter({ type: 'bluetooth', name });
+      savePrinterPrefs('bluetooth', name);
     } catch (e) { setPrintError((e as Error).message); }
     finally { setPrintBusy(false); }
   }
@@ -203,6 +208,7 @@ export function POSPanel() {
     try {
       const name = await connectUSB();
       setPrinter({ type: 'usb', name });
+      savePrinterPrefs('usb', name);
     } catch (e) { setPrintError((e as Error).message); }
     finally { setPrintBusy(false); }
   }
@@ -210,29 +216,35 @@ export function POSPanel() {
   function handleDisconnect() {
     disconnectPrinter();
     setPrinter({ type: 'none', name: '' });
+    savePrinterPrefs('none', '');
   }
 
-  function buildReceiptData(payMethod?: string): ReceiptData {
+  // comped=true forces all money totals to zero (needed when called before setPayState re-renders)
+  function buildReceiptData(payMethod?: string, comped = false): ReceiptData {
+    const s   = comped ? 0 : subtotal;
+    const svc = comped ? 0 : service;
+    const tx  = comped ? 0 : tax;
+    const tot = comped ? 0 : total;
     return {
       restaurantName: user?.restaurant_name || 'Restaurant',
       tableName:      tableObj?.name ?? selectedTable ?? '',
       serverName:     user?.name,
       covers:         tableObj?.covers || undefined,
       items:          cart.map(c => ({ name: c.menuItem.name, qty: c.qty, price: c.menuItem.price })),
-      subtotal,
-      service,
-      tax,
-      total,
+      subtotal: s,
+      service:  svc,
+      tax:      tx,
+      total:    tot,
       payMethod,
       note: note || undefined,
     };
   }
 
-  async function handlePrint(payMethod?: string) {
+  async function handlePrint(payMethod?: string, comped = false) {
     if (cart.length === 0) return;
     setPrintBusy(true); setPrintError(''); setPrintOk(false);
     try {
-      const method = await printReceipt(buildReceiptData(payMethod));
+      const method = await printReceipt(buildReceiptData(payMethod, comped));
       setPrintOk(true);
       if (method !== 'dialog') {
         setTimeout(() => setPrintOk(false), 3000);
@@ -253,6 +265,8 @@ export function POSPanel() {
       }
       setPayState('comped');
       setActiveOrderId(null);
+      // Auto-print comped receipt (pass comped=true so totals are $0 before re-render)
+      await handlePrint('Complimentary', true);
     } catch (e) { setError((e as Error).message); }
     finally { setBusy(false); }
   }
