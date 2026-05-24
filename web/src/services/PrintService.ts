@@ -414,20 +414,30 @@ async function printUSB(data: Uint8Array): Promise<void> {
 
 function printDialog(receiptData: ReceiptData): void {
   const html = buildReceiptHTML(receiptData);
-  const win  = window.open('', '_blank', 'width=340,height=600');
-  if (!win) throw new Error('Pop-up blocked — please allow pop-ups for this site.');
-  win.document.write(html);
-  win.document.close();
-  win.focus();
-  // Wait for resources to load then trigger print
-  win.onload = () => {
+
+  // Use a Blob URL so the popup loads via real page navigation.
+  // This guarantees win.onload fires AFTER all images (including base64)
+  // are fully decoded and painted — document.write() + close() fires load
+  // synchronously, causing win.onload set afterwards to miss it entirely.
+  const blob = new Blob([html], { type: 'text/html' });
+  const url  = URL.createObjectURL(blob);
+
+  const win = window.open(url, '_blank', 'width=340,height=600');
+  if (!win) {
+    URL.revokeObjectURL(url);
+    throw new Error('Pop-up blocked — please allow pop-ups for this site.');
+  }
+
+  const finish = () => {
+    win.focus();
     win.print();
-    setTimeout(() => win.close(), 800);
+    setTimeout(() => { win.close(); URL.revokeObjectURL(url); }, 1000);
   };
-  // Fallback if onload already fired
-  setTimeout(() => {
-    if (!win.closed) { win.print(); setTimeout(() => win.close(), 800); }
-  }, 400);
+
+  win.onload = finish;
+
+  // Fallback: some browsers (Safari) don't fire onload on blob-URL popups
+  setTimeout(() => { if (!win.closed) finish(); }, 1800);
 }
 
 /**
