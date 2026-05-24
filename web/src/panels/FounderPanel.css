@@ -1,0 +1,199 @@
+/* ── Shell ── */
+.fdr-root { display: flex; flex-direction: column; height: 100%; overflow: hidden; }
+.fdr-tabs {
+  display: flex;
+  gap: 2px;
+  padding: 0 32px;
+  border-bottom: 1px solid var(--line);
+  background: var(--surface);
+  flex-shrink: 0;
+}
+.fdr-tab {
+  padding: 14px 18px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: var(--text3);
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+}
+.fdr-tab:hover  { color: var(--text1); }
+.fdr-tab.active { color: var(--gold);  border-bottom-color: var(--gold); }
+.fdr-body { flex: 1; overflow-y: auto; }
+
+/* ── Section ── */
+.fdr-section { padding: 32px 40px; max-width: 1100px; }
+.fdr-title   { font-size: 28px; margin: 4px 0 6px; }
+.fdr-sub     { font-size: 13px; color: var(--text2); margin-bottom: 24px; }
+.fdr-loading { color: var(--text2); font-size: 13px; margin-top: 16px; }
+.fdr-error   { color: var(--danger); font-size: 13px; margin-bottom: 12px; }
+.fdr-empty   { color: var(--text3); font-size: 13px; padding: 20px; }
+
+/* ── Overview grid ── */
+.fdr-overview-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+.fdr-stat {
+  padding: 20px;
+  cursor: pointer;
+  transition: box-shadow 0.15s;
+}
+.fdr-stat:hover { box-shadow: 0 0 0 1px var(--gold); }
+.fdr-stat-num   { font-size: 36px; color: var(--gold); margin: 0 0 4px; }
+.fdr-stat-label { font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text2); margin-bottom: 8px; }
+.fdr-stat-sub   { font-size: 12px; color: var(--text3); margin: 0; }
+.fdr-plan-breakdown { display: flex; gap: 10px; flex-wrap: wrap; }
+.fdr-plan-pip { font-size: 10px; font-weight: 700; letter-spacing: 0.5px; }
+
+/* ── Generic table ── */
+.fdr-table { overflow: hidden; }
+.fdr-table-head, .fdr-table-row {
+  display: grid;
+  gap: 12px;
+  padding: 10px 16px;
+  align-items: center;
+}
+.fdr-table-head {
+  grid-template-columns: 1.5fr 1fr 90px 60px 1fr 120px;
+  background: var(--surface2);
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text3);
+}
+.fdr-table-row {
+  grid-template-columns: 1.5fr 1fr 90px 60px 1fr 120px;
+  border-top: 0.5px solid var(--line);
+  font-size: 13px;
+  transition: background 0.1s;
+}
+.fdr-table-row:hover { background: var(--hover); }
+
+.fdr-rest-name { font-weight: 600; }
+.fdr-slug      { font-size: 11px; color: var(--text2); }
+.fdr-plan-pill {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 100px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.fdr-plan-select-wrap { display: flex; align-items: center; gap: 6px; }
+.fdr-plan-select {
+  background: var(--surface2);
+  border: 1px solid var(--line);
+  color: var(--text1);
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  cursor: pointer;
+}
+.fdr-plan-select:focus { outline: none; border-color: var(--gold); }
+.fdr-busy { font-size: 12px; color: var(--text3); }
+.fdr-key-cell { max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* ── Keys table ── */
+.fdr-keys-head, .fdr-keys-row {
+  grid-template-columns: 1.5fr 80px 80px 1.2fr 90px 80px 1fr 70px !important;
+}
+.fdr-key-code { font-size: 12px; letter-spacing: 0.5px; }
+.fdr-key-rest { }
+.fdr-key-status { font-size: 11px; font-weight: 700; }
+.fdr-key-status.free    { color: var(--success); }
+.fdr-key-status.used    { color: var(--text2); }
+.fdr-key-status.revoked { color: var(--text3); }
+.fdr-table-row.revoked  { opacity: 0.45; }
+.fdr-revoke-btn {
+  font-size: 11px;
+  padding: 3px 8px;
+  border-radius: 4px;
+  border: 1px solid var(--danger);
+  color: var(--danger);
+  background: transparent;
+  cursor: pointer;
+}
+.fdr-revoke-btn:hover { background: var(--danger); color: #fff; }
+
+/* ── Generate form ── */
+.fdr-gen-form { padding: 20px; margin-bottom: 0; }
+.fdr-gen-row  { display: flex; gap: 12px; align-items: flex-end; flex-wrap: wrap; }
+.fdr-gen-field { display: flex; flex-direction: column; gap: 5px; flex: 1; }
+.fdr-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text3); font-weight: 700; }
+.fdr-input {
+  background: var(--surface2);
+  border: 1px solid var(--line);
+  color: var(--text1);
+  padding: 8px 10px;
+  border-radius: 6px;
+  font-size: 13px;
+  width: 100%;
+}
+.fdr-input:focus { outline: none; border-color: var(--gold); }
+.fdr-select {
+  background: var(--surface2);
+  border: 1px solid var(--line);
+  color: var(--text1);
+  padding: 8px 10px;
+  border-radius: 6px;
+  font-size: 13px;
+}
+.fdr-select:focus { outline: none; border-color: var(--gold); }
+
+.fdr-just-made { margin-top: 16px; border-top: 0.5px solid var(--line); padding-top: 14px; }
+.fdr-new-key {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  background: color-mix(in srgb, var(--success) 8%, transparent);
+  border: 1px solid color-mix(in srgb, var(--success) 30%, transparent);
+  border-radius: 6px;
+  margin-bottom: 8px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.fdr-new-key:hover { background: color-mix(in srgb, var(--success) 15%, transparent); }
+.fdr-new-key-code { font-size: 14px; font-weight: 700; letter-spacing: 1px; flex: 1; }
+.fdr-copy-hint { font-size: 10px; color: var(--text3); }
+
+/* ── Plan Config ── */
+.fdr-plan-config-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; }
+.fdr-config-card {
+  padding: 20px;
+  border-top: 3px solid var(--plan-color, var(--line));
+}
+.fdr-config-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+.fdr-config-name { font-size: 20px; }
+.fdr-config-price { font-size: 13px; color: var(--text2); }
+.fdr-config-desc { font-size: 12px; color: var(--text2); margin-bottom: 16px; line-height: 1.5; }
+.fdr-desc-input {
+  width: 100%;
+  background: var(--surface2);
+  border: 1px solid var(--line);
+  color: var(--text1);
+  padding: 8px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  margin-bottom: 12px;
+  resize: vertical;
+}
+.fdr-config-panels { display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px; }
+.fdr-panel-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  cursor: pointer;
+  padding: 3px 0;
+  border-radius: 4px;
+}
+.fdr-panel-toggle.readonly { cursor: default; }
+.fdr-panel-toggle.on  { color: var(--text1); }
+.fdr-panel-toggle.off { color: var(--text3); }
+.fdr-panel-toggle input { accent-color: var(--plan-color, var(--gold)); width: 13px; height: 13px; }
+.fdr-config-actions { display: flex; gap: 8px; padding-top: 4px; border-top: 0.5px solid var(--line); }

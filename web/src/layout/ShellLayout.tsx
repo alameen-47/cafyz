@@ -2,9 +2,9 @@ import { Outlet, useLocation } from 'react-router-dom';
 import { screenFromPath } from '../routes';
 import { AppShell } from './AppShell';
 
-export function ShellLayout() {
+export function ShellLayout({ founderMode = false }: { founderMode?: boolean }) {
   const { pathname } = useLocation();
-  const active = screenFromPath(pathname);
+  const active = founderMode ? 'founder' : screenFromPath(pathname);
 
   return (
     <AppShell active={active}>

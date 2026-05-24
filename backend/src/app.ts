@@ -13,6 +13,9 @@ import reservationRoutes from './routes/reservations.js';
 import inventoryRoutes   from './routes/inventory.js';
 import dashboardRoutes   from './routes/dashboard.js';
 import restaurantRoutes  from './routes/restaurants.js';
+import licenseRoutes     from './routes/licenses.js';
+import founderRoutes     from './routes/founder.js';
+import { requirePlan }   from './middleware/planGuard.js';
 import { errorHandler, notFound } from './middleware/errorHandler.js';
 
 const app = express();
@@ -42,11 +45,13 @@ app.use('/api/users',        userRoutes);
 app.use('/api/menu',         menuRoutes);
 app.use('/api/orders',       orderRoutes);
 app.use('/api/tables',       tableRoutes);
-app.use('/api/kds',          kdsRoutes);
-app.use('/api/reservations', reservationRoutes);
-app.use('/api/inventory',    inventoryRoutes);
-app.use('/api/dashboard',    dashboardRoutes);
+app.use('/api/kds',          requirePlan('pro'), kdsRoutes);
+app.use('/api/reservations', requirePlan('premium'), reservationRoutes);
+app.use('/api/inventory',    requirePlan('pro'), inventoryRoutes);
+app.use('/api/dashboard',    requirePlan('pro'), dashboardRoutes);
 app.use('/api/restaurants',  restaurantRoutes);
+app.use('/api/licenses',     licenseRoutes);
+app.use('/api/founder',      founderRoutes);
 
 // ── Error handling ──────────────────────────────────────────────────────────────
 app.use(notFound);

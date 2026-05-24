@@ -27,6 +27,8 @@ async function seed() {
     DROP TABLE IF EXISTS inventory;
     DROP TABLE IF EXISTS menu_items;
     DROP TABLE IF EXISTS restaurant_tables;
+    DROP TABLE IF EXISTS license_keys;
+    DROP TABLE IF EXISTS plan_config;
     DROP TABLE IF EXISTS users;
     DROP TABLE IF EXISTS restaurants;
   `);
@@ -35,10 +37,27 @@ async function seed() {
 
   const db = client;
 
+  // ── Cafyz System Restaurant (for founder account) ──────────────────
+  const SYSTEM_REST = 'CAFYZ_SYSTEM';
+  await db.execute({
+    sql: `INSERT OR IGNORE INTO restaurants(id,name,slug,plan,timezone) VALUES(?,?,?,?,?)`,
+    args: [SYSTEM_REST, 'Cafyz HQ', 'cafyz-system', 'premium', 'UTC'],
+  });
+
+  // ── Founder user ───────────────────────────────────────────────────
+  const founderId = uid();
+  const founderPw = await bcrypt.hash('cafyz-founder-2026', 10);
+  await db.execute({
+    sql: `INSERT OR IGNORE INTO users(id,restaurant_id,name,initials,email,password_hash,role,status,start_time)
+          VALUES(?,?,?,?,?,?,?,?,?)`,
+    args: [founderId, SYSTEM_REST, 'Cafyz Founder', 'CF', 'founder@cafyz.io', founderPw, 'founder', 'active', '—'],
+  });
+  console.log('✓ Founder account: founder@cafyz.io / cafyz-founder-2026');
+
   // ── Demo Restaurant ────────────────────────────────────────────────
   await db.execute({
     sql: `INSERT OR IGNORE INTO restaurants(id,name,slug,plan,timezone) VALUES(?,?,?,?,?)`,
-    args: [DEMO_REST, 'Saint Paris 6e', 'saint-paris-6e', 'growth', 'Europe/Paris'],
+    args: [DEMO_REST, 'Saint Paris 6e', 'saint-paris-6e', 'pro', 'Europe/Paris'],
   });
   console.log('✓ Restaurant seeded');
 
@@ -163,6 +182,55 @@ async function seed() {
     });
   }
   console.log('✓ Reservations seeded');
+
+  // ── Plan Config (founder-defined defaults) ─────────────────────────
+  const planConfigs = [
+    {
+      plan: 'basic',
+      label: 'Basic',
+      description: 'Core POS, menu, and floor management for small venues.',
+      price_monthly: 49,
+      panels: ['pos','menu','waiter','license'],
+    },
+    {
+      plan: 'pro',
+      label: 'Pro',
+      description: 'Everything in Basic plus KDS, full manager dashboard, inventory, staff & reports.',
+      price_monthly: 99,
+      panels: ['pos','menu','waiter','kds','manager','inventory','staff','reports','roles','license'],
+    },
+    {
+      plan: 'premium',
+      label: 'Premium',
+      description: 'Everything in Pro plus reservations, multi-branch, and priority support.',
+      price_monthly: 199,
+      panels: ['pos','menu','waiter','kds','manager','inventory','staff','reports','roles','license'],
+    },
+  ];
+
+  for (const p of planConfigs) {
+    await db.execute({
+      sql: `INSERT OR IGNORE INTO plan_config(plan,panels_json,label,description,price_monthly)
+            VALUES(?,?,?,?,?)`,
+      args: [p.plan, JSON.stringify(p.panels), p.label, p.description, p.price_monthly],
+    });
+  }
+  console.log('✓ Plan config seeded');
+
+  // ── Sample License Keys ────────────────────────────────────────────
+  const sampleKeys = [
+    { id: uid(), code: 'CAFYZ-PRO-DEMO01', plan: 'pro',     note: 'Demo Pro key (unused)' },
+    { id: uid(), code: 'CAFYZ-PRE-DEMO01', plan: 'premium', note: 'Demo Premium key (unused)' },
+    { id: uid(), code: 'CAFYZ-BAS-DEMO01', plan: 'basic',   note: 'Demo Basic key (unused)' },
+  ];
+  for (const k of sampleKeys) {
+    await db.execute({
+      sql: `INSERT OR IGNORE INTO license_keys(id,key_code,plan,note) VALUES(?,?,?,?)`,
+      args: [k.id, k.code, k.plan, k.note],
+    });
+  }
+  console.log('✓ Sample license keys seeded');
+  console.log('  Keys: CAFYZ-PRO-DEMO01 | CAFYZ-PRE-DEMO01 | CAFYZ-BAS-DEMO01');
 
   console.log('\n🍽  Cafyz database seeded successfully.');
   await client.close();

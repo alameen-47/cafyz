@@ -8,7 +8,8 @@ export async function runMigrations() {
       id         TEXT PRIMARY KEY,
       name       TEXT NOT NULL,
       slug       TEXT NOT NULL UNIQUE,
-      plan       TEXT NOT NULL DEFAULT 'starter' CHECK(plan IN ('starter','growth','enterprise')),
+      plan       TEXT NOT NULL DEFAULT 'basic'
+                   CHECK(plan IN ('starter','growth','enterprise','basic','pro','premium')),
       parent_id  TEXT REFERENCES restaurants(id),
       timezone   TEXT NOT NULL DEFAULT 'UTC',
       created_at TEXT NOT NULL DEFAULT (datetime('now'))
@@ -21,7 +22,7 @@ export async function runMigrations() {
       initials      TEXT NOT NULL,
       email         TEXT NOT NULL,
       password_hash TEXT NOT NULL,
-      role          TEXT NOT NULL CHECK(role IN ('owner','manager','cashier','waiter','kitchen')),
+      role          TEXT NOT NULL CHECK(role IN ('owner','manager','cashier','waiter','kitchen','founder')),
       status        TEXT NOT NULL DEFAULT 'active' CHECK(status IN ('active','break','off')),
       start_time    TEXT NOT NULL DEFAULT '—',
       pin_hash      TEXT,
@@ -129,6 +130,27 @@ export async function runMigrations() {
       unit          TEXT NOT NULL,
       alert         INTEGER NOT NULL DEFAULT 0,
       created_at    TEXT NOT NULL DEFAULT (datetime('now')),
+      updated_at    TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+
+    CREATE TABLE IF NOT EXISTS license_keys (
+      id            TEXT PRIMARY KEY,
+      key_code      TEXT NOT NULL UNIQUE,
+      plan          TEXT NOT NULL CHECK(plan IN ('basic','pro','premium')),
+      restaurant_id TEXT REFERENCES restaurants(id) ON DELETE SET NULL,
+      activated_at  TEXT,
+      expires_at    TEXT,
+      is_active     INTEGER NOT NULL DEFAULT 1,
+      note          TEXT,
+      created_at    TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+
+    CREATE TABLE IF NOT EXISTS plan_config (
+      plan          TEXT PRIMARY KEY CHECK(plan IN ('basic','pro','premium')),
+      panels_json   TEXT NOT NULL,
+      label         TEXT NOT NULL,
+      description   TEXT NOT NULL DEFAULT '',
+      price_monthly REAL NOT NULL DEFAULT 0,
       updated_at    TEXT NOT NULL DEFAULT (datetime('now'))
     );
   `);

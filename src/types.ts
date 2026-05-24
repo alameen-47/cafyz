@@ -11,7 +11,9 @@ export type Screen =
   | 'roles'
   | 'mobileOrders'
   | 'mobileTableDetail'
-  | 'mobileAddItem';
+  | 'mobileAddItem'
+  | 'license'
+  | 'founder';
 
 export type TableStatus = 'empty' | 'reserved' | 'occupied' | 'paying' | 'attention';
 export type OrderStatus = 'Open' | 'Paid' | 'Voided' | 'New';

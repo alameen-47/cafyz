@@ -10,6 +10,7 @@ const ROLE_COLORS: Record<Role, string> = {
   cashier: '#2ecc8a',
   waiter:  '#60a5fa',
   kitchen: '#f0a500',
+  founder: '#ef4444',
 };
 
 export function LoginPanel() {
@@ -180,6 +181,22 @@ export function LoginPanel() {
               Waiter mobile
             </button>
           </div>
+          <button
+            type="button"
+            className="login-founder-btn"
+            disabled={busy}
+            style={{ marginTop: 12 }}
+            onClick={async () => {
+              setBusy(true); setLocalErr(''); clearError();
+              try {
+                await login('founder@cafyz.io', 'cafyz-founder-2026');
+                navigate('/founder');
+              } catch (e) { setLocalErr((e as Error).message ?? 'Login failed'); }
+              finally { setBusy(false); }
+            }}
+          >
+            ★ Cafyz Founder Login
+          </button>
         </div>
       </section>
 

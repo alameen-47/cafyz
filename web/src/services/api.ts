@@ -141,6 +141,26 @@ export const dashboardApi = {
   revenue: () => get<ApiRevenueRow[]>('/api/dashboard/revenue'),
 };
 
+// ── Licenses ──────────────────────────────────────────────────────────────────
+export const licensesApi = {
+  mine:     ()                                                             => get<{ plan: string; license: ApiLicenseKey | null }>('/api/licenses/mine'),
+  list:     ()                                                             => get<ApiLicenseKey[]>('/api/licenses'),
+  generate: (d: { plan: string; note?: string; expires_at?: string; quantity?: number }) =>
+    post<ApiLicenseKey | ApiLicenseKey[]>('/api/licenses', d),
+  activate: (key_code: string)                                            => post<{ success: boolean; plan: string; activated_at: string }>('/api/licenses/activate', { key_code }),
+  revoke:   (id: string)                                                  => del(`/api/licenses/${id}`),
+};
+
+// ── Founder ───────────────────────────────────────────────────────────────────
+export const founderApi = {
+  restaurants:    ()                                                                    => get<ApiFounderRestaurant[]>('/api/founder/restaurants'),
+  stats:          ()                                                                    => get<ApiFounderStats>('/api/founder/stats'),
+  setPlan:        (restaurantId: string, plan: string)                                 => patch<ApiRestaurant>(`/api/founder/restaurants/${restaurantId}/plan`, { plan }),
+  planConfig:     ()                                                                    => get<ApiPlanConfig[]>('/api/founder/plan-config'),
+  updatePlanConfig: (plan: string, d: Partial<{ panels_json: string; label: string; description: string; price_monthly: number }>) =>
+    put<ApiPlanConfig>(`/api/founder/plan-config/${plan}`, d),
+};
+
 // ── Response / Entity Types ───────────────────────────────────────────────────
 export interface LoginResponse {
   token: string;
@@ -226,4 +246,25 @@ export interface CreateMenuItemPayload {
 export interface CreateKdsTicketPayload {
   order_id: string; table_name: string; server_name: string; covers?: number; vip?: boolean;
   items: { name: string; qty: number; station?: string; mods?: string[]; alert?: boolean }[];
+}
+
+export interface ApiLicenseKey {
+  id: string; key_code: string; plan: string; restaurant_id?: string; restaurant_name?: string;
+  activated_at?: string; expires_at?: string; is_active: number; note?: string; created_at: string;
+}
+
+export interface ApiFounderRestaurant {
+  id: string; name: string; slug: string; plan: string; timezone: string; created_at: string;
+  user_count: number; active_key?: string;
+}
+
+export interface ApiFounderStats {
+  restaurants_by_plan: { plan: string; count: number }[];
+  license_keys: { total: number; activated: number };
+  total_users: number;
+}
+
+export interface ApiPlanConfig {
+  plan: string; panels_json: string; label: string; description: string;
+  price_monthly: number; updated_at: string;
 }

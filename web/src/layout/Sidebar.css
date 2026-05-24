@@ -145,6 +145,39 @@
 
 .sidebar-logout:hover { border-color: var(--danger); color: var(--danger); }
 
+/* ── Plan badge ─────────────────────────────────────────────────────────────── */
+.sidebar-plan-badge {
+  display: inline-block;
+  margin-top: 3px;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  padding: 1px 6px;
+  border-radius: 100px;
+}
+
+/* ── Locked items ────────────────────────────────────────────────────────────── */
+.sidebar-locked-group { margin-top: 10px; padding-top: 10px; border-top: 0.5px solid var(--line); }
+.sidebar-locked-label {
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: var(--text3);
+  padding: 0 12px;
+  margin-bottom: 4px;
+}
+.sidebar-nav-item.locked {
+  opacity: 0.4;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.sidebar-nav-item.locked:hover { opacity: 0.7; background: var(--hover); }
+.sidebar-lock { font-size: 10px; }
+
 /* ── Light-mode overrides ─────────────────────────────────────────────────── */
 [data-theme='light'] .sidebar-nav-item {
   color: var(--text2);

@@ -3,9 +3,9 @@ import { usersApi, type ApiUser } from '../services/api';
 import { useAuth, ROLE_LABELS, type Role } from '../context/AuthContext';
 import './RolesPanel.css';
 
-const ROLES: Exclude<Role, 'owner'>[] = ['manager', 'cashier', 'waiter', 'kitchen'];
+const ROLES: Exclude<Role, 'owner' | 'founder'>[] = ['manager', 'cashier', 'waiter', 'kitchen'];
 
-const ROLE_DESC: Record<Exclude<Role, 'owner'>, string> = {
+const ROLE_DESC: Record<Exclude<Role, 'owner' | 'founder'>, string> = {
   manager:  'Full access — all panels, role management, reports, and settings.',
   cashier:  'POS, inventory, reports, and role management access.',
   waiter:   'Floor plan, table management, and mobile order entry.',
@@ -18,12 +18,13 @@ const ROLE_COLOR: Record<Role, string> = {
   cashier: 'var(--success)',
   waiter:  '#60a5fa',
   kitchen: 'var(--warning)',
+  founder: '#ef4444',
 };
 
 const STATUS_COLOR = { active: 'var(--success)', break: 'var(--warning)', off: 'var(--text3)' };
 
 type DraftUser = {
-  name: string; email: string; role: Exclude<Role,'owner'>;
+  name: string; email: string; role: Exclude<Role,'owner'|'founder'>;
   status: 'active' | 'break' | 'off'; start_time: string; pin: string;
 };
 
@@ -57,7 +58,7 @@ export function RolesPanel() {
   // ── Edit ──────────────────────────────────────────────────────────────────
   function startEdit(s: ApiUser) {
     setEditId(s.id);
-    setDraft({ name: s.name, email: s.email, role: s.role as Exclude<Role,'owner'>,
+    setDraft({ name: s.name, email: s.email, role: s.role as Exclude<Role,'owner'|'founder'>,
                status: s.status, start_time: s.start_time, pin: '' });
     setAdding(false);
   }

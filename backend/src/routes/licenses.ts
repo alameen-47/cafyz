@@ -1,0 +1,127 @@
+import { Router } from 'express';
+import { z } from 'zod';
+import { randomBytes } from 'crypto';
+import { getDb } from '../db.js';
+import { requireAuth, type AuthRequest } from '../middleware/auth.js';
+import { requireRole } from '../middleware/rbac.js';
+import { uid } from '../utils.js';
+
+const router = Router();
+
+function generateKeyCode(plan: string): string {
+  const prefix = plan.toUpperCase().slice(0, 3);
+  const rand = randomBytes(4).toString('hex').toUpperCase();
+  return `CAFYZ-${prefix}-${rand}`;
+}
+
+// POST /api/licenses — founder generates a key
+router.post('/', requireAuth, requireRole('founder'), async (req: AuthRequest, res, next) => {
+  try {
+    const data = z.object({
+      plan:       z.enum(['basic','pro','premium']),
+      expires_at: z.string().optional(),
+      note:       z.string().optional(),
+      quantity:   z.number().int().min(1).max(50).optional(),
+    }).parse(req.body);
+
+    const qty = data.quantity ?? 1;
+    const created = [];
+    for (let i = 0; i < qty; i++) {
+      const id = uid();
+      const keyCode = generateKeyCode(data.plan);
+      await getDb().execute({
+        sql: `INSERT INTO license_keys(id,key_code,plan,expires_at,note) VALUES(?,?,?,?,?)`,
+        args: [id, keyCode, data.plan, data.expires_at ?? null, data.note ?? null],
+      });
+      created.push({ id, key_code: keyCode, plan: data.plan, expires_at: data.expires_at ?? null, note: data.note ?? null });
+    }
+    res.status(201).json(qty === 1 ? created[0] : created);
+  } catch (e) { next(e); }
+});
+
+// GET /api/licenses — founder lists all keys
+router.get('/', requireAuth, requireRole('founder'), async (_req, res, next) => {
+  try {
+    const rows = await getDb().execute(`
+      SELECT lk.*, r.name as restaurant_name
+      FROM license_keys lk
+      LEFT JOIN restaurants r ON r.id = lk.restaurant_id
+      ORDER BY lk.created_at DESC
+    `);
+    res.json(rows.rows);
+  } catch (e) { next(e); }
+});
+
+// GET /api/licenses/mine — current restaurant's active license
+router.get('/mine', requireAuth, async (req: AuthRequest, res, next) => {
+  try {
+    const rid = req.user!.restaurant_id;
+    const [restRow, licRow] = await Promise.all([
+      getDb().execute({ sql: 'SELECT plan FROM restaurants WHERE id=?', args: [rid] }),
+      getDb().execute({
+        sql: `SELECT * FROM license_keys WHERE restaurant_id=? AND is_active=1 ORDER BY activated_at DESC LIMIT 1`,
+        args: [rid],
+      }),
+    ]);
+    res.json({
+      plan:    restRow.rows[0]?.plan ?? 'basic',
+      license: licRow.rows[0] ?? null,
+    });
+  } catch (e) { next(e); }
+});
+
+// POST /api/licenses/activate — restaurant owner/manager activates a key
+router.post('/activate', requireAuth, async (req: AuthRequest, res, next) => {
+  try {
+    const { key_code } = z.object({ key_code: z.string().min(1) }).parse(req.body);
+    const rid = req.user!.restaurant_id;
+
+    if (!['owner','manager'].includes(req.user!.role)) {
+      res.status(403).json({ error: 'Only owners or managers can activate license keys.' });
+      return;
+    }
+
+    const db = getDb();
+    const row = await db.execute({
+      sql: `SELECT * FROM license_keys WHERE key_code=? AND is_active=1 AND restaurant_id IS NULL`,
+      args: [key_code.trim().toUpperCase()],
+    });
+    if (!row.rows.length) {
+      res.status(400).json({ error: 'Invalid or already-used license key.' });
+      return;
+    }
+    const key = row.rows[0] as Record<string, unknown>;
+
+    // Check expiry
+    if (key.expires_at && new Date(String(key.expires_at)) < new Date()) {
+      res.status(400).json({ error: 'This license key has expired.' });
+      return;
+    }
+
+    const now = new Date().toISOString();
+    await db.execute({
+      sql: `UPDATE license_keys SET restaurant_id=?, activated_at=? WHERE id=?`,
+      args: [rid, now, String(key.id)],
+    });
+    await db.execute({
+      sql: `UPDATE restaurants SET plan=? WHERE id=?`,
+      args: [String(key.plan), rid],
+    });
+
+    const updated = await db.execute({ sql: 'SELECT plan FROM restaurants WHERE id=?', args: [rid] });
+    res.json({ success: true, plan: updated.rows[0]?.plan, activated_at: now });
+  } catch (e) { next(e); }
+});
+
+// DELETE /api/licenses/:id — founder revokes a key
+router.delete('/:id', requireAuth, requireRole('founder'), async (req, res, next) => {
+  try {
+    await getDb().execute({
+      sql: `UPDATE license_keys SET is_active=0 WHERE id=?`,
+      args: [req.params.id],
+    });
+    res.status(204).end();
+  } catch (e) { next(e); }
+});
+
+export default router;

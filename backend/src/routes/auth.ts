@@ -19,7 +19,7 @@ router.post('/login', async (req, res, next) => {
     const { email, password } = LoginSchema.parse(req.body);
     const db = getDb();
     const row = await db.execute({
-      sql: `SELECT u.*, r.name as restaurant_name
+      sql: `SELECT u.*, r.name as restaurant_name, r.plan as restaurant_plan
             FROM users u
             JOIN restaurants r ON r.id = u.restaurant_id
             WHERE u.email=?`,
@@ -39,6 +39,7 @@ router.post('/login', async (req, res, next) => {
       token,
       restaurant_id: user.restaurant_id,
       restaurant_name: user.restaurant_name,
+      restaurant_plan: user.restaurant_plan,
       user: { id: user.id, name: user.name, initials: user.initials, email: user.email, role: user.role, status: user.status },
     });
   } catch (e) { next(e); }
@@ -64,10 +65,13 @@ router.post('/pin', async (req, res, next) => {
           email: String(u.email),
           restaurant_id: String(u.restaurant_id),
         });
+        const restRow = await db.execute({ sql: 'SELECT plan FROM restaurants WHERE id=?', args: [String(u.restaurant_id)] });
+        const restaurantPlan = restRow.rows[0]?.plan ?? 'basic';
         res.json({
           token,
           restaurant_id: u.restaurant_id,
           restaurant_name: u.restaurant_name,
+          restaurant_plan: restaurantPlan,
           user: { id: u.id, name: u.name, initials: u.initials, email: u.email, role: u.role, status: u.status },
         });
         return;

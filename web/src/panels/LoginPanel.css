@@ -347,3 +347,21 @@
 [data-theme='light'] .login-right {
   background: var(--bg0);
 }
+
+.login-founder-btn {
+  width: 100%;
+  padding: 10px;
+  background: linear-gradient(135deg, #7f1d1d 0%, #991b1b 100%);
+  border: 1px solid rgba(239,68,68,0.35);
+  border-radius: 6px;
+  color: #fca5a5;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+.login-founder-btn:hover { background: linear-gradient(135deg, #991b1b 0%, #b91c1c 100%); border-color: rgba(239,68,68,0.6); }
+.login-founder-btn:disabled { opacity: 0.5; cursor: default; }
+

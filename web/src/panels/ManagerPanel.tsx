@@ -6,16 +6,17 @@ import {
   type ApiReservation, type ApiRevenueRow, type ApiTable,
 } from '../services/api';
 import { useAuth } from '../context/AuthContext';
+import { PLAN_HAS_RESERVATIONS } from '../config/planAccess';
 import { RolesPanel } from './RolesPanel';
 import './ManagerPanel.css';
 
 type Section = 'overview' | 'inventory' | 'tables' | 'reservations' | 'staff' | 'reports' | 'roles';
 
-const SECTIONS: { id: Section; label: string }[] = [
+const BASE_SECTIONS: { id: Section; label: string; minPlan?: 'premium' }[] = [
   { id: 'overview',     label: 'Overview'       },
   { id: 'inventory',   label: 'Inventory'       },
   { id: 'tables',      label: 'Tables'          },
-  { id: 'reservations',label: 'Reservations'    },
+  { id: 'reservations',label: 'Reservations',    minPlan: 'premium' },
   { id: 'staff',       label: 'Staff'           },
   { id: 'reports',     label: 'Reports'         },
   { id: 'roles',       label: 'Role Management' },
@@ -728,6 +729,11 @@ function Reports() {
 
 // ── Manager Panel shell ───────────────────────────────────────────────────────
 export function ManagerPanel({ section: initialSection }: { section?: string }) {
+  const { user } = useAuth();
+  const plan = user?.plan ?? 'basic';
+  const hasReservations = PLAN_HAS_RESERVATIONS[plan] ?? false;
+  const SECTIONS = BASE_SECTIONS.filter(s => !s.minPlan || hasReservations);
+
   const sectionMap: Record<string, Section> = {
     inventory:    'inventory',
     tables:       'tables',

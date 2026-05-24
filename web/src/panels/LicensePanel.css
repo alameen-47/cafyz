@@ -1,0 +1,140 @@
+.lic-root {
+  padding: 32px 40px;
+  max-width: 900px;
+}
+
+.lic-header { margin-bottom: 28px; }
+.lic-title  { font-size: 28px; margin: 4px 0 6px; }
+.lic-sub    { font-size: 13px; color: var(--text2); display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.lic-loading { color: var(--text2); font-size: 13px; margin-top: 16px; }
+
+.lic-badge {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 100px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+/* Active license card */
+.lic-active-card {
+  padding: 16px 20px;
+  margin-bottom: 20px;
+  border-left: 3px solid var(--gold);
+}
+.lic-active-top {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+.lic-key-code {
+  font-size: 14px;
+  color: var(--text1);
+  letter-spacing: 1px;
+  background: var(--hover);
+  padding: 3px 10px;
+  border-radius: 4px;
+}
+.lic-active-meta {
+  display: flex;
+  gap: 20px;
+  font-size: 12px;
+  color: var(--text2);
+}
+
+/* Activate form */
+.lic-activate-card {
+  padding: 20px;
+  margin-bottom: 28px;
+}
+.lic-form-row {
+  display: flex;
+  gap: 10px;
+  align-items: stretch;
+}
+.lic-input {
+  flex: 1;
+  background: var(--surface2);
+  border: 1px solid var(--line);
+  color: var(--text1);
+  padding: 10px 14px;
+  border-radius: 6px;
+  font-size: 14px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  transition: border-color 0.15s;
+}
+.lic-input:focus  { outline: none; border-color: var(--gold); }
+.lic-activate-btn { white-space: nowrap; }
+.lic-error   { color: var(--danger); font-size: 12px; margin-top: 8px; }
+.lic-success { color: var(--success); font-size: 12px; margin-top: 8px; }
+
+/* Plan comparison grid */
+.lic-plans-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+.lic-plan-card {
+  padding: 20px;
+  position: relative;
+  border-top: 3px solid var(--plan-color, var(--line));
+  transition: box-shadow 0.15s;
+}
+.lic-plan-card.current {
+  box-shadow: 0 0 0 1.5px var(--plan-color, var(--gold));
+}
+.lic-current-badge {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--plan-color, var(--gold));
+  background: color-mix(in srgb, var(--plan-color, var(--gold)) 15%, transparent);
+  padding: 2px 8px;
+  border-radius: 100px;
+}
+.lic-plan-name {
+  font-size: 20px;
+  color: var(--plan-color, var(--text1));
+  margin: 0 0 16px;
+}
+
+.lic-features-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.lic-feature-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+}
+.lic-feature-item.yes { color: var(--text1); }
+.lic-feature-item.no  { color: var(--text3); }
+.lic-feature-dot {
+  font-size: 11px;
+  width: 16px;
+  flex-shrink: 0;
+}
+.lic-feature-item.yes .lic-feature-dot { color: var(--plan-color, var(--success)); }
+.lic-feature-item.no  .lic-feature-dot { color: var(--text3); }
+
+.lic-contact-note {
+  font-size: 12px;
+  color: var(--text3);
+  text-align: center;
+  margin-top: 8px;
+}
