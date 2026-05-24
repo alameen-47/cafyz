@@ -139,18 +139,22 @@ class EscPosBuilder {
 // ── Receipt Data ──────────────────────────────────────────────────────────────
 
 export interface ReceiptData {
-  restaurantName: string;
-  tableName:      string;
-  serverName?:    string;
-  covers?:        number;
-  items:          { name: string; qty: number; price: number }[];
-  subtotal:       number;
-  service:        number;
-  tax:            number;
-  total:          number;
-  payMethod?:     string;
-  note?:          string;
-  dateStr?:       string;
+  restaurantName:    string;
+  restaurantLogo?:   string | null; // base64 data URL from profile
+  restaurantAddress?: string;       // formatted single-line address
+  restaurantPhone?:  string;
+  restaurantWebsite?: string;
+  tableName:         string;
+  serverName?:       string;
+  covers?:           number;
+  items:             { name: string; qty: number; price: number }[];
+  subtotal:          number;
+  service:           number;
+  tax:               number;
+  total:             number;
+  payMethod?:        string;
+  note?:             string;
+  dateStr?:          string;
 }
 
 // Build ESC/POS bytes for a receipt (32-char width for 58mm, 48-char for 80mm)
@@ -168,6 +172,10 @@ export function buildReceipt(data: ReceiptData, width = 32): Uint8Array {
   // Header
   b.alignCenter()
    .boldOn().bigOn().text(data.restaurantName).bigOff().boldOff().nl(2);
+
+  if (data.restaurantAddress) b.text(data.restaurantAddress).nl();
+  if (data.restaurantPhone)   b.text(data.restaurantPhone).nl();
+  if (data.restaurantAddress || data.restaurantPhone) b.nl();
 
   if (data.tableName) b.text(`Table: ${data.tableName}`).nl();
   if (data.serverName) b.text(`Server: ${data.serverName}`).nl();
@@ -205,7 +213,7 @@ export function buildReceipt(data: ReceiptData, width = 32): Uint8Array {
   // Footer
   b.nl().alignCenter()
    .text('Thank you for your visit!').nl()
-   .text('cafyz.com').nl(2);
+   .text(data.restaurantWebsite || 'cafyz.com').nl(2);
 
   b.feed(4).cut();
 
@@ -245,7 +253,11 @@ export function buildReceiptHTML(data: ReceiptData): string {
 </head>
 <body>
 <div class="center">
+  ${data.restaurantLogo ? `<img src="${data.restaurantLogo}" alt="${data.restaurantName}" style="max-width:80px;max-height:80px;object-fit:contain;margin-bottom:6px;display:block;margin-left:auto;margin-right:auto">` : ''}
   <h1>${data.restaurantName}</h1>
+  ${data.restaurantAddress ? `<p style="font-size:10px;margin:1px 0">${data.restaurantAddress}</p>` : ''}
+  ${data.restaurantPhone ? `<p style="font-size:10px;margin:1px 0">Tel: ${data.restaurantPhone}</p>` : ''}
+  ${data.restaurantWebsite ? `<p style="font-size:10px;margin:1px 0">${data.restaurantWebsite}</p>` : ''}
   ${data.tableName ? `<p>Table: ${data.tableName}</p>` : ''}
   ${data.serverName ? `<p>Server: ${data.serverName}</p>` : ''}
   ${data.covers ? `<p>Covers: ${data.covers}</p>` : ''}
@@ -270,7 +282,7 @@ ${data.payMethod ? `<hr><p class="center">Paid by ${data.payMethod}</p>` : ''}
 <hr>
 <div class="center">
   <p>Thank you for your visit!</p>
-  <p>cafyz.com</p>
+  <p>${data.restaurantWebsite || 'cafyz.com'}</p>
 </div>
 </body>
 </html>`;

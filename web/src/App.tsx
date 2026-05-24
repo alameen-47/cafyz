@@ -9,10 +9,12 @@ import { MenuPanel } from './panels/MenuPanel';
 import { MobileOrdersPanel } from './panels/MobileOrdersPanel';
 import { MobileTablePanel } from './panels/MobileTablePanel';
 import { RolesPanel } from './panels/RolesPanel';
+import { ProfilePanel } from './panels/ProfilePanel';
 import { useAuth } from './context/AuthContext';
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
-  const { user } = useAuth();
+  const { user, loading } = useAuth();
+  if (loading) return null;
   if (!user) return <Navigate to="/login" replace />;
   return <>{children}</>;
 }
@@ -32,6 +34,7 @@ export default function App() {
         <Route path="/kds"       element={<KDSPanel />} />
         <Route path="/tables"    element={<WaiterPanel />} />
         <Route path="/roles"     element={<RolesPanel />} />
+        <Route path="/profile"   element={<ProfilePanel />} />
       </Route>
 
       <Route path="/mobile/orders"   element={<RequireAuth><MobileOrdersPanel /></RequireAuth>} />

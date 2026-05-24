@@ -49,8 +49,8 @@ export const ROLE_DEFAULT_PATH: Record<Role, string> = {
 };
 
 export const ROLE_NAV: Record<Role, Screen[]> = {
-  owner:   ['manager', 'pos', 'waiter', 'kds', 'menu', 'inventory', 'staff', 'reports', 'roles'],
-  manager: ['manager', 'pos', 'waiter', 'kds', 'menu', 'inventory', 'staff', 'reports', 'roles'],
+  owner:   ['manager', 'pos', 'waiter', 'kds', 'menu', 'inventory', 'staff', 'reports', 'roles', 'profile'],
+  manager: ['manager', 'pos', 'waiter', 'kds', 'menu', 'inventory', 'staff', 'reports', 'roles', 'profile'],
   cashier: ['pos', 'menu', 'inventory', 'reports', 'roles'],
   waiter:  ['waiter'],
   kitchen: ['kds'],

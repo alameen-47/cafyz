@@ -132,4 +132,19 @@ export async function runMigrations() {
       updated_at    TEXT NOT NULL DEFAULT (datetime('now'))
     );
   `);
+
+  // Profile columns added via ALTER TABLE — silently ignored if they already exist
+  const profileMigrations = [
+    "ALTER TABLE restaurants ADD COLUMN logo TEXT",
+    "ALTER TABLE restaurants ADD COLUMN address_line1 TEXT NOT NULL DEFAULT ''",
+    "ALTER TABLE restaurants ADD COLUMN address_line2 TEXT NOT NULL DEFAULT ''",
+    "ALTER TABLE restaurants ADD COLUMN city TEXT NOT NULL DEFAULT ''",
+    "ALTER TABLE restaurants ADD COLUMN postcode TEXT NOT NULL DEFAULT ''",
+    "ALTER TABLE restaurants ADD COLUMN country TEXT NOT NULL DEFAULT ''",
+    "ALTER TABLE restaurants ADD COLUMN phone TEXT NOT NULL DEFAULT ''",
+    "ALTER TABLE restaurants ADD COLUMN website TEXT NOT NULL DEFAULT ''",
+  ];
+  for (const sql of profileMigrations) {
+    try { await db.execute(sql); } catch { /* column already exists */ }
+  }
 }

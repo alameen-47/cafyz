@@ -11,6 +11,7 @@ export const ROUTES: Record<Screen, string> = {
   staff:            '/staff',
   reports:          '/reports',
   roles:            '/roles',
+  profile:          '/profile',
   mobileOrders:     '/mobile/orders',
   mobileTableDetail:'/mobile/table',
   mobileAddItem:    '/mobile/add-item',
@@ -29,7 +30,7 @@ export function screenFromPath(pathname: string): Screen {
 }
 
 export const DESKTOP_SHELL_SCREENS: Screen[] = [
-  'manager', 'pos', 'kds', 'waiter', 'menu', 'inventory', 'staff', 'reports', 'roles',
+  'manager', 'pos', 'kds', 'waiter', 'menu', 'inventory', 'staff', 'reports', 'roles', 'profile',
 ];
 
 export const MOBILE_SCREENS: Screen[] = [

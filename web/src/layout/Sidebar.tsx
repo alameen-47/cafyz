@@ -15,6 +15,7 @@ const ALL_NAV: { id: Screen; label: string; badge?: string }[] = [
   { id: 'staff',     label: 'Staff' },
   { id: 'reports',   label: 'Reports' },
   { id: 'roles',     label: 'Role Management' },
+  { id: 'profile',   label: 'Restaurant Profile' },
 ];
 
 export function Sidebar({ active }: { active: Screen }) {

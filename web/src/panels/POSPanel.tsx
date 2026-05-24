@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { menuApi, ordersApi, tablesApi, type ApiMenuItem, type ApiTable } from '../services/api';
+import { menuApi, ordersApi, tablesApi, restaurantApi, type ApiMenuItem, type ApiTable, type ApiRestaurant } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import {
   connectBluetooth, connectUSB, disconnectPrinter, print as printReceipt,
@@ -25,6 +25,7 @@ export function POSPanel() {
 
   const [menu,          setMenu]          = useState<ApiMenuItem[]>([]);
   const [tables,        setTables]        = useState<ApiTable[]>([]);
+  const [restaurant,    setRestaurant]    = useState<ApiRestaurant | null>(null);
   const [cat,           setCat]           = useState('mains');
   const [search,        setSearch]        = useState('');
   const [cart,          setCart]          = useState<CartItem[]>([]);
@@ -54,8 +55,8 @@ export function POSPanel() {
   }, []);
 
   useEffect(() => {
-    Promise.all([menuApi.list(), tablesApi.list()])
-      .then(([m, t]) => { setMenu(m); setTables(t); })
+    Promise.all([menuApi.list(), tablesApi.list(), restaurantApi.me()])
+      .then(([m, t, r]) => { setMenu(m); setTables(t); setRestaurant(r); })
       .catch(e => setError(e.message))
       .finally(() => setLoading(false));
   }, []);
@@ -225,12 +226,23 @@ export function POSPanel() {
     const svc = comped ? 0 : service;
     const tx  = comped ? 0 : tax;
     const tot = comped ? 0 : total;
+
+    const addrParts = [
+      restaurant?.address_line1, restaurant?.address_line2,
+      restaurant?.city, restaurant?.postcode, restaurant?.country,
+    ].filter(Boolean);
+    const restaurantAddress = addrParts.length ? addrParts.join(', ') : undefined;
+
     return {
-      restaurantName: user?.restaurant_name || 'Restaurant',
-      tableName:      tableObj?.name ?? selectedTable ?? '',
-      serverName:     user?.name,
-      covers:         tableObj?.covers || undefined,
-      items:          cart.map(c => ({ name: c.menuItem.name, qty: c.qty, price: c.menuItem.price })),
+      restaurantName:    restaurant?.name || user?.restaurant_name || 'Restaurant',
+      restaurantLogo:    restaurant?.logo ?? undefined,
+      restaurantAddress,
+      restaurantPhone:   restaurant?.phone || undefined,
+      restaurantWebsite: restaurant?.website || undefined,
+      tableName:         tableObj?.name ?? selectedTable ?? '',
+      serverName:        user?.name,
+      covers:            tableObj?.covers || undefined,
+      items:             cart.map(c => ({ name: c.menuItem.name, qty: c.qty, price: c.menuItem.price })),
       subtotal: s,
       service:  svc,
       tax:      tx,

@@ -1,0 +1,252 @@
+/* ─── Profile Panel ─────────────────────────────────────────────────────────── */
+
+.profile-root {
+  padding: 32px;
+  max-width: 780px;
+  margin: 0 auto;
+}
+
+.profile-loading {
+  color: var(--text2);
+  padding: 32px;
+}
+
+.profile-card {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 32px;
+}
+
+.profile-title {
+  font-size: 1.5rem;
+  margin: 0 0 4px;
+  color: var(--text1);
+}
+
+.profile-sub {
+  color: var(--text2);
+  font-size: 0.85rem;
+  margin: 0 0 28px;
+}
+
+/* ── Logo section ─────────────────────────────────────────────────────────── */
+
+.profile-logo-section {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  margin-bottom: 24px;
+}
+
+.profile-logo-preview {
+  width: 100px;
+  height: 100px;
+  border: 2px dashed var(--border);
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  overflow: hidden;
+  background: var(--surface);
+  transition: border-color 0.15s;
+}
+.profile-logo-preview:hover {
+  border-color: var(--accent);
+}
+.profile-logo-preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.profile-logo-placeholder {
+  font-size: 0.75rem;
+  color: var(--text2);
+  text-align: center;
+  padding: 8px;
+}
+
+.profile-logo-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.profile-logo-hint {
+  font-size: 0.75rem;
+  color: var(--text2);
+  margin: 0;
+}
+
+/* ── Divider ──────────────────────────────────────────────────────────────── */
+
+.profile-divider {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 24px 0;
+}
+
+.profile-section-label {
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  color: var(--text2);
+  margin-bottom: 16px;
+}
+
+/* ── Form grid ────────────────────────────────────────────────────────────── */
+
+.profile-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 8px;
+}
+
+.profile-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.profile-field-full {
+  grid-column: 1 / -1;
+}
+
+.profile-field span {
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--text2);
+  letter-spacing: 0.02em;
+}
+
+.profile-field input {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-size: 0.9rem;
+  color: var(--text1);
+  outline: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
+  font-family: inherit;
+}
+.profile-field input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 20%, transparent);
+}
+.profile-field input::placeholder {
+  color: var(--text2);
+  opacity: 0.6;
+}
+
+/* ── Buttons ──────────────────────────────────────────────────────────────── */
+
+.profile-actions {
+  margin-top: 24px;
+}
+
+.profile-btn-primary {
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: 11px 28px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+.profile-btn-primary:hover:not(:disabled) { opacity: 0.88; }
+.profile-btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.profile-btn-secondary {
+  background: var(--surface);
+  color: var(--text1);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 16px;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.profile-btn-secondary:hover { background: var(--panel); }
+
+.profile-btn-danger {
+  background: transparent;
+  color: #e55;
+  border: 1px solid #e55;
+  border-radius: 8px;
+  padding: 8px 16px;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+.profile-btn-danger:hover { background: #e55; color: #fff; }
+
+/* ── Messages ─────────────────────────────────────────────────────────────── */
+
+.profile-error {
+  color: #e55;
+  font-size: 0.85rem;
+  margin: 12px 0 0;
+}
+
+.profile-success {
+  color: #2ecc8a;
+  font-size: 0.85rem;
+  margin: 12px 0 0;
+}
+
+/* ── Receipt preview ──────────────────────────────────────────────────────── */
+
+.profile-receipt-preview {
+  background: #fff;
+  color: #111;
+  font-family: 'Courier New', monospace;
+  font-size: 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 16px;
+  max-width: 260px;
+  margin: 0 auto;
+  text-align: center;
+}
+
+.receipt-preview-logo {
+  max-width: 72px;
+  max-height: 72px;
+  object-fit: contain;
+  display: block;
+  margin: 0 auto 8px;
+}
+
+.receipt-preview-name {
+  font-size: 15px;
+  font-weight: bold;
+  margin: 0 0 4px;
+}
+
+.receipt-preview-addr {
+  font-size: 10px;
+  color: #444;
+  margin: 2px 0;
+}
+
+.receipt-preview-divider {
+  border-top: 1px dashed #aaa;
+  margin: 8px 0;
+}
+
+.receipt-preview-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  padding: 1px 0;
+}
+
+.receipt-preview-total {
+  font-weight: bold;
+  font-size: 13px;
+}

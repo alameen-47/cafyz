@@ -60,18 +60,37 @@ router.get('/me', requireAuth, async (req: AuthRequest, res, next) => {
   } catch (e) { next(e); }
 });
 
-// PUT /api/restaurants/me — requireAuth, updates name/timezone
+// PUT /api/restaurants/me — requireAuth, updates name/timezone/profile
 router.put('/me', requireAuth, async (req: AuthRequest, res, next) => {
   try {
     const rid = req.user!.restaurant_id;
     const data = z.object({
-      name:     z.string().min(1).optional(),
-      timezone: z.string().optional(),
+      name:          z.string().min(1).optional(),
+      timezone:      z.string().optional(),
+      logo:          z.string().optional().nullable(),
+      address_line1: z.string().optional(),
+      address_line2: z.string().optional(),
+      city:          z.string().optional(),
+      postcode:      z.string().optional(),
+      country:       z.string().optional(),
+      phone:         z.string().optional(),
+      website:       z.string().optional(),
     }).parse(req.body);
 
     const sets: string[] = []; const args: any[] = [];
-    if (data.name     !== undefined) { sets.push('name=?');     args.push(data.name); }
-    if (data.timezone !== undefined) { sets.push('timezone=?'); args.push(data.timezone); }
+    const add = (col: string, val: any) => { sets.push(`${col}=?`); args.push(val); };
+
+    if (data.name          !== undefined) add('name',          data.name);
+    if (data.timezone      !== undefined) add('timezone',      data.timezone);
+    if (data.logo          !== undefined) add('logo',          data.logo);
+    if (data.address_line1 !== undefined) add('address_line1', data.address_line1);
+    if (data.address_line2 !== undefined) add('address_line2', data.address_line2);
+    if (data.city          !== undefined) add('city',          data.city);
+    if (data.postcode      !== undefined) add('postcode',      data.postcode);
+    if (data.country       !== undefined) add('country',       data.country);
+    if (data.phone         !== undefined) add('phone',         data.phone);
+    if (data.website       !== undefined) add('website',       data.website);
+
     if (!sets.length) { res.status(400).json({ error: 'Nothing to update' }); return; }
     args.push(rid);
     await getDb().execute({ sql: `UPDATE restaurants SET ${sets.join(',')} WHERE id=?`, args });

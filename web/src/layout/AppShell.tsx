@@ -8,6 +8,7 @@ const CRUMBS: Partial<Record<Screen, [string, string]>> = {
   staff:     ['Operations', 'Staff'],
   reports:   ['Operations', 'Reports'],
   roles:     ['Operations', 'Role Management'],
+  profile:   ['Settings', 'Restaurant Profile'],
   pos:       ['Service', 'Point of Sale'],
   menu:      ['Service', 'Menu'],
   kds:       ['Kitchen', 'Expedite'],
