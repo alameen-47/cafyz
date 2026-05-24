@@ -1,35 +1,43 @@
 /* ─────────────────────────────────────────────────────────────────────────────
-   CAFYZ · DESIGN SYSTEM
+   CAFYZ · DESIGN SYSTEM  —  Cafyz Logo Palette
    Two themes: dark (default) and light.
    Applied via  data-theme="dark" | data-theme="light"  on <html>.
-   All component CSS uses these variables — toggle one attribute, everything shifts.
+
+   Colours extracted directly from the official Cafyz logo:
+     Cyan edge     #00E8FF  (specular highlight of "ca" letterforms)
+     Cyan mid      #00AEDB  (body fill of the cyan gradient sweep)
+     Cobalt        #0077B6  (shadow face, deep blue of the shield arc)
+     Chrome high   #E0EEF5  (lightest silver stop on "fyz" chrome ramp)
+     Chrome mid    #8AAFC0  (mid silver — the flat read of chrome letters)
+     Navy base     #020B1E  (shield bottom point / deepest shadow)
+     Navy panel    #071530  (main dark surface)
 ───────────────────────────────────────────────────────────────────────────── */
 
-/* ── Dark theme (default) ────────────────────────────────────────────────── */
+/* ── Dark theme (default) — deep navy + cyan glow ────────────────────────── */
 :root,
 [data-theme='dark'] {
-  /* Backgrounds — deep purple-black gradient layers */
-  --bg0:          #07050f;
-  --bg1:          #110d22;
-  --bg2:          #0c0919;
-  --bg3:          #1c1638;
-  --bg-sidebar:   #09060f;
-  --bg-glass:     rgba(17, 13, 34, 0.72);
+  /* Backgrounds — navy from the logo shield base */
+  --bg0:          #020B1E;
+  --bg1:          #071530;
+  --bg2:          #0C1E40;
+  --bg3:          #132448;
+  --bg-sidebar:   #050E22;
+  --bg-glass:     rgba(5, 14, 34, 0.82);
 
-  /* Accent — vivid electric purple */
-  --gold:         #a78bfa;
-  --gold-dim:     #7c5de8;
-  --gold-soft:    #c4b5fd;
-  --gold-line:    rgba(167, 139, 250, 0.16);
-  --gold-line2:   rgba(167, 139, 250, 0.30);
-  --gold-bg:      rgba(167, 139, 250, 0.08);
-  --gold-glow:    0 0 24px rgba(167, 139, 250, 0.25);
+  /* Accent — cyan gradient from the "ca" letterforms */
+  --gold:         #00AEDB;   /* sky blue mid */
+  --gold-dim:     #0077B6;   /* cobalt deep */
+  --gold-soft:    #00D4F0;   /* electric cyan edge */
+  --gold-line:    rgba(0, 174, 219, 0.18);
+  --gold-line2:   rgba(0, 174, 219, 0.36);
+  --gold-bg:      rgba(0, 174, 219, 0.08);
+  --gold-glow:    0 0 24px rgba(0, 210, 240, 0.28);
 
-  /* Text */
-  --text0:        #f0edff;
-  --text1:        #b8b0d8;
-  --text2:        #7e77a4;
-  --text3:        #4e4870;
+  /* Text — chrome silver ramp from the "fyz" letterforms */
+  --text0:        #DFF0F8;   /* lightest chrome highlight */
+  --text1:        #8AAFC0;   /* silver-blue mid */
+  --text2:        #4E7A90;   /* muted steel */
+  --text3:        #254D65;   /* deep steel */
 
   /* Semantic */
   --success:      #2ecc8a;
@@ -40,72 +48,72 @@
   --line:         rgba(255, 255, 255, 0.05);
   --line2:        rgba(255, 255, 255, 0.09);
 
-  /* Gradient mesh stops (used in body::before) */
-  --mesh-a:       rgba(120, 40, 255, 0.10);
-  --mesh-b:       rgba(80, 0, 200, 0.07);
-  --mesh-c:       rgba(200, 100, 255, 0.05);
+  /* Gradient mesh — cyan/blue nebula matching logo glow */
+  --mesh-a:       rgba(0, 120, 220, 0.12);
+  --mesh-b:       rgba(0, 50,  160, 0.08);
+  --mesh-c:       rgba(0, 200, 240, 0.05);
 
-  /* Sidebar gradient */
-  --sidebar-grad: linear-gradient(170deg, #120b28 0%, #09060f 55%, #060310 100%);
+  /* Sidebar gradient — ultra-dark navy */
+  --sidebar-grad: linear-gradient(170deg, #0D2040 0%, #050E22 55%, #020810 100%);
 
-  /* Card gradient */
-  --card-bg:      linear-gradient(135deg, rgba(255,255,255,0.03) 0%, #110d22 100%);
-  --card-border:  rgba(167, 139, 250, 0.16);
+  /* Card gradient — faint cyan sheen on navy */
+  --card-bg:      linear-gradient(135deg, rgba(0,200,240,0.04) 0%, #071530 100%);
+  --card-border:  rgba(0, 174, 219, 0.16);
 
-  /* Button text on gold bg */
-  --on-gold:      #07050f;
+  /* Text on cyan button — dark navy for contrast */
+  --on-gold:      #020B1E;
 
   color-scheme: dark;
 }
 
-/* ── Light theme ─────────────────────────────────────────────────────────── */
+/* ── Light theme — white + cobalt blue ───────────────────────────────────── */
 [data-theme='light'] {
-  /* Backgrounds — clean white with distinguishable lavender-tinted layers */
-  --bg0:          #ede8fb;   /* page body — visible lavender-grey */
-  --bg1:          #ffffff;   /* primary surface: cards, panels */
-  --bg2:          #e8e1f8;   /* inputs, search bars, alt rows */
-  --bg3:          #ddd5f5;   /* deeper sections, pressed states */
-  --bg-sidebar:   #f4f0fe;   /* sidebar — distinct from white */
+  /* Backgrounds — crisp white with steel-blue tints */
+  --bg0:          #EAF4FA;
+  --bg1:          #FFFFFF;
+  --bg2:          #DCF0F8;
+  --bg3:          #C4E4F2;
+  --bg-sidebar:   #EFF8FC;
   --bg-glass:     rgba(255, 255, 255, 0.97);
 
-  /* Accent — deep vivid purple */
-  --gold:         #6d28d9;
-  --gold-dim:     #5b21b6;
-  --gold-soft:    #7c3aed;
-  --gold-line:    rgba(109, 40, 217, 0.22);   /* ↑ was 0.15 — now clearly visible */
-  --gold-line2:   rgba(109, 40, 217, 0.40);   /* ↑ was 0.28 */
-  --gold-bg:      rgba(109, 40, 217, 0.08);
-  --gold-glow:    0 0 18px rgba(109, 40, 217, 0.14);
+  /* Accent — cobalt for readability on white */
+  --gold:         #0077B6;
+  --gold-dim:     #005A8A;
+  --gold-soft:    #0099CC;
+  --gold-line:    rgba(0, 119, 182, 0.22);
+  --gold-line2:   rgba(0, 119, 182, 0.40);
+  --gold-bg:      rgba(0, 119, 182, 0.08);
+  --gold-glow:    0 0 18px rgba(0, 119, 182, 0.15);
 
-  /* Text — high-contrast scale */
-  --text0:        #0f0a1e;   /* near-black headings */
-  --text1:        #25184a;   /* body copy */
-  --text2:        #4e4172;   /* secondary labels — was #7263a0, much darker */
-  --text3:        #7360a8;   /* tertiary — was #a89dcc (too pale), now readable */
+  /* Text — navy scale */
+  --text0:        #020B1E;
+  --text1:        #0D2840;
+  --text2:        #2B5878;
+  --text3:        #4A7898;
 
   /* Semantic */
   --success:      #059669;
-  --warning:      #c97000;   /* slightly darker amber for light bg */
-  --danger:       #cc1f1f;   /* slightly darker red for light bg */
+  --warning:      #c97000;
+  --danger:       #cc1f1f;
 
-  /* Borders — strong enough to see on white */
-  --line:         rgba(0, 0, 0, 0.11);   /* ↑ was 0.06 */
-  --line2:        rgba(0, 0, 0, 0.18);   /* ↑ was 0.10 */
+  /* Borders */
+  --line:         rgba(0, 0, 0, 0.10);
+  --line2:        rgba(0, 0, 0, 0.18);
 
   /* Gradient mesh */
-  --mesh-a:       rgba(140, 80, 255, 0.06);
-  --mesh-b:       rgba(180, 120, 255, 0.05);
-  --mesh-c:       rgba(100, 60, 200, 0.04);
+  --mesh-a:       rgba(0, 119, 182, 0.06);
+  --mesh-b:       rgba(0, 150, 210, 0.05);
+  --mesh-c:       rgba(0,  90, 150, 0.04);
 
-  /* Sidebar gradient — tinted lavender so it reads as separate from main */
-  --sidebar-grad: linear-gradient(170deg, #ede8fb 0%, #f4f0fe 50%, #f9f7ff 100%);
+  /* Sidebar gradient — very light blue-white */
+  --sidebar-grad: linear-gradient(170deg, #EAF4FA 0%, #EFF8FC 50%, #F5FBFE 100%);
 
-  /* Card — full 1px border, noticeable shadow */
-  --card-bg:      #ffffff;
-  --card-border:  rgba(109, 40, 217, 0.22);   /* ↑ was 0.12 */
+  /* Card */
+  --card-bg:      #FFFFFF;
+  --card-border:  rgba(0, 119, 182, 0.22);
 
-  /* Button text on gold bg */
-  --on-gold:      #ffffff;
+  /* Text on cobalt button — white */
+  --on-gold:      #FFFFFF;
 
   color-scheme: light;
 }
@@ -147,7 +155,7 @@ body {
   transition: background-color 0.3s ease, color 0.3s ease;
 }
 
-/* Radial gradient mesh — only in dark mode, creates subtle purple nebula */
+/* Dark — cyan/blue nebula from logo glow */
 [data-theme='dark'] body::before {
   content: '';
   position: fixed;
@@ -160,7 +168,7 @@ body {
     radial-gradient(ellipse 50% 40% at 50%  50%, var(--mesh-c) 0%, transparent 70%);
 }
 
-/* Light mode uses a soft lavender radial */
+/* Light — soft blue radial wash */
 [data-theme='light'] body::before {
   content: '';
   position: fixed;
@@ -168,8 +176,8 @@ body {
   pointer-events: none;
   z-index: 0;
   background:
-    radial-gradient(ellipse 80% 50% at 0%   0%,   rgba(167,139,250,0.10) 0%, transparent 60%),
-    radial-gradient(ellipse 60% 40% at 100% 100%, rgba(124, 58,237,0.07) 0%, transparent 50%);
+    radial-gradient(ellipse 80% 50% at 0%   0%,   rgba(0, 174, 219, 0.08) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 40% at 100% 100%, rgba(0, 119, 182, 0.06) 0%, transparent 50%);
 }
 
 #root { position: relative; z-index: 1; }
@@ -254,7 +262,6 @@ a {
   background: var(--card-bg);
   border: 0.5px solid var(--card-border);
   border-radius: var(--radius-lg);
-  /* Subtle top-edge highlight for depth */
   box-shadow:
     0 1px 0 0 rgba(255,255,255,0.04) inset,
     0 4px 24px rgba(0,0,0,0.18);
@@ -262,29 +269,31 @@ a {
 }
 
 [data-theme='light'] .card {
-  border-width: 1px;                           /* thicker border for visibility */
+  border-width: 1px;
   box-shadow:
-    0 2px 20px rgba(109, 40, 217, 0.08),
-    0 1px 5px  rgba(0, 0, 0, 0.09);
+    0 2px 20px rgba(0, 119, 182, 0.08),
+    0 1px 5px  rgba(0, 0, 0, 0.08);
 }
 
 /* ── Buttons ──────────────────────────────────────────────────────────────── */
+
+/* Primary — exact cyan sweep from the "ca" letterforms in the logo */
 .btn-gold {
   height: 44px;
   padding: 0 20px;
   border-radius: var(--radius-md);
-  background: linear-gradient(135deg, var(--gold-soft) 0%, var(--gold) 60%, var(--gold-dim) 100%);
+  background: linear-gradient(135deg, var(--gold-soft) 0%, var(--gold) 55%, var(--gold-dim) 100%);
   color: var(--on-gold);
   font-weight: 700;
   font-size: 13px;
   letter-spacing: 0.3px;
-  box-shadow: 0 2px 16px rgba(139,92,246,0.35);
+  box-shadow: 0 2px 16px rgba(0, 174, 219, 0.40);
   transition: opacity 0.15s, box-shadow 0.15s;
 }
 
 .btn-gold:hover {
   opacity: 0.9;
-  box-shadow: 0 4px 24px rgba(139,92,246,0.5);
+  box-shadow: 0 4px 24px rgba(0, 174, 219, 0.58);
 }
 
 .btn-gold:active { opacity: 0.82; }
@@ -308,7 +317,7 @@ a {
   background: var(--gold-bg);
 }
 
-/* ── Theme toggle button (in sidebar) ────────────────────────────────────── */
+/* ── Theme toggle ─────────────────────────────────────────────────────────── */
 .theme-toggle {
   width: 32px;
   height: 32px;
@@ -338,7 +347,7 @@ a {
 
 /* ── Selection ────────────────────────────────────────────────────────────── */
 ::selection {
-  background: rgba(167,139,250,0.28);
+  background: rgba(0, 174, 219, 0.28);
   color: var(--text0);
 }
 
@@ -349,34 +358,33 @@ a {
 }
 
 /* ── Light-mode component overrides ──────────────────────────────────────── */
-/* These give every structural element a clearly visible boundary in light mode */
 
-/* Topbar — crisp bottom border + drop shadow */
+/* Topbar */
 [data-theme='light'] .topbar {
-  border-bottom: 1px solid rgba(109, 40, 217, 0.18);
+  border-bottom: 1px solid rgba(0, 119, 182, 0.18);
   background: rgba(255, 255, 255, 0.98);
   box-shadow: 0 1px 8px rgba(0, 0, 0, 0.07);
 }
 
-/* Sidebar — tinted bg + right border */
+/* Sidebar */
 [data-theme='light'] .sidebar {
-  border-right: 1px solid rgba(109, 40, 217, 0.18);
+  border-right: 1px solid rgba(0, 119, 182, 0.18);
   box-shadow: 2px 0 16px rgba(0, 0, 0, 0.05);
 }
 
 /* Manager tab strip */
 [data-theme='light'] .mgr-tabs {
-  border-bottom: 1px solid rgba(109, 40, 217, 0.18);
+  border-bottom: 1px solid rgba(0, 119, 182, 0.18);
   box-shadow: 0 1px 6px rgba(0, 0, 0, 0.04);
 }
 
 /* POS right-side order panel */
 [data-theme='light'] .pos-order {
-  border-left: 1px solid rgba(109, 40, 217, 0.18);
-  background: #faf8ff;
+  border-left: 1px solid rgba(0, 119, 182, 0.18);
+  background: #f0f8fd;
 }
 
-/* Inputs, selects, textareas — white bg + dark border */
+/* Inputs, selects, textareas */
 [data-theme='light'] input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='color']),
 [data-theme='light'] select,
 [data-theme='light'] textarea {
@@ -388,17 +396,17 @@ a {
 [data-theme='light'] select:focus,
 [data-theme='light'] textarea:focus {
   border-color: var(--gold) !important;
-  box-shadow: 0 0 0 3px rgba(109, 40, 217, 0.12);
+  box-shadow: 0 0 0 3px rgba(0, 119, 182, 0.12);
   outline: none;
 }
 
-/* Btn-outline — visible border */
+/* Btn-outline */
 [data-theme='light'] .btn-outline {
   border: 1px solid rgba(0, 0, 0, 0.18);
   color: var(--text1);
 }
 
-/* Badge "off" fix — uses white bg which disappears in light mode */
+/* Menu badge off */
 [data-theme='light'] .menu-badge.off {
   background: rgba(0, 0, 0, 0.07);
   color: var(--text3);
@@ -406,7 +414,7 @@ a {
 
 /* KDS station pills */
 [data-theme='light'] .kds-stations button {
-  border: 1px solid rgba(109, 40, 217, 0.22);
+  border: 1px solid rgba(0, 119, 182, 0.22);
   background: #ffffff;
 }
 
@@ -416,7 +424,6 @@ a {
 }
 
 /* ── Global theme-switch transitions ─────────────────────────────────────── */
-/* Applies smooth fade when data-theme attribute changes on <html> */
 .app-shell,
 .app-main,
 .app-content,

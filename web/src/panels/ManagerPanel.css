@@ -112,7 +112,7 @@
 .mgr-bar {
   flex: 1;
   border-radius: 3px 3px 0 0;
-  background: rgba(139,92,246,0.25);
+  background: rgba(0,174,219,0.25);
 }
 
 [data-theme='light'] .mgr-bar {
@@ -229,7 +229,7 @@
   width: 44px;
   height: 44px;
   border-radius: 12px;
-  background: rgba(139,92,246,0.12);
+  background: rgba(0,174,219,0.12);
   color: var(--gold);
   display: flex;
   align-items: center;

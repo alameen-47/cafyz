@@ -464,7 +464,7 @@
   box-shadow: 0 0 0 2px rgba(109, 40, 217, 0.18);
 }
 [data-theme='light'] .pos-dish-plate {
-  background: #f4f0fe;
+  background: #EFF8FC;
   border-bottom: 1px solid rgba(109, 40, 217, 0.14);
 }
 [data-theme='light'] .pos-search {
@@ -489,5 +489,5 @@
 }
 [data-theme='light'] .pos-print-receipt {
   border: 1px solid rgba(109, 40, 217, 0.22);
-  background: #faf8ff;
+  background: #f0f8fd;
 }

@@ -12,8 +12,8 @@
 }
 
 .profile-card {
-  background: var(--panel);
-  border: 1px solid var(--border);
+  background: var(--bg1);
+  border: 1px solid var(--line2);
   border-radius: 14px;
   padding: 32px;
 }
@@ -46,8 +46,8 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  background: var(--accent);
-  color: #fff;
+  background: linear-gradient(135deg, #00D4F0 0%, #00AEDB 55%, #0077B6 100%);
+  color: #020B1E;
   border: none;
   border-radius: 10px;
   padding: 11px 26px;
@@ -86,18 +86,18 @@
   width: 96px;
   height: 96px;
   flex-shrink: 0;
-  border: 2px dashed var(--border);
+  border: 2px dashed var(--line2);
   border-radius: 12px;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
   overflow: hidden;
-  background: var(--surface);
+  background: var(--bg2);
   transition: border-color 0.15s, box-shadow 0.15s;
 }
 .profile-logo-box:hover,
-.profile-logo-box.has-logo:hover { border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 15%, transparent); }
+.profile-logo-box.has-logo:hover { border-color: var(--gold); box-shadow: 0 0 0 3px color-mix(in srgb, var(--gold) 15%, transparent); }
 .profile-logo-box img { width: 100%; height: 100%; object-fit: contain; }
 
 .profile-logo-empty {
@@ -117,7 +117,7 @@
 
 .profile-divider {
   border: none;
-  border-top: 1px solid var(--border);
+  border-top: 1px solid var(--line2);
   margin: 24px 0;
 }
 
@@ -156,8 +156,8 @@
 }
 
 .profile-field input {
-  background: var(--surface);
-  border: 1px solid var(--border);
+  background: var(--bg2);
+  border: 1px solid var(--line2);
   border-radius: 8px;
   padding: 10px 12px;
   font-size: 0.88rem;
@@ -167,17 +167,17 @@
   transition: border-color 0.15s, box-shadow 0.15s;
 }
 .profile-field input:focus {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 18%, transparent);
+  border-color: var(--gold);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--gold) 18%, transparent);
 }
 .profile-field input::placeholder { color: var(--text2); opacity: 0.55; }
 
 /* ── Small button variant ─────────────────────────────────────────────────── */
 
 .pf-btn-sm {
-  background: var(--surface);
+  background: var(--bg2);
   color: var(--text1);
-  border: 1px solid var(--border);
+  border: 1px solid var(--line2);
   border-radius: 8px;
   padding: 7px 14px;
   font-size: 0.82rem;
@@ -186,7 +186,7 @@
   transition: background 0.15s, border-color 0.15s;
   font-family: inherit;
 }
-.pf-btn-sm:hover:not(:disabled) { background: var(--panel); border-color: var(--accent); }
+.pf-btn-sm:hover:not(:disabled) { background: var(--bg1); border-color: var(--gold); }
 .pf-btn-sm:disabled { opacity: 0.5; cursor: not-allowed; }
 .pf-btn-sm.danger { border-color: #e55; color: #e55; }
 .pf-btn-sm.danger:hover { background: #e55; color: #fff; }
@@ -198,8 +198,8 @@
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  background: var(--surface);
-  border: 1px solid var(--border);
+  background: var(--bg2);
+  border: 1px solid var(--line2);
   border-radius: 10px;
   padding: 14px 16px;
   margin-bottom: 12px;
@@ -215,7 +215,7 @@
 .printer-dot {
   width: 9px; height: 9px;
   border-radius: 50%;
-  background: var(--border);
+  background: var(--line2);
   flex-shrink: 0;
   transition: background 0.2s;
 }
@@ -237,8 +237,8 @@
   position: absolute;
   top: calc(100% + 6px);
   right: 0;
-  background: var(--panel);
-  border: 1px solid var(--border);
+  background: var(--bg1);
+  border: 1px solid var(--line2);
   border-radius: 10px;
   padding: 6px;
   z-index: 20;
@@ -253,7 +253,7 @@
   font-family: inherit; text-align: left;
   transition: background 0.12s;
 }
-.profile-connect-menu button:hover { background: var(--surface); }
+.profile-connect-menu button:hover { background: var(--bg2); }
 
 /* ── Test Print button ────────────────────────────────────────────────────── */
 
@@ -261,9 +261,9 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  background: var(--panel);
+  background: var(--bg1);
   color: var(--text1);
-  border: 1px solid var(--border);
+  border: 1px solid var(--line2);
   border-radius: 8px;
   padding: 7px 16px;
   font-size: 0.82rem;
@@ -273,7 +273,7 @@
   transition: background 0.15s, border-color 0.15s, color 0.15s;
   white-space: nowrap;
 }
-.pf-btn-test:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+.pf-btn-test:hover:not(:disabled) { border-color: var(--gold); color: var(--gold); }
 .pf-btn-test:disabled { opacity: 0.55; cursor: not-allowed; }
 .pf-btn-test.ok  { border-color: #2ecc8a; color: #1aaa6e; background: color-mix(in srgb, #2ecc8a 10%, transparent); }
 .pf-btn-test.err { border-color: #e55;    color: #cc3333; background: color-mix(in srgb, #e55 10%, transparent); }

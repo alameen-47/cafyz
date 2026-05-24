@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Navigate, useNavigate } from 'react-router-dom';
 import { useAuth, DEMO_ACCOUNTS, ROLE_LABELS, ROLE_DEFAULT_PATH, type Role } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import './LoginPanel.css';
@@ -14,8 +14,10 @@ const ROLE_COLORS: Record<Role, string> = {
 
 export function LoginPanel() {
   const navigate = useNavigate();
-  const { login, loginWithPin, error, clearError } = useAuth();
+  const { user, login, loginWithPin, error, clearError } = useAuth();
   const { theme, toggleTheme } = useTheme();
+
+  if (user) return <Navigate to={ROLE_DEFAULT_PATH[user.role] ?? '/'} replace />;
 
   const [email,    setEmail]    = useState('mireille@saint.paris');
   const [password, setPassword] = useState('cafyz2026');
