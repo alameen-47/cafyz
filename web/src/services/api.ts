@@ -153,6 +153,12 @@ export const licensesApi = {
   revoke:   (id: string)                                                  => del(`/api/licenses/${id}`),
 };
 
+// ── Inquiries (public — no auth) ──────────────────────────────────────────────
+export const inquiryApi = {
+  submit: (d: { name: string; restaurant_name: string; email: string; plan: string; message?: string }) =>
+    post<{ ok: boolean; message: string }>('/api/inquiries', d),
+};
+
 // ── Founder ───────────────────────────────────────────────────────────────────
 export const founderApi = {
   restaurants:    ()                                                                    => get<ApiFounderRestaurant[]>('/api/founder/restaurants'),

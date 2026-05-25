@@ -13,6 +13,7 @@ import { RolesPanel } from './panels/RolesPanel';
 import { LicensePanel } from './panels/LicensePanel';
 import { FounderPanel } from './panels/FounderPanel';
 import { RegisterPanel } from './panels/RegisterPanel';
+import { GetAccountPanel } from './panels/GetAccountPanel';
 import { UpgradeModal } from './panels/UpgradeModal';
 import { useAuth } from './context/AuthContext';
 import type { Screen } from '@shared/types';
@@ -83,8 +84,9 @@ function SmartHomeRoute() {
 export default function App() {
   return (
     <Routes>
-      <Route path="/login"    element={<LoginPanel />} />
-      <Route path="/register" element={<RegisterPanel />} />
+      <Route path="/login"       element={<LoginPanel />} />
+      <Route path="/register"    element={<RegisterPanel />} />
+      <Route path="/get-account" element={<GetAccountPanel />} />
 
       {/* Founder shell — outside normal ShellLayout */}
       <Route path="/founder" element={

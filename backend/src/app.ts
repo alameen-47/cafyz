@@ -15,6 +15,7 @@ import dashboardRoutes   from './routes/dashboard.js';
 import restaurantRoutes  from './routes/restaurants.js';
 import licenseRoutes     from './routes/licenses.js';
 import founderRoutes     from './routes/founder.js';
+import inquiryRoutes     from './routes/inquiries.js';
 import { requirePlan }   from './middleware/planGuard.js';
 import { requireAuth }   from './middleware/auth.js';
 import { errorHandler, notFound } from './middleware/errorHandler.js';
@@ -59,6 +60,7 @@ app.use('/api/dashboard',    requireAuth, requirePlan('pro'),     dashboardRoute
 app.use('/api/restaurants',  restaurantRoutes);
 app.use('/api/licenses',     licenseRoutes);
 app.use('/api/founder',      founderRoutes);
+app.use('/api/inquiries',    inquiryRoutes);
 
 // ── Error handling ──────────────────────────────────────────────────────────────
 app.use(notFound);

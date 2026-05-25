@@ -348,6 +348,36 @@
   background: var(--bg0);
 }
 
+/* ── Get Account bar ──────────────────────────────────────────────────────── */
+.login-get-account-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 20px;
+  padding: 14px 20px;
+  border: 0.5px solid var(--gold-line);
+  border-radius: var(--radius-md);
+  background: linear-gradient(135deg, rgba(139,92,246,0.04) 0%, transparent 100%);
+  font-size: 12px;
+  color: var(--text2);
+}
+
+.login-get-account-link {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--gold);
+  text-decoration: none;
+  letter-spacing: 0.3px;
+  transition: opacity 0.15s;
+}
+.login-get-account-link:hover { opacity: 0.75; }
+
+[data-theme='light'] .login-get-account-bar {
+  background: linear-gradient(135deg, rgba(109,40,217,0.04) 0%, transparent 100%);
+  border: 1px solid rgba(109,40,217,0.15);
+}
+
 .login-founder-btn {
   width: 100%;
   padding: 10px;
