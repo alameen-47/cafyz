@@ -1,0 +1,6 @@
+android/
+ios/
+backend/
+__tests__/
+*.test.*
+*.spec.*

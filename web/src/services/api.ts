@@ -2,7 +2,9 @@
 // Tenant-scoped HTTP client. JWT is stored in localStorage and attached to
 // every request. On 401 the session is cleared and the user is redirected.
 
-const BASE = (import.meta as any).env?.VITE_API_URL ?? 'http://localhost:4000';
+// In dev, relative URLs go through the Vite proxy (→ localhost:4000).
+// In production, set VITE_API_URL to the backend origin (e.g. https://api.cafyz.io).
+const BASE = (import.meta as any).env?.VITE_API_URL ?? '';
 
 async function request<T = unknown>(
   method: string,

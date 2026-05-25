@@ -82,3 +82,10 @@ backend/.env
 
 # Vite web build
 web/dist
+
+# Backend compiled output (Render builds this itself)
+backend/dist
+
+# Env files — never commit secrets
+.env
+backend/.env

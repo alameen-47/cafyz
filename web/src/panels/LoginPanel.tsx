@@ -1,8 +1,12 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { useAuth, DEMO_ACCOUNTS, ROLE_LABELS, ROLE_DEFAULT_PATH, type Role } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import './LoginPanel.css';
+
+// Post-login navigation uses a full-page reload instead of React Router navigate()
+// to avoid a timing race where RequireAuth/RequireFounder reads stale user context
+// before the setUser() state update has been flushed.
+function goTo(path: string) { window.location.href = path; }
 
 const ROLE_COLORS: Record<Role, string> = {
   owner:   '#a78bfa',
@@ -14,7 +18,6 @@ const ROLE_COLORS: Record<Role, string> = {
 };
 
 export function LoginPanel() {
-  const navigate = useNavigate();
   const { login, loginWithPin, error, clearError } = useAuth();
   const { theme, toggleTheme } = useTheme();
 
@@ -31,12 +34,9 @@ export function LoginPanel() {
     setBusy(true); setLocalErr(''); clearError();
     try {
       await login(email, password || 'cafyz2026');
-      // role comes from the server response stored in context — read it after login
-      // We don't know the role until after login; just navigate to '/' and let RequireAuth redirect
-      navigate('/');
+      goTo('/');
     } catch (e) {
       setLocalErr((e as Error).message ?? 'Login failed');
-    } finally {
       setBusy(false);
     }
   }
@@ -45,10 +45,9 @@ export function LoginPanel() {
     setBusy(true); setLocalErr(''); clearError();
     try {
       await login(demo.email, demo.password);
-      navigate(ROLE_DEFAULT_PATH[demo.role]);
+      goTo(ROLE_DEFAULT_PATH[demo.role]);
     } catch (e) {
       setLocalErr((e as Error).message ?? 'Login failed');
-    } finally {
       setBusy(false);
     }
   }
@@ -62,9 +61,8 @@ export function LoginPanel() {
     if (next.length === 4) {
       setBusy(true); setLocalErr('');
       loginWithPin(next.join(''))
-        .then(() => navigate('/'))
-        .catch(e => { setLocalErr((e as Error).message ?? 'Invalid PIN'); setPin([]); })
-        .finally(() => setBusy(false));
+        .then(() => goTo('/'))
+        .catch(e => { setLocalErr((e as Error).message ?? 'Invalid PIN'); setPin([]); setBusy(false); });
     }
   };
 
@@ -174,8 +172,8 @@ export function LoginPanel() {
                 setBusy(true);
                 try {
                   await login(DEMO_ACCOUNTS[2].email, DEMO_ACCOUNTS[2].password);
-                  navigate('/mobile/orders');
-                } catch { /* ignore */ } finally { setBusy(false); }
+                  goTo('/mobile/orders');
+                } catch { setBusy(false); }
               }}
             >
               Waiter mobile
@@ -190,9 +188,8 @@ export function LoginPanel() {
               setBusy(true); setLocalErr(''); clearError();
               try {
                 await login('founder@cafyz.io', 'cafyz-founder-2026');
-                navigate('/founder');
-              } catch (e) { setLocalErr((e as Error).message ?? 'Login failed'); }
-              finally { setBusy(false); }
+                goTo('/founder');
+              } catch (e) { setLocalErr((e as Error).message ?? 'Login failed'); setBusy(false); }
             }}
           >
             ★ Cafyz Founder Login

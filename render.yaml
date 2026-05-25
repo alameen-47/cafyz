@@ -1,0 +1,19 @@
+services:
+  - type: web
+    name: cafyz-api
+    runtime: node
+    rootDir: backend
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: TURSO_URL
+        sync: false          # paste from backend/.env in Render dashboard
+      - key: TURSO_AUTH_TOKEN
+        sync: false          # paste from backend/.env in Render dashboard
+      - key: JWT_SECRET
+        generateValue: true  # Render generates a secure random value automatically
+      - key: ALLOWED_ORIGIN
+        value: https://cafyz.vercel.app  # ← change to your real Vercel URL after first deploy

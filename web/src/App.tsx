@@ -38,15 +38,16 @@ function RequireScreen({ screen, children }: { screen: Screen; children: ReactNo
   return <>{children}</>;
 }
 
-// Redirect to the appropriate default path after login
-function DefaultRedirect() {
+// Smart home route — owner/manager render the dashboard directly; others redirect
+function SmartHomeRoute() {
   const { user } = useAuth();
   if (!user) return <Navigate to="/login" replace />;
   if (user.role === 'founder') return <Navigate to="/founder" replace />;
-  const defaultPaths: Record<string, string> = {
-    owner: '/', manager: '/', cashier: '/pos', waiter: '/tables', kitchen: '/kds',
-  };
-  return <Navigate to={defaultPaths[user.role] ?? '/license'} replace />;
+  if (user.role === 'owner' || user.role === 'manager') {
+    return <RequireScreen screen="manager"><ManagerPanel section="manager" /></RequireScreen>;
+  }
+  const paths: Record<string, string> = { cashier: '/pos', waiter: '/tables', kitchen: '/kds' };
+  return <Navigate to={paths[user.role] ?? '/license'} replace />;
 }
 
 export default function App() {
@@ -65,7 +66,7 @@ export default function App() {
 
       {/* Restaurant shell */}
       <Route element={<RequireAuth><ShellLayout /></RequireAuth>}>
-        <Route path="/"          element={<DefaultRedirect />} />
+        <Route path="/"          element={<SmartHomeRoute />} />
         <Route path="/pos"       element={<RequireScreen screen="pos"><POSPanel /></RequireScreen>} />
         <Route path="/menu"      element={<RequireScreen screen="menu"><MenuPanel /></RequireScreen>} />
         <Route path="/tables"    element={<RequireScreen screen="waiter"><WaiterPanel /></RequireScreen>} />
@@ -74,7 +75,6 @@ export default function App() {
         <Route path="/staff"     element={<RequireScreen screen="staff"><ManagerPanel section="staff" /></RequireScreen>} />
         <Route path="/reports"   element={<RequireScreen screen="reports"><ManagerPanel section="reports" /></RequireScreen>} />
         <Route path="/roles"     element={<RequireScreen screen="roles"><RolesPanel /></RequireScreen>} />
-        <Route path="/"          element={<RequireScreen screen="manager"><ManagerPanel section="manager" /></RequireScreen>} />
         <Route path="/license"   element={<LicensePanel />} />
       </Route>
 

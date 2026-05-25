@@ -27,8 +27,9 @@ router.patch('/restaurants/:id/plan', ...onlyFounder, async (req: AuthRequest, r
   try {
     const { plan } = z.object({ plan: z.enum(['basic','pro','premium']) }).parse(req.body);
     const db = getDb();
-    await db.execute({ sql: `UPDATE restaurants SET plan=? WHERE id=?`, args: [plan, req.params.id] });
-    const row = await db.execute({ sql: 'SELECT * FROM restaurants WHERE id=?', args: [req.params.id] });
+    const rid = String(req.params.id);
+    await db.execute({ sql: `UPDATE restaurants SET plan=? WHERE id=?`, args: [plan, rid] });
+    const row = await db.execute({ sql: 'SELECT * FROM restaurants WHERE id=?', args: [rid] });
     res.json(row.rows[0]);
   } catch (e) { next(e); }
 });
@@ -53,7 +54,7 @@ router.put('/plan-config/:plan', ...onlyFounder, async (req: AuthRequest, res, n
     }).parse(req.body);
 
     const sets: string[] = ['updated_at=datetime(\'now\')'];
-    const args: unknown[] = [];
+    const args: (string | number | null)[] = [];
     if (data.panels_json   !== undefined) { sets.push('panels_json=?');   args.push(data.panels_json); }
     if (data.label         !== undefined) { sets.push('label=?');         args.push(data.label); }
     if (data.description   !== undefined) { sets.push('description=?');   args.push(data.description); }

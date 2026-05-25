@@ -118,7 +118,7 @@ router.delete('/:id', requireAuth, requireRole('founder'), async (req, res, next
   try {
     await getDb().execute({
       sql: `UPDATE license_keys SET is_active=0 WHERE id=?`,
-      args: [req.params.id],
+      args: [String(req.params.id)],
     });
     res.status(204).end();
   } catch (e) { next(e); }
