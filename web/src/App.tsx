@@ -1,5 +1,5 @@
 import { Navigate, Route, Routes } from 'react-router-dom';
-import { type ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import { ShellLayout } from './layout/ShellLayout';
 import { LoginPanel } from './panels/LoginPanel';
 import { ManagerPanel } from './panels/ManagerPanel';
@@ -12,8 +12,21 @@ import { MobileTablePanel } from './panels/MobileTablePanel';
 import { RolesPanel } from './panels/RolesPanel';
 import { LicensePanel } from './panels/LicensePanel';
 import { FounderPanel } from './panels/FounderPanel';
+import { RegisterPanel } from './panels/RegisterPanel';
+import { UpgradeModal } from './panels/UpgradeModal';
 import { useAuth } from './context/AuthContext';
 import type { Screen } from '@shared/types';
+import type { Plan } from './config/planAccess';
+
+// Map each screen to the minimum plan that unlocks it
+const SCREEN_MIN_PLAN: Partial<Record<Screen, Plan>> = {
+  kds:       'pro',
+  manager:   'pro',
+  inventory: 'pro',
+  staff:     'pro',
+  reports:   'pro',
+  roles:     'pro',
+};
 
 // ── Auth guards ───────────────────────────────────────────────────────────────
 function RequireAuth({ children }: { children: ReactNode }) {
@@ -29,12 +42,29 @@ function RequireFounder({ children }: { children: ReactNode }) {
   return <>{children}</>;
 }
 
-// Guard that checks allowedScreens for the current user's plan+role
+// Guard that checks allowedScreens for the current user's plan+role.
+// If the screen is locked by plan, renders an UpgradeModal overlay instead
+// of silently redirecting — so the user knows exactly what they're missing.
 function RequireScreen({ screen, children }: { screen: Screen; children: ReactNode }) {
   const { user } = useAuth();
+  const [showUpgrade, setShowUpgrade] = useState(true);
+
   if (!user) return <Navigate to="/login" replace />;
   if (user.role === 'founder') return <Navigate to="/founder" replace />;
-  if (!user.allowedScreens.includes(screen)) return <Navigate to="/license" replace />;
+
+  if (!user.allowedScreens.includes(screen)) {
+    const minPlan = SCREEN_MIN_PLAN[screen] ?? 'pro';
+    if (showUpgrade) {
+      return (
+        <UpgradeModal
+          requiredPlan={minPlan}
+          featureLabel={screen.charAt(0).toUpperCase() + screen.slice(1)}
+          onClose={() => { setShowUpgrade(false); window.history.back(); }}
+        />
+      );
+    }
+    return <Navigate to="/license" replace />;
+  }
   return <>{children}</>;
 }
 
@@ -53,7 +83,8 @@ function SmartHomeRoute() {
 export default function App() {
   return (
     <Routes>
-      <Route path="/login" element={<LoginPanel />} />
+      <Route path="/login"    element={<LoginPanel />} />
+      <Route path="/register" element={<RegisterPanel />} />
 
       {/* Founder shell — outside normal ShellLayout */}
       <Route path="/founder" element={

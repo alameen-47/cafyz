@@ -25,9 +25,9 @@ export async function setupTestDb() {
   const waiterId  = uid();
   const kitchenId = uid();
 
-  // Insert test restaurant first
+  // Insert test restaurant on premium so all plan-gated routes are accessible
   await db.execute({
-    sql: `INSERT INTO restaurants(id,name,slug) VALUES('TEST_REST','Test Restaurant','test-restaurant')`,
+    sql: `INSERT INTO restaurants(id,name,slug,plan) VALUES('TEST_REST','Test Restaurant','test-restaurant','premium')`,
     args: [],
   });
 

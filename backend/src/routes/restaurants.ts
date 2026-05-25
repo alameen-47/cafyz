@@ -12,7 +12,7 @@ const OnboardingSchema = z.object({
   owner_name:      z.string().min(1),
   email:           z.string().email(),
   password:        z.string().min(8),
-  plan:            z.enum(['starter','growth','enterprise']).optional(),
+  plan:            z.enum(['basic','pro','premium']).optional(),
   timezone:        z.string().optional(),
 });
 
@@ -26,7 +26,7 @@ router.post('/onboarding', async (req, res, next) => {
     const slug = data.restaurant_name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
     await db.execute({
       sql: `INSERT INTO restaurants(id,name,slug,plan,timezone) VALUES(?,?,?,?,?)`,
-      args: [restId, data.restaurant_name, `${slug}-${restId.slice(0,6)}`, data.plan??'starter', data.timezone??'UTC'],
+      args: [restId, data.restaurant_name, `${slug}-${restId.slice(0,6)}`, data.plan??'basic', data.timezone??'UTC'],
     });
 
     const ownerId = uid();

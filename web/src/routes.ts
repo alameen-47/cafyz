@@ -11,11 +11,11 @@ export const ROUTES: Record<Screen, string> = {
   staff:            '/staff',
   reports:          '/reports',
   roles:            '/roles',
+  license:          '/license',
+  founder:          '/founder',
   mobileOrders:     '/mobile/orders',
   mobileTableDetail:'/mobile/table',
   mobileAddItem:    '/mobile/add-item',
-  license:          '/license',
-  founder:          '/founder',
 };
 
 export function pathForScreen(screen: Screen): string {
@@ -26,14 +26,12 @@ export function screenFromPath(pathname: string): Screen {
   const entry = Object.entries(ROUTES).find(([, path]) => path === pathname);
   if (entry) return entry[0] as Screen;
   if (pathname.startsWith('/mobile/table')) return 'mobileTableDetail';
-  if (pathname.startsWith('/founder')) return 'founder';
-  if (pathname === '/license') return 'license';
   if (pathname === '/roles') return 'roles';
   return 'manager';
 }
 
 export const DESKTOP_SHELL_SCREENS: Screen[] = [
-  'manager', 'pos', 'kds', 'waiter', 'menu', 'inventory', 'staff', 'reports', 'roles', 'license',
+  'manager', 'pos', 'kds', 'waiter', 'menu', 'inventory', 'staff', 'reports', 'roles',
 ];
 
 export const MOBILE_SCREENS: Screen[] = [

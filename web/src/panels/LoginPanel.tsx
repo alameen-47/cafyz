@@ -197,6 +197,14 @@ export function LoginPanel() {
         </div>
       </section>
 
+      {/* ── Register link ────────────────────────────────────────── */}
+      <div style={{ textAlign: 'center', marginTop: 20, paddingBottom: 8 }}>
+        <span style={{ fontSize: 12, color: 'var(--text2)' }}>New restaurant? </span>
+        <a href="/register" style={{ fontSize: 12, color: 'var(--purple)', textDecoration: 'none', fontWeight: 600 }}>
+          Create a free account →
+        </a>
+      </div>
+
       {/* ── Mobile PIN pane ────────────────────────────────────────── */}
       <section className="login-mobile-only">
         <div className="login-mobile-head">

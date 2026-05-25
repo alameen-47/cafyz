@@ -1,0 +1,27 @@
+{
+  "name": "Cafyz — Hospitality OS",
+  "short_name": "Cafyz",
+  "description": "Complete restaurant management platform — POS, KDS, floor, inventory, and more.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#07060F",
+  "theme_color": "#8B5CF6",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["business", "productivity"],
+  "screenshots": [],
+  "prefer_related_applications": false
+}

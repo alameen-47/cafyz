@@ -9,11 +9,11 @@ export type Screen =
   | 'staff'
   | 'reports'
   | 'roles'
+  | 'license'
+  | 'founder'
   | 'mobileOrders'
   | 'mobileTableDetail'
-  | 'mobileAddItem'
-  | 'license'
-  | 'founder';
+  | 'mobileAddItem';
 
 export type TableStatus = 'empty' | 'reserved' | 'occupied' | 'paying' | 'attention';
 export type OrderStatus = 'Open' | 'Paid' | 'Voided' | 'New';
