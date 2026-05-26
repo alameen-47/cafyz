@@ -112,11 +112,11 @@
 .mgr-bar {
   flex: 1;
   border-radius: 3px 3px 0 0;
-  background: rgba(139,92,246,0.25);
+  background: rgba(59,130,246,0.25);
 }
 
 [data-theme='light'] .mgr-bar {
-  background: rgba(109, 40, 217, 0.18);
+  background: rgba(29, 78, 216, 0.18);
 }
 
 .mgr-bar:hover, .mgr-bar.peak { background: var(--gold); }
@@ -229,7 +229,7 @@
   width: 44px;
   height: 44px;
   border-radius: 12px;
-  background: rgba(139,92,246,0.12);
+  background: rgba(59,130,246,0.12);
   color: var(--gold);
   display: flex;
   align-items: center;
@@ -290,18 +290,18 @@
 
 /* ── Light-mode overrides ─────────────────────────────────────────────────── */
 [data-theme='light'] .mgr-staff-avatar {
-  background: rgba(109, 40, 217, 0.10);
-  border: 1px solid rgba(109, 40, 217, 0.18);
+  background: rgba(29, 78, 216, 0.10);
+  border: 1px solid rgba(29, 78, 216, 0.18);
 }
 [data-theme='light'] .mgr-kpi {
-  border: 1px solid rgba(109, 40, 217, 0.22);
+  border: 1px solid rgba(29, 78, 216, 0.22);
 }
 [data-theme='light'] .mgr-chart-card,
 [data-theme='light'] .mgr-res-card,
 [data-theme='light'] .mgr-inv-table,
 [data-theme='light'] .mgr-report-table {
-  border: 1px solid rgba(109, 40, 217, 0.22);
-  box-shadow: 0 2px 16px rgba(109, 40, 217, 0.06), 0 1px 4px rgba(0,0,0,0.07);
+  border: 1px solid rgba(29, 78, 216, 0.22);
+  box-shadow: 0 2px 16px rgba(29, 78, 216, 0.06), 0 1px 4px rgba(0,0,0,0.07);
 }
 [data-theme='light'] .mgr-range {
   border: 1px solid rgba(0, 0, 0, 0.16);

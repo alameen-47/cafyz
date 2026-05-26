@@ -54,7 +54,7 @@
   cursor: pointer;
 }
 
-.roles-card:hover { border-color: rgba(139,92,246,0.35); }
+.roles-card:hover { border-color: rgba(59,130,246,0.35); }
 
 .roles-card.active {
   border-color: var(--rc, var(--gold));
@@ -166,7 +166,7 @@
 }
 
 .roles-row:last-child { border-bottom: none; }
-.roles-row:hover { background: rgba(139,92,246,0.03); }
+.roles-row:hover { background: rgba(59,130,246,0.03); }
 
 .roles-row-member {
   display: flex;
@@ -246,14 +246,14 @@
 .roles-edit-btn {
   height: 30px;
   padding: 0 14px;
-  background: rgba(139,92,246,0.1);
+  background: rgba(59,130,246,0.1);
   color: var(--gold);
   border-radius: var(--radius-md);
   font-size: 12px;
   font-weight: 500;
 }
 
-.roles-edit-btn:hover { background: rgba(139,92,246,0.2); }
+.roles-edit-btn:hover { background: rgba(59,130,246,0.2); }
 
 .roles-del-btn {
   height: 30px;
@@ -350,20 +350,20 @@
   background: var(--bg0);
 }
 [data-theme='light'] .roles-card {
-  border: 1px solid rgba(109, 40, 217, 0.22);
+  border: 1px solid rgba(29, 78, 216, 0.22);
   background: #ffffff;
 }
 [data-theme='light'] .roles-card:hover {
-  border-color: rgba(109, 40, 217, 0.45);
+  border-color: rgba(29, 78, 216, 0.45);
 }
 [data-theme='light'] .roles-table-wrap {
-  border: 1px solid rgba(109, 40, 217, 0.20);
+  border: 1px solid rgba(29, 78, 216, 0.20);
 }
 [data-theme='light'] .roles-row:hover {
-  background: rgba(109, 40, 217, 0.04);
+  background: rgba(29, 78, 216, 0.04);
 }
 [data-theme='light'] .roles-form-card {
-  border: 1px solid rgba(109, 40, 217, 0.22);
+  border: 1px solid rgba(29, 78, 216, 0.22);
   background: #ffffff;
-  box-shadow: 0 2px 16px rgba(109,40,217,0.07), 0 1px 4px rgba(0,0,0,0.07);
+  box-shadow: 0 2px 16px rgba(29,78,216,0.07), 0 1px 4px rgba(0,0,0,0.07);
 }

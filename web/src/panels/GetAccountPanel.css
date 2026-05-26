@@ -25,7 +25,7 @@
   display: flex;
   flex-direction: column;
   gap: 32px;
-  background: linear-gradient(160deg, rgba(139,92,246,0.08) 0%, transparent 55%);
+  background: linear-gradient(160deg, rgba(59,130,246,0.08) 0%, transparent 55%);
   overflow-y: auto;
 }
 
@@ -121,7 +121,7 @@
   width: 34px;
   height: 34px;
   border-radius: 50%;
-  background: rgba(139,92,246,0.14);
+  background: rgba(59,130,246,0.14);
   border: 0.5px solid var(--gold-line);
   color: var(--gold);
   font-family: var(--font-serif);
@@ -673,8 +673,8 @@
 
 /* ── Light-mode overrides ─────────────────────────────────────────────────── */
 [data-theme='light'] .ga-left {
-  border-right: 1px solid rgba(109,40,217,0.18);
-  background: linear-gradient(160deg, rgba(109,40,217,0.05) 0%, transparent 55%);
+  border-right: 1px solid rgba(29,78,216,0.18);
+  background: linear-gradient(160deg, rgba(29,78,216,0.05) 0%, transparent 55%);
 }
 [data-theme='light'] .ga-field input,
 [data-theme='light'] .ga-field textarea {

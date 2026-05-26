@@ -8,28 +8,28 @@
 /* ── Dark theme (default) ────────────────────────────────────────────────── */
 :root,
 [data-theme='dark'] {
-  /* Backgrounds — deep purple-black gradient layers */
-  --bg0:          #07050f;
-  --bg1:          #110d22;
-  --bg2:          #0c0919;
-  --bg3:          #1c1638;
-  --bg-sidebar:   #09060f;
-  --bg-glass:     rgba(17, 13, 34, 0.72);
+  /* Backgrounds — deep navy-black gradient layers */
+  --bg0:          #030d1a;
+  --bg1:          #0a1628;
+  --bg2:          #07111f;
+  --bg3:          #0f1d38;
+  --bg-sidebar:   #040c17;
+  --bg-glass:     rgba(10, 22, 40, 0.72);
 
-  /* Accent — vivid electric purple */
-  --gold:         #a78bfa;
-  --gold-dim:     #7c5de8;
-  --gold-soft:    #c4b5fd;
-  --gold-line:    rgba(167, 139, 250, 0.16);
-  --gold-line2:   rgba(167, 139, 250, 0.30);
-  --gold-bg:      rgba(167, 139, 250, 0.08);
-  --gold-glow:    0 0 24px rgba(167, 139, 250, 0.25);
+  /* Accent — electric blue */
+  --gold:         #60a5fa;
+  --gold-dim:     #3b82f6;
+  --gold-soft:    #93c5fd;
+  --gold-line:    rgba(96, 165, 250, 0.16);
+  --gold-line2:   rgba(96, 165, 250, 0.30);
+  --gold-bg:      rgba(96, 165, 250, 0.08);
+  --gold-glow:    0 0 24px rgba(96, 165, 250, 0.28);
 
   /* Text */
-  --text0:        #f0edff;
-  --text1:        #b8b0d8;
-  --text2:        #7e77a4;
-  --text3:        #4e4870;
+  --text0:        #eef4ff;
+  --text1:        #b0c8e8;
+  --text2:        #6b8aab;
+  --text3:        #384e6b;
 
   /* Semantic */
   --success:      #2ecc8a;
@@ -41,68 +41,68 @@
   --line2:        rgba(255, 255, 255, 0.09);
 
   /* Gradient mesh stops (used in body::before) */
-  --mesh-a:       rgba(120, 40, 255, 0.10);
-  --mesh-b:       rgba(80, 0, 200, 0.07);
-  --mesh-c:       rgba(200, 100, 255, 0.05);
+  --mesh-a:       rgba(37, 99, 235, 0.12);
+  --mesh-b:       rgba(29, 78, 216, 0.08);
+  --mesh-c:       rgba(59, 130, 246, 0.06);
 
   /* Sidebar gradient */
-  --sidebar-grad: linear-gradient(170deg, #120b28 0%, #09060f 55%, #060310 100%);
+  --sidebar-grad: linear-gradient(170deg, #091223 0%, #040c17 55%, #030a15 100%);
 
   /* Card gradient */
-  --card-bg:      linear-gradient(135deg, rgba(255,255,255,0.03) 0%, #110d22 100%);
-  --card-border:  rgba(167, 139, 250, 0.16);
+  --card-bg:      linear-gradient(135deg, rgba(255,255,255,0.03) 0%, #0a1628 100%);
+  --card-border:  rgba(96, 165, 250, 0.16);
 
   /* Button text on gold bg */
-  --on-gold:      #07050f;
+  --on-gold:      #030d1a;
 
   color-scheme: dark;
 }
 
 /* ── Light theme ─────────────────────────────────────────────────────────── */
 [data-theme='light'] {
-  /* Backgrounds — clean white with distinguishable lavender-tinted layers */
-  --bg0:          #ede8fb;   /* page body — visible lavender-grey */
+  /* Backgrounds — clean white with subtle blue-tinted layers */
+  --bg0:          #e8f0fe;   /* page body — light blue-grey */
   --bg1:          #ffffff;   /* primary surface: cards, panels */
-  --bg2:          #e8e1f8;   /* inputs, search bars, alt rows */
-  --bg3:          #ddd5f5;   /* deeper sections, pressed states */
-  --bg-sidebar:   #f4f0fe;   /* sidebar — distinct from white */
+  --bg2:          #dbeafe;   /* inputs, search bars, alt rows */
+  --bg3:          #bfdbfe;   /* deeper sections, pressed states */
+  --bg-sidebar:   #eff6ff;   /* sidebar — distinct from white */
   --bg-glass:     rgba(255, 255, 255, 0.97);
 
-  /* Accent — deep vivid purple */
-  --gold:         #6d28d9;
-  --gold-dim:     #5b21b6;
-  --gold-soft:    #7c3aed;
-  --gold-line:    rgba(109, 40, 217, 0.22);   /* ↑ was 0.15 — now clearly visible */
-  --gold-line2:   rgba(109, 40, 217, 0.40);   /* ↑ was 0.28 */
-  --gold-bg:      rgba(109, 40, 217, 0.08);
-  --gold-glow:    0 0 18px rgba(109, 40, 217, 0.14);
+  /* Accent — deep vivid blue */
+  --gold:         #1d4ed8;
+  --gold-dim:     #1e40af;
+  --gold-soft:    #2563eb;
+  --gold-line:    rgba(29, 78, 216, 0.22);
+  --gold-line2:   rgba(29, 78, 216, 0.40);
+  --gold-bg:      rgba(29, 78, 216, 0.08);
+  --gold-glow:    0 0 18px rgba(29, 78, 216, 0.14);
 
   /* Text — high-contrast scale */
-  --text0:        #0f0a1e;   /* near-black headings */
-  --text1:        #25184a;   /* body copy */
-  --text2:        #4e4172;   /* secondary labels — was #7263a0, much darker */
-  --text3:        #7360a8;   /* tertiary — was #a89dcc (too pale), now readable */
+  --text0:        #0a1628;   /* near-black with blue tint */
+  --text1:        #1a2f4a;   /* body copy */
+  --text2:        #2d4f75;   /* secondary labels */
+  --text3:        #3d6fa8;   /* tertiary */
 
   /* Semantic */
   --success:      #059669;
-  --warning:      #c97000;   /* slightly darker amber for light bg */
-  --danger:       #cc1f1f;   /* slightly darker red for light bg */
+  --warning:      #c97000;
+  --danger:       #cc1f1f;
 
   /* Borders — strong enough to see on white */
-  --line:         rgba(0, 0, 0, 0.11);   /* ↑ was 0.06 */
-  --line2:        rgba(0, 0, 0, 0.18);   /* ↑ was 0.10 */
+  --line:         rgba(0, 0, 0, 0.11);
+  --line2:        rgba(0, 0, 0, 0.18);
 
   /* Gradient mesh */
-  --mesh-a:       rgba(140, 80, 255, 0.06);
-  --mesh-b:       rgba(180, 120, 255, 0.05);
-  --mesh-c:       rgba(100, 60, 200, 0.04);
+  --mesh-a:       rgba(59, 130, 246, 0.07);
+  --mesh-b:       rgba(96, 165, 250, 0.05);
+  --mesh-c:       rgba(37, 99, 235, 0.04);
 
-  /* Sidebar gradient — tinted lavender so it reads as separate from main */
-  --sidebar-grad: linear-gradient(170deg, #ede8fb 0%, #f4f0fe 50%, #f9f7ff 100%);
+  /* Sidebar gradient — tinted blue so it reads as separate from main */
+  --sidebar-grad: linear-gradient(170deg, #e8f0fe 0%, #eff6ff 50%, #f0f7ff 100%);
 
   /* Card — full 1px border, noticeable shadow */
   --card-bg:      #ffffff;
-  --card-border:  rgba(109, 40, 217, 0.22);   /* ↑ was 0.12 */
+  --card-border:  rgba(29, 78, 216, 0.22);
 
   /* Button text on gold bg */
   --on-gold:      #ffffff;
@@ -168,7 +168,7 @@ body {
   pointer-events: none;
   z-index: 0;
   background:
-    radial-gradient(ellipse 80% 50% at 0%   0%,   rgba(167,139,250,0.10) 0%, transparent 60%),
+    radial-gradient(ellipse 80% 50% at 0%   0%,   rgba(96,165,250,0.10) 0%, transparent 60%),
     radial-gradient(ellipse 60% 40% at 100% 100%, rgba(124, 58,237,0.07) 0%, transparent 50%);
 }
 
@@ -264,7 +264,7 @@ a {
 [data-theme='light'] .card {
   border-width: 1px;                           /* thicker border for visibility */
   box-shadow:
-    0 2px 20px rgba(109, 40, 217, 0.08),
+    0 2px 20px rgba(29, 78, 216, 0.08),
     0 1px 5px  rgba(0, 0, 0, 0.09);
 }
 
@@ -278,13 +278,13 @@ a {
   font-weight: 700;
   font-size: 13px;
   letter-spacing: 0.3px;
-  box-shadow: 0 2px 16px rgba(139,92,246,0.35);
+  box-shadow: 0 2px 16px rgba(59,130,246,0.35);
   transition: opacity 0.15s, box-shadow 0.15s;
 }
 
 .btn-gold:hover {
   opacity: 0.9;
-  box-shadow: 0 4px 24px rgba(139,92,246,0.5);
+  box-shadow: 0 4px 24px rgba(59,130,246,0.5);
 }
 
 .btn-gold:active { opacity: 0.82; }
@@ -338,7 +338,7 @@ a {
 
 /* ── Selection ────────────────────────────────────────────────────────────── */
 ::selection {
-  background: rgba(167,139,250,0.28);
+  background: rgba(96,165,250,0.28);
   color: var(--text0);
 }
 
@@ -353,26 +353,26 @@ a {
 
 /* Topbar — crisp bottom border + drop shadow */
 [data-theme='light'] .topbar {
-  border-bottom: 1px solid rgba(109, 40, 217, 0.18);
+  border-bottom: 1px solid rgba(29, 78, 216, 0.18);
   background: rgba(255, 255, 255, 0.98);
   box-shadow: 0 1px 8px rgba(0, 0, 0, 0.07);
 }
 
 /* Sidebar — tinted bg + right border */
 [data-theme='light'] .sidebar {
-  border-right: 1px solid rgba(109, 40, 217, 0.18);
+  border-right: 1px solid rgba(29, 78, 216, 0.18);
   box-shadow: 2px 0 16px rgba(0, 0, 0, 0.05);
 }
 
 /* Manager tab strip */
 [data-theme='light'] .mgr-tabs {
-  border-bottom: 1px solid rgba(109, 40, 217, 0.18);
+  border-bottom: 1px solid rgba(29, 78, 216, 0.18);
   box-shadow: 0 1px 6px rgba(0, 0, 0, 0.04);
 }
 
 /* POS right-side order panel */
 [data-theme='light'] .pos-order {
-  border-left: 1px solid rgba(109, 40, 217, 0.18);
+  border-left: 1px solid rgba(29, 78, 216, 0.18);
   background: #faf8ff;
 }
 
@@ -388,7 +388,7 @@ a {
 [data-theme='light'] select:focus,
 [data-theme='light'] textarea:focus {
   border-color: var(--gold) !important;
-  box-shadow: 0 0 0 3px rgba(109, 40, 217, 0.12);
+  box-shadow: 0 0 0 3px rgba(29, 78, 216, 0.12);
   outline: none;
 }
 
@@ -406,7 +406,7 @@ a {
 
 /* KDS station pills */
 [data-theme='light'] .kds-stations button {
-  border: 1px solid rgba(109, 40, 217, 0.22);
+  border: 1px solid rgba(29, 78, 216, 0.22);
   background: #ffffff;
 }
 

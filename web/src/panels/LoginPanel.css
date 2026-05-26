@@ -21,7 +21,7 @@
   flex-direction: column;
   gap: 32px;
   /* subtle gradient panel */
-  background: linear-gradient(155deg, rgba(139,92,246,0.06) 0%, transparent 50%);
+  background: linear-gradient(155deg, rgba(59,130,246,0.06) 0%, transparent 50%);
 }
 
 .login-brand {
@@ -308,7 +308,7 @@
     border: 0.5px solid var(--line2);
   }
   .login-pin-dots div.filled {
-    background: rgba(139, 92, 246, 0.1);
+    background: rgba(59, 130, 246, 0.1);
     border-color: var(--gold);
     box-shadow: inset 0 0 0 4px var(--gold);
   }
@@ -333,8 +333,8 @@
 
 /* ── Light-mode overrides ─────────────────────────────────────────────────── */
 [data-theme='light'] .login-left {
-  border-right: 1px solid rgba(109, 40, 217, 0.18);
-  background: linear-gradient(155deg, rgba(109,40,217,0.05) 0%, rgba(255,255,255,0) 60%);
+  border-right: 1px solid rgba(29, 78, 216, 0.18);
+  background: linear-gradient(155deg, rgba(29,78,216,0.05) 0%, rgba(255,255,255,0) 60%);
 }
 [data-theme='light'] .login-field input {
   background: #ffffff;
@@ -358,7 +358,7 @@
   padding: 14px 20px;
   border: 0.5px solid var(--gold-line);
   border-radius: var(--radius-md);
-  background: linear-gradient(135deg, rgba(139,92,246,0.04) 0%, transparent 100%);
+  background: linear-gradient(135deg, rgba(59,130,246,0.04) 0%, transparent 100%);
   font-size: 12px;
   color: var(--text2);
 }
@@ -374,8 +374,8 @@
 .login-get-account-link:hover { opacity: 0.75; }
 
 [data-theme='light'] .login-get-account-bar {
-  background: linear-gradient(135deg, rgba(109,40,217,0.04) 0%, transparent 100%);
-  border: 1px solid rgba(109,40,217,0.15);
+  background: linear-gradient(135deg, rgba(29,78,216,0.04) 0%, transparent 100%);
+  border: 1px solid rgba(29,78,216,0.15);
 }
 
 .login-founder-btn {
