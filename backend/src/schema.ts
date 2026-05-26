@@ -153,5 +153,27 @@ export async function runMigrations() {
       price_monthly REAL NOT NULL DEFAULT 0,
       updated_at    TEXT NOT NULL DEFAULT (datetime('now'))
     );
+
+    -- Public inquiries (trial requests) pending founder approval
+    CREATE TABLE IF NOT EXISTS inquiries (
+      id              TEXT PRIMARY KEY,
+      name            TEXT NOT NULL,
+      restaurant_name TEXT NOT NULL,
+      email           TEXT NOT NULL,
+      plan            TEXT NOT NULL CHECK(plan IN ('basic','pro','premium')),
+      message         TEXT,
+      status          TEXT NOT NULL DEFAULT 'pending' CHECK(status IN ('pending','approved','denied')),
+      device_hash     TEXT NOT NULL,
+      ip_hash         TEXT NOT NULL,
+      ua_hash         TEXT NOT NULL,
+      token_hash      TEXT NOT NULL,
+      approved_at     TEXT,
+      denied_at       TEXT,
+      created_at      TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_inquiries_device_created ON inquiries(device_hash, created_at);
+    CREATE INDEX IF NOT EXISTS idx_inquiries_ip_created     ON inquiries(ip_hash, created_at);
+    CREATE INDEX IF NOT EXISTS idx_inquiries_status_created ON inquiries(status, created_at);
   `);
 }

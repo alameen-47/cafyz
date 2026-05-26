@@ -5,6 +5,7 @@ import { getDb } from '../db.js';
 import { requireAuth, type AuthRequest } from '../middleware/auth.js';
 import { requireRole } from '../middleware/rbac.js';
 import { uid } from '../utils.js';
+import { trialEndsAt } from '../config/site.js';
 
 const router = Router();
 
@@ -22,7 +23,11 @@ router.post('/', requireAuth, requireRole('founder'), async (req: AuthRequest, r
       expires_at: z.string().optional(),
       note:       z.string().optional(),
       quantity:   z.number().int().min(1).max(50).optional(),
+      /** When true and no expires_at, defaults to the standard free-trial end date. */
+      trial:      z.boolean().optional(),
     }).parse(req.body);
+
+    const expiresAt = data.expires_at ?? (data.trial === true ? trialEndsAt() : null);
 
     const qty = data.quantity ?? 1;
     const created = [];
@@ -31,9 +36,9 @@ router.post('/', requireAuth, requireRole('founder'), async (req: AuthRequest, r
       const keyCode = generateKeyCode(data.plan);
       await getDb().execute({
         sql: `INSERT INTO license_keys(id,key_code,plan,expires_at,note) VALUES(?,?,?,?,?)`,
-        args: [id, keyCode, data.plan, data.expires_at ?? null, data.note ?? null],
+        args: [id, keyCode, data.plan, expiresAt, data.note ?? null],
       });
-      created.push({ id, key_code: keyCode, plan: data.plan, expires_at: data.expires_at ?? null, note: data.note ?? null });
+      created.push({ id, key_code: keyCode, plan: data.plan, expires_at: expiresAt, note: data.note ?? null });
     }
     res.status(201).json(qty === 1 ? created[0] : created);
   } catch (e) { next(e); }

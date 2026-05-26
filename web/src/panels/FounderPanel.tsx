@@ -147,7 +147,12 @@ function LicenseKeys() {
   const [genPlan,   setGenPlan]  = useState<Plan>('pro');
   const [genQty,    setGenQty]   = useState(1);
   const [genNote,   setGenNote]  = useState('');
-  const [genExpiry, setGenExpiry]= useState('');
+  const [genTrial,  setGenTrial]  = useState(true);
+  const [genExpiry, setGenExpiry] = useState(() => {
+    const d = new Date();
+    d.setDate(d.getDate() + 7);
+    return d.toISOString().slice(0, 10);
+  });
   const [justMade,  setJustMade] = useState<ApiLicenseKey[]>([]);
 
   useEffect(() => {
@@ -157,7 +162,13 @@ function LicenseKeys() {
   async function generate() {
     setGen(true); setError('');
     try {
-      const res = await licensesApi.generate({ plan: genPlan, quantity: genQty, note: genNote || undefined, expires_at: genExpiry || undefined });
+      const res = await licensesApi.generate({
+        plan: genPlan,
+        quantity: genQty,
+        note: genNote || undefined,
+        trial: genTrial,
+        expires_at: genTrial && genExpiry ? new Date(genExpiry + 'T23:59:59Z').toISOString() : undefined,
+      });
       const arr = Array.isArray(res) ? res : [res];
       setJustMade(arr);
       setKeys(prev => [...arr, ...prev]);
@@ -198,10 +209,15 @@ function LicenseKeys() {
             <input className="fdr-input" placeholder="e.g. For Café Nord Paris"
               value={genNote} onChange={e => setGenNote(e.target.value)} />
           </div>
-          <div className="fdr-gen-field">
-            <label className="fdr-label">Expires (optional)</label>
-            <input className="fdr-input" type="date" value={genExpiry}
-              onChange={e => setGenExpiry(e.target.value)} />
+          <div className="fdr-gen-field fdr-gen-trial">
+            <label className="fdr-label">
+              <input type="checkbox" checked={genTrial} onChange={e => setGenTrial(e.target.checked)} />
+              {' '}7-day free trial
+            </label>
+            {genTrial && (
+              <input className="fdr-input" type="date" value={genExpiry} title="Trial ends — billing after this date"
+                onChange={e => setGenExpiry(e.target.value)} />
+            )}
           </div>
           <button className="btn-gold" onClick={generate} disabled={generating}>
             {generating ? 'Generating…' : 'Generate'}

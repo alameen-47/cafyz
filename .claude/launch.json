@@ -3,8 +3,8 @@
   "configurations": [
     {
       "name": "cafyz-web",
-      "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "web"],
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["vite", "--config", "/Users/alameen/cafyz/.claude/worktrees/sweet-panini-64155a/web/vite.config.ts", "--root", "/Users/alameen/cafyz/.claude/worktrees/sweet-panini-64155a"],
       "port": 5173
     }
   ]

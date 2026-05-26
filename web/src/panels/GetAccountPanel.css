@@ -149,6 +149,19 @@
   margin: 8px 0 10px;
   line-height: 1.1;
 }
+.ga-trial-banner {
+  font-size: 14px;
+  color: var(--text1);
+  line-height: 1.5;
+  max-width: 620px;
+  margin-bottom: 12px;
+  padding: 12px 16px;
+  border-radius: 10px;
+  background: rgba(46, 204, 138, 0.08);
+  border: 0.5px solid rgba(46, 204, 138, 0.35);
+}
+.ga-trial-banner strong { color: #2ecc8a; }
+
 .ga-right-sub {
   font-size: 14px;
   color: var(--text2);
@@ -528,6 +541,13 @@
   line-height: 1.6;
   margin-top: -4px;
 }
+
+.ga-inline-link {
+  color: var(--accent);
+  text-decoration: none;
+  word-break: break-all;
+}
+.ga-inline-link:hover { text-decoration: underline; }
 
 .ga-success-steps {
   display: flex;

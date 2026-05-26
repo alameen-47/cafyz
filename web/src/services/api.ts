@@ -147,7 +147,7 @@ export const dashboardApi = {
 export const licensesApi = {
   mine:     ()                                                             => get<{ plan: string; license: ApiLicenseKey | null }>('/api/licenses/mine'),
   list:     ()                                                             => get<ApiLicenseKey[]>('/api/licenses'),
-  generate: (d: { plan: string; note?: string; expires_at?: string; quantity?: number }) =>
+  generate: (d: { plan: string; note?: string; expires_at?: string; quantity?: number; trial?: boolean }) =>
     post<ApiLicenseKey | ApiLicenseKey[]>('/api/licenses', d),
   activate: (key_code: string)                                            => post<{ success: boolean; plan: string; activated_at: string }>('/api/licenses/activate', { key_code }),
   revoke:   (id: string)                                                  => del(`/api/licenses/${id}`),

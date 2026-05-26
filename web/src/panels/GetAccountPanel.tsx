@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useTheme } from '../context/ThemeContext';
+import { TRIAL_DAYS, appPath } from '../config/site';
 import './GetAccountPanel.css';
 
 type PlanKey = 'basic' | 'pro' | 'premium';
@@ -22,7 +23,7 @@ const PLANS: PlanDef[] = [
     key:     'basic',
     label:   'Basic',
     price:   '$49',
-    billing: 'per month',
+    billing: `7-day free trial, then /mo`,
     color:   '#60a5fa',
     icon:    '◯',
     tagline: 'Everything you need to run a single location.',
@@ -46,7 +47,7 @@ const PLANS: PlanDef[] = [
     key:     'pro',
     label:   'Pro',
     price:   '$99',
-    billing: 'per month',
+    billing: `7-day free trial, then /mo`,
     badge:   'Most Popular',
     color:   '#8b5cf6',
     icon:    '✦',
@@ -70,7 +71,7 @@ const PLANS: PlanDef[] = [
     key:     'premium',
     label:   'Premium',
     price:   '$199',
-    billing: 'per month',
+    billing: `7-day free trial, then /mo`,
     color:   '#f0a500',
     icon:    '★',
     tagline: 'Multi-location power with white-glove support.',
@@ -88,6 +89,19 @@ const PLANS: PlanDef[] = [
 ];
 
 const BASE = (import.meta as any).env?.VITE_API_URL ?? '';
+
+function getDeviceId(): string {
+  try {
+    const k = 'cafyz_device_id';
+    const existing = localStorage.getItem(k);
+    if (existing && existing.length > 10) return existing;
+    const id = (crypto as any)?.randomUUID ? (crypto as any).randomUUID() : `dev_${Math.random().toString(16).slice(2)}_${Date.now()}`;
+    localStorage.setItem(k, id);
+    return id;
+  } catch {
+    return `dev_${Math.random().toString(16).slice(2)}_${Date.now()}`;
+  }
+}
 
 export function GetAccountPanel() {
   const { theme, toggleTheme } = useTheme();
@@ -118,7 +132,7 @@ export function GetAccountPanel() {
       const res = await fetch(`${BASE}/api/inquiries`, {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ ...form, plan: selectedPlan }),
+        body:    JSON.stringify({ ...form, plan: selectedPlan, device_id: getDeviceId() }),
       });
       if (!res.ok) {
         const d = await res.json().catch(() => ({}));
@@ -197,6 +211,9 @@ export function GetAccountPanel() {
           <>
             <p className="eyebrow">Get Started · Choose Your Plan</p>
             <h2 className="serif ga-right-title">New to Cafyz?</h2>
+            <p className="ga-trial-banner">
+              <strong>{TRIAL_DAYS}-day free trial</strong> on every plan — full access, no payment until your trial ends.
+            </p>
             <p className="ga-right-sub">
               Choose a plan, tell us about your restaurant, and our founder will personally set up your account within 24 hours.
             </p>
@@ -226,7 +243,7 @@ export function GetAccountPanel() {
                     {PLANS.find(p => p.key === selectedPlan)?.icon}&nbsp;&nbsp;{PLANS.find(p => p.key === selectedPlan)?.label} · {PLANS.find(p => p.key === selectedPlan)?.price}/mo
                   </button>
                 </div>
-                <p className="ga-form-sub">Fill in your details and we'll have your credentials ready within 24 hours.</p>
+                <p className="ga-form-sub">Fill in your details — you'll start a {TRIAL_DAYS}-day free trial. Billing only begins if you continue after the trial.</p>
               </div>
 
               <form onSubmit={handleSubmit} noValidate>
@@ -292,7 +309,7 @@ export function GetAccountPanel() {
 
               <div className="ga-trust-note">
                 <span>🔒</span>
-                <span>Your credentials will be created personally by the Cafyz founder — no automated signups. Access is granted only after plan confirmation.</span>
+                <span>Every new restaurant gets a {TRIAL_DAYS}-day free trial on any plan. The founder personally provisions your account — you pay only after the trial if you choose to continue.</span>
               </div>
             </div>
           </>
@@ -346,16 +363,17 @@ function PlanCard({ plan, selected, onSelect }: { plan: PlanDef; selected: boole
 function SuccessView({ name, email, plan }: { name: string; email: string; plan: PlanKey }) {
   const planDef = PLANS.find(p => p.key === plan)!;
   const firstName = name.split(' ')[0];
+  const loginUrl = appPath('/login');
 
   return (
     <div className="ga-success">
       <div className="ga-success-icon">✓</div>
-      <p className="eyebrow">Request Received · {planDef.label} Plan</p>
+      <p className="eyebrow">Request Received · {planDef.label} Plan · {TRIAL_DAYS}-Day Trial</p>
       <h2 className="serif ga-success-title">
         You're on the list,<br /><em style={{ color: planDef.color }}>{firstName}.</em>
       </h2>
       <p className="ga-success-sub">
-        Your <strong>{planDef.label} plan</strong> request has been sent. Check <strong>{email}</strong> — we've sent a confirmation with full details.
+        Your <strong>{planDef.label} plan</strong> request has been sent with a <strong>{TRIAL_DAYS}-day free trial</strong>. Check <strong>{email}</strong> — we've sent a confirmation. <strong>No charge until the trial ends.</strong>
       </p>
 
       <div className="ga-success-steps">
@@ -363,21 +381,23 @@ function SuccessView({ name, email, plan }: { name: string; email: string; plan:
           <div className="ga-step-num" style={{ '--sc': planDef.color } as React.CSSProperties}>1</div>
           <div className="ga-step-body">
             <p className="ga-step-title">Founder reviews your request</p>
-            <p className="ga-step-desc">Our founder personally sets up every new account to ensure quality onboarding.</p>
+            <p className="ga-step-desc">Our founder personally sets up every new account with a {TRIAL_DAYS}-day free trial on your chosen plan.</p>
           </div>
         </div>
         <div className="ga-step">
           <div className="ga-step-num" style={{ '--sc': planDef.color } as React.CSSProperties}>2</div>
           <div className="ga-step-body">
             <p className="ga-step-title">You receive your license key & credentials</p>
-            <p className="ga-step-desc">A unique license key and login details will be sent to {email} within 24 hours.</p>
+            <p className="ga-step-desc">A trial license key and login details will be sent to {email} within 24 hours — use them free for {TRIAL_DAYS} days.</p>
           </div>
         </div>
         <div className="ga-step">
           <div className="ga-step-num" style={{ '--sc': planDef.color } as React.CSSProperties}>3</div>
           <div className="ga-step-body">
             <p className="ga-step-title">Sign in & go live</p>
-            <p className="ga-step-desc">Log in at the Cafyz Sign In page with your credentials and enter your license key to activate your plan.</p>
+            <p className="ga-step-desc">
+              Sign in at <a href={loginUrl} className="ga-inline-link">{loginUrl}</a> with your credentials and license key. After the trial, subscribe to keep your plan.
+            </p>
           </div>
         </div>
       </div>
@@ -389,7 +409,7 @@ function SuccessView({ name, email, plan }: { name: string; email: string; plan:
         <div className="ga-auto-preview">
           <p className="ga-auto-subject serif">We received your request, {firstName}. ✓</p>
           <p className="ga-auto-body">
-            Thank you for your interest in Cafyz. Your request for the <strong>{planDef.label} Plan</strong> has been received and forwarded to our founder. A representative will be in touch within 24 hours with your license key and login credentials.
+            Thank you for your interest in Cafyz. Your <strong>{planDef.label} Plan</strong> request includes a <strong>{TRIAL_DAYS}-day free trial</strong> — no payment until the trial ends. Our founder will email you within 24 hours with your license key and login at {loginUrl}.
           </p>
           <p className="ga-auto-sig">— The Cafyz Team</p>
         </div>
