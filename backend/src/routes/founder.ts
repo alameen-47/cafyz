@@ -1,11 +1,27 @@
 import { Router } from 'express';
 import { z } from 'zod';
+import nodemailer from 'nodemailer';
 import { getDb } from '../db.js';
 import { requireAuth, type AuthRequest } from '../middleware/auth.js';
 import { requireRole } from '../middleware/rbac.js';
+import { TRIAL_DAYS, appPath, trialEndsDateLabel } from '../config/site.js';
 
 const router = Router();
 const onlyFounder = [requireAuth, requireRole('founder')] as const;
+const ADMIN_EMAIL = 'ametronyxx@gmail.com';
+const LOGIN_URL = appPath('/login');
+
+function buildTransporter() {
+  const user = process.env.SMTP_USER;
+  const pass = process.env.SMTP_PASS ?? process.env.SMTP_PASSWORD;
+  if (!user || !pass) return null;
+  return nodemailer.createTransport({
+    host: process.env.SMTP_HOST ?? 'smtp.gmail.com',
+    port: Number(process.env.SMTP_PORT ?? 587),
+    secure: false,
+    auth: { user, pass },
+  });
+}
 
 // GET /api/founder/restaurants — all restaurants with stats
 router.get('/restaurants', ...onlyFounder, async (_req: AuthRequest, res, next) => {
@@ -103,7 +119,10 @@ router.patch('/inquiries/:id', ...onlyFounder, async (req, res, next) => {
     const { status } = z.object({ status: z.enum(['approved', 'denied']) }).parse(req.body);
     const id = String(req.params.id);
     const db = getDb();
-    const row = await db.execute({ sql: `SELECT id,status FROM inquiries WHERE id=?`, args: [id] });
+    const row = await db.execute({
+      sql: `SELECT id,status,name,restaurant_name,email,plan FROM inquiries WHERE id=?`,
+      args: [id],
+    });
     if (!row.rows.length) { res.status(404).json({ error: 'Inquiry not found' }); return; }
     const current = String(row.rows[0].status ?? '');
     if (current !== 'pending') { res.json({ id, status: current }); return; }
@@ -113,6 +132,39 @@ router.patch('/inquiries/:id', ...onlyFounder, async (req, res, next) => {
         : `UPDATE inquiries SET status='denied', denied_at=datetime('now') WHERE id=?`,
       args: [id],
     });
+
+    const inquiry = row.rows[0] as Record<string, unknown>;
+    const transporter = buildTransporter();
+    if (transporter && status === 'approved') {
+      const first = String(inquiry.name ?? 'there').split(' ')[0];
+      const restaurant = String(inquiry.restaurant_name ?? 'your restaurant');
+      const plan = String(inquiry.plan ?? 'basic').toUpperCase();
+      const trialEnd = trialEndsDateLabel();
+      await Promise.all([
+        transporter.sendMail({
+          from: `"Cafyz System" <${process.env.SMTP_USER}>`,
+          to: ADMIN_EMAIL,
+          subject: `[Cafyz] Trial confirmed — ${restaurant} (${plan})`,
+          html: `<p>Founder confirmed a trial request.</p>
+                 <p><b>Restaurant:</b> ${restaurant}<br/>
+                 <b>Contact:</b> ${String(inquiry.name)} (${String(inquiry.email)})<br/>
+                 <b>Plan:</b> ${plan}<br/>
+                 <b>Trial:</b> ${TRIAL_DAYS} days (target end: ${trialEnd})</p>
+                 <p>Login URL to share: <a href="${LOGIN_URL}">${LOGIN_URL}</a></p>`,
+        }),
+        transporter.sendMail({
+          from: `"Cafyz" <${process.env.SMTP_USER}>`,
+          to: String(inquiry.email),
+          replyTo: ADMIN_EMAIL,
+          subject: `Approved: your ${TRIAL_DAYS}-day Cafyz trial for ${restaurant} ✓`,
+          html: `<p>Hi ${first}, your trial request is approved.</p>
+                 <p>You now have a <b>${TRIAL_DAYS}-day free trial</b> on the ${plan} plan.</p>
+                 <p>Login link: <a href="${LOGIN_URL}">${LOGIN_URL}</a></p>
+                 <p>Our founder will send your credentials/license details shortly.</p>`,
+        }),
+      ]);
+    }
+
     res.json({ id, status });
   } catch (e) { next(e); }
 });
