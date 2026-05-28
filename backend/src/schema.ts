@@ -183,6 +183,21 @@ export async function runMigrations() {
       value       TEXT NOT NULL,
       updated_at  TEXT NOT NULL DEFAULT (datetime('now'))
     );
+
+    CREATE TABLE IF NOT EXISTS license_purchase_requests (
+      id                  TEXT PRIMARY KEY,
+      restaurant_id       TEXT NOT NULL REFERENCES restaurants(id) ON DELETE CASCADE,
+      requester_user_id   TEXT REFERENCES users(id) ON DELETE SET NULL,
+      email               TEXT NOT NULL,
+      plan                TEXT NOT NULL CHECK(plan IN ('basic','pro','premium')),
+      status              TEXT NOT NULL DEFAULT 'pending' CHECK(status IN ('pending','fulfilled','cancelled')),
+      note                TEXT,
+      license_key_id      TEXT REFERENCES license_keys(id) ON DELETE SET NULL,
+      created_at          TEXT NOT NULL DEFAULT (datetime('now')),
+      fulfilled_at        TEXT
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_license_requests_status ON license_purchase_requests(status, created_at);
   `);
 
   // Backward-compatible restaurant profile columns for live DBs
@@ -209,6 +224,8 @@ export async function runMigrations() {
   await addCol(`ALTER TABLE restaurants ADD COLUMN website_url TEXT`, 'website_url');
   await addCol(`ALTER TABLE inquiries ADD COLUMN is_retry INTEGER NOT NULL DEFAULT 0`, 'is_retry');
   await addCol(`ALTER TABLE inquiries ADD COLUMN retry_of_id TEXT`, 'retry_of_id');
+  await addCol(`ALTER TABLE inquiries ADD COLUMN restaurant_id TEXT`, 'restaurant_id');
+  await addCol(`ALTER TABLE inquiries ADD COLUMN provisioned_user_id TEXT`, 'provisioned_user_id');
 
   await db.execute({
     sql: `INSERT OR IGNORE INTO app_settings(key,value) VALUES('trial_device_guard_enabled','1')`,

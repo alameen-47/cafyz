@@ -1,28 +1,16 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import { randomBytes } from 'crypto';
-import nodemailer from 'nodemailer';
 import { getDb } from '../db.js';
 import { requireAuth, type AuthRequest } from '../middleware/auth.js';
 import { requireRole } from '../middleware/rbac.js';
 import { uid } from '../utils.js';
 import { appPath, trialEndsAt, TRIAL_DAYS } from '../config/site.js';
+import { ADMIN_EMAIL, buildTransporter, smtpFrom } from '../services/email.js';
 
 const router = Router();
-const ADMIN_EMAIL = 'ametronyxx@gmail.com';
 const LOGIN_URL = appPath('/login');
-
-function buildTransporter() {
-  const user = process.env.SMTP_USER;
-  const pass = process.env.SMTP_PASS ?? process.env.SMTP_PASSWORD;
-  if (!user || !pass) return null;
-  return nodemailer.createTransport({
-    host: process.env.SMTP_HOST ?? 'smtp.gmail.com',
-    port: Number(process.env.SMTP_PORT ?? 587),
-    secure: false,
-    auth: { user, pass },
-  });
-}
+const FOUNDER_URL = appPath('/founder');
 
 function generateKeyCode(plan: string): string {
   const prefix = plan.toUpperCase().slice(0, 3);
@@ -62,7 +50,7 @@ router.post('/', requireAuth, requireRole('founder'), async (req: AuthRequest, r
       if (transporter) {
         const keysList = created.map(k => k.key_code).join('<br/>');
         await transporter.sendMail({
-          from: `"Cafyz System" <${process.env.SMTP_USER}>`,
+          from: smtpFrom(true),
           to: data.recipient_email,
           replyTo: ADMIN_EMAIL,
           subject: `[Cafyz] Your ${data.plan.toUpperCase()} license key${created.length > 1 ? 's' : ''}`,
@@ -151,6 +139,66 @@ router.post('/activate', requireAuth, async (req: AuthRequest, res, next) => {
 
     const updated = await db.execute({ sql: 'SELECT plan FROM restaurants WHERE id=?', args: [rid] });
     res.json({ success: true, plan: updated.rows[0]?.plan, activated_at: now });
+  } catch (e) { next(e); }
+});
+
+// POST /api/licenses/purchase-request — manager/owner requests a license purchase
+router.post('/purchase-request', requireAuth, requireRole('owner', 'manager'), async (req: AuthRequest, res, next) => {
+  try {
+    const data = z.object({
+      plan:  z.enum(['basic', 'pro', 'premium']),
+      email: z.string().email().optional(),
+      note:  z.string().max(500).optional(),
+    }).parse(req.body);
+
+    const rid = req.user!.restaurant_id;
+    const db = getDb();
+    const email = data.email ?? req.user!.email;
+
+    const pending = await db.execute({
+      sql: `SELECT id FROM license_purchase_requests WHERE restaurant_id=? AND status='pending' LIMIT 1`,
+      args: [rid],
+    });
+    if (pending.rows.length) {
+      res.status(409).json({ error: 'You already have a pending license request.' });
+      return;
+    }
+
+    const rest = await db.execute({ sql: 'SELECT name FROM restaurants WHERE id=?', args: [rid] });
+    const restaurantName = String(rest.rows[0]?.name ?? 'Restaurant');
+
+    const id = uid();
+    await db.execute({
+      sql: `INSERT INTO license_purchase_requests(id,restaurant_id,requester_user_id,email,plan,note) VALUES(?,?,?,?,?,?)`,
+      args: [id, rid, req.user!.id, email, data.plan, data.note ?? null],
+    });
+
+    const transporter = buildTransporter();
+    if (transporter) {
+      await transporter.sendMail({
+        from: smtpFrom(true),
+        to: ADMIN_EMAIL,
+        subject: `[Cafyz] License purchase request — ${restaurantName} (${data.plan.toUpperCase()})`,
+        html: `<p><b>${restaurantName}</b> requested a <b>${data.plan.toUpperCase()}</b> license.</p>
+               <p><b>Contact email:</b> ${email}</p>
+               ${data.note ? `<p><b>Note:</b> ${data.note}</p>` : ''}
+               <p>Fulfill in <a href="${FOUNDER_URL}">Founder Panel → License Requests</a>.</p>`,
+      });
+    }
+
+    res.status(201).json({ id, status: 'pending', plan: data.plan, email });
+  } catch (e) { next(e); }
+});
+
+// GET /api/licenses/purchase-requests/mine — restaurant's license requests
+router.get('/purchase-requests/mine', requireAuth, requireRole('owner', 'manager'), async (req: AuthRequest, res, next) => {
+  try {
+    const rows = await getDb().execute({
+      sql: `SELECT id,plan,email,status,note,created_at,fulfilled_at FROM license_purchase_requests
+            WHERE restaurant_id=? ORDER BY created_at DESC LIMIT 20`,
+      args: [req.user!.restaurant_id],
+    });
+    res.json(rows.rows);
   } catch (e) { next(e); }
 });
 

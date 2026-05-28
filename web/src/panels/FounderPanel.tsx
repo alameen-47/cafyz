@@ -1,16 +1,18 @@
 import { useState, useEffect } from 'react';
 import {
   founderApi, licensesApi,
-  type ApiFounderInquiry, type ApiFounderRestaurant, type ApiFounderStats, type ApiLicenseKey, type ApiPlanConfig,
+  type ApiFounderInquiry, type ApiFounderRestaurant, type ApiFounderStats, type ApiLicenseKey,
+  type ApiLicensePurchaseRequest, type ApiPlanConfig,
 } from '../services/api';
 import { PLAN_COLOR, PLAN_LABELS, ALL_PLAN_FEATURES, type Plan } from '../config/planAccess';
 import './FounderPanel.css';
 
-type Tab = 'overview' | 'inquiries' | 'restaurants' | 'licenses' | 'plan-config';
+type Tab = 'overview' | 'inquiries' | 'license-requests' | 'restaurants' | 'licenses' | 'plan-config';
 
 const TABS: { id: Tab; label: string }[] = [
   { id: 'overview',    label: 'Overview' },
   { id: 'inquiries',   label: 'Trial Requests' },
+  { id: 'license-requests', label: 'License Requests' },
   { id: 'restaurants', label: 'Restaurants' },
   { id: 'licenses',    label: 'License Keys' },
   { id: 'plan-config', label: 'Plan Config' },
@@ -62,6 +64,11 @@ function Overview({ onTab }: { onTab: (t: Tab) => void }) {
             <p className="fdr-stat-num serif">{String(stats.total_users)}</p>
             <p className="fdr-stat-label">Total Users</p>
             <p className="fdr-stat-sub">across all restaurants</p>
+          </div>
+          <div className="fdr-stat card" onClick={() => onTab('license-requests')}>
+            <p className="fdr-stat-num serif">{String(stats.pending_license_requests ?? 0)}</p>
+            <p className="fdr-stat-label">License Requests</p>
+            <p className="fdr-stat-sub">pending fulfillment</p>
           </div>
         </div>
       )}
@@ -301,6 +308,74 @@ function LicenseKeys() {
   );
 }
 
+function LicenseRequests() {
+  const [rows, setRows] = useState<ApiLicensePurchaseRequest[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const [error, setError] = useState('');
+
+  function load() {
+    founderApi.licenseRequests().then(setRows).catch(e => setError(e.message)).finally(() => setLoading(false));
+  }
+
+  useEffect(() => { load(); }, []);
+
+  async function fulfill(id: string) {
+    setBusyId(id); setError('');
+    try {
+      const r = await founderApi.fulfillLicenseRequest(id);
+      setRows(prev => prev.map(x => x.id === id ? { ...x, status: 'fulfilled' as const } : x));
+      alert(`License sent to customer.\nKey: ${r.key_code}`);
+    } catch (e) { setError((e as Error).message); }
+    finally { setBusyId(null); }
+  }
+
+  async function cancel(id: string) {
+    setBusyId(id); setError('');
+    try {
+      await founderApi.cancelLicenseRequest(id);
+      setRows(prev => prev.map(x => x.id === id ? { ...x, status: 'cancelled' as const } : x));
+    } catch (e) { setError((e as Error).message); }
+    finally { setBusyId(null); }
+  }
+
+  return (
+    <div className="fdr-section">
+      <p className="eyebrow">Licensing · Purchase Queue</p>
+      <h1 className="serif fdr-title">License Purchase Requests</h1>
+      <p className="fdr-sub">Managers request upgrades here. Fulfill to generate a key and email it to their address.</p>
+      {error && <p className="fdr-error">{error}</p>}
+      {loading ? <p className="fdr-loading">Loading…</p> : (
+        <div className="card fdr-table">
+          <div className="fdr-table-head">
+            <span>Restaurant</span><span>Email</span><span>Plan</span><span>Status</span><span>Note</span><span>Actions</span>
+          </div>
+          {rows.map(r => (
+            <div key={r.id} className="fdr-table-row">
+              <span>{r.restaurant_name ?? '—'}</span>
+              <span style={{ fontSize: 12 }}>{r.email}</span>
+              <span className="mono">{r.plan.toUpperCase()}</span>
+              <span className="mono" style={{ fontSize: 11 }}>{r.status}</span>
+              <span style={{ fontSize: 11, color: 'var(--text3)' }}>{r.note ?? '—'}</span>
+              <div style={{ display: 'flex', gap: 6 }}>
+                {r.status === 'pending' ? (
+                  <>
+                    <button className="roles-save-btn sm" onClick={() => fulfill(r.id)} disabled={busyId === r.id}>
+                      {busyId === r.id ? '…' : 'Fulfill & Email'}
+                    </button>
+                    <button className="roles-del-btn" onClick={() => cancel(r.id)} disabled={busyId === r.id}>Cancel</button>
+                  </>
+                ) : <span style={{ fontSize: 11, color: 'var(--text3)' }}>—</span>}
+              </div>
+            </div>
+          ))}
+          {rows.length === 0 && <p className="fdr-empty">No license requests yet.</p>}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function Inquiries() {
   const [rows, setRows] = useState<ApiFounderInquiry[]>([]);
   const [loading, setLoading] = useState(true);
@@ -324,7 +399,7 @@ function Inquiries() {
     <div className="fdr-section">
       <p className="eyebrow">Onboarding · Trial Queue</p>
       <h1 className="serif fdr-title">Trial Requests</h1>
-      <p className="fdr-sub">Approve retries directly from Founder Panel.</p>
+      <p className="fdr-sub">Approve to auto-create manager login and email credentials.</p>
       {error && <p className="fdr-error">{error}</p>}
       {loading ? <p className="fdr-loading">Loading…</p> : (
         <div className="card fdr-table">
@@ -488,6 +563,7 @@ export function FounderPanel() {
       <div className="fdr-body">
         {tab === 'overview'    && <Overview    onTab={setTab} />}
         {tab === 'inquiries'   && <Inquiries />}
+        {tab === 'license-requests' && <LicenseRequests />}
         {tab === 'restaurants' && <Restaurants />}
         {tab === 'licenses'    && <LicenseKeys />}
         {tab === 'plan-config' && <PlanConfig />}

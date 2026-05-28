@@ -5,10 +5,11 @@ import nodemailer from 'nodemailer';
 import { getDb } from '../db.js';
 import { uid } from '../utils.js';
 import { APP_URL, TRIAL_DAYS, appPath, trialEndsDateLabel } from '../config/site.js';
+import { approveInquiryById } from '../services/inquiryApproval.js';
+import { ADMIN_EMAIL, buildTransporter, smtpFrom } from '../services/email.js';
 
 const router = Router();
 
-const ADMIN_EMAIL = 'ametronyxx@gmail.com';
 const FOUNDER_URL = appPath('/founder');
 const LOGIN_URL   = appPath('/login');
 
@@ -53,18 +54,6 @@ const PLAN_LABELS: Record<string, string> = {
   premium: `Premium — $199/mo after ${TRIAL_DAYS}-day free trial`,
 };
 
-function buildTransporter() {
-  const user = process.env.SMTP_USER;
-  const pass = process.env.SMTP_PASS ?? process.env.SMTP_PASSWORD;
-  if (!user || !pass) return null;
-  return nodemailer.createTransport({
-    host:   process.env.SMTP_HOST ?? 'smtp.gmail.com',
-    port:   Number(process.env.SMTP_PORT ?? 587),
-    secure: false,
-    auth:   { user, pass },
-  });
-}
-
 function adminHtml(args: {
   name: string;
   restaurantName: string;
@@ -106,10 +95,10 @@ function adminHtml(args: {
       <div style="font-size:11px;color:#8B5CF6;text-transform:uppercase;letter-spacing:1.5px;margin-bottom:6px">Founder checklist</div>
       <div style="font-size:13px;color:#B8B8C2;line-height:1.7">
         <ol style="margin:0;padding-left:18px">
-          <li>Click <strong style="color:#F5F5F0">Approve Trial</strong> above to confirm this request.</li>
-          <li>Open the <a href="${FOUNDER_URL}" style="color:#8B5CF6">Founder Panel</a> and generate a <strong style="color:#F5F5F0">${plan.toUpperCase()}</strong> license key with expiry set to <strong style="color:#F5F5F0">${trialEnd}</strong> (${TRIAL_DAYS}-day trial).</li>
-          <li>Create their restaurant credentials.</li>
-          <li>Reply to <a href="mailto:${esc(email)}" style="color:#8B5CF6">${esc(email)}</a> with login URL <a href="${LOGIN_URL}" style="color:#8B5CF6">${LOGIN_URL}</a>, credentials, and license key. Remind them: <strong style="color:#F5F5F0">no charge until the trial ends.</strong></li>
+          <li>Click <strong style="color:#F5F5F0">Approve Trial</strong> above — Cafyz will auto-create their restaurant, manager login, and trial license.</li>
+          <li>The user receives an email with their password and manager panel login link.</li>
+          <li>They assign cashier, waiter, and kitchen roles from <strong style="color:#F5F5F0">Role Management</strong> in the manager panel.</li>
+          <li>License upgrades: they request purchase in the manager panel; you fulfill from the <a href="${FOUNDER_URL}" style="color:#8B5CF6">Founder Panel</a>.</li>
         </ol>
       </div>
     </div>
@@ -201,13 +190,13 @@ router.post('/', async (req, res, next) => {
     if (transporter) {
       await Promise.all([
         transporter.sendMail({
-          from:    `"Cafyz System" <${process.env.SMTP_USER}>`,
+          from:    smtpFrom(true),
           to:      ADMIN_EMAIL,
           subject: `[Cafyz] Trial approval needed — ${plan.toUpperCase()} · ${restaurant_name}`,
           html:    adminHtml({ name, restaurantName: restaurant_name, email, plan, message, approveUrl, denyUrl }),
         }),
         transporter.sendMail({
-          from:    `"Cafyz" <${process.env.SMTP_USER}>`,
+          from:    smtpFrom(false),
           to:      email,
           replyTo: ADMIN_EMAIL,
           subject: `We received your request, ${name.split(' ')[0]} ✓ (pending approval)`,
@@ -261,43 +250,18 @@ router.get('/action', async (req, res, next) => {
       return;
     }
 
-    const transporter = buildTransporter();
     const trialEnd = trialEndsDateLabel();
 
     if (action === 'approve') {
-      await getDb().execute({
-        sql: `UPDATE inquiries SET status='approved', approved_at=datetime('now') WHERE id=?`,
-        args: [id],
-      });
-
-      if (transporter) {
-        await transporter.sendMail({
-          from: `"Cafyz" <${process.env.SMTP_USER}>`,
-          to: String(row.email),
-          replyTo: ADMIN_EMAIL,
-          subject: `Approved: your ${TRIAL_DAYS}-day Cafyz trial for ${String(row.restaurant_name)} ✓`,
-          html: `
-<!doctype html><html><body style="margin:0;padding:0;background:#07060F;font-family:Inter,Arial,sans-serif;color:#F5F5F0">
-<div style="max-width:560px;margin:40px auto;border:0.5px solid rgba(46,204,138,0.35);border-radius:16px;overflow:hidden">
-  <div style="padding:34px 32px;background:linear-gradient(135deg,#0d2a1f 0%,#0A0816 60%)">
-    <div style="font-size:11px;color:#2ECC8A;text-transform:uppercase;letter-spacing:2px;margin-bottom:8px">Trial approved</div>
-    <div style="font-family:Georgia,serif;font-size:30px;margin-bottom:8px">Welcome to Cafyz, ${esc(String(row.name).split(' ')[0])}.</div>
-    <div style="font-size:14px;color:#B8B8C2;line-height:1.7">Your request has been approved. You’ll receive a <strong style="color:#F5F5F0">${TRIAL_DAYS}-day free trial</strong> for the <strong style="color:#F5F5F0">${String(row.plan).toUpperCase()}</strong> plan. Billing begins only after your trial ends (target end: <strong style="color:#F5F5F0">${trialEnd}</strong>).</div>
-  </div>
-  <div style="padding:26px 32px;background:#0A0816">
-    <p style="margin:0 0 14px;color:#B8B8C2;line-height:1.7;font-size:14px">Our founder will email you within 24 hours with your login credentials and a trial license key.</p>
-    <div style="margin-top:16px">
-      <a href="${LOGIN_URL}" style="display:inline-block;background:#8B5CF6;color:#07060F;font-size:13px;font-weight:800;text-decoration:none;padding:12px 22px;border-radius:10px">Open Sign In →</a>
-      <div style="margin-top:10px;font-size:12px;color:#5A5A6A;word-break:break-all">${LOGIN_URL}</div>
-    </div>
-    <div style="margin-top:18px;font-size:13px;color:#8A8A9A">Questions? Reply to this email or contact <a href="mailto:${ADMIN_EMAIL}" style="color:#8B5CF6;text-decoration:none">${ADMIN_EMAIL}</a>.</div>
-  </div>
-</div>
-</body></html>`,
-        });
+      try {
+        const provision = await approveInquiryById(id);
+        const msg = provision.alreadyProvisioned
+          ? `This request was already provisioned. The user can sign in at <a href="${LOGIN_URL}" style="color:#8B5CF6">${LOGIN_URL}</a>.`
+          : `This request is <strong style="color:#2ECC8A">APPROVED</strong>.<br><br>Restaurant and manager account created. Login credentials were emailed to <strong>${esc(String(row.email))}</strong>.<br><br>Trial plan: <strong>${esc(provision.plan.toUpperCase())}</strong> · ends ${trialEnd}.`;
+        res.status(200).send(actionHtml('Trial approved', msg));
+      } catch (err) {
+        res.status(500).send(actionHtml('Approval failed', esc((err as Error).message)));
       }
-
-      res.status(200).send(actionHtml('Trial approved', `This request is now <strong style="color:#2ECC8A">APPROVED</strong>.<br><br>The user has been notified. Next, generate a trial license key in the <a href="${FOUNDER_URL}" style="color:#8B5CF6;text-decoration:none">Founder Panel</a> and reply with credentials.`));
       return;
     }
 

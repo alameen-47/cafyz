@@ -157,6 +157,10 @@ export const licensesApi = {
     post<ApiLicenseKey | ApiLicenseKey[]>('/api/licenses', d),
   activate: (key_code: string)                                            => post<{ success: boolean; plan: string; activated_at: string }>('/api/licenses/activate', { key_code }),
   revoke:   (id: string)                                                  => del(`/api/licenses/${id}`),
+  requestPurchase: (d: { plan: string; email?: string; note?: string })   =>
+    post<{ id: string; status: string; plan: string; email: string }>('/api/licenses/purchase-request', d),
+  myPurchaseRequests: ()                                                   =>
+    get<ApiLicensePurchaseRequest[]>('/api/licenses/purchase-requests/mine'),
 };
 
 // ── Inquiries (public — no auth) ──────────────────────────────────────────────
@@ -170,7 +174,13 @@ export const founderApi = {
   restaurants:    ()                                                                    => get<ApiFounderRestaurant[]>('/api/founder/restaurants'),
   stats:          ()                                                                    => get<ApiFounderStats>('/api/founder/stats'),
   inquiries:      ()                                                                    => get<ApiFounderInquiry[]>('/api/founder/inquiries'),
-  setInquiryStatus: (id: string, status: 'approved'|'denied')                          => patch<{ id: string; status: string }>(`/api/founder/inquiries/${id}`, { status }),
+  setInquiryStatus: (id: string, status: 'approved'|'denied')                          =>
+    patch<{ id: string; status: string; provisioned?: boolean }>(`/api/founder/inquiries/${id}`, { status }),
+  licenseRequests: ()                                                                   => get<ApiLicensePurchaseRequest[]>('/api/founder/license-requests'),
+  fulfillLicenseRequest: (id: string)                                                 =>
+    post<{ id: string; status: string; key_code: string }>(`/api/founder/license-requests/${id}/fulfill`, {}),
+  cancelLicenseRequest: (id: string)                                                   =>
+    patch<{ id: string; status: string }>(`/api/founder/license-requests/${id}`, { status: 'cancelled' }),
   setPlan:        (restaurantId: string, plan: string)                                 => patch<ApiRestaurant>(`/api/founder/restaurants/${restaurantId}/plan`, { plan }),
   planConfig:     ()                                                                    => get<ApiPlanConfig[]>('/api/founder/plan-config'),
   updatePlanConfig: (plan: string, d: Partial<{ panels_json: string; label: string; description: string; price_monthly: number }>) =>
@@ -281,6 +291,21 @@ export interface ApiFounderStats {
   restaurants_by_plan: { plan: string; count: number }[];
   license_keys: { total: number; activated: number };
   total_users: number;
+  pending_license_requests?: number;
+}
+
+export interface ApiLicensePurchaseRequest {
+  id: string;
+  restaurant_id: string;
+  restaurant_name?: string;
+  requester_user_id?: string;
+  email: string;
+  plan: string;
+  status: 'pending' | 'fulfilled' | 'cancelled';
+  note?: string;
+  license_key_id?: string;
+  created_at: string;
+  fulfilled_at?: string;
 }
 
 export interface ApiFounderInquiry {

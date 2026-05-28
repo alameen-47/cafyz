@@ -73,6 +73,7 @@ function Overview({ onNav }: { onNav: (s: Section) => void }) {
       <div className="mgr-action-row">
         <button className="btn-outline" onClick={() => onNav('reports')}>Export</button>
         <button className="btn-outline" onClick={() => onNav('reports')}>Daily Report</button>
+        <button className="btn-outline" onClick={() => navigate('/license')}>License / Upgrade</button>
         <button className="btn-gold"    onClick={() => navigate('/pos')}>+ New Order</button>
       </div>
 

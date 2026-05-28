@@ -1,26 +1,23 @@
 import { Router } from 'express';
 import { z } from 'zod';
-import nodemailer from 'nodemailer';
+import { randomBytes } from 'crypto';
 import { getDb } from '../db.js';
 import { requireAuth, type AuthRequest } from '../middleware/auth.js';
 import { requireRole } from '../middleware/rbac.js';
-import { TRIAL_DAYS, appPath, trialEndsDateLabel } from '../config/site.js';
+import { uid } from '../utils.js';
+import { appPath, trialEndsAt } from '../config/site.js';
+import { approveInquiryById } from '../services/inquiryApproval.js';
+import { ADMIN_EMAIL, buildTransporter, smtpFrom } from '../services/email.js';
 
 const router = Router();
 const onlyFounder = [requireAuth, requireRole('founder')] as const;
-const ADMIN_EMAIL = 'ametronyxx@gmail.com';
 const LOGIN_URL = appPath('/login');
+const FOUNDER_URL = appPath('/founder');
 
-function buildTransporter() {
-  const user = process.env.SMTP_USER;
-  const pass = process.env.SMTP_PASS ?? process.env.SMTP_PASSWORD;
-  if (!user || !pass) return null;
-  return nodemailer.createTransport({
-    host: process.env.SMTP_HOST ?? 'smtp.gmail.com',
-    port: Number(process.env.SMTP_PORT ?? 587),
-    secure: false,
-    auth: { user, pass },
-  });
+function generateKeyCode(plan: string): string {
+  const prefix = plan.toUpperCase().slice(0, 3);
+  const rand = randomBytes(4).toString('hex').toUpperCase();
+  return `CAFYZ-${prefix}-${rand}`;
 }
 
 // GET /api/founder/restaurants — all restaurants with stats
@@ -87,15 +84,17 @@ router.put('/plan-config/:plan', ...onlyFounder, async (req: AuthRequest, res, n
 router.get('/stats', ...onlyFounder, async (_req, res, next) => {
   try {
     const db = getDb();
-    const [rests, keys, users] = await Promise.all([
+    const [rests, keys, users, pendingLic] = await Promise.all([
       db.execute(`SELECT plan, COUNT(*) as count FROM restaurants WHERE id != 'CAFYZ_SYSTEM' GROUP BY plan`),
       db.execute(`SELECT COUNT(*) as total, SUM(CASE WHEN restaurant_id IS NOT NULL THEN 1 ELSE 0 END) as activated FROM license_keys WHERE is_active=1`),
       db.execute(`SELECT COUNT(*) as total FROM users WHERE role != 'founder'`),
+      db.execute(`SELECT COUNT(*) as pending FROM license_purchase_requests WHERE status='pending'`),
     ]);
     res.json({
       restaurants_by_plan: rests.rows,
       license_keys:        keys.rows[0],
       total_users:         users.rows[0]?.total ?? 0,
+      pending_license_requests: pendingLic.rows[0]?.pending ?? 0,
     });
   } catch (e) { next(e); }
 });
@@ -104,7 +103,7 @@ router.get('/stats', ...onlyFounder, async (_req, res, next) => {
 router.get('/inquiries', ...onlyFounder, async (_req, res, next) => {
   try {
     const rows = await getDb().execute(`
-      SELECT id,name,restaurant_name,email,plan,message,status,is_retry,retry_of_id,created_at,approved_at,denied_at
+      SELECT id,name,restaurant_name,email,plan,message,status,is_retry,retry_of_id,restaurant_id,created_at,approved_at,denied_at
       FROM inquiries
       ORDER BY created_at DESC
       LIMIT 300
@@ -120,51 +119,111 @@ router.patch('/inquiries/:id', ...onlyFounder, async (req, res, next) => {
     const id = String(req.params.id);
     const db = getDb();
     const row = await db.execute({
-      sql: `SELECT id,status,name,restaurant_name,email,plan FROM inquiries WHERE id=?`,
+      sql: `SELECT id,status FROM inquiries WHERE id=?`,
       args: [id],
     });
     if (!row.rows.length) { res.status(404).json({ error: 'Inquiry not found' }); return; }
     const current = String(row.rows[0].status ?? '');
     if (current !== 'pending') { res.json({ id, status: current }); return; }
+
+    if (status === 'approved') {
+      await approveInquiryById(id);
+      res.json({ id, status: 'approved', provisioned: true });
+      return;
+    }
+
     await db.execute({
-      sql: status === 'approved'
-        ? `UPDATE inquiries SET status='approved', approved_at=datetime('now') WHERE id=?`
-        : `UPDATE inquiries SET status='denied', denied_at=datetime('now') WHERE id=?`,
+      sql: `UPDATE inquiries SET status='denied', denied_at=datetime('now') WHERE id=?`,
       args: [id],
     });
+    res.json({ id, status: 'denied' });
+  } catch (e) { next(e); }
+});
 
-    const inquiry = row.rows[0] as Record<string, unknown>;
+// GET /api/founder/license-requests — pending license purchase requests
+router.get('/license-requests', ...onlyFounder, async (_req, res, next) => {
+  try {
+    const rows = await getDb().execute(`
+      SELECT lpr.*, r.name as restaurant_name
+      FROM license_purchase_requests lpr
+      JOIN restaurants r ON r.id = lpr.restaurant_id
+      ORDER BY lpr.created_at DESC
+      LIMIT 200
+    `);
+    res.json(rows.rows);
+  } catch (e) { next(e); }
+});
+
+// POST /api/founder/license-requests/:id/fulfill — generate key and email customer
+router.post('/license-requests/:id/fulfill', ...onlyFounder, async (req, res, next) => {
+  try {
+    const id = String(req.params.id);
+    const db = getDb();
+    const reqRow = await db.execute({
+      sql: `SELECT lpr.*, r.name as restaurant_name FROM license_purchase_requests lpr
+            JOIN restaurants r ON r.id = lpr.restaurant_id WHERE lpr.id=?`,
+      args: [id],
+    });
+    if (!reqRow.rows.length) { res.status(404).json({ error: 'Request not found' }); return; }
+    const purchase = reqRow.rows[0] as Record<string, unknown>;
+    if (String(purchase.status) !== 'pending') {
+      res.status(400).json({ error: 'Request already processed' });
+      return;
+    }
+
+    const plan = String(purchase.plan);
+    const email = String(purchase.email);
+    const licId = uid();
+    const keyCode = generateKeyCode(plan);
+    const expiresAt = trialEndsAt();
+
+    await db.execute({
+      sql: `INSERT INTO license_keys(id,key_code,plan,expires_at,note) VALUES(?,?,?,?,?)`,
+      args: [licId, keyCode, plan, expiresAt, `Purchase request ${id} · ${purchase.restaurant_name}`],
+    });
+
+    await db.execute({
+      sql: `UPDATE license_purchase_requests SET status='fulfilled', license_key_id=?, fulfilled_at=datetime('now') WHERE id=?`,
+      args: [licId, id],
+    });
+
     const transporter = buildTransporter();
-    if (transporter && status === 'approved') {
-      const first = String(inquiry.name ?? 'there').split(' ')[0];
-      const restaurant = String(inquiry.restaurant_name ?? 'your restaurant');
-      const plan = String(inquiry.plan ?? 'basic').toUpperCase();
-      const trialEnd = trialEndsDateLabel();
+    if (transporter) {
       await Promise.all([
         transporter.sendMail({
-          from: `"Cafyz System" <${process.env.SMTP_USER}>`,
-          to: ADMIN_EMAIL,
-          subject: `[Cafyz] Trial confirmed — ${restaurant} (${plan})`,
-          html: `<p>Founder confirmed a trial request.</p>
-                 <p><b>Restaurant:</b> ${restaurant}<br/>
-                 <b>Contact:</b> ${String(inquiry.name)} (${String(inquiry.email)})<br/>
-                 <b>Plan:</b> ${plan}<br/>
-                 <b>Trial:</b> ${TRIAL_DAYS} days (target end: ${trialEnd})</p>
-                 <p>Login URL to share: <a href="${LOGIN_URL}">${LOGIN_URL}</a></p>`,
+          from: smtpFrom(true),
+          to: email,
+          replyTo: ADMIN_EMAIL,
+          subject: `[Cafyz] Your ${plan.toUpperCase()} license key`,
+          html: `<p>Your license purchase for <b>${String(purchase.restaurant_name)}</b> is ready.</p>
+                 <p style="font-family:monospace;font-size:16px"><b>${keyCode}</b></p>
+                 <p>Plan: <b>${plan.toUpperCase()}</b></p>
+                 <p>Sign in and activate: <a href="${LOGIN_URL}">${LOGIN_URL}</a></p>`,
         }),
         transporter.sendMail({
-          from: `"Cafyz" <${process.env.SMTP_USER}>`,
-          to: String(inquiry.email),
-          replyTo: ADMIN_EMAIL,
-          subject: `Approved: your ${TRIAL_DAYS}-day Cafyz trial for ${restaurant} ✓`,
-          html: `<p>Hi ${first}, your trial request is approved.</p>
-                 <p>You now have a <b>${TRIAL_DAYS}-day free trial</b> on the ${plan} plan.</p>
-                 <p>Login link: <a href="${LOGIN_URL}">${LOGIN_URL}</a></p>
-                 <p>Our founder will send your credentials/license details shortly.</p>`,
+          from: smtpFrom(true),
+          to: ADMIN_EMAIL,
+          subject: `[Cafyz] License fulfilled — ${purchase.restaurant_name}`,
+          html: `<p>License request fulfilled for ${email}.</p>
+                 <p>Key: <code>${keyCode}</code> · Plan: ${plan.toUpperCase()}</p>
+                 <p><a href="${FOUNDER_URL}">Founder Panel</a></p>`,
         }),
       ]);
     }
 
+    res.json({ id, status: 'fulfilled', key_code: keyCode, license_id: licId });
+  } catch (e) { next(e); }
+});
+
+// PATCH /api/founder/license-requests/:id — cancel request
+router.patch('/license-requests/:id', ...onlyFounder, async (req, res, next) => {
+  try {
+    const { status } = z.object({ status: z.enum(['cancelled']) }).parse(req.body);
+    const id = String(req.params.id);
+    await getDb().execute({
+      sql: `UPDATE license_purchase_requests SET status=? WHERE id=? AND status='pending'`,
+      args: [status, id],
+    });
     res.json({ id, status });
   } catch (e) { next(e); }
 });
