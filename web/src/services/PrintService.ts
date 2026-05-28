@@ -56,6 +56,10 @@ class EscPosBuilder {
 
 export interface ReceiptData {
   restaurantName: string;
+  logoUrl?:       string;
+  addressLine?:   string;
+  phone?:         string;
+  taxId?:         string;
   tableName:      string;
   serverName?:    string;
   covers?:        number;
@@ -67,6 +71,19 @@ export interface ReceiptData {
   payMethod?:     string;
   note?:          string;
   dateStr?:       string;
+}
+
+export interface KitchenTicketData {
+  restaurantName: string;
+  logoUrl?: string;
+  ticketId: string;
+  tableName: string;
+  serverName?: string;
+  covers?: number;
+  station?: string;
+  items: { name: string; qty: number; mods?: string[]; alert?: boolean }[];
+  note?: string;
+  createdAt?: string;
 }
 
 // Build ESC/POS bytes for a receipt (32-char width for 58mm, 48-char for 80mm)
@@ -84,6 +101,11 @@ export function buildReceipt(data: ReceiptData, width = 32): Uint8Array {
   // Header
   b.alignCenter()
    .boldOn().bigOn().text(data.restaurantName).bigOff().boldOff().nl(2);
+  // Thermal image raster support is device-specific; use text fallback here.
+  if (data.logoUrl) b.text('[LOGO]').nl();
+  if (data.addressLine) b.text(data.addressLine).nl();
+  if (data.phone) b.text(`Tel: ${data.phone}`).nl();
+  if (data.taxId) b.text(`Tax ID: ${data.taxId}`).nl();
 
   if (data.tableName) b.text(`Table: ${data.tableName}`).nl();
   if (data.serverName) b.text(`Server: ${data.serverName}`).nl();
@@ -161,7 +183,11 @@ export function buildReceiptHTML(data: ReceiptData): string {
 </head>
 <body>
 <div class="center">
+  ${data.logoUrl ? `<img src="${data.logoUrl}" alt="Restaurant logo" style="max-width:150px;max-height:72px;object-fit:contain;margin:0 auto 6px;display:block" />` : ''}
   <h1>${data.restaurantName}</h1>
+  ${data.addressLine ? `<p>${data.addressLine}</p>` : ''}
+  ${data.phone ? `<p>Tel: ${data.phone}</p>` : ''}
+  ${data.taxId ? `<p>Tax ID: ${data.taxId}</p>` : ''}
   ${data.tableName ? `<p>Table: ${data.tableName}</p>` : ''}
   ${data.serverName ? `<p>Server: ${data.serverName}</p>` : ''}
   ${data.covers ? `<p>Covers: ${data.covers}</p>` : ''}
@@ -190,6 +216,69 @@ ${data.payMethod ? `<hr><p class="center">Paid by ${data.payMethod}</p>` : ''}
 </div>
 </body>
 </html>`;
+}
+
+export function buildKitchenTicket(data: KitchenTicketData, width = 32): Uint8Array {
+  const b = new EscPosBuilder();
+  const W = width;
+  const ts = data.createdAt ? new Date(data.createdAt).toLocaleString('en-GB') : new Date().toLocaleString('en-GB');
+  b.init().alignCenter().boldOn().bigOn().text(data.restaurantName).bigOff().boldOff().nl();
+  if (data.logoUrl) b.text('[LOGO]').nl();
+  b.boldOn().text('KITCHEN TICKET').boldOff().nl();
+  b.divider(W);
+  b.alignLeft();
+  b.text(`Ticket: #${data.ticketId.slice(0, 8).toUpperCase()}`).nl();
+  b.text(`Table: ${data.tableName}`).nl();
+  if (data.serverName) b.text(`Server: ${data.serverName}`).nl();
+  if (data.covers) b.text(`Covers: ${data.covers}`).nl();
+  if (data.station) b.text(`Station: ${data.station}`).nl();
+  b.text(ts).nl();
+  b.divider(W);
+  for (const it of data.items) {
+    const name = `${it.alert ? '⚠ ' : ''}${it.qty}x ${it.name}`;
+    b.text(name).nl();
+    for (const m of (it.mods ?? [])) b.text(` · ${m}`).nl();
+  }
+  if (data.note) {
+    b.divider(W);
+    b.text(`Note: ${data.note}`).nl();
+  }
+  b.feed(4).cut();
+  return b.build();
+}
+
+export function buildKitchenTicketHTML(data: KitchenTicketData): string {
+  const ts = data.createdAt ? new Date(data.createdAt).toLocaleString('en-GB') : new Date().toLocaleString('en-GB');
+  const rows = data.items.map(it => `
+    <tr>
+      <td style="padding:2px 0;font-weight:700">${it.alert ? '⚠ ' : ''}${it.qty}× ${it.name}</td>
+    </tr>
+    ${(it.mods ?? []).map(m => `<tr><td style="padding:1px 0 1px 14px;font-size:11px">· ${m}</td></tr>`).join('')}
+  `).join('');
+  return `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Kitchen Ticket</title>
+  <style>
+    @page { size: 72mm auto; margin: 6mm; }
+    body { font-family: 'Courier New', monospace; font-size: 12px; width: 60mm; margin: 0 auto; }
+    .center { text-align: center; }
+    hr { border: none; border-top: 1px dashed #000; margin: 6px 0; }
+    table { width: 100%; border-collapse: collapse; }
+    h1 { font-size: 14px; margin: 4px 0; }
+  </style></head><body>
+  <div class="center">
+    ${data.logoUrl ? `<img src="${data.logoUrl}" alt="Restaurant logo" style="max-width:150px;max-height:72px;object-fit:contain;margin:0 auto 6px;display:block" />` : ''}
+    <h1>${data.restaurantName}</h1>
+    <p><b>KITCHEN TICKET</b></p>
+  </div>
+  <hr>
+  <p><b>Ticket:</b> #${data.ticketId.slice(0, 8).toUpperCase()}</p>
+  <p><b>Table:</b> ${data.tableName}</p>
+  ${data.serverName ? `<p><b>Server:</b> ${data.serverName}</p>` : ''}
+  ${data.covers ? `<p><b>Covers:</b> ${data.covers}</p>` : ''}
+  ${data.station ? `<p><b>Station:</b> ${data.station}</p>` : ''}
+  <p>${ts}</p>
+  <hr><table><tbody>${rows}</tbody></table>
+  ${data.note ? `<hr><p><b>Note:</b> ${data.note}</p>` : ''}
+  </body></html>`;
 }
 
 // ── Bluetooth ─────────────────────────────────────────────────────────────────
@@ -323,15 +412,73 @@ function printDialog(receiptData: ReceiptData): void {
   win.document.write(html);
   win.document.close();
   win.focus();
-  // Wait for resources to load then trigger print
-  win.onload = () => {
+
+  const triggerPrint = () => {
+    if (win.closed) return;
     win.print();
-    setTimeout(() => win.close(), 800);
+    setTimeout(() => win.close(), 900);
   };
-  // Fallback if onload already fired
-  setTimeout(() => {
-    if (!win.closed) { win.print(); setTimeout(() => win.close(), 800); }
-  }, 400);
+
+  // Ensure logo images are fully loaded before printing.
+  const waitForImagesThenPrint = () => {
+    try {
+      const images = Array.from(win.document.images);
+      if (!images.length) { triggerPrint(); return; }
+
+      let pending = images.filter(img => !img.complete).length;
+      if (pending === 0) { triggerPrint(); return; }
+
+      const done = () => {
+        pending -= 1;
+        if (pending <= 0) triggerPrint();
+      };
+      images.forEach(img => {
+        if (img.complete) return;
+        img.addEventListener('load', done, { once: true });
+        img.addEventListener('error', done, { once: true });
+      });
+
+      // Hard timeout: never hang print forever if image host is slow.
+      setTimeout(() => { if (!win.closed) triggerPrint(); }, 5000);
+    } catch {
+      triggerPrint();
+    }
+  };
+
+  // Wait for popup document load, then images.
+  win.onload = waitForImagesThenPrint;
+  // Fallback if onload fired before handler attached.
+  setTimeout(waitForImagesThenPrint, 450);
+}
+
+function printDialogHtml(html: string): void {
+  const win  = window.open('', '_blank', 'width=340,height=600');
+  if (!win) throw new Error('Pop-up blocked — please allow pop-ups for this site.');
+  win.document.write(html);
+  win.document.close();
+  win.focus();
+  const triggerPrint = () => {
+    if (win.closed) return;
+    win.print();
+    setTimeout(() => win.close(), 900);
+  };
+  const waitForImagesThenPrint = () => {
+    try {
+      const images = Array.from(win.document.images);
+      if (!images.length) { triggerPrint(); return; }
+      let pending = images.filter(img => !img.complete).length;
+      if (pending === 0) { triggerPrint(); return; }
+      const done = () => { pending -= 1; if (pending <= 0) triggerPrint(); };
+      images.forEach(img => {
+        if (img.complete) return;
+        img.addEventListener('load', done, { once: true });
+        img.addEventListener('error', done, { once: true });
+      });
+      setTimeout(() => { if (!win.closed) triggerPrint(); }, 5000);
+    } catch { triggerPrint(); }
+  };
+  win.onload = waitForImagesThenPrint;
+  setTimeout(waitForImagesThenPrint, 450);
 }
 
 /**
@@ -343,6 +490,11 @@ export async function print(
   escposData?: Uint8Array,
   width = 32,
 ): Promise<'bluetooth' | 'usb' | 'dialog'> {
+  // Always use browser print when logo is present to guarantee logo output.
+  if (receiptData.logoUrl) {
+    printDialog(receiptData);
+    return 'dialog';
+  }
   const bytes = escposData ?? buildReceipt(receiptData, width);
 
   if (btChar) {
@@ -354,5 +506,21 @@ export async function print(
     return 'usb';
   }
   printDialog(receiptData);
+  return 'dialog';
+}
+
+export async function printKitchenTicket(
+  data: KitchenTicketData,
+): Promise<'bluetooth' | 'usb' | 'dialog'> {
+  const bytes = buildKitchenTicket(data, 32);
+  if (!data.logoUrl && btChar) {
+    await printBluetooth(bytes);
+    return 'bluetooth';
+  }
+  if (!data.logoUrl && usbDevice) {
+    await printUSB(bytes);
+    return 'usb';
+  }
+  printDialogHtml(buildKitchenTicketHTML(data));
   return 'dialog';
 }

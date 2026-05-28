@@ -3,6 +3,7 @@ import bcrypt from 'bcryptjs';
 import { z } from 'zod';
 import { getDb } from '../db.js';
 import { requireAuth, signToken, type AuthRequest } from '../middleware/auth.js';
+import { requireRole } from '../middleware/rbac.js';
 import { uid } from '../utils.js';
 
 const router = Router();
@@ -61,17 +62,37 @@ router.get('/me', requireAuth, async (req: AuthRequest, res, next) => {
 });
 
 // PUT /api/restaurants/me — requireAuth, updates name/timezone
-router.put('/me', requireAuth, async (req: AuthRequest, res, next) => {
+router.put('/me', requireAuth, requireRole('manager','cashier'), async (req: AuthRequest, res, next) => {
   try {
     const rid = req.user!.restaurant_id;
     const data = z.object({
-      name:     z.string().min(1).optional(),
-      timezone: z.string().optional(),
+      name:          z.string().min(1).optional(),
+      timezone:      z.string().optional(),
+      logo_url:      z.string().url().or(z.literal('')).optional(),
+      contact_phone: z.string().max(40).optional(),
+      contact_email: z.string().email().or(z.literal('')).optional(),
+      address_line1: z.string().max(160).optional(),
+      address_line2: z.string().max(160).optional(),
+      city:          z.string().max(80).optional(),
+      country:       z.string().max(80).optional(),
+      postal_code:   z.string().max(24).optional(),
+      tax_id:        z.string().max(80).optional(),
+      website_url:   z.string().url().or(z.literal('')).optional(),
     }).parse(req.body);
 
     const sets: string[] = []; const args: any[] = [];
-    if (data.name     !== undefined) { sets.push('name=?');     args.push(data.name); }
-    if (data.timezone !== undefined) { sets.push('timezone=?'); args.push(data.timezone); }
+    if (data.name          !== undefined) { sets.push('name=?');          args.push(data.name); }
+    if (data.timezone      !== undefined) { sets.push('timezone=?');      args.push(data.timezone); }
+    if (data.logo_url      !== undefined) { sets.push('logo_url=?');      args.push(data.logo_url || null); }
+    if (data.contact_phone !== undefined) { sets.push('contact_phone=?'); args.push(data.contact_phone || null); }
+    if (data.contact_email !== undefined) { sets.push('contact_email=?'); args.push(data.contact_email || null); }
+    if (data.address_line1 !== undefined) { sets.push('address_line1=?'); args.push(data.address_line1 || null); }
+    if (data.address_line2 !== undefined) { sets.push('address_line2=?'); args.push(data.address_line2 || null); }
+    if (data.city          !== undefined) { sets.push('city=?');          args.push(data.city || null); }
+    if (data.country       !== undefined) { sets.push('country=?');       args.push(data.country || null); }
+    if (data.postal_code   !== undefined) { sets.push('postal_code=?');   args.push(data.postal_code || null); }
+    if (data.tax_id        !== undefined) { sets.push('tax_id=?');        args.push(data.tax_id || null); }
+    if (data.website_url   !== undefined) { sets.push('website_url=?');   args.push(data.website_url || null); }
     if (!sets.length) { res.status(400).json({ error: 'Nothing to update' }); return; }
     args.push(rid);
     await getDb().execute({ sql: `UPDATE restaurants SET ${sets.join(',')} WHERE id=?`, args });

@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  dashboardApi, inventoryApi, usersApi, reservationsApi, tablesApi,
-  type ApiDashboardStats, type ApiInventoryItem, type ApiUser,
+  dashboardApi, inventoryApi, restaurantApi, usersApi, reservationsApi, tablesApi,
+  type ApiDashboardStats, type ApiInventoryItem, type ApiRestaurant, type ApiUser,
   type ApiReservation, type ApiRevenueRow, type ApiTable,
 } from '../services/api';
 import { useAuth } from '../context/AuthContext';
@@ -10,10 +10,11 @@ import { PLAN_HAS_RESERVATIONS } from '../config/planAccess';
 import { RolesPanel } from './RolesPanel';
 import './ManagerPanel.css';
 
-type Section = 'overview' | 'inventory' | 'tables' | 'reservations' | 'staff' | 'reports' | 'roles';
+type Section = 'overview' | 'profile' | 'inventory' | 'tables' | 'reservations' | 'staff' | 'reports' | 'roles';
 
 const BASE_SECTIONS: { id: Section; label: string; minPlan?: 'premium' }[] = [
   { id: 'overview',     label: 'Overview'       },
+  { id: 'profile',      label: 'Restaurant Profile' },
   { id: 'inventory',   label: 'Inventory'       },
   { id: 'tables',      label: 'Tables'          },
   { id: 'reservations',label: 'Reservations',    minPlan: 'premium' },
@@ -727,6 +728,86 @@ function Reports() {
   );
 }
 
+function ProfileTab() {
+  const [restaurant, setRestaurant] = useState<ApiRestaurant | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const [draft, setDraft] = useState({
+    name: '', timezone: '', logo_url: '', contact_phone: '', contact_email: '',
+    address_line1: '', address_line2: '', city: '', country: '', postal_code: '', tax_id: '', website_url: '',
+  });
+
+  useEffect(() => {
+    restaurantApi.me()
+      .then(r => {
+        setRestaurant(r);
+        setDraft({
+          name: r.name ?? '', timezone: r.timezone ?? '',
+          logo_url: r.logo_url ?? '', contact_phone: r.contact_phone ?? '', contact_email: r.contact_email ?? '',
+          address_line1: r.address_line1 ?? '', address_line2: r.address_line2 ?? '',
+          city: r.city ?? '', country: r.country ?? '', postal_code: r.postal_code ?? '', tax_id: r.tax_id ?? '',
+          website_url: r.website_url ?? '',
+        });
+      })
+      .catch(e => setError(e.message))
+      .finally(() => setLoading(false));
+  }, []);
+
+  async function save() {
+    setBusy(true); setError('');
+    try {
+      const updated = await restaurantApi.update(draft);
+      setRestaurant(updated);
+      const stored = localStorage.getItem('cafyz_user');
+      if (stored) {
+        try {
+          const u = JSON.parse(stored);
+          u.restaurant_name = updated.name;
+          localStorage.setItem('cafyz_user', JSON.stringify(u));
+        } catch {}
+      }
+    } catch (e) { setError((e as Error).message); }
+    finally { setBusy(false); }
+  }
+
+  if (loading) return <p style={{ color: 'var(--text2)', fontSize: 13 }}>Loading profile…</p>;
+  return (
+    <div className="mgr-overview">
+      <p className="eyebrow">Brand · Identity · Billing</p>
+      <h1 className="serif mgr-greeting">Restaurant Profile</h1>
+      <p className="mgr-sub">Shared by all staff assigned to this restaurant in Role Management.</p>
+      {error && <p style={{ color: 'var(--danger)', fontSize: 13 }}>{error}</p>}
+      <div className="card" style={{ padding: 16 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+          <input className="roles-input" placeholder="Restaurant name" value={draft.name} onChange={e => setDraft(d => ({ ...d, name: e.target.value }))} />
+          <input className="roles-input" placeholder="Timezone" value={draft.timezone} onChange={e => setDraft(d => ({ ...d, timezone: e.target.value }))} />
+          <input className="roles-input" placeholder="Logo URL (https://...)" value={draft.logo_url} onChange={e => setDraft(d => ({ ...d, logo_url: e.target.value }))} />
+          <input className="roles-input" placeholder="Website URL" value={draft.website_url} onChange={e => setDraft(d => ({ ...d, website_url: e.target.value }))} />
+          <input className="roles-input" placeholder="Phone" value={draft.contact_phone} onChange={e => setDraft(d => ({ ...d, contact_phone: e.target.value }))} />
+          <input className="roles-input" placeholder="Email" value={draft.contact_email} onChange={e => setDraft(d => ({ ...d, contact_email: e.target.value }))} />
+          <input className="roles-input" placeholder="Address line 1" value={draft.address_line1} onChange={e => setDraft(d => ({ ...d, address_line1: e.target.value }))} />
+          <input className="roles-input" placeholder="Address line 2" value={draft.address_line2} onChange={e => setDraft(d => ({ ...d, address_line2: e.target.value }))} />
+          <input className="roles-input" placeholder="City" value={draft.city} onChange={e => setDraft(d => ({ ...d, city: e.target.value }))} />
+          <input className="roles-input" placeholder="Country" value={draft.country} onChange={e => setDraft(d => ({ ...d, country: e.target.value }))} />
+          <input className="roles-input" placeholder="Postal code" value={draft.postal_code} onChange={e => setDraft(d => ({ ...d, postal_code: e.target.value }))} />
+          <input className="roles-input" placeholder="Tax ID" value={draft.tax_id} onChange={e => setDraft(d => ({ ...d, tax_id: e.target.value }))} />
+        </div>
+        {restaurant?.logo_url && (
+          <div style={{ marginTop: 12 }}>
+            <img src={restaurant.logo_url} alt="Restaurant logo preview" style={{ maxWidth: 180, maxHeight: 80, objectFit: 'contain' }} />
+          </div>
+        )}
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 12 }}>
+          <button className="btn-gold" onClick={save} disabled={busy || !draft.name.trim()}>
+            {busy ? 'Saving…' : 'Save Profile'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Manager Panel shell ───────────────────────────────────────────────────────
 export function ManagerPanel({ section: initialSection }: { section?: string }) {
   const { user } = useAuth();
@@ -735,6 +816,7 @@ export function ManagerPanel({ section: initialSection }: { section?: string }) 
   const SECTIONS = BASE_SECTIONS.filter(s => !s.minPlan || hasReservations);
 
   const sectionMap: Record<string, Section> = {
+    profile:      'profile',
     inventory:    'inventory',
     tables:       'tables',
     reservations: 'reservations',
@@ -760,6 +842,7 @@ export function ManagerPanel({ section: initialSection }: { section?: string }) 
       </div>
       <div className="mgr-body">
         {active === 'overview'     && <Overview      onNav={setActive} />}
+        {active === 'profile'      && <ProfileTab />}
         {active === 'inventory'    && <InventoryTab />}
         {active === 'tables'       && <TablesTab />}
         {active === 'reservations' && <ReservationsTab />}

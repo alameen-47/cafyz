@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { menuApi, ordersApi, tablesApi, type ApiMenuItem, type ApiTable } from '../services/api';
+import { menuApi, ordersApi, restaurantApi, tablesApi, type ApiMenuItem, type ApiRestaurant, type ApiTable } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import {
   connectBluetooth, connectUSB, disconnectPrinter, printerStatus, print as printReceipt,
@@ -36,6 +36,13 @@ export function POSPanel() {
   const [busy,          setBusy]          = useState(false);
   const [error,         setError]         = useState('');
   const [loading,       setLoading]       = useState(true);
+  const [restaurant,    setRestaurant]    = useState<ApiRestaurant | null>(null);
+  const [profileOpen,   setProfileOpen]   = useState(false);
+  const [profileBusy,   setProfileBusy]   = useState(false);
+  const [profileDraft,  setProfileDraft]  = useState({
+    name: '', logo_url: '', contact_phone: '', contact_email: '',
+    address_line1: '', address_line2: '', city: '', country: '', postal_code: '', tax_id: '',
+  });
   const noteRef = useRef<HTMLInputElement>(null);
 
   // ── Printer state ──────────────────────────────────────────────────────────
@@ -49,8 +56,15 @@ export function POSPanel() {
   useEffect(() => { setPrinter(printerStatus()); }, []);
 
   useEffect(() => {
-    Promise.all([menuApi.list(), tablesApi.list()])
-      .then(([m, t]) => { setMenu(m); setTables(t); })
+    Promise.all([menuApi.list(), tablesApi.list(), restaurantApi.me()])
+      .then(([m, t, r]) => {
+        setMenu(m); setTables(t); setRestaurant(r);
+        setProfileDraft({
+          name: r.name ?? '', logo_url: r.logo_url ?? '', contact_phone: r.contact_phone ?? '', contact_email: r.contact_email ?? '',
+          address_line1: r.address_line1 ?? '', address_line2: r.address_line2 ?? '', city: r.city ?? '', country: r.country ?? '',
+          postal_code: r.postal_code ?? '', tax_id: r.tax_id ?? '',
+        });
+      })
       .catch(e => setError(e.message))
       .finally(() => setLoading(false));
   }, []);
@@ -213,8 +227,14 @@ export function POSPanel() {
   }
 
   function buildReceiptData(payMethod?: string): ReceiptData {
+    const address = [restaurant?.address_line1, restaurant?.address_line2, restaurant?.city, restaurant?.postal_code, restaurant?.country]
+      .filter(Boolean).join(', ');
     return {
-      restaurantName: user?.restaurant_name || 'Restaurant',
+      restaurantName: restaurant?.name || user?.restaurant_name || 'Restaurant',
+      logoUrl:        restaurant?.logo_url || undefined,
+      addressLine:    address || undefined,
+      phone:          restaurant?.contact_phone || undefined,
+      taxId:          restaurant?.tax_id || undefined,
       tableName:      tableObj?.name ?? selectedTable ?? '',
       serverName:     user?.name,
       covers:         tableObj?.covers || undefined,
@@ -226,6 +246,26 @@ export function POSPanel() {
       payMethod,
       note: note || undefined,
     };
+  }
+
+  async function saveProfile() {
+    setProfileBusy(true); setError('');
+    try {
+      const updated = await restaurantApi.update(profileDraft);
+      setRestaurant(updated);
+      const stored = localStorage.getItem('cafyz_user');
+      if (stored) {
+        try {
+          const parsed = JSON.parse(stored);
+          parsed.restaurant_name = updated.name;
+          localStorage.setItem('cafyz_user', JSON.stringify(parsed));
+        } catch {
+          // ignore local storage parse failures
+        }
+      }
+      setProfileOpen(false);
+    } catch (e) { setError((e as Error).message); }
+    finally { setProfileBusy(false); }
   }
 
   async function handlePrint(payMethod?: string) {
@@ -367,6 +407,9 @@ export function POSPanel() {
         <header className="pos-order-head">
           <div>
             <p className="eyebrow">Active Check</p>
+            <button type="button" className="btn-outline" style={{ marginBottom: 6 }} onClick={() => setProfileOpen(true)}>
+              Restaurant Profile
+            </button>
             <select
               value={selectedTable}
               onChange={e => handleTableChange(e.target.value)}
@@ -536,6 +579,35 @@ export function POSPanel() {
           )}
         </footer>
       </aside>
+      {profileOpen && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', zIndex: 1000, display: 'grid', placeItems: 'center' }}>
+          <div className="card" style={{ width: 'min(760px, 94vw)', maxHeight: '88vh', overflow: 'auto', padding: 18 }}>
+            <p className="eyebrow">Restaurant Profile</p>
+            <h3 className="serif" style={{ margin: '4px 0 14px' }}>Brand, billing & contact details</h3>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+              <input className="roles-input" placeholder="Restaurant name" value={profileDraft.name} onChange={e => setProfileDraft(d => ({ ...d, name: e.target.value }))} />
+              <input className="roles-input" placeholder="Logo URL (https://...)" value={profileDraft.logo_url} onChange={e => setProfileDraft(d => ({ ...d, logo_url: e.target.value }))} />
+              <input className="roles-input" placeholder="Contact phone" value={profileDraft.contact_phone} onChange={e => setProfileDraft(d => ({ ...d, contact_phone: e.target.value }))} />
+              <input className="roles-input" placeholder="Contact email" value={profileDraft.contact_email} onChange={e => setProfileDraft(d => ({ ...d, contact_email: e.target.value }))} />
+              <input className="roles-input" placeholder="Address line 1" value={profileDraft.address_line1} onChange={e => setProfileDraft(d => ({ ...d, address_line1: e.target.value }))} />
+              <input className="roles-input" placeholder="Address line 2" value={profileDraft.address_line2} onChange={e => setProfileDraft(d => ({ ...d, address_line2: e.target.value }))} />
+              <input className="roles-input" placeholder="City" value={profileDraft.city} onChange={e => setProfileDraft(d => ({ ...d, city: e.target.value }))} />
+              <input className="roles-input" placeholder="Country" value={profileDraft.country} onChange={e => setProfileDraft(d => ({ ...d, country: e.target.value }))} />
+              <input className="roles-input" placeholder="Postal code" value={profileDraft.postal_code} onChange={e => setProfileDraft(d => ({ ...d, postal_code: e.target.value }))} />
+              <input className="roles-input" placeholder="Tax ID" value={profileDraft.tax_id} onChange={e => setProfileDraft(d => ({ ...d, tax_id: e.target.value }))} />
+            </div>
+            <p style={{ marginTop: 10, fontSize: 12, color: 'var(--text3)' }}>
+              Staff accounts in this restaurant share this profile by role assignment. Receipts include this logo/details.
+            </p>
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 12 }}>
+              <button className="roles-cancel-btn" onClick={() => setProfileOpen(false)}>Cancel</button>
+              <button className="roles-save-btn" onClick={saveProfile} disabled={profileBusy || !profileDraft.name.trim()}>
+                {profileBusy ? 'Saving…' : 'Save Profile'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

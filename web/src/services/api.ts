@@ -60,7 +60,13 @@ export const authApi = {
 // ── Restaurant ────────────────────────────────────────────────────────────────
 export const restaurantApi = {
   me:       ()                                              => get<ApiRestaurant>('/api/restaurants/me'),
-  update:   (d: { name?: string; timezone?: string })      => put<ApiRestaurant>('/api/restaurants/me', d),
+  update:   (d: {
+    name?: string; timezone?: string; logo_url?: string;
+    contact_phone?: string; contact_email?: string;
+    address_line1?: string; address_line2?: string;
+    city?: string; country?: string; postal_code?: string;
+    tax_id?: string; website_url?: string;
+  }) => put<ApiRestaurant>('/api/restaurants/me', d),
   branches: ()                                             => get<ApiRestaurant[]>('/api/restaurants/branches'),
 };
 
@@ -186,6 +192,9 @@ export interface ApiUser {
 export interface ApiRestaurant {
   id: string; name: string; slug: string; plan: string;
   parent_id?: string; timezone: string; created_at: string;
+  logo_url?: string; contact_phone?: string; contact_email?: string;
+  address_line1?: string; address_line2?: string; city?: string;
+  country?: string; postal_code?: string; tax_id?: string; website_url?: string;
 }
 
 export interface ApiMenuItem {

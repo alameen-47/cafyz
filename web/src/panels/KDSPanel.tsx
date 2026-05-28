@@ -1,5 +1,6 @@
-import { useState, useEffect, useCallback } from 'react';
-import { kdsApi, type ApiKdsTicket, type ApiKdsTicketItem } from '../services/api';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { kdsApi, restaurantApi, type ApiKdsTicket, type ApiKdsTicketItem, type ApiRestaurant } from '../services/api';
+import { printKitchenTicket } from '../services/PrintService';
 import './KDSPanel.css';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -110,17 +111,83 @@ const STATIONS = ['All', 'Grill', 'Poisson', 'Pasta', 'Garde', 'Pâtisserie'];
 
 export function KDSPanel() {
   const [tickets, setTickets] = useState<ApiKdsTicket[]>([]);
+  const [restaurant, setRestaurant] = useState<ApiRestaurant | null>(null);
   const [station, setStation] = useState('All');
   const [busy,    setBusy]    = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error,   setError]   = useState('');
+  const [autoPrint, setAutoPrint] = useState(() => localStorage.getItem('cafyz_kds_auto_print') !== '0');
+  const printedRef = useRef<Set<string>>(new Set());
+
+  useEffect(() => {
+    try {
+      const raw = sessionStorage.getItem('cafyz_kds_printed_ids');
+      if (!raw) return;
+      const ids = JSON.parse(raw);
+      if (Array.isArray(ids)) printedRef.current = new Set(ids.slice(-400));
+    } catch {
+      // ignore parse errors
+    }
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem('cafyz_kds_auto_print', autoPrint ? '1' : '0');
+  }, [autoPrint]);
+
+  useEffect(() => {
+    restaurantApi.me().then(setRestaurant).catch(() => {});
+  }, []);
+
+  const persistPrinted = () => {
+    try {
+      sessionStorage.setItem('cafyz_kds_printed_ids', JSON.stringify(Array.from(printedRef.current).slice(-400)));
+    } catch {
+      // ignore storage failures
+    }
+  };
+
+  const tryAutoPrint = async (list: ApiKdsTicket[]) => {
+    if (!autoPrint) return;
+    const fresh = list
+      .filter(t => t.status === 'new')
+      .filter(t => !printedRef.current.has(t.id))
+      .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+    for (const t of fresh) {
+      try {
+        await printKitchenTicket({
+          restaurantName: restaurant?.name ?? 'Restaurant',
+          logoUrl: restaurant?.logo_url ?? undefined,
+          ticketId: t.id,
+          tableName: t.table_name,
+          serverName: t.server_name,
+          covers: t.covers,
+          station: t.station ?? undefined,
+          createdAt: t.created_at,
+          items: (t.items ?? []).map(i => ({
+            name: i.name,
+            qty: i.qty,
+            mods: typeof i.mods === 'string' ? JSON.parse(i.mods || '[]') : (i.mods ?? []),
+            alert: Boolean(i.alert),
+          })),
+        });
+      } catch (e) {
+        setError((e as Error).message || 'Auto-print failed');
+      } finally {
+        printedRef.current.add(t.id);
+      }
+    }
+    persistPrinted();
+  };
 
   const load = useCallback(() => {
     kdsApi.list({ status: undefined })
-      .then(setTickets)
+      .then(async (rows) => {
+        setTickets(rows);
+        await tryAutoPrint(rows);
+      })
       .catch(e => setError(e.message))
       .finally(() => setLoading(false));
-  }, []);
+  }, [autoPrint, restaurant?.logo_url, restaurant?.name]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -175,6 +242,10 @@ export function KDSPanel() {
       {error && <p style={{ color: 'var(--danger)', padding: '4px 16px', fontSize: 12 }}>{error}</p>}
 
       <div className="kds-stations">
+        <label style={{ marginRight: 10, display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--text2)' }}>
+          <input type="checkbox" checked={autoPrint} onChange={e => setAutoPrint(e.target.checked)} />
+          Auto-print new tickets
+        </label>
         {STATIONS.map(s => (
           <button
             key={s}

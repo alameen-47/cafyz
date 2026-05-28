@@ -176,4 +176,22 @@ export async function runMigrations() {
     CREATE INDEX IF NOT EXISTS idx_inquiries_ip_created     ON inquiries(ip_hash, created_at);
     CREATE INDEX IF NOT EXISTS idx_inquiries_status_created ON inquiries(status, created_at);
   `);
+
+  // Backward-compatible restaurant profile columns for live DBs
+  const cols = await db.execute(`PRAGMA table_info(restaurants)`);
+  const existing = new Set(cols.rows.map((r: any) => String(r.name)));
+  const addCol = async (sql: string, name: string) => {
+    if (existing.has(name)) return;
+    await db.execute(sql);
+  };
+  await addCol(`ALTER TABLE restaurants ADD COLUMN logo_url TEXT`, 'logo_url');
+  await addCol(`ALTER TABLE restaurants ADD COLUMN contact_phone TEXT`, 'contact_phone');
+  await addCol(`ALTER TABLE restaurants ADD COLUMN contact_email TEXT`, 'contact_email');
+  await addCol(`ALTER TABLE restaurants ADD COLUMN address_line1 TEXT`, 'address_line1');
+  await addCol(`ALTER TABLE restaurants ADD COLUMN address_line2 TEXT`, 'address_line2');
+  await addCol(`ALTER TABLE restaurants ADD COLUMN city TEXT`, 'city');
+  await addCol(`ALTER TABLE restaurants ADD COLUMN country TEXT`, 'country');
+  await addCol(`ALTER TABLE restaurants ADD COLUMN postal_code TEXT`, 'postal_code');
+  await addCol(`ALTER TABLE restaurants ADD COLUMN tax_id TEXT`, 'tax_id');
+  await addCol(`ALTER TABLE restaurants ADD COLUMN website_url TEXT`, 'website_url');
 }

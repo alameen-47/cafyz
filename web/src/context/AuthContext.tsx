@@ -64,17 +64,9 @@ export const ROLE_NAV: Record<Role, Screen[]> = {
   founder: ['founder'],
 };
 
-// Demo accounts
-export const DEMO_ACCOUNTS = [
-  { email: 'mireille@saint.paris', password: 'cafyz2026', role: 'manager' as Role, name: 'Mireille Vasseur', initials: 'MV' },
-  { email: 'thomas@saint.paris',   password: 'cafyz2026', role: 'cashier' as Role, name: 'Thomas Durand',    initials: 'TD' },
-  { email: 'jules@saint.paris',    password: 'cafyz2026', role: 'waiter'  as Role, name: 'Jules Renard',     initials: 'JR' },
-  { email: 'ines@saint.paris',     password: 'cafyz2026', role: 'kitchen' as Role, name: 'Inès Moreau',      initials: 'IM' },
-];
-
-export const DEMO_PINS: Record<string, string> = {
-  owner: '0000', manager: '1234', cashier: '5678', waiter: '9012', kitchen: '3456',
-};
+// Demo accounts intentionally removed for production data flow.
+export const DEMO_ACCOUNTS: Array<{ email: string; password: string; role: Role; name: string; initials: string }> = [];
+export const DEMO_PINS: Record<string, string> = {};
 
 // ── Storage keys ──────────────────────────────────────────────────────────────
 const KEY_TOKEN = 'cafyz_token';
