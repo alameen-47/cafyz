@@ -21,24 +21,13 @@ function Overview({ onTab }: { onTab: (t: Tab) => void }) {
   const [stats,   setStats]   = useState<ApiFounderStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [error,   setError]   = useState('');
-  const [trialGuard, setTrialGuard] = useState(true);
-  const [guardBusy, setGuardBusy] = useState(false);
 
   useEffect(() => {
-    Promise.all([founderApi.stats(), founderApi.trialGuard()])
-      .then(([s, g]) => { setStats(s); setTrialGuard(g.enabled); })
+    founderApi.stats()
+      .then(setStats)
       .catch(e => setError(e.message))
       .finally(() => setLoading(false));
   }, []);
-
-  async function toggleTrialGuard(enabled: boolean) {
-    setGuardBusy(true); setError('');
-    try {
-      const res = await founderApi.setTrialGuard(enabled);
-      setTrialGuard(res.enabled);
-    } catch (e) { setError((e as Error).message); }
-    finally { setGuardBusy(false); }
-  }
 
   return (
     <div className="fdr-section">
@@ -50,21 +39,6 @@ function Overview({ onTab }: { onTab: (t: Tab) => void }) {
 
       {loading ? <p className="fdr-loading">Loading stats…</p> : stats && (
         <div className="fdr-overview-grid">
-          <div className="fdr-stat card">
-            <p className="fdr-stat-label">Trial device/network guard</p>
-            <p className="fdr-stat-sub" style={{ marginBottom: 10 }}>
-              Controls: “A trial request from this device/network already exists…”
-            </p>
-            <label style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontSize: 13 }}>
-              <input
-                type="checkbox"
-                checked={trialGuard}
-                disabled={guardBusy}
-                onChange={e => toggleTrialGuard(e.target.checked)}
-              />
-              {trialGuard ? 'Enabled' : 'Disabled'}
-            </label>
-          </div>
           <div className="fdr-stat card" onClick={() => onTab('restaurants')}>
             <p className="fdr-stat-num serif">
               {stats.restaurants_by_plan.reduce((s, r) => s + Number(r.count), 0)}

@@ -7,30 +7,6 @@ import { requireRole } from '../middleware/rbac.js';
 const router = Router();
 const onlyFounder = [requireAuth, requireRole('founder')] as const;
 
-// GET /api/founder/settings/trial-guard
-router.get('/settings/trial-guard', ...onlyFounder, async (_req, res, next) => {
-  try {
-    const row = await getDb().execute({
-      sql: `SELECT value FROM app_settings WHERE key='trial_device_guard_enabled' LIMIT 1`,
-    });
-    const enabled = String(row.rows[0]?.value ?? '1') === '1';
-    res.json({ enabled });
-  } catch (e) { next(e); }
-});
-
-// PUT /api/founder/settings/trial-guard
-router.put('/settings/trial-guard', ...onlyFounder, async (req, res, next) => {
-  try {
-    const { enabled } = z.object({ enabled: z.boolean() }).parse(req.body);
-    await getDb().execute({
-      sql: `INSERT INTO app_settings(key,value,updated_at) VALUES('trial_device_guard_enabled',?,datetime('now'))
-            ON CONFLICT(key) DO UPDATE SET value=excluded.value, updated_at=datetime('now')`,
-      args: [enabled ? '1' : '0'],
-    });
-    res.json({ enabled });
-  } catch (e) { next(e); }
-});
-
 // GET /api/founder/restaurants — all restaurants with stats
 router.get('/restaurants', ...onlyFounder, async (_req: AuthRequest, res, next) => {
   try {
