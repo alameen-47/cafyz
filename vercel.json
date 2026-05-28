@@ -6,7 +6,7 @@
   "rewrites": [
     {
       "source": "/api/:path*",
-      "destination": "https://cafyz-api.onrender.com/api/:path*"
+      "destination": "https://cafyz.onrender.com/api/:path*"
     },
     {
       "source": "/(.*)",
