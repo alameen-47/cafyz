@@ -212,5 +212,6 @@ export async function runMigrations() {
 
   await db.execute({
     sql: `INSERT OR IGNORE INTO app_settings(key,value) VALUES('trial_device_guard_enabled','1')`,
+    args: [],
   });
 }
