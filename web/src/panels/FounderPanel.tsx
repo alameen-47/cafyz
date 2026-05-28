@@ -151,6 +151,7 @@ function LicenseKeys() {
   const [genPlan,   setGenPlan]  = useState<Plan>('pro');
   const [genQty,    setGenQty]   = useState(1);
   const [genNote,   setGenNote]  = useState('');
+  const [genEmail,  setGenEmail] = useState('');
   const [genTrial,  setGenTrial]  = useState(true);
   const [genExpiry, setGenExpiry] = useState(() => {
     const d = new Date();
@@ -170,6 +171,7 @@ function LicenseKeys() {
         plan: genPlan,
         quantity: genQty,
         note: genNote || undefined,
+        recipient_email: genEmail.trim() || undefined,
         trial: genTrial,
         expires_at: genTrial && genExpiry ? new Date(genExpiry + 'T23:59:59Z').toISOString() : undefined,
       });
@@ -213,6 +215,16 @@ function LicenseKeys() {
             <input className="fdr-input" placeholder="e.g. For Café Nord Paris"
               value={genNote} onChange={e => setGenNote(e.target.value)} />
           </div>
+          <div className="fdr-gen-field" style={{ flex: 2 }}>
+            <label className="fdr-label">Recipient Email (optional)</label>
+            <input
+              className="fdr-input"
+              type="email"
+              placeholder="client@restaurant.com"
+              value={genEmail}
+              onChange={e => setGenEmail(e.target.value)}
+            />
+          </div>
           <div className="fdr-gen-field fdr-gen-trial">
             <label className="fdr-label">
               <input type="checkbox" checked={genTrial} onChange={e => setGenTrial(e.target.checked)} />
@@ -231,6 +243,11 @@ function LicenseKeys() {
         {justMade.length > 0 && (
           <div className="fdr-just-made">
             <p className="eyebrow" style={{ marginBottom: 8, color: 'var(--success)' }}>Generated — copy and send to client:</p>
+            {genEmail.trim() && (
+              <p style={{ margin: '0 0 8px', fontSize: 12, color: 'var(--text2)' }}>
+                Sent to: <span className="mono">{genEmail.trim()}</span>
+              </p>
+            )}
             {justMade.map(k => (
               <div key={k.id} className="fdr-new-key" onClick={() => navigator.clipboard?.writeText(k.key_code)}>
                 <span className="mono fdr-new-key-code">{k.key_code}</span>
