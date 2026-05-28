@@ -7,6 +7,30 @@ import { requireRole } from '../middleware/rbac.js';
 const router = Router();
 const onlyFounder = [requireAuth, requireRole('founder')] as const;
 
+// GET /api/founder/settings/trial-guard
+router.get('/settings/trial-guard', ...onlyFounder, async (_req, res, next) => {
+  try {
+    const row = await getDb().execute({
+      sql: `SELECT value FROM app_settings WHERE key='trial_device_guard_enabled' LIMIT 1`,
+    });
+    const enabled = String(row.rows[0]?.value ?? '1') === '1';
+    res.json({ enabled });
+  } catch (e) { next(e); }
+});
+
+// PUT /api/founder/settings/trial-guard
+router.put('/settings/trial-guard', ...onlyFounder, async (req, res, next) => {
+  try {
+    const { enabled } = z.object({ enabled: z.boolean() }).parse(req.body);
+    await getDb().execute({
+      sql: `INSERT INTO app_settings(key,value,updated_at) VALUES('trial_device_guard_enabled',?,datetime('now'))
+            ON CONFLICT(key) DO UPDATE SET value=excluded.value, updated_at=datetime('now')`,
+      args: [enabled ? '1' : '0'],
+    });
+    res.json({ enabled });
+  } catch (e) { next(e); }
+});
+
 // GET /api/founder/restaurants — all restaurants with stats
 router.get('/restaurants', ...onlyFounder, async (_req: AuthRequest, res, next) => {
   try {
@@ -81,6 +105,39 @@ router.get('/stats', ...onlyFounder, async (_req, res, next) => {
       license_keys:        keys.rows[0],
       total_users:         users.rows[0]?.total ?? 0,
     });
+  } catch (e) { next(e); }
+});
+
+// GET /api/founder/inquiries — list trial requests
+router.get('/inquiries', ...onlyFounder, async (_req, res, next) => {
+  try {
+    const rows = await getDb().execute(`
+      SELECT id,name,restaurant_name,email,plan,message,status,is_retry,retry_of_id,created_at,approved_at,denied_at
+      FROM inquiries
+      ORDER BY created_at DESC
+      LIMIT 300
+    `);
+    res.json(rows.rows);
+  } catch (e) { next(e); }
+});
+
+// PATCH /api/founder/inquiries/:id — approve/deny from founder panel
+router.patch('/inquiries/:id', ...onlyFounder, async (req, res, next) => {
+  try {
+    const { status } = z.object({ status: z.enum(['approved', 'denied']) }).parse(req.body);
+    const id = String(req.params.id);
+    const db = getDb();
+    const row = await db.execute({ sql: `SELECT id,status FROM inquiries WHERE id=?`, args: [id] });
+    if (!row.rows.length) { res.status(404).json({ error: 'Inquiry not found' }); return; }
+    const current = String(row.rows[0].status ?? '');
+    if (current !== 'pending') { res.json({ id, status: current }); return; }
+    await db.execute({
+      sql: status === 'approved'
+        ? `UPDATE inquiries SET status='approved', approved_at=datetime('now') WHERE id=?`
+        : `UPDATE inquiries SET status='denied', denied_at=datetime('now') WHERE id=?`,
+      args: [id],
+    });
+    res.json({ id, status });
   } catch (e) { next(e); }
 });
 

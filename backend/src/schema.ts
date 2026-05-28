@@ -163,6 +163,8 @@ export async function runMigrations() {
       plan            TEXT NOT NULL CHECK(plan IN ('basic','pro','premium')),
       message         TEXT,
       status          TEXT NOT NULL DEFAULT 'pending' CHECK(status IN ('pending','approved','denied')),
+      is_retry        INTEGER NOT NULL DEFAULT 0,
+      retry_of_id     TEXT,
       device_hash     TEXT NOT NULL,
       ip_hash         TEXT NOT NULL,
       ua_hash         TEXT NOT NULL,
@@ -175,6 +177,12 @@ export async function runMigrations() {
     CREATE INDEX IF NOT EXISTS idx_inquiries_device_created ON inquiries(device_hash, created_at);
     CREATE INDEX IF NOT EXISTS idx_inquiries_ip_created     ON inquiries(ip_hash, created_at);
     CREATE INDEX IF NOT EXISTS idx_inquiries_status_created ON inquiries(status, created_at);
+
+    CREATE TABLE IF NOT EXISTS app_settings (
+      key         TEXT PRIMARY KEY,
+      value       TEXT NOT NULL,
+      updated_at  TEXT NOT NULL DEFAULT (datetime('now'))
+    );
   `);
 
   // Backward-compatible restaurant profile columns for live DBs
@@ -182,7 +190,12 @@ export async function runMigrations() {
   const existing = new Set(cols.rows.map((r: any) => String(r.name)));
   const addCol = async (sql: string, name: string) => {
     if (existing.has(name)) return;
-    await db.execute(sql);
+    try {
+      await db.execute(sql);
+    } catch (e) {
+      const msg = String((e as Error).message ?? e);
+      if (!msg.includes('duplicate column name')) throw e;
+    }
   };
   await addCol(`ALTER TABLE restaurants ADD COLUMN logo_url TEXT`, 'logo_url');
   await addCol(`ALTER TABLE restaurants ADD COLUMN contact_phone TEXT`, 'contact_phone');
@@ -194,4 +207,10 @@ export async function runMigrations() {
   await addCol(`ALTER TABLE restaurants ADD COLUMN postal_code TEXT`, 'postal_code');
   await addCol(`ALTER TABLE restaurants ADD COLUMN tax_id TEXT`, 'tax_id');
   await addCol(`ALTER TABLE restaurants ADD COLUMN website_url TEXT`, 'website_url');
+  await addCol(`ALTER TABLE inquiries ADD COLUMN is_retry INTEGER NOT NULL DEFAULT 0`, 'is_retry');
+  await addCol(`ALTER TABLE inquiries ADD COLUMN retry_of_id TEXT`, 'retry_of_id');
+
+  await db.execute({
+    sql: `INSERT OR IGNORE INTO app_settings(key,value) VALUES('trial_device_guard_enabled','1')`,
+  });
 }

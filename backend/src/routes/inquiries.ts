@@ -65,6 +65,17 @@ function buildTransporter() {
   });
 }
 
+async function isTrialDeviceGuardEnabled(): Promise<boolean> {
+  try {
+    const row = await getDb().execute({
+      sql: `SELECT value FROM app_settings WHERE key='trial_device_guard_enabled' LIMIT 1`,
+    });
+    return String(row.rows[0]?.value ?? '1') === '1';
+  } catch {
+    return true;
+  }
+}
+
 function adminHtml(args: {
   name: string;
   restaurantName: string;
@@ -184,21 +195,23 @@ router.post('/', async (req, res, next) => {
     const uaHash     = sha256Hex(`ua:${ua}`);
 
     // Block multiple trial requests from the same system address (device/IP)
-    const cooldownStart = new Date(Date.now() - TRIAL_REQUEST_COOLDOWN_DAYS * 24 * 60 * 60 * 1000).toISOString();
-    const existing = await getDb().execute({
-      sql: `SELECT id,status,created_at,email FROM inquiries
-            WHERE created_at >= ?
-              AND (device_hash = ? OR ip_hash = ?)
-              AND status IN ('pending','approved')
-            ORDER BY created_at DESC
-            LIMIT 1`,
-      args: [cooldownStart, deviceHash, ipHash],
-    });
-    if ((existing.rows?.length ?? 0) > 0) {
-      res.status(429).json({
-        error: `A trial request from this device/network already exists. Please wait ${TRIAL_REQUEST_COOLDOWN_DAYS} days or contact the founder.`,
+    let retryOfId: string | null = null;
+    let isRetry = false;
+    if (await isTrialDeviceGuardEnabled()) {
+      const cooldownStart = new Date(Date.now() - TRIAL_REQUEST_COOLDOWN_DAYS * 24 * 60 * 60 * 1000).toISOString();
+      const existing = await getDb().execute({
+        sql: `SELECT id,status,created_at,email FROM inquiries
+              WHERE created_at >= ?
+                AND (device_hash = ? OR ip_hash = ?)
+                AND status IN ('pending','approved')
+              ORDER BY created_at DESC
+              LIMIT 1`,
+        args: [cooldownStart, deviceHash, ipHash],
       });
-      return;
+      if ((existing.rows?.length ?? 0) > 0) {
+        isRetry = true;
+        retryOfId = String(existing.rows[0].id ?? '');
+      }
     }
 
     const id = uid();
@@ -206,9 +219,9 @@ router.post('/', async (req, res, next) => {
     const tokenHash = sha256Hex(`tok:${token}`);
 
     await getDb().execute({
-      sql: `INSERT INTO inquiries(id,name,restaurant_name,email,plan,message,status,device_hash,ip_hash,ua_hash,token_hash)
-            VALUES(?,?,?,?,?,?,?,?,?,?,?)`,
-      args: [id, name, restaurant_name, email, plan, message ?? null, 'pending', deviceHash, ipHash, uaHash, tokenHash],
+      sql: `INSERT INTO inquiries(id,name,restaurant_name,email,plan,message,status,is_retry,retry_of_id,device_hash,ip_hash,ua_hash,token_hash)
+            VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+      args: [id, name, restaurant_name, email, plan, message ?? null, 'pending', isRetry ? 1 : 0, retryOfId, deviceHash, ipHash, uaHash, tokenHash],
     });
 
     const approveUrl = `${baseUrl(req)}/api/inquiries/action?id=${encodeURIComponent(id)}&token=${encodeURIComponent(token)}&action=approve`;
@@ -220,7 +233,7 @@ router.post('/', async (req, res, next) => {
         transporter.sendMail({
           from:    `"Cafyz System" <${process.env.SMTP_USER}>`,
           to:      ADMIN_EMAIL,
-          subject: `[Cafyz] Trial approval needed — ${plan.toUpperCase()} · ${restaurant_name}`,
+          subject: `${isRetry ? '[Cafyz] Re-trial review needed' : '[Cafyz] Trial approval needed'} — ${plan.toUpperCase()} · ${restaurant_name}`,
           html:    adminHtml({ name, restaurantName: restaurant_name, email, plan, message, approveUrl, denyUrl }),
         }),
         transporter.sendMail({
@@ -235,9 +248,12 @@ router.post('/', async (req, res, next) => {
 
     res.status(201).json({
       ok:      true,
-      message: `Inquiry received. Your request is pending founder approval. Once approved, you'll receive a ${TRIAL_DAYS}-day free trial — no charge until the trial ends.`,
+      message: isRetry
+        ? `Retry request submitted for founder review. Once approved, you'll receive trial access details.`
+        : `Inquiry received. Your request is pending founder approval. Once approved, you'll receive a ${TRIAL_DAYS}-day free trial — no charge until the trial ends.`,
       trial_days: TRIAL_DAYS,
       app_url: APP_URL,
+      retry_review: isRetry,
       ...(process.env.NODE_ENV !== 'production' ? { debug_approve_url: approveUrl } : {}),
     });
   } catch (e) {

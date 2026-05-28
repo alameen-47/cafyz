@@ -169,6 +169,10 @@ export const inquiryApi = {
 export const founderApi = {
   restaurants:    ()                                                                    => get<ApiFounderRestaurant[]>('/api/founder/restaurants'),
   stats:          ()                                                                    => get<ApiFounderStats>('/api/founder/stats'),
+  inquiries:      ()                                                                    => get<ApiFounderInquiry[]>('/api/founder/inquiries'),
+  setInquiryStatus: (id: string, status: 'approved'|'denied')                          => patch<{ id: string; status: string }>(`/api/founder/inquiries/${id}`, { status }),
+  trialGuard:     ()                                                                    => get<{ enabled: boolean }>('/api/founder/settings/trial-guard'),
+  setTrialGuard:  (enabled: boolean)                                                    => put<{ enabled: boolean }>('/api/founder/settings/trial-guard', { enabled }),
   setPlan:        (restaurantId: string, plan: string)                                 => patch<ApiRestaurant>(`/api/founder/restaurants/${restaurantId}/plan`, { plan }),
   planConfig:     ()                                                                    => get<ApiPlanConfig[]>('/api/founder/plan-config'),
   updatePlanConfig: (plan: string, d: Partial<{ panels_json: string; label: string; description: string; price_monthly: number }>) =>
@@ -279,6 +283,21 @@ export interface ApiFounderStats {
   restaurants_by_plan: { plan: string; count: number }[];
   license_keys: { total: number; activated: number };
   total_users: number;
+}
+
+export interface ApiFounderInquiry {
+  id: string;
+  name: string;
+  restaurant_name: string;
+  email: string;
+  plan: string;
+  message?: string;
+  status: 'pending' | 'approved' | 'denied';
+  is_retry: number;
+  retry_of_id?: string;
+  created_at: string;
+  approved_at?: string;
+  denied_at?: string;
 }
 
 export interface ApiPlanConfig {

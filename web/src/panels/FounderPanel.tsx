@@ -1,15 +1,16 @@
 import { useState, useEffect } from 'react';
 import {
   founderApi, licensesApi,
-  type ApiFounderRestaurant, type ApiFounderStats, type ApiLicenseKey, type ApiPlanConfig,
+  type ApiFounderInquiry, type ApiFounderRestaurant, type ApiFounderStats, type ApiLicenseKey, type ApiPlanConfig,
 } from '../services/api';
 import { PLAN_COLOR, PLAN_LABELS, ALL_PLAN_FEATURES, type Plan } from '../config/planAccess';
 import './FounderPanel.css';
 
-type Tab = 'overview' | 'restaurants' | 'licenses' | 'plan-config';
+type Tab = 'overview' | 'inquiries' | 'restaurants' | 'licenses' | 'plan-config';
 
 const TABS: { id: Tab; label: string }[] = [
   { id: 'overview',    label: 'Overview' },
+  { id: 'inquiries',   label: 'Trial Requests' },
   { id: 'restaurants', label: 'Restaurants' },
   { id: 'licenses',    label: 'License Keys' },
   { id: 'plan-config', label: 'Plan Config' },
@@ -20,10 +21,24 @@ function Overview({ onTab }: { onTab: (t: Tab) => void }) {
   const [stats,   setStats]   = useState<ApiFounderStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [error,   setError]   = useState('');
+  const [trialGuard, setTrialGuard] = useState(true);
+  const [guardBusy, setGuardBusy] = useState(false);
 
   useEffect(() => {
-    founderApi.stats().then(setStats).catch(e => setError(e.message)).finally(() => setLoading(false));
+    Promise.all([founderApi.stats(), founderApi.trialGuard()])
+      .then(([s, g]) => { setStats(s); setTrialGuard(g.enabled); })
+      .catch(e => setError(e.message))
+      .finally(() => setLoading(false));
   }, []);
+
+  async function toggleTrialGuard(enabled: boolean) {
+    setGuardBusy(true); setError('');
+    try {
+      const res = await founderApi.setTrialGuard(enabled);
+      setTrialGuard(res.enabled);
+    } catch (e) { setError((e as Error).message); }
+    finally { setGuardBusy(false); }
+  }
 
   return (
     <div className="fdr-section">
@@ -35,6 +50,21 @@ function Overview({ onTab }: { onTab: (t: Tab) => void }) {
 
       {loading ? <p className="fdr-loading">Loading stats…</p> : stats && (
         <div className="fdr-overview-grid">
+          <div className="fdr-stat card">
+            <p className="fdr-stat-label">Trial device/network guard</p>
+            <p className="fdr-stat-sub" style={{ marginBottom: 10 }}>
+              Controls: “A trial request from this device/network already exists…”
+            </p>
+            <label style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontSize: 13 }}>
+              <input
+                type="checkbox"
+                checked={trialGuard}
+                disabled={guardBusy}
+                onChange={e => toggleTrialGuard(e.target.checked)}
+              />
+              {trialGuard ? 'Enabled' : 'Disabled'}
+            </label>
+          </div>
           <div className="fdr-stat card" onClick={() => onTab('restaurants')}>
             <p className="fdr-stat-num serif">
               {stats.restaurants_by_plan.reduce((s, r) => s + Number(r.count), 0)}
@@ -280,6 +310,60 @@ function LicenseKeys() {
   );
 }
 
+function Inquiries() {
+  const [rows, setRows] = useState<ApiFounderInquiry[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    founderApi.inquiries().then(setRows).catch(e => setError(e.message)).finally(() => setLoading(false));
+  }, []);
+
+  async function act(id: string, status: 'approved'|'denied') {
+    setBusyId(id); setError('');
+    try {
+      const r = await founderApi.setInquiryStatus(id, status);
+      setRows(prev => prev.map(x => x.id === id ? { ...x, status: r.status as ApiFounderInquiry['status'] } : x));
+    } catch (e) { setError((e as Error).message); }
+    finally { setBusyId(null); }
+  }
+
+  return (
+    <div className="fdr-section">
+      <p className="eyebrow">Onboarding · Trial Queue</p>
+      <h1 className="serif fdr-title">Trial Requests</h1>
+      <p className="fdr-sub">Approve retries directly from Founder Panel.</p>
+      {error && <p className="fdr-error">{error}</p>}
+      {loading ? <p className="fdr-loading">Loading…</p> : (
+        <div className="card fdr-table">
+          <div className="fdr-table-head">
+            <span>Restaurant</span><span>Contact</span><span>Plan</span><span>Type</span><span>Status</span><span>Actions</span>
+          </div>
+          {rows.map(r => (
+            <div key={r.id} className="fdr-table-row">
+              <span>{r.restaurant_name}</span>
+              <span style={{ fontSize: 12 }}>{r.name} · {r.email}</span>
+              <span className="mono">{r.plan.toUpperCase()}</span>
+              <span style={{ color: r.is_retry ? 'var(--warning,#facc15)' : 'var(--text2)' }}>{r.is_retry ? 'Retry' : 'New'}</span>
+              <span className="mono" style={{ fontSize: 11 }}>{r.status}</span>
+              <div style={{ display: 'flex', gap: 6 }}>
+                {r.status === 'pending' ? (
+                  <>
+                    <button className="roles-save-btn sm" onClick={() => act(r.id, 'approved')} disabled={busyId === r.id}>Approve</button>
+                    <button className="roles-del-btn" onClick={() => act(r.id, 'denied')} disabled={busyId === r.id}>Deny</button>
+                  </>
+                ) : <span style={{ fontSize: 11, color: 'var(--text3)' }}>—</span>}
+              </div>
+            </div>
+          ))}
+          {rows.length === 0 && <p className="fdr-empty">No trial requests yet.</p>}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Plan Config ───────────────────────────────────────────────────────────────
 function PlanConfig() {
   const [configs,  setConfigs]  = useState<ApiPlanConfig[]>([]);
@@ -412,6 +496,7 @@ export function FounderPanel() {
       </div>
       <div className="fdr-body">
         {tab === 'overview'    && <Overview    onTab={setTab} />}
+        {tab === 'inquiries'   && <Inquiries />}
         {tab === 'restaurants' && <Restaurants />}
         {tab === 'licenses'    && <LicenseKeys />}
         {tab === 'plan-config' && <PlanConfig />}
