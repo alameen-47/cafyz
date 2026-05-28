@@ -179,21 +179,6 @@ export function LoginPanel() {
               Waiter mobile
             </button>
           </div>
-          <button
-            type="button"
-            className="login-founder-btn"
-            disabled={busy}
-            style={{ marginTop: 12 }}
-            onClick={async () => {
-              setBusy(true); setLocalErr(''); clearError();
-              try {
-                await login('founder@cafyz.io', 'cafyz-founder-2026');
-                goTo('/founder');
-              } catch (e) { setLocalErr((e as Error).message ?? 'Login failed'); setBusy(false); }
-            }}
-          >
-            ★ Cafyz Founder Login
-          </button>
         </div>
 
         {/* ── Get Account link ─────────────────────────────────────── */}

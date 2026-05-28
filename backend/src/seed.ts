@@ -6,6 +6,8 @@ import { runMigrations } from './schema.js';
 import { uid } from './utils.js';
 
 const DEMO_REST = 'DEMO_REST';
+const FOUNDER_EMAIL = process.env.FOUNDER_EMAIL ?? 'founder@cafyz.io';
+const FOUNDER_PASSWORD = process.env.FOUNDER_PASSWORD ?? 'cafyz-founder-2026';
 
 async function seed() {
   // Force HTTPS (HTTP/2) protocol instead of WebSocket to avoid IPv6 timeout
@@ -46,13 +48,13 @@ async function seed() {
 
   // ── Founder user ───────────────────────────────────────────────────
   const founderId = uid();
-  const founderPw = await bcrypt.hash('cafyz-founder-2026', 10);
+  const founderPw = await bcrypt.hash(FOUNDER_PASSWORD, 10);
   await db.execute({
     sql: `INSERT OR IGNORE INTO users(id,restaurant_id,name,initials,email,password_hash,role,status,start_time)
           VALUES(?,?,?,?,?,?,?,?,?)`,
-    args: [founderId, SYSTEM_REST, 'Cafyz Founder', 'CF', 'founder@cafyz.io', founderPw, 'founder', 'active', '—'],
+    args: [founderId, SYSTEM_REST, 'Cafyz Founder', 'CF', FOUNDER_EMAIL, founderPw, 'founder', 'active', '—'],
   });
-  console.log('✓ Founder account: founder@cafyz.io / cafyz-founder-2026');
+  console.log(`✓ Founder account: ${FOUNDER_EMAIL} / ${FOUNDER_PASSWORD}`);
 
   // ── Demo Restaurant ────────────────────────────────────────────────
   await db.execute({
