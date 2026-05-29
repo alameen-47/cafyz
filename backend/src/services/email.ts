@@ -1,6 +1,15 @@
 import nodemailer from 'nodemailer';
 
-export const ADMIN_EMAIL = process.env.FOUNDER_NOTIFY_EMAIL ?? 'ametronyxx@gmail.com';
+export const ADMIN_EMAIL =
+  process.env.FOUNDER_NOTIFY_EMAIL
+  ?? process.env.FOUNDER_EMAIL
+  ?? 'ametronyxx@gmail.com';
+
+export function isSmtpConfigured(): boolean {
+  const user = process.env.SMTP_USER;
+  const pass = process.env.SMTP_PASS ?? process.env.SMTP_PASSWORD;
+  return Boolean(user && pass);
+}
 
 export function buildTransporter() {
   const user = process.env.SMTP_USER;
@@ -25,8 +34,9 @@ export function buildTransporter() {
 }
 
 export function smtpFrom(system = false): string {
-  const user = process.env.SMTP_USER ?? 'noreply@cafyz.io';
-  return system ? `"Cafyz System" <${user}>` : `"Cafyz" <${user}>`;
+  const addr = process.env.SMTP_FROM ?? process.env.SMTP_USER ?? 'noreply@cafyz.io';
+  const name = process.env.SMTP_FROM_NAME ?? 'Cafyz';
+  return system ? `"${name} System" <${addr}>` : `"${name}" <${addr}>`;
 }
 
 export async function sendMailWithTimeout(

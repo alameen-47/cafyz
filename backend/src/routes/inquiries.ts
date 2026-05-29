@@ -6,7 +6,7 @@ import { getDb } from '../db.js';
 import { uid } from '../utils.js';
 import { APP_URL, TRIAL_DAYS, appPath, trialEndsDateLabel } from '../config/site.js';
 import { approveInquiryById } from '../services/inquiryApproval.js';
-import { ADMIN_EMAIL, buildTransporter, sendMailBestEffort, smtpFrom } from '../services/email.js';
+import { ADMIN_EMAIL, buildTransporter, sendMailWithTimeout, smtpFrom } from '../services/email.js';
 
 const router = Router();
 
@@ -187,25 +187,42 @@ router.post('/', async (req, res, next) => {
     const denyUrl    = `${baseUrl(req)}/api/inquiries/action?id=${encodeURIComponent(id)}&token=${encodeURIComponent(token)}&action=deny`;
 
     const transporter = buildTransporter();
+    const emailStatus = { founder: false, user: false, smtp: Boolean(transporter) };
+
     if (transporter) {
-      // Do not block the HTTP response on SMTP. Render/Gmail can delay/timeout.
-      void (async () => {
-        await Promise.all([
-          sendMailBestEffort(transporter, {
-            from:    smtpFrom(true),
-            to:      ADMIN_EMAIL,
-            subject: `[Cafyz] Trial approval needed — ${plan.toUpperCase()} · ${restaurant_name}`,
-            html:    adminHtml({ name, restaurantName: restaurant_name, email, plan, message, approveUrl, denyUrl }),
-          }, 'founder inquiry notification'),
-          sendMailBestEffort(transporter, {
-            from:    smtpFrom(false),
-            to:      email,
-            replyTo: ADMIN_EMAIL,
-            subject: `We received your request, ${name.split(' ')[0]} ✓ (pending approval)`,
-            html:    autoReplyHtml(name, restaurant_name, plan),
-          }, 'user inquiry auto-reply'),
-        ]);
-      })();
+      // Founder email MUST be awaited — background sends are dropped on Render after response ends.
+      try {
+        await sendMailWithTimeout(transporter, {
+          from:    smtpFrom(true),
+          to:      ADMIN_EMAIL,
+          subject: `[Cafyz] Trial approval needed — ${plan.toUpperCase()} · ${restaurant_name}`,
+          html:    adminHtml({ name, restaurantName: restaurant_name, email, plan, message, approveUrl, denyUrl }),
+        }, 20000);
+        emailStatus.founder = true;
+        // eslint-disable-next-line no-console
+        console.log(`[SMTP] founder inquiry notification sent to ${ADMIN_EMAIL}`);
+      } catch (e) {
+        // eslint-disable-next-line no-console
+        console.error('[SMTP] founder inquiry notification failed:', (e as Error).message);
+      }
+
+      // User auto-reply — best effort, also awaited so it actually sends on Render.
+      try {
+        await sendMailWithTimeout(transporter, {
+          from:    smtpFrom(false),
+          to:      email,
+          replyTo: ADMIN_EMAIL,
+          subject: `We received your request, ${name.split(' ')[0]} ✓ (pending approval)`,
+          html:    autoReplyHtml(name, restaurant_name, plan),
+        }, 20000);
+        emailStatus.user = true;
+      } catch (e) {
+        // eslint-disable-next-line no-console
+        console.error('[SMTP] user inquiry auto-reply failed:', (e as Error).message);
+      }
+    } else {
+      // eslint-disable-next-line no-console
+      console.error('[SMTP] not configured — set SMTP_USER and SMTP_PASSWORD on server');
     }
 
     res.status(201).json({
@@ -213,6 +230,7 @@ router.post('/', async (req, res, next) => {
       message: `Inquiry received. Your request is pending founder approval. Once approved, you'll receive a ${TRIAL_DAYS}-day free trial — no charge until the trial ends.`,
       trial_days: TRIAL_DAYS,
       app_url: APP_URL,
+      email_status: emailStatus,
       ...(process.env.NODE_ENV !== 'production' ? { debug_approve_url: approveUrl } : {}),
     });
   } catch (e) {
