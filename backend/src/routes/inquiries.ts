@@ -201,14 +201,14 @@ router.post('/', async (req, res, next) => {
           to:      ADMIN_EMAIL,
           subject: `[Cafyz] Trial approval needed — ${plan.toUpperCase()} · ${restaurant_name}`,
           html:    adminHtml({ name, restaurantName: restaurant_name, email, plan, message, approveUrl, denyUrl }),
-        }, 20000),
+        }, 12000),
         sendMailReliable({
           from:    smtpFrom(false),
           to:      email,
           replyTo: ADMIN_EMAIL,
           subject: `We received your request, ${name.split(' ')[0]} ✓ (pending approval)`,
           html:    autoReplyHtml(name, restaurant_name, plan),
-        }, 20000),
+        }, 12000),
       ]);
       emailStatus.founder = founderResult.ok;
       emailStatus.user = userResult.ok;

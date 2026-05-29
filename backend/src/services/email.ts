@@ -1,5 +1,8 @@
 import nodemailer from 'nodemailer';
 
+/** Prefer IPv4 for SMTP — avoids ENETUNREACH to Gmail over IPv6 on Render. */
+const SMTP_FAMILY = 4 as const;
+
 export const ADMIN_EMAIL =
   process.env.FOUNDER_NOTIFY_EMAIL
   ?? process.env.FOUNDER_EMAIL
@@ -44,38 +47,39 @@ function transporterFromConfig(cfg: {
     secure,
     requireTLS: !secure,
     auth,
+    family: SMTP_FAMILY,
     ...timeouts,
-  });
+  } as nodemailer.TransportOptions);
 }
 
-/** Primary transporter — Gmail service mode works best from cloud hosts like Render. */
+/** Primary transporter — Gmail over IPv4:465 first (Render has no working IPv6 to Google). */
 export function buildTransporter(): nodemailer.Transporter | null {
   const auth = smtpAuth();
   if (!auth) return null;
   const host = (process.env.SMTP_HOST ?? 'smtp.gmail.com').toLowerCase();
   if (host.includes('gmail')) {
-    return transporterFromConfig({ service: 'gmail' });
+    return transporterFromConfig({ host: 'smtp.gmail.com', port: 465, secure: true });
   }
   const port = Number(process.env.SMTP_PORT ?? 587);
   const secure =
     process.env.SMTP_SECURE !== undefined
       ? ['1', 'true', 'yes'].includes(String(process.env.SMTP_SECURE).toLowerCase())
       : port === 465;
-  return transporterFromConfig({ port, secure });
+  return transporterFromConfig({ host, port, secure });
 }
 
-/** Fallback chain when primary SMTP config fails on cloud hosting. */
-function buildFallbackTransporters(): nodemailer.Transporter[] {
-  const auth = smtpAuth();
-  if (!auth) return [];
+function buildAllTransporters(): nodemailer.Transporter[] {
+  if (!smtpAuth()) return [];
   const host = (process.env.SMTP_HOST ?? 'smtp.gmail.com').toLowerCase();
-  if (!host.includes('gmail')) return [];
-
-  return [
-    transporterFromConfig({ service: 'gmail' }),
-    transporterFromConfig({ host: 'smtp.gmail.com', port: 465, secure: true }),
-    transporterFromConfig({ host: 'smtp.gmail.com', port: 587, secure: false }),
-  ].filter((t): t is nodemailer.Transporter => t !== null);
+  if (host.includes('gmail')) {
+    return [
+      transporterFromConfig({ host: 'smtp.gmail.com', port: 465, secure: true }),
+      transporterFromConfig({ service: 'gmail' }),
+      transporterFromConfig({ host: 'smtp.gmail.com', port: 587, secure: false }),
+    ].filter((t): t is nodemailer.Transporter => t !== null);
+  }
+  const primary = buildTransporter();
+  return primary ? [primary] : [];
 }
 
 export function smtpFrom(system = false): string {
@@ -99,14 +103,9 @@ async function sendWithTransporter(
 
 export async function sendMailReliable(
   mail: nodemailer.SendMailOptions,
-  timeoutMs = Number(process.env.SMTP_SEND_TIMEOUT_MS ?? 25000),
+  timeoutMs = Number(process.env.SMTP_SEND_TIMEOUT_MS ?? 12000),
 ): Promise<EmailSendResult> {
-  const candidates: nodemailer.Transporter[] = [];
-  const primary = buildTransporter();
-  if (primary) candidates.push(primary);
-  for (const fb of buildFallbackTransporters()) {
-    if (!candidates.includes(fb)) candidates.push(fb);
-  }
+  const candidates = buildAllTransporters();
   if (!candidates.length) {
     return { ok: false, error: 'SMTP not configured (SMTP_USER / SMTP_PASSWORD missing)' };
   }

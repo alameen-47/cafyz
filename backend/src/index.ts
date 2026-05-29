@@ -1,5 +1,9 @@
+import dns from 'node:dns';
 import 'dotenv/config';
 import app from './app.js';
+
+// Render and other cloud hosts often lack working IPv6 routes to Gmail.
+dns.setDefaultResultOrder('ipv4first');
 import { runMigrations } from './schema.js';
 
 const PORT = Number(process.env.PORT ?? 4000);
