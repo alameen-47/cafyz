@@ -74,7 +74,9 @@ async function sendViaResend(mail: nodemailer.SendMailOptions): Promise<EmailSen
   const to = normalizeRecipients(mail.to);
   if (!to.length) return { ok: false, error: 'Missing recipient' };
 
-  const from = String(mail.from ?? httpFromAddress(false));
+  // RESEND_FROM (a verified-domain sender) must win over any per-call from,
+  // otherwise Resend rejects sends whose sender domain isn't verified.
+  const from = String(process.env.RESEND_FROM?.trim() || mail.from || httpFromAddress(false));
   const body: Record<string, unknown> = {
     from,
     to,
@@ -110,7 +112,9 @@ async function sendViaBrevo(mail: nodemailer.SendMailOptions): Promise<EmailSend
   const to = normalizeRecipients(mail.to);
   if (!to.length) return { ok: false, error: 'Missing recipient' };
 
-  const fromHeader = String(mail.from ?? httpFromAddress(false));
+  // BREVO_FROM (a verified sender) must win over any per-call from, otherwise
+  // Brevo rejects the send with "sender not valid".
+  const fromHeader = String(process.env.BREVO_FROM?.trim() || mail.from || httpFromAddress(false));
   const { email, name } = parseFromHeader(fromHeader);
 
   const payload: Record<string, unknown> = {
