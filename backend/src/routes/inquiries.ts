@@ -195,25 +195,26 @@ router.post('/', async (req, res, next) => {
     } = { founder: false, user: false, smtp: isSmtpConfigured() };
 
     if (emailStatus.smtp) {
-      const founderResult = await sendMailReliable({
-        from:    smtpFrom(true),
-        to:      ADMIN_EMAIL,
-        subject: `[Cafyz] Trial approval needed — ${plan.toUpperCase()} · ${restaurant_name}`,
-        html:    adminHtml({ name, restaurantName: restaurant_name, email, plan, message, approveUrl, denyUrl }),
-      });
+      const [founderResult, userResult] = await Promise.all([
+        sendMailReliable({
+          from:    smtpFrom(true),
+          to:      ADMIN_EMAIL,
+          subject: `[Cafyz] Trial approval needed — ${plan.toUpperCase()} · ${restaurant_name}`,
+          html:    adminHtml({ name, restaurantName: restaurant_name, email, plan, message, approveUrl, denyUrl }),
+        }, 20000),
+        sendMailReliable({
+          from:    smtpFrom(false),
+          to:      email,
+          replyTo: ADMIN_EMAIL,
+          subject: `We received your request, ${name.split(' ')[0]} ✓ (pending approval)`,
+          html:    autoReplyHtml(name, restaurant_name, plan),
+        }, 20000),
+      ]);
       emailStatus.founder = founderResult.ok;
-      if (!founderResult.ok) emailStatus.founder_error = founderResult.error;
-      else console.log(`[SMTP] founder inquiry notification sent to ${ADMIN_EMAIL}`);
-
-      const userResult = await sendMailReliable({
-        from:    smtpFrom(false),
-        to:      email,
-        replyTo: ADMIN_EMAIL,
-        subject: `We received your request, ${name.split(' ')[0]} ✓ (pending approval)`,
-        html:    autoReplyHtml(name, restaurant_name, plan),
-      });
       emailStatus.user = userResult.ok;
+      if (!founderResult.ok) emailStatus.founder_error = founderResult.error;
       if (!userResult.ok) emailStatus.user_error = userResult.error;
+      if (founderResult.ok) console.log(`[SMTP] founder inquiry notification sent to ${ADMIN_EMAIL}`);
     } else {
       console.error('[SMTP] not configured — set SMTP_USER and SMTP_PASSWORD on server');
     }
