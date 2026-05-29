@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, type ChangeEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   dashboardApi, inventoryApi, restaurantApi, usersApi, reservationsApi, tablesApi,
@@ -8,6 +8,10 @@ import {
 import { useAuth } from '../context/AuthContext';
 import { PLAN_HAS_RESERVATIONS } from '../config/planAccess';
 import { RolesPanel } from './RolesPanel';
+import { uploadImage, isCloudinaryConfigured } from '../services/cloudinary';
+import {
+  connectBluetooth, connectUSB, disconnectPrinter, printerStatus, printTest,
+} from '../services/PrintService';
 import './ManagerPanel.css';
 
 type Section = 'overview' | 'profile' | 'inventory' | 'tables' | 'reservations' | 'staff' | 'reports' | 'roles';
@@ -739,7 +743,19 @@ function ProfileTab() {
     address_line1: '', address_line2: '', city: '', country: '', postal_code: '', tax_id: '', website_url: '',
   });
 
+  // Logo upload state
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
+  const [uploadMsg, setUploadMsg] = useState('');
+
+  // Printer state
+  const [printer, setPrinter] = useState<{ type: 'none' | 'bluetooth' | 'usb'; name: string }>({ type: 'none', name: '' });
+  const [printBusy, setPrintBusy] = useState(false);
+  const [printMsg, setPrintMsg] = useState('');
+  const [printErr, setPrintErr] = useState('');
+
   useEffect(() => {
+    setPrinter(printerStatus());
     restaurantApi.me()
       .then(r => {
         setRestaurant(r);
@@ -772,18 +788,125 @@ function ProfileTab() {
     finally { setBusy(false); }
   }
 
+  // Upload the chosen file to Cloudinary, then persist the URL immediately so the
+  // logo is saved even if the manager doesn't click Save Profile.
+  async function onPickLogo(e: ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = ''; // allow re-selecting the same file
+    if (!file) return;
+    setUploading(true); setUploadMsg(''); setError('');
+    try {
+      const url = await uploadImage(file);
+      setDraft(d => ({ ...d, logo_url: url }));
+      const updated = await restaurantApi.update({ logo_url: url });
+      setRestaurant(updated);
+      setUploadMsg('✓ Logo uploaded and saved');
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  async function connectBT() {
+    setPrintBusy(true); setPrintErr(''); setPrintMsg('');
+    try {
+      const name = await connectBluetooth();
+      setPrinter({ type: 'bluetooth', name });
+      setPrintMsg(`Connected to ${name}`);
+    } catch (e) { setPrintErr((e as Error).message); }
+    finally { setPrintBusy(false); }
+  }
+
+  async function connectUsbPrinter() {
+    setPrintBusy(true); setPrintErr(''); setPrintMsg('');
+    try {
+      const name = await connectUSB();
+      setPrinter({ type: 'usb', name });
+      setPrintMsg(`Connected to ${name}`);
+    } catch (e) { setPrintErr((e as Error).message); }
+    finally { setPrintBusy(false); }
+  }
+
+  function disconnect() {
+    disconnectPrinter();
+    setPrinter({ type: 'none', name: '' });
+    setPrintMsg(''); setPrintErr('');
+  }
+
+  async function runTestPrint() {
+    setPrintBusy(true); setPrintErr(''); setPrintMsg('');
+    try {
+      const addr = [draft.address_line1, draft.city, draft.country].filter(Boolean).join(', ');
+      const channel = await printTest({
+        restaurantName: draft.name || restaurant?.name || 'Cafyz',
+        logoUrl: draft.logo_url || undefined,
+        addressLine: addr || undefined,
+        phone: draft.contact_phone || undefined,
+      });
+      setPrintMsg(
+        channel === 'dialog'
+          ? 'No hardware printer connected — opened browser print preview.'
+          : `✓ Test receipt sent via ${channel}. Check your printer.`,
+      );
+    } catch (e) { setPrintErr((e as Error).message); }
+    finally { setPrintBusy(false); }
+  }
+
   if (loading) return <p style={{ color: 'var(--text2)', fontSize: 13 }}>Loading profile…</p>;
+  const logoPreview = draft.logo_url || restaurant?.logo_url;
   return (
     <div className="mgr-overview">
       <p className="eyebrow">Brand · Identity · Billing</p>
       <h1 className="serif mgr-greeting">Restaurant Profile</h1>
       <p className="mgr-sub">Shared by all staff assigned to this restaurant in Role Management.</p>
       {error && <p style={{ color: 'var(--danger)', fontSize: 13 }}>{error}</p>}
+
+      {/* ── Logo ──────────────────────────────────────────────────────────── */}
+      <div className="card" style={{ padding: 16, marginBottom: 12 }}>
+        <p className="eyebrow" style={{ marginTop: 0 }}>Logo</p>
+        <p className="mgr-sub" style={{ marginTop: 0 }}>Printed on receipts and kitchen tickets. PNG or SVG with a transparent background works best.</p>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
+          <div style={{
+            width: 120, height: 120, borderRadius: 12, background: 'rgba(255,255,255,0.04)',
+            border: '1px dashed rgba(255,255,255,0.18)', display: 'flex', alignItems: 'center',
+            justifyContent: 'center', overflow: 'hidden', flexShrink: 0,
+          }}>
+            {logoPreview
+              ? <img src={logoPreview} alt="Restaurant logo" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
+              : <span style={{ color: 'var(--text2)', fontSize: 11 }}>No logo</span>}
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <input ref={fileRef} type="file" accept="image/*" hidden onChange={onPickLogo} />
+            <button
+              className="btn-gold"
+              onClick={() => fileRef.current?.click()}
+              disabled={uploading || !isCloudinaryConfigured()}
+            >
+              {uploading ? 'Uploading…' : logoPreview ? 'Replace Logo' : 'Upload Logo'}
+            </button>
+            {!isCloudinaryConfigured() && (
+              <span style={{ color: 'var(--warn, #FACC15)', fontSize: 11, maxWidth: 260 }}>
+                Image upload isn’t configured yet. Paste a logo URL below, or set the Cloudinary keys.
+              </span>
+            )}
+            {uploadMsg && <span style={{ color: 'var(--ok, #2ECC8A)', fontSize: 12 }}>{uploadMsg}</span>}
+            <input
+              className="roles-input"
+              style={{ minWidth: 260 }}
+              placeholder="…or paste a logo URL (https://...)"
+              value={draft.logo_url}
+              onChange={e => setDraft(d => ({ ...d, logo_url: e.target.value }))}
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* ── Details ───────────────────────────────────────────────────────── */}
       <div className="card" style={{ padding: 16 }}>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
           <input className="roles-input" placeholder="Restaurant name" value={draft.name} onChange={e => setDraft(d => ({ ...d, name: e.target.value }))} />
           <input className="roles-input" placeholder="Timezone" value={draft.timezone} onChange={e => setDraft(d => ({ ...d, timezone: e.target.value }))} />
-          <input className="roles-input" placeholder="Logo URL (https://...)" value={draft.logo_url} onChange={e => setDraft(d => ({ ...d, logo_url: e.target.value }))} />
           <input className="roles-input" placeholder="Website URL" value={draft.website_url} onChange={e => setDraft(d => ({ ...d, website_url: e.target.value }))} />
           <input className="roles-input" placeholder="Phone" value={draft.contact_phone} onChange={e => setDraft(d => ({ ...d, contact_phone: e.target.value }))} />
           <input className="roles-input" placeholder="Email" value={draft.contact_email} onChange={e => setDraft(d => ({ ...d, contact_email: e.target.value }))} />
@@ -794,16 +917,41 @@ function ProfileTab() {
           <input className="roles-input" placeholder="Postal code" value={draft.postal_code} onChange={e => setDraft(d => ({ ...d, postal_code: e.target.value }))} />
           <input className="roles-input" placeholder="Tax ID" value={draft.tax_id} onChange={e => setDraft(d => ({ ...d, tax_id: e.target.value }))} />
         </div>
-        {restaurant?.logo_url && (
-          <div style={{ marginTop: 12 }}>
-            <img src={restaurant.logo_url} alt="Restaurant logo preview" style={{ maxWidth: 180, maxHeight: 80, objectFit: 'contain' }} />
-          </div>
-        )}
         <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 12 }}>
           <button className="btn-gold" onClick={save} disabled={busy || !draft.name.trim()}>
             {busy ? 'Saving…' : 'Save Profile'}
           </button>
         </div>
+      </div>
+
+      {/* ── Printer ───────────────────────────────────────────────────────── */}
+      <div className="card" style={{ padding: 16, marginTop: 12 }}>
+        <p className="eyebrow" style={{ marginTop: 0 }}>Receipt Printer</p>
+        <p className="mgr-sub" style={{ marginTop: 0 }}>Connect a Bluetooth or USB thermal printer (e.g. PT-210) and run a test print to confirm the logo prints correctly.</p>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+          {printer.type !== 'none' ? (
+            <>
+              <span style={{ fontSize: 13, color: 'var(--ok, #2ECC8A)' }}>
+                {printer.type === 'bluetooth' ? '🔵' : '🔌'} {printer.name}
+              </span>
+              <button className="roles-btn" onClick={disconnect} disabled={printBusy}>Disconnect</button>
+            </>
+          ) : (
+            <>
+              <button className="roles-btn" onClick={connectBT} disabled={printBusy}>
+                {printBusy ? '…' : '🔵 Connect Bluetooth'}
+              </button>
+              <button className="roles-btn" onClick={connectUsbPrinter} disabled={printBusy}>
+                🔌 Connect USB
+              </button>
+            </>
+          )}
+          <button className="btn-gold" onClick={runTestPrint} disabled={printBusy}>
+            {printBusy ? 'Printing…' : '🖨 Test Print'}
+          </button>
+        </div>
+        {printMsg && <p style={{ color: 'var(--ok, #2ECC8A)', fontSize: 12, marginBottom: 0 }}>{printMsg}</p>}
+        {printErr && <p style={{ color: 'var(--danger)', fontSize: 12, marginBottom: 0 }}>{printErr}</p>}
       </div>
     </div>
   );

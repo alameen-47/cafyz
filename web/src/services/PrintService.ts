@@ -585,6 +585,40 @@ export async function print(
   return 'dialog';
 }
 
+/**
+ * Test print — verifies the connected printer works and that the logo renders.
+ * Builds a sample receipt from the restaurant's own name + logo and sends it via
+ * the same BT → USB → dialog path used for real receipts. Returns the channel
+ * used so the UI can confirm where the test went.
+ */
+export async function printTest(opts: {
+  restaurantName: string;
+  logoUrl?: string;
+  addressLine?: string;
+  phone?: string;
+}): Promise<'bluetooth' | 'usb' | 'dialog'> {
+  const sample: ReceiptData = {
+    restaurantName: opts.restaurantName || 'Cafyz',
+    logoUrl: opts.logoUrl,
+    addressLine: opts.addressLine,
+    phone: opts.phone,
+    tableName: 'TEST',
+    serverName: 'Cafyz',
+    covers: 2,
+    items: [
+      { name: 'Test Print — Margherita', qty: 1, price: 12.0 },
+      { name: 'Espresso', qty: 2, price: 3.5 },
+    ],
+    subtotal: 19.0,
+    service: 3.42,
+    tax: 1.66,
+    total: 24.08,
+    payMethod: 'TEST',
+    note: 'This is a printer test — connection and logo OK.',
+  };
+  return print(sample);
+}
+
 export async function printKitchenTicket(
   data: KitchenTicketData,
 ): Promise<'bluetooth' | 'usb' | 'dialog'> {
