@@ -41,3 +41,16 @@ export async function sendMailWithTimeout(
     }),
   ]);
 }
+
+export async function sendMailBestEffort(
+  transporter: nodemailer.Transporter,
+  mail: nodemailer.SendMailOptions,
+  logTag: string,
+): Promise<void> {
+  try {
+    await sendMailWithTimeout(transporter, mail);
+  } catch (e) {
+    // eslint-disable-next-line no-console
+    console.error(`[SMTP] ${logTag} failed:`, (e as Error).message);
+  }
+}

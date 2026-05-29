@@ -6,7 +6,7 @@ import { getDb } from '../db.js';
 import { uid } from '../utils.js';
 import { APP_URL, TRIAL_DAYS, appPath, trialEndsDateLabel } from '../config/site.js';
 import { approveInquiryById } from '../services/inquiryApproval.js';
-import { ADMIN_EMAIL, buildTransporter, sendMailWithTimeout, smtpFrom } from '../services/email.js';
+import { ADMIN_EMAIL, buildTransporter, sendMailBestEffort, smtpFrom } from '../services/email.js';
 
 const router = Router();
 
@@ -190,26 +190,21 @@ router.post('/', async (req, res, next) => {
     if (transporter) {
       // Do not block the HTTP response on SMTP. Render/Gmail can delay/timeout.
       void (async () => {
-        try {
-          await Promise.all([
-            sendMailWithTimeout(transporter, {
-              from:    smtpFrom(true),
-              to:      ADMIN_EMAIL,
-              subject: `[Cafyz] Trial approval needed — ${plan.toUpperCase()} · ${restaurant_name}`,
-              html:    adminHtml({ name, restaurantName: restaurant_name, email, plan, message, approveUrl, denyUrl }),
-            }),
-            sendMailWithTimeout(transporter, {
-              from:    smtpFrom(false),
-              to:      email,
-              replyTo: ADMIN_EMAIL,
-              subject: `We received your request, ${name.split(' ')[0]} ✓ (pending approval)`,
-              html:    autoReplyHtml(name, restaurant_name, plan),
-            }),
-          ]);
-        } catch (e) {
-          // eslint-disable-next-line no-console
-          console.error('[SMTP] inquiry emails failed:', (e as Error).message);
-        }
+        await Promise.all([
+          sendMailBestEffort(transporter, {
+            from:    smtpFrom(true),
+            to:      ADMIN_EMAIL,
+            subject: `[Cafyz] Trial approval needed — ${plan.toUpperCase()} · ${restaurant_name}`,
+            html:    adminHtml({ name, restaurantName: restaurant_name, email, plan, message, approveUrl, denyUrl }),
+          }, 'founder inquiry notification'),
+          sendMailBestEffort(transporter, {
+            from:    smtpFrom(false),
+            to:      email,
+            replyTo: ADMIN_EMAIL,
+            subject: `We received your request, ${name.split(' ')[0]} ✓ (pending approval)`,
+            html:    autoReplyHtml(name, restaurant_name, plan),
+          }, 'user inquiry auto-reply'),
+        ]);
       })();
     }
 

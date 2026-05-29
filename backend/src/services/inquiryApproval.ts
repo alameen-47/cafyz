@@ -4,7 +4,7 @@ import type { Client } from '@libsql/client';
 import { getDb } from '../db.js';
 import { uid } from '../utils.js';
 import { appPath, trialEndsAt, trialEndsDateLabel, TRIAL_DAYS } from '../config/site.js';
-import { ADMIN_EMAIL, buildTransporter, smtpFrom } from './email.js';
+import { ADMIN_EMAIL, buildTransporter, sendMailBestEffort, smtpFrom } from './email.js';
 
 const LOGIN_URL = appPath('/login');
 const MANAGER_URL = appPath('/');
@@ -135,7 +135,7 @@ export async function sendTrialApprovalEmails(inquiry: InquiryRow, provision: Pr
   const planLabel = provision.plan.toUpperCase();
 
   await Promise.all([
-    transporter.sendMail({
+    sendMailBestEffort(transporter, {
       from: smtpFrom(true),
       to: ADMIN_EMAIL,
       subject: `[Cafyz] Trial provisioned — ${inquiry.restaurant_name}`,
@@ -146,8 +146,8 @@ export async function sendTrialApprovalEmails(inquiry: InquiryRow, provision: Pr
              <b>License:</b> <code>${esc(provision.licenseKey)}</code><br/>
              <b>Trial ends:</b> ${trialEnd}</p>
              <p>Manager panel: <a href="${MANAGER_URL}">${MANAGER_URL}</a></p>`,
-    }),
-    transporter.sendMail({
+    }, 'founder trial provisioned'),
+    sendMailBestEffort(transporter, {
       from: smtpFrom(false),
       to: provision.email,
       replyTo: ADMIN_EMAIL,
@@ -171,7 +171,7 @@ export async function sendTrialApprovalEmails(inquiry: InquiryRow, provision: Pr
     <div style="margin-top:12px;font-size:12px;color:#5A5A6A;word-break:break-all">${LOGIN_URL}</div>
   </div>
 </div></body></html>`,
-    }),
+    }, 'user trial credentials'),
   ]);
 }
 
