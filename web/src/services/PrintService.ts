@@ -12,6 +12,11 @@ class EscPosBuilder {
 
   push(...bytes: number[]) { this.buf.push(...bytes); return this; }
 
+  pushBytes(arr: Uint8Array) {
+    for (let i = 0; i < arr.length; i++) this.buf.push(arr[i]);
+    return this;
+  }
+
   init()         { return this.push(ESC, 0x40); }           // ESC @
   alignLeft()    { return this.push(ESC, 0x61, 0x00); }     // ESC a 0
   alignCenter()  { return this.push(ESC, 0x61, 0x01); }     // ESC a 1
@@ -87,7 +92,8 @@ export interface KitchenTicketData {
 }
 
 // Build ESC/POS bytes for a receipt (32-char width for 58mm, 48-char for 80mm)
-export function buildReceipt(data: ReceiptData, width = 32): Uint8Array {
+// logoBytes: pre-rendered GS-v-0 raster image bytes from prepareLogoEscPos()
+export function buildReceipt(data: ReceiptData, width = 32, logoBytes?: Uint8Array): Uint8Array {
   const b = new EscPosBuilder();
   const W = width;
   const fmt = (n: number) => `$${n.toFixed(2)}`;
@@ -99,10 +105,11 @@ export function buildReceipt(data: ReceiptData, width = 32): Uint8Array {
   b.init();
 
   // Header
-  b.alignCenter()
-   .boldOn().bigOn().text(data.restaurantName).bigOff().boldOff().nl(2);
-  // Thermal image raster support is device-specific; use text fallback here.
-  if (data.logoUrl) b.text('[LOGO]').nl();
+  b.alignCenter();
+  if (logoBytes) {
+    b.pushBytes(logoBytes).nl();
+  }
+  b.boldOn().bigOn().text(data.restaurantName).bigOff().boldOff().nl(2);
   if (data.addressLine) b.text(data.addressLine).nl();
   if (data.phone) b.text(`Tel: ${data.phone}`).nl();
   if (data.taxId) b.text(`Tax ID: ${data.taxId}`).nl();
@@ -218,12 +225,13 @@ ${data.payMethod ? `<hr><p class="center">Paid by ${data.payMethod}</p>` : ''}
 </html>`;
 }
 
-export function buildKitchenTicket(data: KitchenTicketData, width = 32): Uint8Array {
+export function buildKitchenTicket(data: KitchenTicketData, width = 32, logoBytes?: Uint8Array): Uint8Array {
   const b = new EscPosBuilder();
   const W = width;
   const ts = data.createdAt ? new Date(data.createdAt).toLocaleString('en-GB') : new Date().toLocaleString('en-GB');
-  b.init().alignCenter().boldOn().bigOn().text(data.restaurantName).bigOff().boldOff().nl();
-  if (data.logoUrl) b.text('[LOGO]').nl();
+  b.init().alignCenter();
+  if (logoBytes) b.pushBytes(logoBytes).nl();
+  b.boldOn().bigOn().text(data.restaurantName).bigOff().boldOff().nl();
   b.boldOn().text('KITCHEN TICKET').boldOff().nl();
   b.divider(W);
   b.alignLeft();
@@ -388,6 +396,69 @@ export function printerStatus(): { type: 'none' | 'bluetooth' | 'usb'; name: str
   return { type: 'none', name: '' };
 }
 
+// ── ESC/POS raster logo renderer ──────────────────────────────────────────────
+// Loads an image URL into an offscreen canvas, converts it to a 1-bit monochrome
+// bitmap, and returns the GS v 0 ESC/POS raster-image command bytes ready to
+// splice into a receipt buffer.  Returns null on any load/CORS failure so the
+// caller can print text-only instead of blocking the receipt.
+async function prepareLogoEscPos(url: string, maxWidthDots = 240): Promise<Uint8Array | null> {
+  try {
+    return await new Promise<Uint8Array>((resolve, reject) => {
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+
+      img.onerror = () => reject(new Error('Logo load failed'));
+
+      img.onload = () => {
+        const targetW = Math.min(img.naturalWidth, maxWidthDots);
+        const scale   = targetW / img.naturalWidth;
+        const targetH = Math.min(Math.round(img.naturalHeight * scale), 240);
+
+        const canvas = document.createElement('canvas');
+        canvas.width  = targetW;
+        canvas.height = targetH;
+        const ctx = canvas.getContext('2d')!;
+
+        // Fill white so transparent areas don't print as solid black.
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, targetW, targetH);
+        ctx.drawImage(img, 0, 0, targetW, targetH);
+
+        const { data, width, height } = ctx.getImageData(0, 0, targetW, targetH);
+        const bytesPerRow = Math.ceil(width / 8);
+        const bitmap      = new Uint8Array(bytesPerRow * height);
+
+        for (let y = 0; y < height; y++) {
+          for (let x = 0; x < width; x++) {
+            const i   = (y * width + x) * 4;
+            const a   = data[i + 3];
+            // Transparent pixel → white (no dot).
+            const lum = a < 128 ? 255 : Math.round(0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2]);
+            if (lum < 128) {
+              bitmap[y * bytesPerRow + Math.floor(x / 8)] |= (0x80 >> (x % 8));
+            }
+          }
+        }
+
+        // GS v 0: 1D 76 30 m(=00) xL xH yL yH [data...]
+        const header = new Uint8Array([
+          0x1d, 0x76, 0x30, 0x00,
+          bytesPerRow & 0xff, (bytesPerRow >> 8) & 0xff,
+          height & 0xff,      (height >> 8) & 0xff,
+        ]);
+        const result = new Uint8Array(header.length + bitmap.length);
+        result.set(header);
+        result.set(bitmap, header.length);
+        resolve(result);
+      };
+
+      img.src = url;
+    });
+  } catch {
+    return null;
+  }
+}
+
 // ── Print dispatcher ──────────────────────────────────────────────────────────
 
 async function printBluetooth(data: Uint8Array): Promise<void> {
@@ -483,28 +554,33 @@ function printDialogHtml(html: string): void {
 
 /**
  * Smart print: BT → USB → browser dialog.
- * Pass `receiptData` for the dialog fallback; `escposData` for BT/USB.
+ * When a logo URL is present and a hardware printer is connected, the logo is
+ * rendered via the Canvas API into a GS-v-0 raster image and embedded in the
+ * ESC/POS stream.  The browser print dialog is used only when no hardware
+ * printer is connected; the HTML receipt already renders the logo as an <img>.
  */
 export async function print(
   receiptData: ReceiptData,
   escposData?: Uint8Array,
   width = 32,
 ): Promise<'bluetooth' | 'usb' | 'dialog'> {
-  // Always use browser print when logo is present to guarantee logo output.
-  if (receiptData.logoUrl) {
-    printDialog(receiptData);
-    return 'dialog';
-  }
-  const bytes = escposData ?? buildReceipt(receiptData, width);
+  if (btChar || usbDevice) {
+    // Render logo to raster bytes if available; fall through to text-only on failure.
+    const logoBytes = receiptData.logoUrl
+      ? (await prepareLogoEscPos(receiptData.logoUrl)) ?? undefined
+      : undefined;
 
-  if (btChar) {
-    await printBluetooth(bytes);
-    return 'bluetooth';
-  }
-  if (usbDevice) {
+    const bytes = escposData ?? buildReceipt(receiptData, width, logoBytes);
+
+    if (btChar) {
+      await printBluetooth(bytes);
+      return 'bluetooth';
+    }
     await printUSB(bytes);
     return 'usb';
   }
+
+  // No hardware printer — browser dialog renders the logo via <img> tag.
   printDialog(receiptData);
   return 'dialog';
 }
@@ -512,14 +588,13 @@ export async function print(
 export async function printKitchenTicket(
   data: KitchenTicketData,
 ): Promise<'bluetooth' | 'usb' | 'dialog'> {
-  const bytes = buildKitchenTicket(data, 32);
-  if (!data.logoUrl && btChar) {
-    await printBluetooth(bytes);
-    return 'bluetooth';
-  }
-  if (!data.logoUrl && usbDevice) {
-    await printUSB(bytes);
-    return 'usb';
+  if (btChar || usbDevice) {
+    const logoBytes = data.logoUrl
+      ? (await prepareLogoEscPos(data.logoUrl)) ?? undefined
+      : undefined;
+    const bytes = buildKitchenTicket(data, 32, logoBytes);
+    if (btChar) { await printBluetooth(bytes); return 'bluetooth'; }
+    await printUSB(bytes); return 'usb';
   }
   printDialogHtml(buildKitchenTicketHTML(data));
   return 'dialog';

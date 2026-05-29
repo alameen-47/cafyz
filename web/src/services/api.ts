@@ -175,7 +175,16 @@ export const founderApi = {
   stats:          ()                                                                    => get<ApiFounderStats>('/api/founder/stats'),
   inquiries:      ()                                                                    => get<ApiFounderInquiry[]>('/api/founder/inquiries'),
   setInquiryStatus: (id: string, status: 'approved'|'denied')                          =>
-    patch<{ id: string; status: string; provisioned?: boolean }>(`/api/founder/inquiries/${id}`, { status }),
+    patch<{
+      id: string;
+      status: string;
+      provisioned?: boolean;
+      alreadyProvisioned?: boolean;
+      emailSent?: boolean;
+      userEmail?: string;
+      userPassword?: string | null;
+      licenseKey?: string;
+    }>(`/api/founder/inquiries/${id}`, { status }),
   licenseRequests: ()                                                                   => get<ApiLicensePurchaseRequest[]>('/api/founder/license-requests'),
   fulfillLicenseRequest: (id: string)                                                 =>
     post<{ id: string; status: string; key_code: string }>(`/api/founder/license-requests/${id}/fulfill`, {}),

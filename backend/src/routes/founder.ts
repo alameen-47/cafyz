@@ -127,8 +127,18 @@ router.patch('/inquiries/:id', ...onlyFounder, async (req, res, next) => {
     if (current !== 'pending') { res.json({ id, status: current }); return; }
 
     if (status === 'approved') {
-      await approveInquiryById(id);
-      res.json({ id, status: 'approved', provisioned: true });
+      const provision = await approveInquiryById(id);
+      res.json({
+        id,
+        status: 'approved',
+        provisioned: true,
+        alreadyProvisioned: provision.alreadyProvisioned,
+        emailSent: provision.emailSent,
+        // Credentials returned so founder can manually forward if email delivery failed.
+        userEmail:    provision.email,
+        userPassword: provision.alreadyProvisioned ? null : provision.password,
+        licenseKey:   provision.licenseKey,
+      });
       return;
     }
 

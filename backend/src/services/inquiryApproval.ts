@@ -55,6 +55,8 @@ export type ProvisionResult = {
   plan: string;
   licenseKey: string;
   alreadyProvisioned: boolean;
+  /** True when the credentials email was successfully delivered to the user. */
+  emailSent: boolean;
 };
 
 export async function provisionTrialFromInquiry(
@@ -78,6 +80,7 @@ export async function provisionTrialFromInquiry(
       plan: trialPlan(inquiry.plan),
       licenseKey: String(lic.rows[0]?.key_code ?? ''),
       alreadyProvisioned: true,
+      emailSent: false,
     };
   }
 
@@ -122,18 +125,23 @@ export async function provisionTrialFromInquiry(
     plan,
     licenseKey: keyCode,
     alreadyProvisioned: false,
+    emailSent: false, // filled in by approveInquiryById after sendTrialApprovalEmails
   };
 }
 
-export async function sendTrialApprovalEmails(inquiry: InquiryRow, provision: ProvisionResult): Promise<void> {
-  if (!isEmailConfigured()) return;
+/** Returns true if the credentials email reached the user successfully. */
+export async function sendTrialApprovalEmails(inquiry: InquiryRow, provision: ProvisionResult): Promise<boolean> {
+  if (!isEmailConfigured()) {
+    console.error('[Email] No provider configured — credentials NOT emailed. Set RESEND_API_KEY or SMTP_USER/SMTP_PASS.');
+    return false;
+  }
 
   const trialEnd = trialEndsDateLabel();
   const first = esc(inquiry.name.split(' ')[0]);
   const restaurant = esc(inquiry.restaurant_name);
   const planLabel = provision.plan.toUpperCase();
 
-  await Promise.all([
+  const [founderResult, userResult] = await Promise.all([
     sendMailReliable({
       from: smtpFrom(true),
       to: ADMIN_EMAIL,
@@ -172,6 +180,17 @@ export async function sendTrialApprovalEmails(inquiry: InquiryRow, provision: Pr
 </div></body></html>`,
     }),
   ]);
+
+  if (!founderResult.ok) {
+    console.error(`[Email] Founder notification failed (${provision.email}): ${founderResult.error}`);
+  }
+  if (!userResult.ok) {
+    console.error(`[Email] Credentials email to ${provision.email} FAILED: ${userResult.error}`);
+  } else {
+    console.log(`[Email] Credentials sent to ${provision.email} via ${userResult.provider}`);
+  }
+
+  return userResult.ok;
 }
 
 export async function approveInquiryById(inquiryId: string): Promise<ProvisionResult> {
@@ -186,7 +205,7 @@ export async function approveInquiryById(inquiryId: string): Promise<ProvisionRe
 
   const provision = await provisionTrialFromInquiry(inquiry, db);
   if (!provision.alreadyProvisioned) {
-    await sendTrialApprovalEmails(inquiry, provision);
+    provision.emailSent = await sendTrialApprovalEmails(inquiry, provision);
   }
   return provision;
 }

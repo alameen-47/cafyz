@@ -376,21 +376,39 @@ function LicenseRequests() {
   );
 }
 
+type ApprovalResult = {
+  emailSent: boolean;
+  userEmail: string;
+  userPassword: string | null;
+  licenseKey: string;
+  alreadyProvisioned: boolean;
+};
+
 function Inquiries() {
   const [rows, setRows] = useState<ApiFounderInquiry[]>([]);
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [error, setError] = useState('');
+  const [approvalResult, setApprovalResult] = useState<ApprovalResult | null>(null);
 
   useEffect(() => {
     founderApi.inquiries().then(setRows).catch(e => setError(e.message)).finally(() => setLoading(false));
   }, []);
 
   async function act(id: string, status: 'approved'|'denied') {
-    setBusyId(id); setError('');
+    setBusyId(id); setError(''); setApprovalResult(null);
     try {
       const r = await founderApi.setInquiryStatus(id, status);
       setRows(prev => prev.map(x => x.id === id ? { ...x, status: r.status as ApiFounderInquiry['status'] } : x));
+      if (status === 'approved') {
+        setApprovalResult({
+          emailSent:         r.emailSent ?? false,
+          userEmail:         r.userEmail ?? '',
+          userPassword:      r.userPassword ?? null,
+          licenseKey:        r.licenseKey ?? '',
+          alreadyProvisioned: r.alreadyProvisioned ?? false,
+        });
+      }
     } catch (e) { setError((e as Error).message); }
     finally { setBusyId(null); }
   }
@@ -401,6 +419,55 @@ function Inquiries() {
       <h1 className="serif fdr-title">Trial Requests</h1>
       <p className="fdr-sub">Approve to auto-create manager login and email credentials.</p>
       {error && <p className="fdr-error">{error}</p>}
+
+      {approvalResult && (
+        <div style={{
+          margin: '0 0 20px',
+          padding: '18px 20px',
+          borderRadius: 12,
+          border: `0.5px solid ${approvalResult.emailSent ? 'rgba(46,204,138,0.4)' : 'rgba(250,204,21,0.4)'}`,
+          background: approvalResult.emailSent ? 'rgba(46,204,138,0.07)' : 'rgba(250,204,21,0.07)',
+        }}>
+          {approvalResult.alreadyProvisioned ? (
+            <p style={{ margin: 0, fontSize: 13, color: 'var(--text2)' }}>
+              This account was already provisioned. The user can sign in at their existing credentials.
+            </p>
+          ) : approvalResult.emailSent ? (
+            <p style={{ margin: 0, fontSize: 13, color: '#2ECC8A' }}>
+              ✓ Credentials emailed to <strong>{approvalResult.userEmail}</strong>
+            </p>
+          ) : (
+            <>
+              <p style={{ margin: '0 0 12px', fontSize: 13, color: '#facc15', fontWeight: 600 }}>
+                ⚠ Email delivery failed — share these credentials with the user manually:
+              </p>
+              <table style={{ width: '100%', fontSize: 13, borderCollapse: 'collapse' }}>
+                <tbody>
+                  <tr>
+                    <td style={{ padding: '5px 0', color: 'var(--text2)', width: 100 }}>Email</td>
+                    <td><code style={{ background: 'rgba(255,255,255,0.07)', padding: '2px 8px', borderRadius: 4 }}>{approvalResult.userEmail}</code></td>
+                  </tr>
+                  <tr>
+                    <td style={{ padding: '5px 0', color: 'var(--text2)' }}>Password</td>
+                    <td><code style={{ background: 'rgba(255,255,255,0.07)', padding: '2px 8px', borderRadius: 4 }}>{approvalResult.userPassword}</code></td>
+                  </tr>
+                  <tr>
+                    <td style={{ padding: '5px 0', color: 'var(--text2)' }}>License key</td>
+                    <td><code style={{ background: 'rgba(255,255,255,0.07)', padding: '2px 8px', borderRadius: 4 }}>{approvalResult.licenseKey}</code></td>
+                  </tr>
+                </tbody>
+              </table>
+            </>
+          )}
+          <button
+            onClick={() => setApprovalResult(null)}
+            style={{ marginTop: 10, background: 'none', border: 'none', color: 'var(--text3)', cursor: 'pointer', fontSize: 12, padding: 0 }}
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
+
       {loading ? <p className="fdr-loading">Loading…</p> : (
         <div className="card fdr-table">
           <div className="fdr-table-head">
