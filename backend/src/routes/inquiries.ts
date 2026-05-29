@@ -6,7 +6,7 @@ import { getDb } from '../db.js';
 import { uid } from '../utils.js';
 import { APP_URL, TRIAL_DAYS, appPath, trialEndsDateLabel } from '../config/site.js';
 import { approveInquiryById } from '../services/inquiryApproval.js';
-import { ADMIN_EMAIL, buildTransporter, sendMailWithTimeout, smtpFrom } from '../services/email.js';
+import { ADMIN_EMAIL, isSmtpConfigured, sendMailReliable, smtpFrom } from '../services/email.js';
 
 const router = Router();
 
@@ -186,42 +186,35 @@ router.post('/', async (req, res, next) => {
     const approveUrl = `${baseUrl(req)}/api/inquiries/action?id=${encodeURIComponent(id)}&token=${encodeURIComponent(token)}&action=approve`;
     const denyUrl    = `${baseUrl(req)}/api/inquiries/action?id=${encodeURIComponent(id)}&token=${encodeURIComponent(token)}&action=deny`;
 
-    const transporter = buildTransporter();
-    const emailStatus = { founder: false, user: false, smtp: Boolean(transporter) };
+    const emailStatus: {
+      founder: boolean;
+      user: boolean;
+      smtp: boolean;
+      founder_error?: string;
+      user_error?: string;
+    } = { founder: false, user: false, smtp: isSmtpConfigured() };
 
-    if (transporter) {
-      // Founder email MUST be awaited — background sends are dropped on Render after response ends.
-      try {
-        await sendMailWithTimeout(transporter, {
-          from:    smtpFrom(true),
-          to:      ADMIN_EMAIL,
-          subject: `[Cafyz] Trial approval needed — ${plan.toUpperCase()} · ${restaurant_name}`,
-          html:    adminHtml({ name, restaurantName: restaurant_name, email, plan, message, approveUrl, denyUrl }),
-        }, 20000);
-        emailStatus.founder = true;
-        // eslint-disable-next-line no-console
-        console.log(`[SMTP] founder inquiry notification sent to ${ADMIN_EMAIL}`);
-      } catch (e) {
-        // eslint-disable-next-line no-console
-        console.error('[SMTP] founder inquiry notification failed:', (e as Error).message);
-      }
+    if (emailStatus.smtp) {
+      const founderResult = await sendMailReliable({
+        from:    smtpFrom(true),
+        to:      ADMIN_EMAIL,
+        subject: `[Cafyz] Trial approval needed — ${plan.toUpperCase()} · ${restaurant_name}`,
+        html:    adminHtml({ name, restaurantName: restaurant_name, email, plan, message, approveUrl, denyUrl }),
+      });
+      emailStatus.founder = founderResult.ok;
+      if (!founderResult.ok) emailStatus.founder_error = founderResult.error;
+      else console.log(`[SMTP] founder inquiry notification sent to ${ADMIN_EMAIL}`);
 
-      // User auto-reply — best effort, also awaited so it actually sends on Render.
-      try {
-        await sendMailWithTimeout(transporter, {
-          from:    smtpFrom(false),
-          to:      email,
-          replyTo: ADMIN_EMAIL,
-          subject: `We received your request, ${name.split(' ')[0]} ✓ (pending approval)`,
-          html:    autoReplyHtml(name, restaurant_name, plan),
-        }, 20000);
-        emailStatus.user = true;
-      } catch (e) {
-        // eslint-disable-next-line no-console
-        console.error('[SMTP] user inquiry auto-reply failed:', (e as Error).message);
-      }
+      const userResult = await sendMailReliable({
+        from:    smtpFrom(false),
+        to:      email,
+        replyTo: ADMIN_EMAIL,
+        subject: `We received your request, ${name.split(' ')[0]} ✓ (pending approval)`,
+        html:    autoReplyHtml(name, restaurant_name, plan),
+      });
+      emailStatus.user = userResult.ok;
+      if (!userResult.ok) emailStatus.user_error = userResult.error;
     } else {
-      // eslint-disable-next-line no-console
       console.error('[SMTP] not configured — set SMTP_USER and SMTP_PASSWORD on server');
     }
 
