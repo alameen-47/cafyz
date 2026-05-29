@@ -4,7 +4,7 @@ import type { Client } from '@libsql/client';
 import { getDb } from '../db.js';
 import { uid } from '../utils.js';
 import { appPath, trialEndsAt, trialEndsDateLabel, TRIAL_DAYS } from '../config/site.js';
-import { ADMIN_EMAIL, isSmtpConfigured, sendMailReliable, smtpFrom } from './email.js';
+import { ADMIN_EMAIL, isEmailConfigured, sendMailReliable, smtpFrom } from './email.js';
 
 const LOGIN_URL = appPath('/login');
 const MANAGER_URL = appPath('/');
@@ -126,7 +126,7 @@ export async function provisionTrialFromInquiry(
 }
 
 export async function sendTrialApprovalEmails(inquiry: InquiryRow, provision: ProvisionResult): Promise<void> {
-  if (!isSmtpConfigured()) return;
+  if (!isEmailConfigured()) return;
 
   const trialEnd = trialEndsDateLabel();
   const first = esc(inquiry.name.split(' ')[0]);

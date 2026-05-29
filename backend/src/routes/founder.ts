@@ -7,7 +7,7 @@ import { requireRole } from '../middleware/rbac.js';
 import { uid } from '../utils.js';
 import { appPath, trialEndsAt } from '../config/site.js';
 import { approveInquiryById } from '../services/inquiryApproval.js';
-import { ADMIN_EMAIL, buildTransporter, smtpFrom } from '../services/email.js';
+import { ADMIN_EMAIL, sendMailReliable, smtpFrom } from '../services/email.js';
 
 const router = Router();
 const onlyFounder = [requireAuth, requireRole('founder')] as const;
@@ -187,29 +187,26 @@ router.post('/license-requests/:id/fulfill', ...onlyFounder, async (req, res, ne
       args: [licId, id],
     });
 
-    const transporter = buildTransporter();
-    if (transporter) {
-      await Promise.all([
-        transporter.sendMail({
-          from: smtpFrom(true),
-          to: email,
-          replyTo: ADMIN_EMAIL,
-          subject: `[Cafyz] Your ${plan.toUpperCase()} license key`,
-          html: `<p>Your license purchase for <b>${String(purchase.restaurant_name)}</b> is ready.</p>
-                 <p style="font-family:monospace;font-size:16px"><b>${keyCode}</b></p>
-                 <p>Plan: <b>${plan.toUpperCase()}</b></p>
-                 <p>Sign in and activate: <a href="${LOGIN_URL}">${LOGIN_URL}</a></p>`,
-        }),
-        transporter.sendMail({
-          from: smtpFrom(true),
-          to: ADMIN_EMAIL,
-          subject: `[Cafyz] License fulfilled — ${purchase.restaurant_name}`,
-          html: `<p>License request fulfilled for ${email}.</p>
-                 <p>Key: <code>${keyCode}</code> · Plan: ${plan.toUpperCase()}</p>
-                 <p><a href="${FOUNDER_URL}">Founder Panel</a></p>`,
-        }),
-      ]);
-    }
+    await Promise.all([
+      sendMailReliable({
+        from: smtpFrom(true),
+        to: email,
+        replyTo: ADMIN_EMAIL,
+        subject: `[Cafyz] Your ${plan.toUpperCase()} license key`,
+        html: `<p>Your license purchase for <b>${String(purchase.restaurant_name)}</b> is ready.</p>
+               <p style="font-family:monospace;font-size:16px"><b>${keyCode}</b></p>
+               <p>Plan: <b>${plan.toUpperCase()}</b></p>
+               <p>Sign in and activate: <a href="${LOGIN_URL}">${LOGIN_URL}</a></p>`,
+      }),
+      sendMailReliable({
+        from: smtpFrom(true),
+        to: ADMIN_EMAIL,
+        subject: `[Cafyz] License fulfilled — ${purchase.restaurant_name}`,
+        html: `<p>License request fulfilled for ${email}.</p>
+               <p>Key: <code>${keyCode}</code> · Plan: ${plan.toUpperCase()}</p>
+               <p><a href="${FOUNDER_URL}">Founder Panel</a></p>`,
+      }),
+    ]);
 
     res.json({ id, status: 'fulfilled', key_code: keyCode, license_id: licId });
   } catch (e) { next(e); }

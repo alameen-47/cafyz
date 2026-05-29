@@ -6,7 +6,7 @@ import { getDb } from '../db.js';
 import { uid } from '../utils.js';
 import { APP_URL, TRIAL_DAYS, appPath, trialEndsDateLabel } from '../config/site.js';
 import { approveInquiryById } from '../services/inquiryApproval.js';
-import { ADMIN_EMAIL, isSmtpConfigured, sendMailReliable, smtpFrom } from '../services/email.js';
+import { ADMIN_EMAIL, isEmailConfigured, sendMailReliable, smtpFrom } from '../services/email.js';
 
 const router = Router();
 
@@ -192,7 +192,7 @@ router.post('/', async (req, res, next) => {
       smtp: boolean;
       founder_error?: string;
       user_error?: string;
-    } = { founder: false, user: false, smtp: isSmtpConfigured() };
+    } = { founder: false, user: false, smtp: isEmailConfigured() };
 
     if (emailStatus.smtp) {
       const [founderResult, userResult] = await Promise.all([
@@ -216,7 +216,7 @@ router.post('/', async (req, res, next) => {
       if (!userResult.ok) emailStatus.user_error = userResult.error;
       if (founderResult.ok) console.log(`[SMTP] founder inquiry notification sent to ${ADMIN_EMAIL}`);
     } else {
-      console.error('[SMTP] not configured — set SMTP_USER and SMTP_PASSWORD on server');
+      console.error('[Email] not configured — set RESEND_API_KEY (Render free) or SMTP_USER/SMTP_PASSWORD');
     }
 
     res.status(201).json({

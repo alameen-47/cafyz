@@ -1,14 +1,17 @@
 import nodemailer from 'nodemailer';
 
-/** Prefer IPv4 for SMTP — avoids ENETUNREACH to Gmail over IPv6 on Render. */
+/** Prefer IPv4 for SMTP — avoids ENETUNREACH to Gmail over IPv6 on cloud hosts. */
 const SMTP_FAMILY = 4 as const;
+
+const RENDER_SMTP_BLOCKED_MSG =
+  'Render free tier blocks outbound SMTP (ports 465/587). Set RESEND_API_KEY or BREVO_API_KEY on Render, or upgrade to a paid Render instance.';
 
 export const ADMIN_EMAIL =
   process.env.FOUNDER_NOTIFY_EMAIL
   ?? process.env.FOUNDER_EMAIL
   ?? 'ametronyxx@gmail.com';
 
-export type EmailSendResult = { ok: true } | { ok: false; error: string };
+export type EmailSendResult = { ok: true; provider?: string } | { ok: false; error: string };
 
 export function isSmtpConfigured(): boolean {
   const user = process.env.SMTP_USER;
@@ -16,11 +19,130 @@ export function isSmtpConfigured(): boolean {
   return Boolean(user && pass);
 }
 
+export function isResendConfigured(): boolean {
+  return Boolean(process.env.RESEND_API_KEY?.trim());
+}
+
+export function isBrevoConfigured(): boolean {
+  return Boolean(process.env.BREVO_API_KEY?.trim());
+}
+
+/** True when any outbound email path is configured (HTTP API or SMTP). */
+export function isEmailConfigured(): boolean {
+  return isResendConfigured() || isBrevoConfigured() || isSmtpConfigured();
+}
+
+function isRenderSmtpBlocked(): boolean {
+  return process.env.RENDER === 'true' && process.env.RENDER_ALLOW_SMTP !== 'true';
+}
+
 function smtpAuth() {
   const user = (process.env.SMTP_USER ?? '').trim();
   const pass = (process.env.SMTP_PASS ?? process.env.SMTP_PASSWORD ?? '').trim();
   if (!user || !pass) return null;
   return { user, pass };
+}
+
+function normalizeRecipients(to: nodemailer.SendMailOptions['to']): string[] {
+  if (!to) return [];
+  const list = Array.isArray(to) ? to : [to];
+  return list.map((entry) => {
+    if (typeof entry === 'string') return entry;
+    if (typeof entry === 'object' && entry && 'address' in entry) return String(entry.address);
+    return String(entry);
+  });
+}
+
+function parseFromHeader(from: string): { email: string; name?: string } {
+  const m = from.match(/^"([^"]*)"\s*<([^>]+)>$/);
+  if (m) return { name: m[1] || undefined, email: m[2] };
+  const m2 = from.match(/^([^<]+)<([^>]+)>$/);
+  if (m2) return { name: m2[1].trim() || undefined, email: m2[2].trim() };
+  return { email: from.replace(/^<|>$/g, '').trim() };
+}
+
+function httpFromAddress(system: boolean): string {
+  const custom = process.env.RESEND_FROM ?? process.env.BREVO_FROM;
+  if (custom) return custom;
+  return smtpFrom(system);
+}
+
+async function sendViaResend(mail: nodemailer.SendMailOptions): Promise<EmailSendResult> {
+  const apiKey = process.env.RESEND_API_KEY?.trim();
+  if (!apiKey) return { ok: false, error: 'RESEND_API_KEY not set' };
+
+  const to = normalizeRecipients(mail.to);
+  if (!to.length) return { ok: false, error: 'Missing recipient' };
+
+  const from = String(mail.from ?? httpFromAddress(false));
+  const body: Record<string, unknown> = {
+    from,
+    to,
+    subject: String(mail.subject ?? '(no subject)'),
+    html: String(mail.html ?? mail.text ?? ''),
+  };
+  if (mail.replyTo) body.reply_to = mail.replyTo;
+
+  try {
+    const res = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(Number(process.env.EMAIL_HTTP_TIMEOUT_MS ?? 15000)),
+    });
+    if (!res.ok) {
+      const errText = await res.text();
+      return { ok: false, error: `Resend ${res.status}: ${errText.slice(0, 300)}` };
+    }
+    return { ok: true, provider: 'resend' };
+  } catch (e) {
+    return { ok: false, error: (e as Error).message };
+  }
+}
+
+async function sendViaBrevo(mail: nodemailer.SendMailOptions): Promise<EmailSendResult> {
+  const apiKey = process.env.BREVO_API_KEY?.trim();
+  if (!apiKey) return { ok: false, error: 'BREVO_API_KEY not set' };
+
+  const to = normalizeRecipients(mail.to);
+  if (!to.length) return { ok: false, error: 'Missing recipient' };
+
+  const fromHeader = String(mail.from ?? httpFromAddress(false));
+  const { email, name } = parseFromHeader(fromHeader);
+
+  const payload: Record<string, unknown> = {
+    sender: { email, name: name ?? process.env.SMTP_FROM_NAME ?? 'Cafyz' },
+    to: to.map((address) => ({ email: address })),
+    subject: String(mail.subject ?? '(no subject)'),
+    htmlContent: String(mail.html ?? mail.text ?? ''),
+  };
+  if (mail.replyTo) {
+    const reply = typeof mail.replyTo === 'string' ? mail.replyTo : String(mail.replyTo);
+    payload.replyTo = { email: reply.replace(/^.*<([^>]+)>.*$/, '$1').trim() || reply };
+  }
+
+  try {
+    const res = await fetch('https://api.brevo.com/v3/smtp/email', {
+      method: 'POST',
+      headers: {
+        'api-key': apiKey,
+        'Content-Type': 'application/json',
+        accept: 'application/json',
+      },
+      body: JSON.stringify(payload),
+      signal: AbortSignal.timeout(Number(process.env.EMAIL_HTTP_TIMEOUT_MS ?? 15000)),
+    });
+    if (!res.ok) {
+      const errText = await res.text();
+      return { ok: false, error: `Brevo ${res.status}: ${errText.slice(0, 300)}` };
+    }
+    return { ok: true, provider: 'brevo' };
+  } catch (e) {
+    return { ok: false, error: (e as Error).message };
+  }
 }
 
 function transporterFromConfig(cfg: {
@@ -52,7 +174,7 @@ function transporterFromConfig(cfg: {
   } as nodemailer.TransportOptions);
 }
 
-/** Primary transporter — Gmail over IPv4:465 first (Render has no working IPv6 to Google). */
+/** Primary transporter — Gmail over IPv4:465 first. */
 export function buildTransporter(): nodemailer.Transporter | null {
   const auth = smtpAuth();
   if (!auth) return null;
@@ -101,10 +223,14 @@ async function sendWithTransporter(
   ]);
 }
 
-export async function sendMailReliable(
+async function sendViaSmtp(
   mail: nodemailer.SendMailOptions,
-  timeoutMs = Number(process.env.SMTP_SEND_TIMEOUT_MS ?? 12000),
+  timeoutMs: number,
 ): Promise<EmailSendResult> {
+  if (isRenderSmtpBlocked()) {
+    return { ok: false, error: RENDER_SMTP_BLOCKED_MSG };
+  }
+
   const candidates = buildAllTransporters();
   if (!candidates.length) {
     return { ok: false, error: 'SMTP not configured (SMTP_USER / SMTP_PASSWORD missing)' };
@@ -114,7 +240,7 @@ export async function sendMailReliable(
   for (const t of candidates) {
     try {
       await sendWithTransporter(t, mail, timeoutMs);
-      return { ok: true };
+      return { ok: true, provider: 'smtp' };
     } catch (e) {
       lastError = (e as Error).message;
       // eslint-disable-next-line no-console
@@ -122,6 +248,36 @@ export async function sendMailReliable(
     }
   }
   return { ok: false, error: lastError };
+}
+
+/** Send email via HTTPS API (Render-safe) or SMTP fallback. */
+export async function sendMailReliable(
+  mail: nodemailer.SendMailOptions,
+  timeoutMs = Number(process.env.SMTP_SEND_TIMEOUT_MS ?? 12000),
+): Promise<EmailSendResult> {
+  if (isResendConfigured()) {
+    const r = await sendViaResend(mail);
+    if (r.ok) return r;
+    // eslint-disable-next-line no-console
+    console.error('[Resend] send failed:', r.error);
+  }
+
+  if (isBrevoConfigured()) {
+    const r = await sendViaBrevo(mail);
+    if (r.ok) return r;
+    // eslint-disable-next-line no-console
+    console.error('[Brevo] send failed:', r.error);
+  }
+
+  if (isRenderSmtpBlocked() && !isSmtpConfigured()) {
+    return { ok: false, error: RENDER_SMTP_BLOCKED_MSG };
+  }
+
+  if (isRenderSmtpBlocked() && (isResendConfigured() || isBrevoConfigured())) {
+    return { ok: false, error: `HTTP email failed; ${RENDER_SMTP_BLOCKED_MSG}` };
+  }
+
+  return sendViaSmtp(mail, timeoutMs);
 }
 
 export async function sendMailWithTimeout(
@@ -133,13 +289,13 @@ export async function sendMailWithTimeout(
 }
 
 export async function sendMailBestEffort(
-  transporter: nodemailer.Transporter,
+  _transporter: nodemailer.Transporter | null,
   mail: nodemailer.SendMailOptions,
   logTag: string,
 ): Promise<void> {
   const r = await sendMailReliable(mail);
   if (!r.ok) {
     // eslint-disable-next-line no-console
-    console.error(`[SMTP] ${logTag} failed:`, r.error);
+    console.error(`[Email] ${logTag} failed:`, r.error);
   }
 }
