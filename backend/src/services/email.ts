@@ -6,10 +6,16 @@ export function buildTransporter() {
   const user = process.env.SMTP_USER;
   const pass = process.env.SMTP_PASS ?? process.env.SMTP_PASSWORD;
   if (!user || !pass) return null;
+  const port = Number(process.env.SMTP_PORT ?? 587);
+  const secure =
+    process.env.SMTP_SECURE !== undefined
+      ? ['1', 'true', 'yes'].includes(String(process.env.SMTP_SECURE).toLowerCase())
+      : port === 465;
   return nodemailer.createTransport({
     host: process.env.SMTP_HOST ?? 'smtp.gmail.com',
-    port: Number(process.env.SMTP_PORT ?? 587),
-    secure: false,
+    port,
+    secure,
+    requireTLS: !secure,
     auth: { user, pass },
     // Fail fast in production environments (Render) so HTTP requests don't hang.
     connectionTimeout: Number(process.env.SMTP_CONNECTION_TIMEOUT_MS ?? 8000),
