@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, type Dispatch, type SetStateAction } from 'react';
 import { menuApi, type ApiMenuItem } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import './MenuPanel.css';
@@ -21,6 +21,144 @@ const blank = (): Draft => ({
   name: '', category: 'mains', price: '', description: '',
   symbol: '○', is_popular: false, is_available: true,
 });
+
+/** Module-level form — must NOT be defined inside MenuPanel or inputs lose focus on each keystroke. */
+function MenuItemForm({
+  formMode,
+  editingName,
+  draft,
+  setDraft,
+  error,
+  busy,
+  onClose,
+  onSave,
+}: {
+  formMode: 'add' | 'edit';
+  editingName?: string;
+  draft: Draft;
+  setDraft: Dispatch<SetStateAction<Draft>>;
+  error: string;
+  busy: boolean;
+  onClose: () => void;
+  onSave: () => void;
+}) {
+  const isEdit = formMode === 'edit';
+
+  return (
+    <div className="menu-form card" id="menu-form-anchor">
+      <div className="menu-form-header">
+        <div>
+          <p className="eyebrow">{isEdit ? 'Editing item' : 'New item'}</p>
+          <h3 className="menu-form-title serif">
+            {isEdit ? editingName ?? 'Edit item' : 'Add a menu item'}
+          </h3>
+        </div>
+        <button type="button" className="menu-form-close" onClick={onClose} title="Discard">✕</button>
+      </div>
+
+      <div className="menu-form-grid">
+        <div className="menu-field">
+          <label htmlFor="mf-name">Item Name <span className="menu-field-req">*</span></label>
+          <input
+            id="mf-name"
+            className="menu-field-input"
+            placeholder="e.g. Soufflé Grand Marnier"
+            value={draft.name}
+            onChange={e => setDraft(d => ({ ...d, name: e.target.value }))}
+          />
+        </div>
+
+        <div className="menu-field">
+          <label htmlFor="mf-price">Price ($) <span className="menu-field-req">*</span></label>
+          <input
+            id="mf-price"
+            className="menu-field-input"
+            type="number" min="0" step="0.01"
+            placeholder="e.g. 14.50"
+            value={draft.price}
+            onChange={e => setDraft(d => ({ ...d, price: e.target.value }))}
+          />
+        </div>
+
+        <div className="menu-field">
+          <label htmlFor="mf-cat">Category</label>
+          <select
+            id="mf-cat"
+            className="menu-field-input"
+            value={draft.category}
+            onChange={e => setDraft(d => ({ ...d, category: e.target.value }))}
+          >
+            {CATS.filter(c => c.id !== 'all').map(c => (
+              <option key={c.id} value={c.id}>{c.label}</option>
+            ))}
+          </select>
+        </div>
+
+        <div className="menu-field">
+          <label htmlFor="mf-sym">Symbol / Emoji</label>
+          <input
+            id="mf-sym"
+            className="menu-field-input"
+            placeholder="e.g. 🍮 or ○"
+            value={draft.symbol}
+            onChange={e => setDraft(d => ({ ...d, symbol: e.target.value }))}
+          />
+        </div>
+
+        <div className="menu-field full-width">
+          <label htmlFor="mf-desc">Description</label>
+          <input
+            id="mf-desc"
+            className="menu-field-input"
+            placeholder="Short description shown on POS and receipts…"
+            value={draft.description}
+            onChange={e => setDraft(d => ({ ...d, description: e.target.value }))}
+          />
+        </div>
+
+        <div className="menu-form-checks full-width">
+          <label className="menu-check-label">
+            <input
+              type="checkbox"
+              checked={draft.is_popular}
+              onChange={e => setDraft(d => ({ ...d, is_popular: e.target.checked }))}
+            />
+            <span className="menu-check-text">
+              <strong>★ Mark as Popular</strong>
+              <span>Shows a "popular" badge on the POS grid</span>
+            </span>
+          </label>
+          <label className="menu-check-label">
+            <input
+              type="checkbox"
+              checked={draft.is_available}
+              onChange={e => setDraft(d => ({ ...d, is_available: e.target.checked }))}
+            />
+            <span className="menu-check-text">
+              <strong>● Available on Menu</strong>
+              <span>Uncheck to 86 this item temporarily</span>
+            </span>
+          </label>
+        </div>
+      </div>
+
+      <div className="menu-form-footer">
+        {error && <p className="menu-form-error">{error}</p>}
+        <div className="menu-form-btns">
+          <button
+            type="button"
+            className="btn-gold"
+            onClick={onSave}
+            disabled={!draft.name || !draft.price || busy}
+          >
+            {busy ? 'Saving…' : isEdit ? '✓ Save changes' : '+ Add item'}
+          </button>
+          <button type="button" className="btn-outline" onClick={onClose}>Cancel</button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export function MenuPanel() {
   const { user }  = useAuth();
@@ -151,139 +289,8 @@ export function MenuPanel() {
     } catch (e) { setError((e as Error).message); }
   }
 
-  // ── Shared form ────────────────────────────────────────────────────────────
   const editingItem = editId ? items.find(i => i.id === editId) : null;
   const formOpen    = formMode !== null;
-
-  function FormPanel() {
-    const isEdit = formMode === 'edit';
-    return (
-      <div className="menu-form card" id="menu-form-anchor">
-
-        {/* Form header */}
-        <div className="menu-form-header">
-          <div>
-            <p className="eyebrow">{isEdit ? 'Editing item' : 'New item'}</p>
-            <h3 className="menu-form-title serif">
-              {isEdit ? editingItem?.name ?? 'Edit item' : 'Add a menu item'}
-            </h3>
-          </div>
-          <button className="menu-form-close" onClick={closeForm} title="Discard">✕</button>
-        </div>
-
-        {/* Form body */}
-        <div className="menu-form-grid">
-
-          {/* Item Name */}
-          <div className="menu-field">
-            <label htmlFor="mf-name">Item Name <span className="menu-field-req">*</span></label>
-            <input
-              id="mf-name"
-              className="menu-field-input"
-              placeholder="e.g. Soufflé Grand Marnier"
-              value={draft.name}
-              onChange={e => setDraft(d => ({ ...d, name: e.target.value }))}
-            />
-          </div>
-
-          {/* Price */}
-          <div className="menu-field">
-            <label htmlFor="mf-price">Price ($) <span className="menu-field-req">*</span></label>
-            <input
-              id="mf-price"
-              className="menu-field-input"
-              type="number" min="0" step="0.01"
-              placeholder="e.g. 14.50"
-              value={draft.price}
-              onChange={e => setDraft(d => ({ ...d, price: e.target.value }))}
-            />
-          </div>
-
-          {/* Category */}
-          <div className="menu-field">
-            <label htmlFor="mf-cat">Category</label>
-            <select
-              id="mf-cat"
-              className="menu-field-input"
-              value={draft.category}
-              onChange={e => setDraft(d => ({ ...d, category: e.target.value }))}
-            >
-              {CATS.filter(c => c.id !== 'all').map(c => (
-                <option key={c.id} value={c.id}>{c.label}</option>
-              ))}
-            </select>
-          </div>
-
-          {/* Symbol */}
-          <div className="menu-field">
-            <label htmlFor="mf-sym">Symbol / Emoji</label>
-            <input
-              id="mf-sym"
-              className="menu-field-input"
-              placeholder="e.g. 🍮 or ○"
-              value={draft.symbol}
-              onChange={e => setDraft(d => ({ ...d, symbol: e.target.value }))}
-            />
-          </div>
-
-          {/* Description — full width */}
-          <div className="menu-field full-width">
-            <label htmlFor="mf-desc">Description</label>
-            <input
-              id="mf-desc"
-              className="menu-field-input"
-              placeholder="Short description shown on POS and receipts…"
-              value={draft.description}
-              onChange={e => setDraft(d => ({ ...d, description: e.target.value }))}
-            />
-          </div>
-
-          {/* Checkboxes — full width */}
-          <div className="menu-form-checks full-width">
-            <label className="menu-check-label">
-              <input
-                type="checkbox"
-                checked={draft.is_popular}
-                onChange={e => setDraft(d => ({ ...d, is_popular: e.target.checked }))}
-              />
-              <span className="menu-check-text">
-                <strong>★ Mark as Popular</strong>
-                <span>Shows a "popular" badge on the POS grid</span>
-              </span>
-            </label>
-            <label className="menu-check-label">
-              <input
-                type="checkbox"
-                checked={draft.is_available}
-                onChange={e => setDraft(d => ({ ...d, is_available: e.target.checked }))}
-              />
-              <span className="menu-check-text">
-                <strong>● Available on Menu</strong>
-                <span>Uncheck to 86 this item temporarily</span>
-              </span>
-            </label>
-          </div>
-
-        </div>
-
-        {/* Form footer */}
-        <div className="menu-form-footer">
-          {error && <p className="menu-form-error">{error}</p>}
-          <div className="menu-form-btns">
-            <button
-              className="btn-gold"
-              onClick={isEdit ? saveEdit : saveAdd}
-              disabled={!draft.name || !draft.price || busy}
-            >
-              {busy ? 'Saving…' : isEdit ? '✓ Save changes' : '+ Add item'}
-            </button>
-            <button className="btn-outline" onClick={closeForm}>Cancel</button>
-          </div>
-        </div>
-
-      </div>
-    );
-  }
 
   if (loading) return (
     <div className="menu-root">
@@ -311,7 +318,18 @@ export function MenuPanel() {
       </div>
 
       {/* ── Add / Edit form (top, full-width) ───────────────────────────── */}
-      {formOpen && <FormPanel />}
+      {formOpen && formMode && (
+        <MenuItemForm
+          formMode={formMode}
+          editingName={editingItem?.name}
+          draft={draft}
+          setDraft={setDraft}
+          error={error}
+          busy={busy}
+          onClose={closeForm}
+          onSave={formMode === 'edit' ? saveEdit : saveAdd}
+        />
+      )}
 
       {/* ── Category filter + search ─────────────────────────────────────── */}
       <div className="menu-toolbar">

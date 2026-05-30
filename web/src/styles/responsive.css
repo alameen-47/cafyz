@@ -200,7 +200,6 @@ textarea,
 body.nav-open {
   overflow: hidden;
   overscroll-behavior: none;
-  touch-action: none;
 }
 
 /* Horizontal scroll for wide data on tablet */

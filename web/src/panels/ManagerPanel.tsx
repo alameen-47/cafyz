@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, type ChangeEvent } from 'react';
+import { useState, useEffect, useRef, type ChangeEvent, type Dispatch, type SetStateAction } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   dashboardApi, inventoryApi, restaurantApi, usersApi, reservationsApi, tablesApi,
@@ -404,13 +404,62 @@ function TablesTab() {
 }
 
 // ── Reservations ──────────────────────────────────────────────────────────────
+type ReservationDraft = {
+  guest_name: string;
+  covers: number;
+  res_time: string;
+  note: string;
+  table_id: string;
+  status: string;
+};
+
+/** Module-level fields — must NOT be defined inside ReservationsTab or inputs lose focus. */
+function ReservationFormFields({
+  draft,
+  setDraft,
+  tables,
+  tableFilter,
+}: {
+  draft: ReservationDraft;
+  setDraft: Dispatch<SetStateAction<ReservationDraft>>;
+  tables: ApiTable[];
+  /** When true, only empty/reserved tables (new reservation). When false, all tables (edit row). */
+  tableFilter?: boolean;
+}) {
+  const tableOptions = tableFilter
+    ? tables.filter(t => t.status === 'empty' || t.status === 'reserved')
+    : tables;
+
+  return (
+    <div className="form-grid-3" style={{ marginBottom: 12 }}>
+      <input className="roles-input" placeholder="Guest name *"
+        value={draft.guest_name} onChange={e => setDraft(d => ({ ...d, guest_name: e.target.value }))} />
+      <input className="roles-input" placeholder="Covers" type="number" min="1"
+        value={draft.covers} onChange={e => setDraft(d => ({ ...d, covers: +e.target.value }))}
+        style={{ width: 80 }} />
+      <input className="roles-input" placeholder="Time (e.g. 19:30)"
+        value={draft.res_time} onChange={e => setDraft(d => ({ ...d, res_time: e.target.value }))} />
+      <select className="roles-select" value={draft.table_id}
+        onChange={e => setDraft(d => ({ ...d, table_id: e.target.value }))}>
+        <option value="">{tableFilter ? '— No table assigned —' : '— No table —'}</option>
+        {tableOptions.map(t => (
+          <option key={t.id} value={t.id}>{t.name}{tableFilter ? ` · ${t.capacity}-top` : ''}</option>
+        ))}
+      </select>
+      <input className="roles-input" placeholder="Note / dietary"
+        value={draft.note} onChange={e => setDraft(d => ({ ...d, note: e.target.value }))}
+        style={{ gridColumn: '2 / -1' }} />
+    </div>
+  );
+}
+
 function ReservationsTab() {
   const [res,           setRes]           = useState<ApiReservation[]>([]);
   const [tables,        setTables]        = useState<ApiTable[]>([]);
   const [loading,       setLoading]       = useState(true);
   const [adding,        setAdding]        = useState(false);
   const [editId,        setEditId]        = useState<string | null>(null);
-  const [draft,         setDraft]         = useState({
+  const [draft,         setDraft]         = useState<ReservationDraft>({
     guest_name: '', covers: 2, res_time: '', note: '', table_id: '', status: 'confirmed',
   });
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
@@ -495,28 +544,6 @@ function ReservationsTab() {
     'no-show': 'var(--text3)',
   };
 
-  const ResForm = () => (
-    <div className="form-grid-3" style={{ marginBottom: 12 }}>
-      <input className="roles-input" placeholder="Guest name *"
-        value={draft.guest_name} onChange={e => setDraft(d => ({ ...d, guest_name: e.target.value }))} />
-      <input className="roles-input" placeholder="Covers" type="number" min="1"
-        value={draft.covers} onChange={e => setDraft(d => ({ ...d, covers: +e.target.value }))}
-        style={{ width: 80 }} />
-      <input className="roles-input" placeholder="Time (e.g. 19:30)"
-        value={draft.res_time} onChange={e => setDraft(d => ({ ...d, res_time: e.target.value }))} />
-      <select className="roles-select" value={draft.table_id}
-        onChange={e => setDraft(d => ({ ...d, table_id: e.target.value }))}>
-        <option value="">— No table assigned —</option>
-        {tables.filter(t => t.status === 'empty' || t.status === 'reserved').map(t => (
-          <option key={t.id} value={t.id}>{t.name} · {t.capacity}-top</option>
-        ))}
-      </select>
-      <input className="roles-input" placeholder="Note / dietary"
-        value={draft.note} onChange={e => setDraft(d => ({ ...d, note: e.target.value }))}
-        style={{ gridColumn: '2 / -1' }} />
-    </div>
-  );
-
   return (
     <div className="mgr-overview">
       <p className="eyebrow">Bookings · Tonight</p>
@@ -532,7 +559,7 @@ function ReservationsTab() {
       {adding && (
         <div className="card" style={{ padding: 16, marginBottom: 16 }}>
           <p className="eyebrow" style={{ marginBottom: 10 }}>New reservation</p>
-          <ResForm />
+          <ReservationFormFields draft={draft} setDraft={setDraft} tables={tables} tableFilter />
           <div style={{ display: 'flex', gap: 8 }}>
             <button className="roles-save-btn" onClick={addRes}
               disabled={!draft.guest_name || !draft.res_time || busy}>
