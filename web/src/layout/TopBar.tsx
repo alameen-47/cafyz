@@ -25,6 +25,7 @@ export function TopBar({
         onClick={onMenuClick}
         aria-label={menuOpen ? 'Close navigation menu' : 'Open navigation menu'}
         aria-expanded={menuOpen}
+        aria-controls="app-sidebar"
       >
         <span className="topbar-menu-icon" aria-hidden />
       </button>

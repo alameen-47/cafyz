@@ -3,6 +3,8 @@ import type { Screen } from '@shared/types';
 import { Sidebar } from './Sidebar';
 import { TopBar } from './TopBar';
 
+const MOBILE_NAV_MQ = '(max-width: 1024px)';
+
 const CRUMBS: Partial<Record<Screen, [string, string]>> = {
   manager:   ['Operations', 'Overview'],
   inventory: ['Operations', 'Inventory'],
@@ -30,37 +32,50 @@ export function AppShell({
   children: ReactNode;
 }) {
   const [navOpen, setNavOpen] = useState(false);
+  const [mobileNav, setMobileNav] = useState(false);
   const crumb = CRUMBS[active] ?? ['Cafyz', 'Panel'];
   const cover = COVERS[active] ?? 'Service · Dinner';
 
   useEffect(() => {
-    const mq = window.matchMedia('(min-width: 1025px)');
+    const mq = window.matchMedia(MOBILE_NAV_MQ);
     const onChange = () => {
-      if (mq.matches) setNavOpen(false);
+      setMobileNav(mq.matches);
+      if (!mq.matches) setNavOpen(false);
     };
+    onChange();
     mq.addEventListener('change', onChange);
     return () => mq.removeEventListener('change', onChange);
   }, []);
 
   useEffect(() => {
-    document.body.classList.toggle('nav-open', navOpen);
-    return () => document.body.classList.remove('nav-open');
+    if (!navOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setNavOpen(false);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
   }, [navOpen]);
+
+  useEffect(() => {
+    document.body.classList.toggle('nav-open', navOpen && mobileNav);
+    return () => document.body.classList.remove('nav-open');
+  }, [navOpen, mobileNav]);
 
   useEffect(() => {
     setNavOpen(false);
   }, [active]);
 
   return (
-    <div className="app-shell">
+    <div className={`app-shell${navOpen && mobileNav ? ' app-shell--nav-open' : ''}`}>
       <div
-        className={`sidebar-backdrop ${navOpen ? 'open' : ''}`}
+        className={`sidebar-backdrop ${navOpen && mobileNav ? 'open' : ''}`}
         onClick={() => setNavOpen(false)}
-        aria-hidden={!navOpen}
+        aria-hidden={!(navOpen && mobileNav)}
       />
       <Sidebar
         active={active}
         mobileOpen={navOpen}
+        drawerMode={mobileNav}
         onNavigate={() => setNavOpen(false)}
       />
       <div className="app-main">

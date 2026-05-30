@@ -25,6 +25,35 @@
   background: transparent;
   color: var(--text1);
   touch-action: manipulation;
+  cursor: pointer;
+}
+
+/* Hamburger visible on tablet & phone */
+@media (max-width: 1024px) {
+  .topbar-menu-btn {
+    display: flex;
+  }
+}
+
+@media (min-width: 1025px) {
+  .topbar-menu-btn {
+    display: none !important;
+  }
+}
+
+/* Animate to X when menu is open */
+.topbar-menu-btn[aria-expanded='true'] .topbar-menu-icon {
+  background: transparent;
+}
+
+.topbar-menu-btn[aria-expanded='true'] .topbar-menu-icon::before {
+  top: 0;
+  transform: rotate(45deg);
+}
+
+.topbar-menu-btn[aria-expanded='true'] .topbar-menu-icon::after {
+  top: 0;
+  transform: rotate(-45deg);
 }
 
 .topbar-menu-icon,
@@ -36,6 +65,7 @@
   background: currentColor;
   border-radius: 1px;
   position: relative;
+  transition: transform 0.2s ease, top 0.2s ease, background 0.2s ease;
 }
 
 .topbar-menu-icon::before,

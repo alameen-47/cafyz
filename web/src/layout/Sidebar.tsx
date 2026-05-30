@@ -26,10 +26,12 @@ const FOUNDER_NAV: { id: Screen; label: string }[] = [
 export function Sidebar({
   active,
   mobileOpen = false,
+  drawerMode = false,
   onNavigate,
 }: {
   active: Screen;
   mobileOpen?: boolean;
+  drawerMode?: boolean;
   onNavigate?: () => void;
 }) {
   const { user, logout } = useAuth();
@@ -63,7 +65,22 @@ export function Sidebar({
   }
 
   return (
-    <aside className={`sidebar ${mobileOpen ? 'sidebar--open' : ''}`}>
+    <aside
+      id="app-sidebar"
+      className={`sidebar ${mobileOpen ? 'sidebar--open' : ''}`}
+      aria-hidden={drawerMode && !mobileOpen ? true : undefined}
+      aria-label="Main navigation"
+    >
+      {drawerMode && (
+        <button
+          type="button"
+          className="sidebar-close-btn"
+          onClick={onNavigate}
+          aria-label="Close navigation menu"
+        >
+          ✕
+        </button>
+      )}
       <div className="sidebar-brand">
         <div className="sidebar-logo">{isFounder ? '★' : 'C'}</div>
         <div>
