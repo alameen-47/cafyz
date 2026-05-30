@@ -2,6 +2,8 @@
 // Thermal printer support via Web Bluetooth, Web USB, or browser print dialog.
 // ESC/POS command builder is self-contained — no dependencies.
 
+import { getRestaurantLogo } from './restaurantLogoStorage';
+
 // ── ESC/POS Builder ───────────────────────────────────────────────────────────
 
 const ESC = 0x1b;
@@ -397,66 +399,71 @@ export function printerStatus(): { type: 'none' | 'bluetooth' | 'usb'; name: str
 }
 
 // ── ESC/POS raster logo renderer ──────────────────────────────────────────────
-// Loads an image URL into an offscreen canvas, converts it to a 1-bit monochrome
-// bitmap, and returns the GS v 0 ESC/POS raster-image command bytes ready to
-// splice into a receipt buffer.  Returns null on any load/CORS failure so the
-// caller can print text-only instead of blocking the receipt.
+// Loads an image (HTTPS or device-local data URL) into a canvas, converts to a
+// 1-bit bitmap, and returns GS v 0 raster bytes for thermal printers.
+
+function rasterizeImageToEscPos(img: HTMLImageElement, maxWidthDots: number): Uint8Array {
+  const targetW = Math.min(img.naturalWidth || img.width, maxWidthDots);
+  const scale   = targetW / (img.naturalWidth || img.width || 1);
+  const targetH = Math.min(Math.round((img.naturalHeight || img.height) * scale), 240);
+
+  const canvas = document.createElement('canvas');
+  canvas.width  = targetW;
+  canvas.height = targetH;
+  const ctx = canvas.getContext('2d')!;
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, targetW, targetH);
+  ctx.drawImage(img, 0, 0, targetW, targetH);
+
+  const { data, width, height } = ctx.getImageData(0, 0, targetW, targetH);
+  const bytesPerRow = Math.ceil(width / 8);
+  const bitmap      = new Uint8Array(bytesPerRow * height);
+
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const i   = (y * width + x) * 4;
+      const a   = data[i + 3];
+      const lum = a < 128 ? 255 : Math.round(0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2]);
+      if (lum < 128) {
+        bitmap[y * bytesPerRow + Math.floor(x / 8)] |= (0x80 >> (x % 8));
+      }
+    }
+  }
+
+  const header = new Uint8Array([
+    0x1d, 0x76, 0x30, 0x00,
+    bytesPerRow & 0xff, (bytesPerRow >> 8) & 0xff,
+    height & 0xff,      (height >> 8) & 0xff,
+  ]);
+  const result = new Uint8Array(header.length + bitmap.length);
+  result.set(header);
+  result.set(bitmap, header.length);
+  return result;
+}
+
+function loadImageElement(url: string): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    // data:/blob: logos from localStorage must NOT set crossOrigin (breaks load).
+    const local = url.startsWith('data:') || url.startsWith('blob:');
+    if (!local) img.crossOrigin = 'anonymous';
+    img.onload = () => resolve(img);
+    img.onerror = () => reject(new Error('Logo load failed'));
+    img.src = url;
+  });
+}
+
 async function prepareLogoEscPos(url: string, maxWidthDots = 240): Promise<Uint8Array | null> {
   try {
-    return await new Promise<Uint8Array>((resolve, reject) => {
-      const img = new Image();
-      img.crossOrigin = 'anonymous';
-
-      img.onerror = () => reject(new Error('Logo load failed'));
-
-      img.onload = () => {
-        const targetW = Math.min(img.naturalWidth, maxWidthDots);
-        const scale   = targetW / img.naturalWidth;
-        const targetH = Math.min(Math.round(img.naturalHeight * scale), 240);
-
-        const canvas = document.createElement('canvas');
-        canvas.width  = targetW;
-        canvas.height = targetH;
-        const ctx = canvas.getContext('2d')!;
-
-        // Fill white so transparent areas don't print as solid black.
-        ctx.fillStyle = '#ffffff';
-        ctx.fillRect(0, 0, targetW, targetH);
-        ctx.drawImage(img, 0, 0, targetW, targetH);
-
-        const { data, width, height } = ctx.getImageData(0, 0, targetW, targetH);
-        const bytesPerRow = Math.ceil(width / 8);
-        const bitmap      = new Uint8Array(bytesPerRow * height);
-
-        for (let y = 0; y < height; y++) {
-          for (let x = 0; x < width; x++) {
-            const i   = (y * width + x) * 4;
-            const a   = data[i + 3];
-            // Transparent pixel → white (no dot).
-            const lum = a < 128 ? 255 : Math.round(0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2]);
-            if (lum < 128) {
-              bitmap[y * bytesPerRow + Math.floor(x / 8)] |= (0x80 >> (x % 8));
-            }
-          }
-        }
-
-        // GS v 0: 1D 76 30 m(=00) xL xH yL yH [data...]
-        const header = new Uint8Array([
-          0x1d, 0x76, 0x30, 0x00,
-          bytesPerRow & 0xff, (bytesPerRow >> 8) & 0xff,
-          height & 0xff,      (height >> 8) & 0xff,
-        ]);
-        const result = new Uint8Array(header.length + bitmap.length);
-        result.set(header);
-        result.set(bitmap, header.length);
-        resolve(result);
-      };
-
-      img.src = url;
-    });
+    const img = await loadImageElement(url);
+    return rasterizeImageToEscPos(img, maxWidthDots);
   } catch {
     return null;
   }
+}
+
+function resolveLogoUrl(logoUrl?: string, restaurantId?: string): string | undefined {
+  return logoUrl ?? getRestaurantLogo(restaurantId);
 }
 
 // ── Print dispatcher ──────────────────────────────────────────────────────────
@@ -563,14 +570,17 @@ export async function print(
   receiptData: ReceiptData,
   escposData?: Uint8Array,
   width = 32,
+  restaurantId?: string,
 ): Promise<'bluetooth' | 'usb' | 'dialog'> {
+  const logoUrl = resolveLogoUrl(receiptData.logoUrl, restaurantId);
+  const data: ReceiptData = logoUrl ? { ...receiptData, logoUrl } : receiptData;
+
   if (btChar || usbDevice) {
-    // Render logo to raster bytes if available; fall through to text-only on failure.
-    const logoBytes = receiptData.logoUrl
-      ? (await prepareLogoEscPos(receiptData.logoUrl)) ?? undefined
+    const logoBytes = data.logoUrl
+      ? (await prepareLogoEscPos(data.logoUrl)) ?? undefined
       : undefined;
 
-    const bytes = escposData ?? buildReceipt(receiptData, width, logoBytes);
+    const bytes = escposData ?? buildReceipt(data, width, logoBytes);
 
     if (btChar) {
       await printBluetooth(bytes);
@@ -580,8 +590,7 @@ export async function print(
     return 'usb';
   }
 
-  // No hardware printer — browser dialog renders the logo via <img> tag.
-  printDialog(receiptData);
+  printDialog(data);
   return 'dialog';
 }
 
@@ -593,13 +602,15 @@ export async function print(
  */
 export async function printTest(opts: {
   restaurantName: string;
+  restaurantId?: string;
   logoUrl?: string;
   addressLine?: string;
   phone?: string;
 }): Promise<'bluetooth' | 'usb' | 'dialog'> {
+  const logoUrl = resolveLogoUrl(opts.logoUrl, opts.restaurantId);
   const sample: ReceiptData = {
     restaurantName: opts.restaurantName || 'Cafyz',
-    logoUrl: opts.logoUrl,
+    logoUrl,
     addressLine: opts.addressLine,
     phone: opts.phone,
     tableName: 'TEST',
@@ -616,21 +627,25 @@ export async function printTest(opts: {
     payMethod: 'TEST',
     note: 'This is a printer test — connection and logo OK.',
   };
-  return print(sample);
+  return print(sample, undefined, 32, opts.restaurantId);
 }
 
 export async function printKitchenTicket(
   data: KitchenTicketData,
+  restaurantId?: string,
 ): Promise<'bluetooth' | 'usb' | 'dialog'> {
+  const logoUrl = resolveLogoUrl(data.logoUrl, restaurantId);
+  const ticket: KitchenTicketData = logoUrl ? { ...data, logoUrl } : data;
+
   if (btChar || usbDevice) {
-    const logoBytes = data.logoUrl
-      ? (await prepareLogoEscPos(data.logoUrl)) ?? undefined
+    const logoBytes = ticket.logoUrl
+      ? (await prepareLogoEscPos(ticket.logoUrl)) ?? undefined
       : undefined;
-    const bytes = buildKitchenTicket(data, 32, logoBytes);
+    const bytes = buildKitchenTicket(ticket, 32, logoBytes);
     if (btChar) { await printBluetooth(bytes); return 'bluetooth'; }
     await printUSB(bytes); return 'usb';
   }
-  printDialogHtml(buildKitchenTicketHTML(data));
+  printDialogHtml(buildKitchenTicketHTML(ticket));
   return 'dialog';
 }
 

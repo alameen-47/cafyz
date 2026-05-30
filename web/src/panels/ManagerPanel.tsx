@@ -8,7 +8,9 @@ import {
 import { useAuth } from '../context/AuthContext';
 import { PLAN_HAS_RESERVATIONS } from '../config/planAccess';
 import { RolesPanel } from './RolesPanel';
-import { uploadImage, isCloudinaryConfigured } from '../services/cloudinary';
+import {
+  clearRestaurantLogo, getRestaurantLogo, saveRestaurantLogoFromFile,
+} from '../services/restaurantLogoStorage';
 import {
   connectBluetooth, connectUSB, disconnectPrinter, printerStatus, printTest,
   printSalesReport, printMonthlyReport, buildDemoSalesReport, buildDemoMonthlyReport,
@@ -646,7 +648,7 @@ function StaffTab({ onNav }: { onNav: (s: Section) => void }) {
 function restaurantPrintMeta(r: ApiRestaurant): RestaurantPrintMeta {
   return {
     restaurantName: r.name ?? 'Restaurant',
-    logoUrl: r.logo_url || undefined,
+    logoUrl: getRestaurantLogo(r.id),
     addressLine: [r.address_line1, r.city, r.country].filter(Boolean).join(', ') || undefined,
     phone: r.contact_phone || undefined,
     taxId: r.tax_id || undefined,
@@ -771,9 +773,9 @@ function Reports() {
       )}
       {printMsg && <p style={{ color: 'var(--ok, #2ECC8A)', fontSize: 12 }}>{printMsg}</p>}
       {printErr && <p style={{ color: 'var(--danger)', fontSize: 12 }}>{printErr}</p>}
-      {restaurant?.logo_url && (
+      {restaurant && getRestaurantLogo(restaurant.id) && (
         <p style={{ fontSize: 12, color: 'var(--text2)', marginBottom: 12 }}>
-          Reports include your uploaded logo{restaurant.name ? ` · ${restaurant.name}` : ''}.
+          Reports use the logo saved on this device{restaurant.name ? ` · ${restaurant.name}` : ''}.
         </p>
       )}
 
@@ -839,17 +841,19 @@ function Reports() {
 }
 
 function ProfileTab() {
+  const { user } = useAuth();
   const [restaurant, setRestaurant] = useState<ApiRestaurant | null>(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [draft, setDraft] = useState({
-    name: '', timezone: '', logo_url: '', contact_phone: '', contact_email: '',
+    name: '', timezone: '', contact_phone: '', contact_email: '',
     address_line1: '', address_line2: '', city: '', country: '', postal_code: '', tax_id: '', website_url: '',
   });
 
-  // Logo upload state
+  // Logo (device localStorage only)
   const fileRef = useRef<HTMLInputElement>(null);
+  const [logoPreview, setLogoPreview] = useState<string | undefined>();
   const [uploading, setUploading] = useState(false);
   const [uploadMsg, setUploadMsg] = useState('');
 
@@ -864,9 +868,10 @@ function ProfileTab() {
     restaurantApi.me()
       .then(r => {
         setRestaurant(r);
+        setLogoPreview(getRestaurantLogo(r.id));
         setDraft({
           name: r.name ?? '', timezone: r.timezone ?? '',
-          logo_url: r.logo_url ?? '', contact_phone: r.contact_phone ?? '', contact_email: r.contact_email ?? '',
+          contact_phone: r.contact_phone ?? '', contact_email: r.contact_email ?? '',
           address_line1: r.address_line1 ?? '', address_line2: r.address_line2 ?? '',
           city: r.city ?? '', country: r.country ?? '', postal_code: r.postal_code ?? '', tax_id: r.tax_id ?? '',
           website_url: r.website_url ?? '',
@@ -893,24 +898,27 @@ function ProfileTab() {
     finally { setBusy(false); }
   }
 
-  // Upload the chosen file to Cloudinary, then persist the URL immediately so the
-  // logo is saved even if the manager doesn't click Save Profile.
   async function onPickLogo(e: ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
-    e.target.value = ''; // allow re-selecting the same file
-    if (!file) return;
+    e.target.value = '';
+    if (!file || !user?.restaurant_id) return;
     setUploading(true); setUploadMsg(''); setError('');
     try {
-      const url = await uploadImage(file);
-      setDraft(d => ({ ...d, logo_url: url }));
-      const updated = await restaurantApi.update({ logo_url: url });
-      setRestaurant(updated);
-      setUploadMsg('✓ Logo uploaded and saved');
+      const dataUrl = await saveRestaurantLogoFromFile(user.restaurant_id, file);
+      setLogoPreview(dataUrl);
+      setUploadMsg('✓ Logo saved on this device');
     } catch (err) {
       setError((err as Error).message);
     } finally {
       setUploading(false);
     }
+  }
+
+  function onRemoveLogo() {
+    if (!user?.restaurant_id) return;
+    clearRestaurantLogo(user.restaurant_id);
+    setLogoPreview(undefined);
+    setUploadMsg('Logo removed from this device');
   }
 
   async function connectBT() {
@@ -945,7 +953,8 @@ function ProfileTab() {
       const addr = [draft.address_line1, draft.city, draft.country].filter(Boolean).join(', ');
       const channel = await printTest({
         restaurantName: draft.name || restaurant?.name || 'Cafyz',
-        logoUrl: draft.logo_url || undefined,
+        restaurantId: user?.restaurant_id ?? restaurant?.id,
+        logoUrl: logoPreview,
         addressLine: addr || undefined,
         phone: draft.contact_phone || undefined,
       });
@@ -959,7 +968,6 @@ function ProfileTab() {
   }
 
   if (loading) return <p style={{ color: 'var(--text2)', fontSize: 13 }}>Loading profile…</p>;
-  const logoPreview = draft.logo_url || restaurant?.logo_url;
   return (
     <div className="mgr-overview">
       <p className="eyebrow">Brand · Identity · Billing</p>
@@ -970,7 +978,9 @@ function ProfileTab() {
       {/* ── Logo ──────────────────────────────────────────────────────────── */}
       <div className="card" style={{ padding: 16, marginBottom: 12 }}>
         <p className="eyebrow" style={{ marginTop: 0 }}>Logo</p>
-        <p className="mgr-sub" style={{ marginTop: 0 }}>Your logo prints on receipts, kitchen tickets, and sales reports. PNG with transparent background works best.</p>
+        <p className="mgr-sub" style={{ marginTop: 0 }}>
+          Your logo prints on receipts, kitchen tickets, and sales reports on this device. It is stored locally in this browser (not on the server). PNG with transparent background works best.
+        </p>
         <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
           <div style={{
             width: 120, height: 120, borderRadius: 12, background: 'rgba(255,255,255,0.04)',
@@ -986,23 +996,16 @@ function ProfileTab() {
             <button
               className="btn-gold"
               onClick={() => fileRef.current?.click()}
-              disabled={uploading || !isCloudinaryConfigured()}
+              disabled={uploading}
             >
-              {uploading ? 'Uploading…' : logoPreview ? 'Replace Logo' : 'Upload Logo'}
+              {uploading ? 'Saving…' : logoPreview ? 'Replace Logo' : 'Upload Logo'}
             </button>
-            {!isCloudinaryConfigured() && (
-              <span style={{ color: 'var(--warn, #FACC15)', fontSize: 11, maxWidth: 260 }}>
-                Image upload isn’t configured yet. Paste a logo URL below, or set the Cloudinary keys.
-              </span>
+            {logoPreview && (
+              <button type="button" className="btn-outline" onClick={onRemoveLogo} disabled={uploading}>
+                Remove Logo
+              </button>
             )}
             {uploadMsg && <span style={{ color: 'var(--ok, #2ECC8A)', fontSize: 12 }}>{uploadMsg}</span>}
-            <input
-              className="roles-input"
-              style={{ minWidth: 260 }}
-              placeholder="…or paste a logo URL (https://...)"
-              value={draft.logo_url}
-              onChange={e => setDraft(d => ({ ...d, logo_url: e.target.value }))}
-            />
           </div>
         </div>
       </div>

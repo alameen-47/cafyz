@@ -5,6 +5,7 @@ import {
   connectBluetooth, connectUSB, disconnectPrinter, printerStatus, print as printReceipt,
   type ReceiptData,
 } from '../services/PrintService';
+import { getRestaurantLogo } from '../services/restaurantLogoStorage';
 import './POSPanel.css';
 
 type CartItem     = { menuItem: ApiMenuItem; qty: number; mods: string[] };
@@ -40,7 +41,7 @@ export function POSPanel() {
   const [profileOpen,   setProfileOpen]   = useState(false);
   const [profileBusy,   setProfileBusy]   = useState(false);
   const [profileDraft,  setProfileDraft]  = useState({
-    name: '', logo_url: '', contact_phone: '', contact_email: '',
+    name: '', contact_phone: '', contact_email: '',
     address_line1: '', address_line2: '', city: '', country: '', postal_code: '', tax_id: '',
   });
   const noteRef = useRef<HTMLInputElement>(null);
@@ -60,7 +61,7 @@ export function POSPanel() {
       .then(([m, t, r]) => {
         setMenu(m); setTables(t); setRestaurant(r);
         setProfileDraft({
-          name: r.name ?? '', logo_url: r.logo_url ?? '', contact_phone: r.contact_phone ?? '', contact_email: r.contact_email ?? '',
+          name: r.name ?? '', contact_phone: r.contact_phone ?? '', contact_email: r.contact_email ?? '',
           address_line1: r.address_line1 ?? '', address_line2: r.address_line2 ?? '', city: r.city ?? '', country: r.country ?? '',
           postal_code: r.postal_code ?? '', tax_id: r.tax_id ?? '',
         });
@@ -231,7 +232,7 @@ export function POSPanel() {
       .filter(Boolean).join(', ');
     return {
       restaurantName: restaurant?.name || user?.restaurant_name || 'Restaurant',
-      logoUrl:        restaurant?.logo_url || undefined,
+      logoUrl:        getRestaurantLogo(user?.restaurant_id ?? restaurant?.id),
       addressLine:    address || undefined,
       phone:          restaurant?.contact_phone || undefined,
       taxId:          restaurant?.tax_id || undefined,
@@ -272,7 +273,12 @@ export function POSPanel() {
     if (cart.length === 0) return;
     setPrintBusy(true); setPrintError(''); setPrintOk(false);
     try {
-      const method = await printReceipt(buildReceiptData(payMethod));
+      const method = await printReceipt(
+        buildReceiptData(payMethod),
+        undefined,
+        32,
+        user?.restaurant_id ?? restaurant?.id,
+      );
       setPrintOk(true);
       if (method !== 'dialog') {
         setTimeout(() => setPrintOk(false), 3000);
@@ -586,7 +592,6 @@ export function POSPanel() {
             <h3 className="serif" style={{ margin: '4px 0 14px' }}>Brand, billing & contact details</h3>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
               <input className="roles-input" placeholder="Restaurant name" value={profileDraft.name} onChange={e => setProfileDraft(d => ({ ...d, name: e.target.value }))} />
-              <input className="roles-input" placeholder="Logo URL (https://...)" value={profileDraft.logo_url} onChange={e => setProfileDraft(d => ({ ...d, logo_url: e.target.value }))} />
               <input className="roles-input" placeholder="Contact phone" value={profileDraft.contact_phone} onChange={e => setProfileDraft(d => ({ ...d, contact_phone: e.target.value }))} />
               <input className="roles-input" placeholder="Contact email" value={profileDraft.contact_email} onChange={e => setProfileDraft(d => ({ ...d, contact_email: e.target.value }))} />
               <input className="roles-input" placeholder="Address line 1" value={profileDraft.address_line1} onChange={e => setProfileDraft(d => ({ ...d, address_line1: e.target.value }))} />
@@ -597,7 +602,7 @@ export function POSPanel() {
               <input className="roles-input" placeholder="Tax ID" value={profileDraft.tax_id} onChange={e => setProfileDraft(d => ({ ...d, tax_id: e.target.value }))} />
             </div>
             <p style={{ marginTop: 10, fontSize: 12, color: 'var(--text3)' }}>
-              Staff accounts in this restaurant share this profile by role assignment. Receipts include this logo/details.
+              Staff share contact details from the server. Receipt logo is set per device in Manager → Restaurant Profile.
             </p>
             <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 12 }}>
               <button className="roles-cancel-btn" onClick={() => setProfileOpen(false)}>Cancel</button>

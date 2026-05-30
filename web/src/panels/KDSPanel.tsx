@@ -156,7 +156,6 @@ export function KDSPanel() {
       try {
         await printKitchenTicket({
           restaurantName: restaurant?.name ?? 'Restaurant',
-          logoUrl: restaurant?.logo_url ?? undefined,
           ticketId: t.id,
           tableName: t.table_name,
           serverName: t.server_name,
@@ -169,7 +168,7 @@ export function KDSPanel() {
             mods: typeof i.mods === 'string' ? JSON.parse(i.mods || '[]') : (i.mods ?? []),
             alert: Boolean(i.alert),
           })),
-        });
+        }, restaurant?.id);
       } catch (e) {
         setError((e as Error).message || 'Auto-print failed');
       } finally {
@@ -187,7 +186,7 @@ export function KDSPanel() {
       })
       .catch(e => setError(e.message))
       .finally(() => setLoading(false));
-  }, [autoPrint, restaurant?.logo_url, restaurant?.name]);
+  }, [autoPrint, restaurant?.id, restaurant?.name]);
 
   useEffect(() => { load(); }, [load]);
 
