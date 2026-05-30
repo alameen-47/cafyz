@@ -318,14 +318,13 @@ function TablesTab() {
       </button>
 
       {adding && (
-        <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap', alignItems: 'center' }}>
+        <div className="mgr-add-row">
           <input className="roles-input" placeholder="Table name (e.g. T-01)" value={draft.name}
             onChange={e => setDraft(d => ({ ...d, name: e.target.value }))} />
-          <input className="roles-input" placeholder="Zone" value={draft.zone}
-            onChange={e => setDraft(d => ({ ...d, zone: e.target.value }))} style={{ width: 100 }} />
-          <input className="roles-input" placeholder="Capacity" type="number" min="1"
-            value={draft.capacity} onChange={e => setDraft(d => ({ ...d, capacity: +e.target.value }))}
-            style={{ width: 80 }} />
+          <input className="roles-input mgr-add-sm" placeholder="Zone" value={draft.zone}
+            onChange={e => setDraft(d => ({ ...d, zone: e.target.value }))} />
+          <input className="roles-input mgr-add-xs" placeholder="Capacity" type="number" min="1"
+            value={draft.capacity} onChange={e => setDraft(d => ({ ...d, capacity: +e.target.value }))} />
           <button className="roles-save-btn" onClick={addTable} disabled={!draft.name || busy}>
             {busy ? '…' : 'Save'}
           </button>
@@ -336,7 +335,7 @@ function TablesTab() {
         <p style={{ color: 'var(--text2)', fontSize: 13 }}>Loading tables…</p>
       ) : (
         <div className="mgr-inv-table card">
-          <div className="mgr-inv-head" style={{ gridTemplateColumns: '1fr 100px 80px 100px 140px' }}>
+          <div className="mgr-inv-head mgr-tables-grid">
             <span>Table</span><span>Zone</span><span>Capacity</span><span>Status</span><span>Actions</span>
           </div>
           {tables.map(t => {
@@ -346,7 +345,7 @@ function TablesTab() {
               t.status === 'reserved' ? '#60a5fa' :
               t.status === 'attention'? 'var(--danger)' : 'var(--text3)';
             return (
-              <div key={t.id} className="mgr-inv-row" style={{ gridTemplateColumns: '1fr 100px 80px 100px 140px' }}>
+              <div key={t.id} className="mgr-inv-row mgr-tables-grid">
                 <span className="mgr-inv-name mono">{t.name}</span>
                 <span style={{ fontSize: 12, color: 'var(--text2)' }}>{t.zone}</span>
                 <span className="mono" style={{ fontSize: 12 }}>{t.capacity}</span>
@@ -1081,7 +1080,7 @@ function ProfileTab() {
       {error && <p style={{ color: 'var(--danger)', fontSize: 13 }}>{error}</p>}
 
       {/* ── Logo ──────────────────────────────────────────────────────────── */}
-      <div className="card" style={{ padding: 16, marginBottom: 12 }}>
+      <div className="card mgr-profile-card">
         <p className="eyebrow" style={{ marginTop: 0 }}>Logo</p>
         <p className="mgr-sub" style={{ marginTop: 0 }}>
           Preview shows the B&W receipt version. Saved to your restaurant (all staff devices). PNG/JPG up to 2 MB.
@@ -1092,17 +1091,13 @@ function ProfileTab() {
         {uploadMsg && !error && (
           <p style={{ color: 'var(--ok, #2ECC8A)', fontSize: 12, margin: '8px 0 0' }}>{uploadMsg}</p>
         )}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
-          <div style={{
-            width: 120, height: 120, borderRadius: 12, background: 'rgba(255,255,255,0.04)',
-            border: '1px dashed rgba(255,255,255,0.18)', display: 'flex', alignItems: 'center',
-            justifyContent: 'center', overflow: 'hidden', flexShrink: 0,
-          }}>
+        <div className="mgr-logo-row">
+          <div className="mgr-logo-preview">
             {logoPreview
-              ? <img src={logoPreview} alt="Restaurant logo" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
+              ? <img src={logoPreview} alt="Restaurant logo" />
               : <span style={{ color: 'var(--text2)', fontSize: 11 }}>No logo</span>}
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <div className="mgr-logo-actions">
             <input ref={fileRef} type="file" accept="image/png,image/jpeg,image/webp,image/gif,.png,.jpg,.jpeg,.webp,.gif" hidden onChange={onPickLogo} />
             <button
               className="btn-gold"
@@ -1122,7 +1117,7 @@ function ProfileTab() {
       </div>
 
       {/* ── Details ───────────────────────────────────────────────────────── */}
-      <div className="card" style={{ padding: 16 }}>
+      <div className="card mgr-profile-card">
         <div className="form-grid-2">
           <input className="roles-input" placeholder="Restaurant name" value={draft.name} onChange={e => setDraft(d => ({ ...d, name: e.target.value }))} />
           <input className="roles-input" placeholder="Timezone" value={draft.timezone} onChange={e => setDraft(d => ({ ...d, timezone: e.target.value }))} />

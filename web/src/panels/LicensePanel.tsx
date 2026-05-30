@@ -103,42 +103,40 @@ export function LicensePanel() {
 
           {/* Activate key form */}
           {canActivate && (
-            <div className="lic-activate-card card" style={{ marginBottom: 16 }}>
-              <p className="eyebrow" style={{ marginBottom: 8 }}>Request License Purchase</p>
-              <p style={{ fontSize: 12, color: 'var(--text2)', marginBottom: 12 }}>
+            <div className="lic-activate-card card lic-purchase-card">
+              <p className="eyebrow lic-section-label">Request License Purchase</p>
+              <p className="lic-section-desc">
                 Request a plan upgrade. The founder will be notified and email your license key to the address below.
               </p>
-              <div className="lic-form-row" style={{ flexWrap: 'wrap', gap: 8, marginBottom: 10 }}>
-                <select className="lic-input" value={reqPlan} onChange={e => setReqPlan(e.target.value as Plan)} style={{ width: 120 }}>
+              <div className="lic-purchase-row">
+                <select className="lic-input lic-purchase-select" value={reqPlan} onChange={e => setReqPlan(e.target.value as Plan)}>
                   {(['basic','pro','premium'] as Plan[]).map(p => (
                     <option key={p} value={p}>{PLAN_LABELS[p]}</option>
                   ))}
                 </select>
                 <input
-                  className="lic-input"
+                  className="lic-input lic-purchase-email"
                   type="email"
                   placeholder="Delivery email"
                   value={reqEmail}
                   onChange={e => setReqEmail(e.target.value)}
-                  style={{ flex: 1, minWidth: 180 }}
                 />
               </div>
               <input
-                className="lic-input"
+                className="lic-input lic-full-width"
                 placeholder="Note for founder (optional)"
                 value={reqNote}
                 onChange={e => setReqNote(e.target.value)}
-                style={{ width: '100%', marginBottom: 10 }}
               />
-              <button className="btn-outline" onClick={requestPurchase} disabled={reqBusy || !reqEmail.trim()}>
+              <button className="btn-outline lic-request-btn" onClick={requestPurchase} disabled={reqBusy || !reqEmail.trim()}>
                 {reqBusy ? 'Sending…' : 'Request Purchase'}
               </button>
-              {reqSuccess && <p className="lic-success" style={{ marginTop: 10 }}>{reqSuccess}</p>}
+              {reqSuccess && <p className="lic-success lic-success-spaced">{reqSuccess}</p>}
               {requests.length > 0 && (
-                <div style={{ marginTop: 14, fontSize: 12, color: 'var(--text2)' }}>
-                  <p className="eyebrow" style={{ marginBottom: 6 }}>Your requests</p>
+                <div className="lic-request-list">
+                  <p className="eyebrow lic-requests-label">Your requests</p>
                   {requests.map(r => (
-                    <div key={r.id} style={{ marginBottom: 4 }}>
+                    <div key={r.id} className="lic-request-item">
                       {PLAN_LABELS[r.plan as Plan] ?? r.plan} · <span className="mono">{r.status}</span>
                       {r.fulfilled_at && ` · ${new Date(r.fulfilled_at).toLocaleDateString()}`}
                     </div>
@@ -150,8 +148,8 @@ export function LicensePanel() {
 
           {canActivate && (
             <div className="lic-activate-card card">
-              <p className="eyebrow" style={{ marginBottom: 8 }}>Activate License Key</p>
-              <p style={{ fontSize: 12, color: 'var(--text2)', marginBottom: 12 }}>
+              <p className="eyebrow lic-section-label">Activate License Key</p>
+              <p className="lic-section-desc">
                 Enter a license key provided by Cafyz to upgrade your plan.
               </p>
               <div className="lic-form-row">

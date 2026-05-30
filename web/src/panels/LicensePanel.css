@@ -51,6 +51,34 @@
   padding: 20px;
   margin-bottom: 28px;
 }
+
+.lic-purchase-card {
+  margin-bottom: 16px;
+}
+
+.lic-section-label {
+  margin-bottom: 8px;
+}
+
+.lic-section-desc {
+  font-size: 12px;
+  color: var(--text2);
+  margin-bottom: 12px;
+  line-height: 1.5;
+}
+
+.lic-success-spaced {
+  margin-top: 10px;
+}
+
+.lic-requests-label {
+  margin-bottom: 6px;
+}
+
+.lic-request-btn {
+  width: 100%;
+  justify-content: center;
+}
 .lic-form-row {
   display: flex;
   gap: 10px;
@@ -137,4 +165,78 @@
   color: var(--text3);
   text-align: center;
   margin-top: 8px;
+}
+
+.lic-purchase-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 10px;
+  align-items: stretch;
+}
+
+.lic-purchase-select {
+  width: min(120px, 100%);
+  flex-shrink: 0;
+}
+
+.lic-purchase-email {
+  flex: 1;
+  min-width: min(180px, 100%);
+}
+
+.lic-full-width {
+  width: 100%;
+  margin-bottom: 10px;
+}
+
+.lic-active-meta {
+  flex-wrap: wrap;
+  gap: 8px 20px;
+}
+
+.lic-request-list {
+  margin-top: 14px;
+  font-size: 12px;
+  color: var(--text2);
+}
+
+.lic-request-item {
+  margin-bottom: 4px;
+  word-break: break-word;
+}
+
+@media (max-width: 768px) {
+  .lic-root {
+    padding: 16px 12px;
+  }
+
+  .lic-form-row {
+    flex-direction: column;
+  }
+
+  .lic-activate-btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .lic-purchase-row {
+    flex-direction: column;
+  }
+
+  .lic-purchase-select,
+  .lic-purchase-email {
+    width: 100%;
+    min-width: 0;
+  }
+}
+
+@media (max-width: 480px) {
+  .lic-plans-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .lic-title {
+    font-size: clamp(22px, 5vw, 28px);
+  }
 }

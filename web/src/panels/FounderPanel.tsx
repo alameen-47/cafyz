@@ -357,7 +357,7 @@ function LicenseRequests() {
               <span className="mono">{r.plan.toUpperCase()}</span>
               <span className="mono" style={{ fontSize: 11 }}>{r.status}</span>
               <span style={{ fontSize: 11, color: 'var(--text3)' }}>{r.note ?? '—'}</span>
-              <div style={{ display: 'flex', gap: 6 }}>
+              <div className="fdr-row-actions">
                 {r.status === 'pending' ? (
                   <>
                     <button className="roles-save-btn sm" onClick={() => fulfill(r.id)} disabled={busyId === r.id}>
@@ -421,48 +421,37 @@ function Inquiries() {
       {error && <p className="fdr-error">{error}</p>}
 
       {approvalResult && (
-        <div style={{
-          margin: '0 0 20px',
-          padding: '18px 20px',
-          borderRadius: 12,
-          border: `0.5px solid ${approvalResult.emailSent ? 'rgba(46,204,138,0.4)' : 'rgba(250,204,21,0.4)'}`,
-          background: approvalResult.emailSent ? 'rgba(46,204,138,0.07)' : 'rgba(250,204,21,0.07)',
-        }}>
+        <div className={`fdr-approval-banner ${approvalResult.emailSent || approvalResult.alreadyProvisioned ? 'ok' : 'warn'}`}>
           {approvalResult.alreadyProvisioned ? (
-            <p style={{ margin: 0, fontSize: 13, color: 'var(--text2)' }}>
-              This account was already provisioned. The user can sign in at their existing credentials.
-            </p>
+            <p className="fdr-approval-msg">This account was already provisioned. The user can sign in at their existing credentials.</p>
           ) : approvalResult.emailSent ? (
-            <p style={{ margin: 0, fontSize: 13, color: '#2ECC8A' }}>
+            <p className="fdr-approval-msg ok-text">
               ✓ Credentials emailed to <strong>{approvalResult.userEmail}</strong>
             </p>
           ) : (
             <>
-              <p style={{ margin: '0 0 12px', fontSize: 13, color: '#facc15', fontWeight: 600 }}>
+              <p className="fdr-approval-warn">
                 ⚠ Applicant did not receive email (verify ametronyx.com on Resend). A copy was sent to your founder inbox — forward these credentials:
               </p>
-              <table style={{ width: '100%', fontSize: 13, borderCollapse: 'collapse' }}>
+              <table className="fdr-cred-table">
                 <tbody>
                   <tr>
-                    <td style={{ padding: '5px 0', color: 'var(--text2)', width: 100 }}>Email</td>
-                    <td><code style={{ background: 'rgba(255,255,255,0.07)', padding: '2px 8px', borderRadius: 4 }}>{approvalResult.userEmail}</code></td>
+                    <td>Email</td>
+                    <td><code>{approvalResult.userEmail}</code></td>
                   </tr>
                   <tr>
-                    <td style={{ padding: '5px 0', color: 'var(--text2)' }}>Password</td>
-                    <td><code style={{ background: 'rgba(255,255,255,0.07)', padding: '2px 8px', borderRadius: 4 }}>{approvalResult.userPassword}</code></td>
+                    <td>Password</td>
+                    <td><code>{approvalResult.userPassword}</code></td>
                   </tr>
                   <tr>
-                    <td style={{ padding: '5px 0', color: 'var(--text2)' }}>License key</td>
-                    <td><code style={{ background: 'rgba(255,255,255,0.07)', padding: '2px 8px', borderRadius: 4 }}>{approvalResult.licenseKey}</code></td>
+                    <td>License key</td>
+                    <td><code>{approvalResult.licenseKey}</code></td>
                   </tr>
                 </tbody>
               </table>
             </>
           )}
-          <button
-            onClick={() => setApprovalResult(null)}
-            style={{ marginTop: 10, background: 'none', border: 'none', color: 'var(--text3)', cursor: 'pointer', fontSize: 12, padding: 0 }}
-          >
+          <button type="button" className="fdr-dismiss-btn" onClick={() => setApprovalResult(null)}>
             Dismiss
           </button>
         </div>
@@ -480,7 +469,7 @@ function Inquiries() {
               <span className="mono">{r.plan.toUpperCase()}</span>
               <span style={{ color: r.is_retry ? 'var(--warning,#facc15)' : 'var(--text2)' }}>{r.is_retry ? 'Retry' : 'New'}</span>
               <span className="mono" style={{ fontSize: 11 }}>{r.status}</span>
-              <div style={{ display: 'flex', gap: 6 }}>
+              <div className="fdr-row-actions">
                 {r.status === 'pending' ? (
                   <>
                     <button className="roles-save-btn sm" onClick={() => act(r.id, 'approved')} disabled={busyId === r.id}>Approve</button>

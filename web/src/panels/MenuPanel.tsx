@@ -304,7 +304,9 @@ export function MenuPanel() {
           </p>
         </div>
         {canEdit && !formOpen && (
-          <button className="btn-gold" onClick={startAdd}>+ Add Item</button>
+          <div className="menu-header-actions">
+            <button className="btn-gold" onClick={startAdd}>+ Add Item</button>
+          </div>
         )}
       </div>
 

@@ -196,7 +196,88 @@
 .fdr-panel-toggle.on  { color: var(--text1); }
 .fdr-panel-toggle.off { color: var(--text3); }
 .fdr-panel-toggle input { accent-color: var(--plan-color, var(--gold)); width: 13px; height: 13px; }
-.fdr-config-actions { display: flex; gap: 8px; padding-top: 4px; border-top: 0.5px solid var(--line); }
+.fdr-config-actions { display: flex; gap: 8px; padding-top: 4px; border-top: 0.5px solid var(--line); flex-wrap: wrap; }
+
+.fdr-approval-banner {
+  margin: 0 0 20px;
+  padding: 18px 20px;
+  border-radius: 12px;
+}
+
+.fdr-approval-banner.ok {
+  border: 0.5px solid rgba(46, 204, 138, 0.4);
+  background: rgba(46, 204, 138, 0.07);
+}
+
+.fdr-approval-banner.warn {
+  border: 0.5px solid rgba(250, 204, 21, 0.4);
+  background: rgba(250, 204, 21, 0.07);
+}
+
+.fdr-cred-table {
+  width: 100%;
+  font-size: 13px;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+.fdr-cred-table td {
+  padding: 5px 0;
+  vertical-align: top;
+  word-break: break-word;
+}
+
+.fdr-cred-table td:first-child {
+  color: var(--text2);
+  width: 100px;
+  padding-right: 12px;
+}
+
+.fdr-cred-table code {
+  display: inline-block;
+  max-width: 100%;
+  background: rgba(255, 255, 255, 0.07);
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  word-break: break-all;
+}
+
+.fdr-row-actions {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.fdr-dismiss-btn {
+  margin-top: 10px;
+  background: none;
+  border: none;
+  color: var(--text3);
+  cursor: pointer;
+  font-size: 12px;
+  padding: 4px 0;
+  min-height: 32px;
+}
+
+.fdr-approval-msg {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text2);
+  line-height: 1.5;
+}
+
+.fdr-approval-msg.ok-text {
+  color: #2ecc8a;
+}
+
+.fdr-approval-warn {
+  margin: 0 0 12px;
+  font-size: 13px;
+  color: #facc15;
+  font-weight: 600;
+  line-height: 1.5;
+}
 
 @media (max-width: 1024px) {
   .fdr-section { padding: 24px 16px; max-width: none; }

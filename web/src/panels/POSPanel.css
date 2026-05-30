@@ -357,6 +357,34 @@
   }
 }
 
+@media (max-width: 480px) {
+  .pos-dishes {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .pos-dish-plate {
+    height: 80px;
+  }
+
+  .pos-dish-sym {
+    font-size: 22px;
+  }
+
+  .pos-order {
+    max-height: min(52vh, 440px);
+  }
+
+  .pos-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .pos-pill {
+    justify-content: center;
+  }
+}
+
 /* Note editor inline */
 .pos-note-editor {
   display: flex;

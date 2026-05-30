@@ -185,6 +185,83 @@
 }
 
 .mgr-inv-row:last-child { border-bottom: none; }
+
+/* Table management grid (staff / floor tables tab) */
+.mgr-tables-grid.mgr-inv-head,
+.mgr-tables-grid.mgr-inv-row {
+  grid-template-columns: 1fr 100px 80px 100px 140px;
+}
+
+.mgr-add-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.mgr-add-row .roles-input {
+  flex: 1;
+  min-width: min(140px, 100%);
+}
+
+.mgr-add-row .roles-input.mgr-add-sm {
+  flex: 0 1 100px;
+  min-width: 80px;
+}
+
+.mgr-add-row .roles-input.mgr-add-xs {
+  flex: 0 1 80px;
+  min-width: 64px;
+}
+
+/* Profile tab */
+.mgr-profile-card {
+  padding: 16px;
+  margin-bottom: 12px;
+}
+
+.mgr-logo-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.mgr-logo-preview {
+  width: min(120px, 28vw);
+  height: min(120px, 28vw);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px dashed rgba(255, 255, 255, 0.18);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.mgr-logo-preview img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+
+.mgr-logo-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex: 1;
+  min-width: min(220px, 100%);
+}
+
+@media (max-width: 480px) {
+  .mgr-logo-actions .btn-gold,
+  .mgr-logo-actions .btn-outline {
+    width: 100%;
+    justify-content: center;
+  }
+}
 .mgr-inv-name { font-size: 14px; color: var(--text0); }
 .mgr-inv-par  { font-size: 12px; color: var(--text2); }
 
@@ -333,8 +410,9 @@
   }
 
   .mgr-inv-row,
-  .mgr-report-row {
-    grid-template-columns: 1fr;
+  .mgr-report-row,
+  .mgr-tables-grid.mgr-inv-row {
+    grid-template-columns: 1fr !important;
     gap: 6px;
     padding: 14px 16px;
   }

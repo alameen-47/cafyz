@@ -1,15 +1,17 @@
 .mobile-root {
   min-height: 100vh;
+  min-height: 100dvh;
   background: var(--bg0);
   display: flex;
   flex-direction: column;
+  width: 100%;
   max-width: 480px;
   margin: 0 auto;
-  padding-bottom: 72px;
+  padding-bottom: calc(72px + env(safe-area-inset-bottom, 0px));
 }
 
 .mobile-header {
-  padding: 20px 24px;
+  padding: max(20px, env(safe-area-inset-top, 0px)) 16px 20px;
 }
 
 .mobile-back {
@@ -92,6 +94,7 @@
   display: flex;
   border-top: 0.5px solid var(--gold-line);
   background: var(--bg1);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 
 .mobile-tabbar a {

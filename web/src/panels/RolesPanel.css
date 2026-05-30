@@ -339,10 +339,20 @@
 
 @media (max-width: 768px) {
   .roles-root { padding: 16px; }
+  .roles-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+  .roles-add-btn { width: 100%; justify-content: center; }
   .roles-cards { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .roles-form-grid { grid-template-columns: 1fr; }
+  .roles-form-actions { flex-wrap: wrap; }
+  .roles-form-actions .roles-save-btn,
+  .roles-form-actions .roles-cancel-btn { flex: 1; min-width: 120px; }
   .roles-table-head { display: none; }
   .roles-row { grid-template-columns: 1fr; gap: 8px; }
+  .roles-row-actions { flex-wrap: wrap; }
 }
 
 @media (max-width: 480px) {

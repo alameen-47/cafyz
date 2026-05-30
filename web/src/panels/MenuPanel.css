@@ -11,7 +11,15 @@
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
+  gap: 12px;
+  flex-wrap: wrap;
   margin-bottom: 20px;
+}
+
+.menu-header-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
 .menu-title {
@@ -486,4 +494,14 @@
 @media (max-width: 768px) {
   .menu-root { padding: 16px; }
   .menu-toolbar { gap: 6px; }
+  .menu-header { flex-direction: column; align-items: stretch; }
+  .menu-header-actions { width: 100%; }
+  .menu-header-actions .btn-gold,
+  .menu-header-actions .btn-outline {
+    flex: 1;
+    min-width: 0;
+    justify-content: center;
+  }
+  .menu-form { padding: 16px; }
+  .menu-check-label { min-width: 0; flex: 1 1 100%; }
 }

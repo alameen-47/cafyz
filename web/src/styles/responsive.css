@@ -140,6 +140,10 @@ textarea,
     padding: 0 10px 0 6px;
   }
 
+  .sidebar-nav-item {
+    min-height: 44px;
+  }
+
   .btn-gold,
   .btn-outline {
     min-height: 44px;
@@ -226,31 +230,62 @@ body.nav-open {
   overflow: hidden;
 }
 
+/* Horizontal scroll for wide data on tablet */
+.table-scroll-x {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  max-width: 100%;
+}
+
+/* Long strings never blow layout */
+code,
+.mono {
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}
+
 /* Panel content — prevent flex/grid blowout */
 .mgr-body,
 .menu-root,
 .license-root,
 .kds-root,
-.lic-root {
+.lic-root,
+.roles-root,
+.fdr-root,
+.pos-layout,
+.waiter-layout {
   min-width: 0;
 }
 
+/* Button groups stack on narrow screens */
 @media (max-width: 768px) {
-  .menu-root,
-  .lic-root {
-    padding: 16px 12px !important;
-  }
-
-  .lic-form-row {
+  .btn-row,
+  .upgrade-footer-actions {
     flex-direction: column;
+    align-items: stretch;
   }
 
-  .lic-activate-btn {
+  .btn-row .btn-gold,
+  .btn-row .btn-outline {
     width: 100%;
     justify-content: center;
   }
 
+  .modal-panel {
+    width: min(760px, 100%);
+    margin: 8px;
+    padding: 16px;
+  }
+
   .login-mobile-only {
     padding: calc(20px + env(safe-area-inset-top, 0px)) 16px calc(24px + env(safe-area-inset-bottom, 0px));
+  }
+}
+
+@media (max-width: 480px) {
+  .form-grid-2,
+  .form-grid-3,
+  .responsive-grid-2 {
+    grid-template-columns: 1fr;
   }
 }

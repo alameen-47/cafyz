@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { authApi } from '../services/api';
-import './LoginPanel.css'; // reuse login styles
+import './LoginPanel.css';
 
 const TIMEZONES = [
   { label: 'UTC', value: 'UTC' },
@@ -41,11 +41,10 @@ export function RegisterPanel() {
       const data = await authApi.onboarding({ restaurant_name: restaurantName.trim(), owner_name: ownerName.trim(), email: email.trim(), password, timezone });
       localStorage.setItem('cafyz_token', data.token);
 
-      // Build a minimal user object so AuthContext picks it up on reload
       const authUser = {
         id: data.user.id,
         name: data.user.name,
-        initials: (data.user as any).initials ?? ownerName.split(' ').map((w: string) => w[0]).join('').toUpperCase().slice(0, 2),
+        initials: (data.user as { initials?: string }).initials ?? ownerName.split(' ').map((w: string) => w[0]).join('').toUpperCase().slice(0, 2),
         email: data.user.email,
         role: 'owner',
         restaurant_id: data.restaurant.id,
@@ -55,7 +54,6 @@ export function RegisterPanel() {
       };
       localStorage.setItem('cafyz_user', JSON.stringify(authUser));
       setStep('done');
-      // Hard reload so AuthContext re-hydrates from localStorage cleanly
       setTimeout(() => { window.location.href = '/'; }, 1800);
     } catch (e) {
       setError((e as Error).message);
@@ -66,15 +64,15 @@ export function RegisterPanel() {
 
   if (step === 'done') {
     return (
-      <div className="login-root" style={{ justifyContent: 'center', alignItems: 'center' }}>
-        <div className="login-card" style={{ textAlign: 'center', maxWidth: 400 }}>
-          <div style={{ fontSize: 48, marginBottom: 16 }}>🍽</div>
+      <div className="login-root login-root--centered">
+        <div className="login-card login-card--success">
+          <div className="login-success-icon">🍽</div>
           <h2 className="serif" style={{ color: 'var(--text0)', marginBottom: 8 }}>You're all set!</h2>
           <p style={{ color: 'var(--text2)', fontSize: 14 }}>
             Your restaurant <b style={{ color: 'var(--text0)' }}>{restaurantName}</b> is ready.
             Taking you to the dashboard…
           </p>
-          <p style={{ color: 'var(--purple)', fontSize: 12, marginTop: 16 }}>
+          <p style={{ color: 'var(--gold)', fontSize: 12, marginTop: 16 }}>
             You're on the <b>Basic</b> plan. Activate a license key to unlock Pro or Premium features.
           </p>
         </div>
@@ -83,16 +81,15 @@ export function RegisterPanel() {
   }
 
   return (
-    <div className="login-root">
-      <div className="login-card" style={{ maxWidth: 420 }}>
-        {/* Header */}
+    <div className="login-root login-root--centered">
+      <div className="login-card">
         <div className="login-logo-row">
           <span className="login-logo-mark serif">C</span>
           <span className="login-logo-text serif">Cafyz</span>
         </div>
         <p className="login-tagline">Create your restaurant</p>
 
-        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 24 }}>
+        <form onSubmit={handleSubmit} className="login-register-form">
           <div>
             <label className="login-label">Restaurant name</label>
             <input
@@ -159,7 +156,6 @@ export function RegisterPanel() {
               className="login-input"
               value={timezone}
               onChange={e => setTimezone(e.target.value)}
-              style={{ cursor: 'pointer' }}
             >
               {TIMEZONES.map(tz => (
                 <option key={tz.value} value={tz.value}>{tz.label}</option>
@@ -167,30 +163,23 @@ export function RegisterPanel() {
             </select>
           </div>
 
-          {error && (
-            <p style={{ color: 'var(--red)', fontSize: 12, margin: '4px 0 0' }}>{error}</p>
-          )}
+          {error && <p className="login-error">{error}</p>}
 
-          <button
-            type="submit"
-            className="login-btn"
-            disabled={busy}
-            style={{ marginTop: 8 }}
-          >
+          <button type="submit" className="login-btn" disabled={busy}>
             {busy ? 'Creating your restaurant…' : 'Create Restaurant & Sign In'}
           </button>
         </form>
 
-        <p style={{ textAlign: 'center', fontSize: 12, color: 'var(--text2)', marginTop: 20 }}>
-          New accounts start on the <b style={{ color: 'var(--text1)' }}>Basic</b> plan (free).{' '}
+        <p className="login-register-note">
+          New accounts start on the <b>Basic</b> plan (free).
           Activate a license key to upgrade.
         </p>
 
-        <div className="login-divider" style={{ marginTop: 20 }} />
+        <div className="login-divider" />
 
-        <p style={{ textAlign: 'center', fontSize: 12, color: 'var(--text2)', marginTop: 16 }}>
+        <p className="login-register-signin">
           Already have an account?{' '}
-          <a href="/login" style={{ color: 'var(--purple)', textDecoration: 'none' }}>Sign in →</a>
+          <a href="/login">Sign in →</a>
         </p>
       </div>
     </div>
