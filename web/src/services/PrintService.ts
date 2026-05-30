@@ -109,7 +109,8 @@ export function buildReceipt(data: ReceiptData, width = 32, logoBytes?: Uint8Arr
   // Header
   b.alignCenter();
   if (logoBytes) {
-    b.pushBytes(logoBytes).nl();
+    b.pushBytes(logoBytes).nl(2);
+    b.alignCenter();
   }
   b.boldOn().bigOn().text(data.restaurantName).bigOff().boldOff().nl(2);
   if (data.addressLine) b.text(data.addressLine).nl();
@@ -191,8 +192,7 @@ export function buildReceiptHTML(data: ReceiptData): string {
 </style>
 </head>
 <body>
-<div class="center">
-  ${data.logoUrl ? `<img src="${data.logoUrl}" alt="Restaurant logo" style="max-width:150px;max-height:72px;object-fit:contain;margin:0 auto 6px;display:block" />` : ''}
+<div class="center receipt-header">
   <h1>${data.restaurantName}</h1>
   ${data.addressLine ? `<p>${data.addressLine}</p>` : ''}
   ${data.phone ? `<p>Tel: ${data.phone}</p>` : ''}
@@ -232,7 +232,10 @@ export function buildKitchenTicket(data: KitchenTicketData, width = 32, logoByte
   const W = width;
   const ts = data.createdAt ? new Date(data.createdAt).toLocaleString('en-GB') : new Date().toLocaleString('en-GB');
   b.init().alignCenter();
-  if (logoBytes) b.pushBytes(logoBytes).nl();
+  if (logoBytes) {
+    b.pushBytes(logoBytes).nl(2);
+    b.alignCenter();
+  }
   b.boldOn().bigOn().text(data.restaurantName).bigOff().boldOff().nl();
   b.boldOn().text('KITCHEN TICKET').boldOff().nl();
   b.divider(W);
@@ -274,8 +277,7 @@ export function buildKitchenTicketHTML(data: KitchenTicketData): string {
     table { width: 100%; border-collapse: collapse; }
     h1 { font-size: 14px; margin: 4px 0; }
   </style></head><body>
-  <div class="center">
-    ${data.logoUrl ? `<img src="${data.logoUrl}" alt="Restaurant logo" style="max-width:150px;max-height:72px;object-fit:contain;margin:0 auto 6px;display:block" />` : ''}
+  <div class="center ticket-header">
     <h1>${data.restaurantName}</h1>
     <p><b>KITCHEN TICKET</b></p>
   </div>
@@ -310,8 +312,8 @@ let usbDevice: any = null; // USBDevice
 async function writeChunked(
   char: { writeValue: (data: Uint8Array) => Promise<void> },
   data: Uint8Array,
-  chunkSize = 100,
-  delayMs = 40,
+  chunkSize = 512,
+  delayMs = 25,
 ): Promise<void> {
   for (let i = 0; i < data.length; i += chunkSize) {
     const chunk = data.slice(i, i + chunkSize);
@@ -399,23 +401,22 @@ export function printerStatus(): { type: 'none' | 'bluetooth' | 'usb'; name: str
 }
 
 // ── ESC/POS raster logo renderer ──────────────────────────────────────────────
-// Loads an image (HTTPS or device-local data URL) into a canvas, converts to a
-// 1-bit bitmap, and returns GS v 0 raster bytes for thermal printers.
+// Converts a logo (device data URL or https) to GS v 0 raster bytes. When a logo
+// is configured we never silently skip it on thermal printers.
 
-function rasterizeImageToEscPos(img: HTMLImageElement, maxWidthDots: number): Uint8Array {
-  const targetW = Math.min(img.naturalWidth || img.width, maxWidthDots);
-  const scale   = targetW / (img.naturalWidth || img.width || 1);
-  const targetH = Math.min(Math.round((img.naturalHeight || img.height) * scale), 240);
+const THERMAL_LOGO_MAX_WIDTH = 384;
 
-  const canvas = document.createElement('canvas');
-  canvas.width  = targetW;
-  canvas.height = targetH;
-  const ctx = canvas.getContext('2d')!;
-  ctx.fillStyle = '#ffffff';
-  ctx.fillRect(0, 0, targetW, targetH);
-  ctx.drawImage(img, 0, 0, targetW, targetH);
+function canvasToEscPosRaster(canvas: HTMLCanvasElement): Uint8Array {
+  const width = canvas.width;
+  const height = canvas.height;
+  if (width < 1 || height < 1) {
+    throw new Error('Logo rendered with zero size.');
+  }
 
-  const { data, width, height } = ctx.getImageData(0, 0, targetW, targetH);
+  const ctx = canvas.getContext('2d');
+  if (!ctx) throw new Error('Could not read logo pixels.');
+
+  const { data } = ctx.getImageData(0, 0, width, height);
   const bytesPerRow = Math.ceil(width / 8);
   const bitmap      = new Uint8Array(bytesPerRow * height);
 
@@ -430,6 +431,7 @@ function rasterizeImageToEscPos(img: HTMLImageElement, maxWidthDots: number): Ui
     }
   }
 
+  // GS v 0 — raster bit image (mode 0). Supported by Epson, Xprinter, Munbyn, etc.
   const header = new Uint8Array([
     0x1d, 0x76, 0x30, 0x00,
     bytesPerRow & 0xff, (bytesPerRow >> 8) & 0xff,
@@ -441,29 +443,92 @@ function rasterizeImageToEscPos(img: HTMLImageElement, maxWidthDots: number): Ui
   return result;
 }
 
-function loadImageElement(url: string): Promise<HTMLImageElement> {
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    // data:/blob: logos from localStorage must NOT set crossOrigin (breaks load).
-    const local = url.startsWith('data:') || url.startsWith('blob:');
-    if (!local) img.crossOrigin = 'anonymous';
-    img.onload = () => resolve(img);
-    img.onerror = () => reject(new Error('Logo load failed'));
-    img.src = url;
-  });
+function drawSourceToCanvas(
+  source: CanvasImageSource,
+  srcW: number,
+  srcH: number,
+  maxWidthDots: number,
+): HTMLCanvasElement {
+  const targetW = Math.min(srcW, maxWidthDots);
+  const targetH = Math.min(Math.round(srcH * (targetW / srcW)), 240);
+
+  const canvas = document.createElement('canvas');
+  canvas.width  = Math.max(1, targetW);
+  canvas.height = Math.max(1, targetH);
+  const ctx = canvas.getContext('2d');
+  if (!ctx) throw new Error('Could not prepare logo canvas.');
+
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.drawImage(source, 0, 0, canvas.width, canvas.height);
+  return canvas;
 }
 
-async function prepareLogoEscPos(url: string, maxWidthDots = 240): Promise<Uint8Array | null> {
+async function rasterizeLogoUrlToEscPos(url: string): Promise<Uint8Array> {
+  const local = url.startsWith('data:') || url.startsWith('blob:');
+
+  if (local) {
+    const res = await fetch(url);
+    const blob = await res.blob();
+    const bitmap = await createImageBitmap(blob);
+    try {
+      if (bitmap.width < 1 || bitmap.height < 1) {
+        throw new Error('Logo image has no usable dimensions.');
+      }
+      const canvas = drawSourceToCanvas(bitmap, bitmap.width, bitmap.height, THERMAL_LOGO_MAX_WIDTH);
+      return canvasToEscPosRaster(canvas);
+    } finally {
+      bitmap.close();
+    }
+  }
+
+  const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+    const el = new Image();
+    el.crossOrigin = 'anonymous';
+    el.onload = () => resolve(el);
+    el.onerror = () => reject(new Error('Logo image could not be loaded.'));
+    el.src = url;
+  });
+  await img.decode().catch(() => {});
+  const w = img.naturalWidth || img.width;
+  const h = img.naturalHeight || img.height;
+  if (w < 1 || h < 1) throw new Error('Logo image has no usable dimensions.');
+  const canvas = drawSourceToCanvas(img, w, h, THERMAL_LOGO_MAX_WIDTH);
+  return canvasToEscPosRaster(canvas);
+}
+
+/** Required when logoUrl is set — throws instead of printing without the logo. */
+async function requireLogoEscPos(logoUrl: string): Promise<Uint8Array> {
   try {
-    const img = await loadImageElement(url);
-    return rasterizeImageToEscPos(img, maxWidthDots);
-  } catch {
-    return null;
+    const bytes = await rasterizeLogoUrlToEscPos(logoUrl);
+    if (bytes.length < 12) throw new Error('Raster data empty.');
+    return bytes;
+  } catch (e) {
+    const detail = e instanceof Error ? e.message : 'unknown error';
+    throw new Error(
+      `Logo could not be sent to the printer (${detail}). ` +
+      'Re-upload the logo in Manager → Restaurant Profile (PNG, under 500 KB).',
+    );
   }
 }
 
 function resolveLogoUrl(logoUrl?: string, restaurantId?: string): string | undefined {
   return logoUrl ?? getRestaurantLogo(restaurantId);
+}
+
+async function buildHardwareReceiptBytes(
+  data: ReceiptData,
+  width: number,
+  escposData?: Uint8Array,
+): Promise<Uint8Array> {
+  if (escposData) return escposData;
+  const logoBytes = data.logoUrl ? await requireLogoEscPos(data.logoUrl) : undefined;
+  return buildReceipt(data, width, logoBytes);
+}
+
+async function buildHardwareKitchenBytes(data: KitchenTicketData): Promise<Uint8Array> {
+  const logoBytes = data.logoUrl ? await requireLogoEscPos(data.logoUrl) : undefined;
+  return buildKitchenTicket(data, 32, logoBytes);
 }
 
 // ── Print dispatcher ──────────────────────────────────────────────────────────
@@ -480,24 +545,19 @@ async function printUSB(data: Uint8Array): Promise<void> {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const endpoint = altIface.endpoints.find((e: any) => e.direction === 'out');
   if (!endpoint) throw new Error('No OUT endpoint on USB printer.');
-  await usbDevice.transferOut(endpoint.endpointNumber, data);
+  const chunkSize = 4096;
+  for (let i = 0; i < data.length; i += chunkSize) {
+    await usbDevice.transferOut(endpoint.endpointNumber, data.slice(i, i + chunkSize));
+  }
 }
 
-function printDialog(receiptData: ReceiptData): void {
-  const html = buildReceiptHTML(receiptData);
-  const win  = window.open('', '_blank', 'width=340,height=600');
-  if (!win) throw new Error('Pop-up blocked — please allow pop-ups for this site.');
-  win.document.write(html);
-  win.document.close();
-  win.focus();
-
+function waitForWindowImages(win: Window, onReady: () => void, onLogoError?: () => void): void {
   const triggerPrint = () => {
     if (win.closed) return;
-    win.print();
-    setTimeout(() => win.close(), 900);
+    onReady();
+    setTimeout(() => { if (!win.closed) win.close(); }, 900);
   };
 
-  // Ensure logo images are fully loaded before printing.
   const waitForImagesThenPrint = () => {
     try {
       const images = Array.from(win.document.images);
@@ -506,27 +566,72 @@ function printDialog(receiptData: ReceiptData): void {
       let pending = images.filter(img => !img.complete).length;
       if (pending === 0) { triggerPrint(); return; }
 
+      let logoFailed = false;
       const done = () => {
         pending -= 1;
-        if (pending <= 0) triggerPrint();
+        if (pending <= 0) {
+          if (logoFailed && onLogoError) onLogoError();
+          else triggerPrint();
+        }
       };
       images.forEach(img => {
         if (img.complete) return;
         img.addEventListener('load', done, { once: true });
-        img.addEventListener('error', done, { once: true });
+        img.addEventListener('error', () => {
+          if (img.alt === 'Restaurant logo') logoFailed = true;
+          done();
+        }, { once: true });
       });
 
-      // Hard timeout: never hang print forever if image host is slow.
-      setTimeout(() => { if (!win.closed) triggerPrint(); }, 5000);
+      setTimeout(() => {
+        if (!win.closed) {
+          if (images.some(img => img.alt === 'Restaurant logo' && !img.complete)) logoFailed = true;
+          if (logoFailed && onLogoError) onLogoError();
+          else triggerPrint();
+        }
+      }, 8000);
     } catch {
       triggerPrint();
     }
   };
 
-  // Wait for popup document load, then images.
   win.onload = waitForImagesThenPrint;
-  // Fallback if onload fired before handler attached.
   setTimeout(waitForImagesThenPrint, 450);
+}
+
+function printDialog(receiptData: ReceiptData): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const win = window.open('', '_blank', 'width=340,height=600');
+    if (!win) {
+      reject(new Error('Pop-up blocked — please allow pop-ups for this site.'));
+      return;
+    }
+
+    const doc = win.document;
+    doc.open();
+    doc.write(buildReceiptHTML({ ...receiptData, logoUrl: undefined }));
+    doc.close();
+
+    if (receiptData.logoUrl) {
+      const header = doc.querySelector('.receipt-header');
+      if (!header) {
+        reject(new Error('Receipt layout error — could not place logo.'));
+        return;
+      }
+      const img = doc.createElement('img');
+      img.alt = 'Restaurant logo';
+      img.src = receiptData.logoUrl;
+      img.style.cssText = 'max-width:150px;max-height:72px;object-fit:contain;margin:0 auto 6px;display:block';
+      header.insertBefore(img, header.firstChild);
+    }
+
+    win.focus();
+    waitForWindowImages(
+      win,
+      () => { win.print(); resolve(); },
+      () => reject(new Error('Logo failed to load for print preview. Re-upload in Restaurant Profile.')),
+    );
+  });
 }
 
 function printDialogHtml(html: string): void {
@@ -576,12 +681,7 @@ export async function print(
   const data: ReceiptData = logoUrl ? { ...receiptData, logoUrl } : receiptData;
 
   if (btChar || usbDevice) {
-    const logoBytes = data.logoUrl
-      ? (await prepareLogoEscPos(data.logoUrl)) ?? undefined
-      : undefined;
-
-    const bytes = escposData ?? buildReceipt(data, width, logoBytes);
-
+    const bytes = await buildHardwareReceiptBytes(data, width, escposData);
     if (btChar) {
       await printBluetooth(bytes);
       return 'bluetooth';
@@ -590,7 +690,7 @@ export async function print(
     return 'usb';
   }
 
-  printDialog(data);
+  await printDialog(data);
   return 'dialog';
 }
 
@@ -638,15 +738,44 @@ export async function printKitchenTicket(
   const ticket: KitchenTicketData = logoUrl ? { ...data, logoUrl } : data;
 
   if (btChar || usbDevice) {
-    const logoBytes = ticket.logoUrl
-      ? (await prepareLogoEscPos(ticket.logoUrl)) ?? undefined
-      : undefined;
-    const bytes = buildKitchenTicket(ticket, 32, logoBytes);
+    const bytes = await buildHardwareKitchenBytes(ticket);
     if (btChar) { await printBluetooth(bytes); return 'bluetooth'; }
     await printUSB(bytes); return 'usb';
   }
-  printDialogHtml(buildKitchenTicketHTML(ticket));
+  await printKitchenDialog(ticket);
   return 'dialog';
+}
+
+function printKitchenDialog(data: KitchenTicketData): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const win = window.open('', '_blank', 'width=340,height=600');
+    if (!win) {
+      reject(new Error('Pop-up blocked — please allow pop-ups for this site.'));
+      return;
+    }
+    const doc = win.document;
+    doc.open();
+    doc.write(buildKitchenTicketHTML({ ...data, logoUrl: undefined }));
+    doc.close();
+    if (data.logoUrl) {
+      const header = doc.querySelector('.ticket-header');
+      if (!header) {
+        reject(new Error('Ticket layout error — could not place logo.'));
+        return;
+      }
+      const img = doc.createElement('img');
+      img.alt = 'Restaurant logo';
+      img.src = data.logoUrl;
+      img.style.cssText = 'max-width:150px;max-height:72px;object-fit:contain;margin:0 auto 6px;display:block';
+      header.insertBefore(img, header.firstChild);
+    }
+    win.focus();
+    waitForWindowImages(
+      win,
+      () => { win.print(); resolve(); },
+      () => reject(new Error('Logo failed to load for kitchen ticket print.')),
+    );
+  });
 }
 
 // ── Sales & monthly reports (browser print — logo rendered via <img>) ─────────
@@ -707,7 +836,7 @@ function reportStyles(): string {
 function reportHeader(meta: RestaurantPrintMeta, title: string, periodLabel: string, demo?: boolean): string {
   const gen = new Date().toLocaleString('en-GB');
   return `<div class="header">
-    ${meta.logoUrl ? `<img src="${meta.logoUrl}" alt="Logo" crossorigin="anonymous" />` : ''}
+    ${meta.logoUrl ? `<img src="${meta.logoUrl}" alt="Logo" />` : ''}
     <h1>${meta.restaurantName}</h1>
     <h2>${title}</h2>
     <div class="meta">

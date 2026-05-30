@@ -9,7 +9,8 @@ import { useAuth } from '../context/AuthContext';
 import { PLAN_HAS_RESERVATIONS } from '../config/planAccess';
 import { RolesPanel } from './RolesPanel';
 import {
-  clearRestaurantLogo, getRestaurantLogo, saveRestaurantLogoFromFile,
+  clearRestaurantLogo, getRestaurantLogo, normalizeLogoForPrint,
+  saveRestaurantLogoFromFile, setRestaurantLogo,
 } from '../services/restaurantLogoStorage';
 import {
   connectBluetooth, connectUSB, disconnectPrinter, printerStatus, printTest,
@@ -868,7 +869,15 @@ function ProfileTab() {
     restaurantApi.me()
       .then(r => {
         setRestaurant(r);
-        setLogoPreview(getRestaurantLogo(r.id));
+        const storedLogo = getRestaurantLogo(r.id);
+        if (storedLogo) {
+          normalizeLogoForPrint(storedLogo)
+            .then(normalized => {
+              if (normalized !== storedLogo) setRestaurantLogo(r.id, normalized);
+              setLogoPreview(normalized);
+            })
+            .catch(() => setLogoPreview(storedLogo));
+        }
         setDraft({
           name: r.name ?? '', timezone: r.timezone ?? '',
           contact_phone: r.contact_phone ?? '', contact_email: r.contact_email ?? '',
@@ -949,6 +958,12 @@ function ProfileTab() {
 
   async function runTestPrint() {
     setPrintBusy(true); setPrintErr(''); setPrintMsg('');
+    const rid = user?.restaurant_id ?? restaurant?.id;
+    if (!getRestaurantLogo(rid) && !logoPreview) {
+      setPrintErr('Upload a logo first (Upload Logo above), then print the demo receipt.');
+      setPrintBusy(false);
+      return;
+    }
     try {
       const addr = [draft.address_line1, draft.city, draft.country].filter(Boolean).join(', ');
       const channel = await printTest({
