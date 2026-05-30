@@ -5,7 +5,7 @@ import nodemailer from 'nodemailer';
 import { getDb } from '../db.js';
 import { uid } from '../utils.js';
 import { APP_URL, TRIAL_DAYS, appPath, trialEndsDateLabel } from '../config/site.js';
-import { approveInquiryById } from '../services/inquiryApproval.js';
+import { approveInquiryById, buildApprovalResultHtml } from '../services/inquiryApproval.js';
 import { ADMIN_EMAIL, isEmailConfigured, sendMailReliable, smtpFrom } from '../services/email.js';
 
 const router = Router();
@@ -276,9 +276,7 @@ router.get('/action', async (req, res, next) => {
     if (action === 'approve') {
       try {
         const provision = await approveInquiryById(id);
-        const msg = provision.alreadyProvisioned
-          ? `This request was already provisioned. The user can sign in at <a href="${LOGIN_URL}" style="color:#8B5CF6">${LOGIN_URL}</a>.`
-          : `This request is <strong style="color:#2ECC8A">APPROVED</strong>.<br><br>Restaurant and manager account created. Login credentials were emailed to <strong>${esc(String(row.email))}</strong>.<br><br>Trial plan: <strong>${esc(provision.plan.toUpperCase())}</strong> · ends ${trialEnd}.`;
+        const msg = buildApprovalResultHtml(provision, String(row.email), trialEnd);
         res.status(200).send(actionHtml('Trial approved', msg));
       } catch (err) {
         res.status(500).send(actionHtml('Approval failed', esc((err as Error).message)));

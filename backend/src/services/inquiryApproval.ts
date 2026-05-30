@@ -129,37 +129,13 @@ export async function provisionTrialFromInquiry(
   };
 }
 
-/** Returns true if the credentials email reached the user successfully. */
-export async function sendTrialApprovalEmails(inquiry: InquiryRow, provision: ProvisionResult): Promise<boolean> {
-  if (!isEmailConfigured()) {
-    console.error('[Email] No provider configured — credentials NOT emailed. Set RESEND_API_KEY or SMTP_USER/SMTP_PASS.');
-    return false;
-  }
-
+function userCredentialsHtml(inquiry: InquiryRow, provision: ProvisionResult): string {
   const trialEnd = trialEndsDateLabel();
   const first = esc(inquiry.name.split(' ')[0]);
   const restaurant = esc(inquiry.restaurant_name);
   const planLabel = provision.plan.toUpperCase();
 
-  const [founderResult, userResult] = await Promise.all([
-    sendMailReliable({
-      from: smtpFrom(true),
-      to: ADMIN_EMAIL,
-      subject: `[Cafyz] Trial provisioned — ${inquiry.restaurant_name}`,
-      html: `<p>Trial approved and account created automatically.</p>
-             <p><b>Restaurant:</b> ${restaurant}<br/>
-             <b>Manager:</b> ${esc(inquiry.name)} (${esc(provision.email)})<br/>
-             <b>Plan:</b> ${planLabel}<br/>
-             <b>License:</b> <code>${esc(provision.licenseKey)}</code><br/>
-             <b>Trial ends:</b> ${trialEnd}</p>
-             <p>Manager panel: <a href="${MANAGER_URL}">${MANAGER_URL}</a></p>`,
-    }),
-    sendMailReliable({
-      from: smtpFrom(false),
-      to: provision.email,
-      replyTo: ADMIN_EMAIL,
-      subject: `Your Cafyz trial is ready — login credentials inside`,
-      html: `<!doctype html><html><body style="margin:0;padding:0;background:#07060F;font-family:Inter,Arial,sans-serif;color:#F5F5F0">
+  return `<!doctype html><html><body style="margin:0;padding:0;background:#07060F;font-family:Inter,Arial,sans-serif;color:#F5F5F0">
 <div style="max-width:560px;margin:40px auto;border:0.5px solid rgba(46,204,138,0.35);border-radius:16px;overflow:hidden">
   <div style="padding:32px;background:linear-gradient(135deg,#0d2a1f 0%,#0A0816 60%)">
     <div style="font-size:11px;color:#2ECC8A;text-transform:uppercase;letter-spacing:2px">Trial approved</div>
@@ -173,24 +149,86 @@ export async function sendTrialApprovalEmails(inquiry: InquiryRow, provision: Pr
       <tr><td style="padding:8px 0;color:#8A8A9A">Password</td><td><strong style="font-family:monospace">${esc(provision.password)}</strong></td></tr>
       <tr><td style="padding:8px 0;color:#8A8A9A">License key</td><td><strong style="font-family:monospace">${esc(provision.licenseKey)}</strong></td></tr>
     </table>
-    <p style="margin:20px 0 8px;font-size:13px;color:#B8B8C2">You will land in the <strong>Manager Panel</strong>. Use <strong>Role Management</strong> to add cashiers, waiters, and kitchen staff.</p>
+    <p style="margin:20px 0 8px;font-size:13px;color:#B8B8C2">Open the <strong>Manager Panel</strong> and use <strong>Role Management</strong> to add cashiers, waiters, and kitchen staff.</p>
     <a href="${LOGIN_URL}" style="display:inline-block;background:#8B5CF6;color:#07060F;font-size:13px;font-weight:800;text-decoration:none;padding:12px 22px;border-radius:10px;margin-top:8px">Sign in to Manager Panel →</a>
     <div style="margin-top:12px;font-size:12px;color:#5A5A6A;word-break:break-all">${LOGIN_URL}</div>
   </div>
-</div></body></html>`,
-    }),
-  ]);
+</div></body></html>`;
+}
+
+/** Returns true if the credentials email reached the applicant successfully. */
+export async function sendTrialApprovalEmails(inquiry: InquiryRow, provision: ProvisionResult): Promise<boolean> {
+  if (!isEmailConfigured()) {
+    console.error('[Email] No provider configured — credentials NOT emailed. Set RESEND_API_KEY or SMTP_USER/SMTP_PASS.');
+    return false;
+  }
+
+  const trialEnd = trialEndsDateLabel();
+  const restaurant = esc(inquiry.restaurant_name);
+  const planLabel = provision.plan.toUpperCase();
+  const creds = userCredentialsHtml(inquiry, provision);
+
+  // Founder always gets credentials (works with Resend test sender; forward if user email fails).
+  const founderResult = await sendMailReliable({
+    from: smtpFrom(true),
+    to: ADMIN_EMAIL,
+    subject: `[Cafyz] Trial approved — forward credentials to ${inquiry.name}`,
+    html: `<p>Trial approved for <b>${restaurant}</b>. Manager account created.</p>
+           <p><b>Applicant email:</b> ${esc(provision.email)}<br/>
+           <b>Plan:</b> ${planLabel} · <b>Trial ends:</b> ${trialEnd}</p>
+           <p style="color:#facc15"><b>If they did not receive their email</b>, forward the credentials below:</p>
+           <hr style="border:0;border-top:1px solid #333;margin:16px 0"/>
+           ${creds}`,
+  });
+
+  await new Promise((r) => setTimeout(r, 600));
+
+  const userResult = await sendMailReliable({
+    from: smtpFrom(false),
+    to: provision.email,
+    replyTo: ADMIN_EMAIL,
+    subject: `Your Cafyz trial is ready — login credentials inside`,
+    html: creds,
+  });
 
   if (!founderResult.ok) {
-    console.error(`[Email] Founder notification failed (${provision.email}): ${founderResult.error}`);
+    console.error(`[Email] Founder credentials copy failed: ${founderResult.error}`);
+  } else {
+    console.log(`[Email] Founder credentials copy sent to ${ADMIN_EMAIL}`);
   }
   if (!userResult.ok) {
-    console.error(`[Email] Credentials email to ${provision.email} FAILED: ${userResult.error}`);
+    console.error(`[Email] Credentials to ${provision.email} FAILED: ${userResult.error}`);
   } else {
     console.log(`[Email] Credentials sent to ${provision.email} via ${userResult.provider}`);
   }
 
   return userResult.ok;
+}
+
+/** HTML shown after email-link approval — honest about delivery + credentials if needed. */
+export function buildApprovalResultHtml(provision: ProvisionResult, applicantEmail: string, trialEnd: string): string {
+  if (provision.alreadyProvisioned) {
+    return `This request was already provisioned. The user can sign in at <a href="${LOGIN_URL}" style="color:#8B5CF6">${LOGIN_URL}</a>.`;
+  }
+
+  const creds = `<div style="margin-top:16px;padding:16px;background:rgba(255,255,255,0.05);border-radius:10px;font-size:14px;line-height:1.8">
+    <strong>Login credentials</strong><br/>
+    Email: <code>${esc(provision.email)}</code><br/>
+    Password: <code>${esc(provision.password)}</code><br/>
+    License: <code>${esc(provision.licenseKey)}</code><br/>
+    <a href="${LOGIN_URL}" style="color:#8B5CF6">${LOGIN_URL}</a>
+  </div>`;
+
+  if (provision.emailSent) {
+    return `This request is <strong style="color:#2ECC8A">APPROVED</strong>.<br><br>
+      Credentials were emailed to <strong>${esc(applicantEmail)}</strong>.<br><br>
+      Trial plan: <strong>${esc(provision.plan.toUpperCase())}</strong> · ends ${trialEnd}.${creds}`;
+  }
+
+  return `This request is <strong style="color:#2ECC8A">APPROVED</strong>.<br><br>
+    <strong style="color:#facc15">Could not email ${esc(applicantEmail)}</strong> — Resend test mode only sends to your founder inbox until
+    <strong>ametronyx.com</strong> is verified at <a href="https://resend.com/domains" style="color:#8B5CF6">resend.com/domains</a>.<br>
+    A copy with credentials was sent to the founder email. Forward manually:${creds}`;
 }
 
 export async function approveInquiryById(inquiryId: string): Promise<ProvisionResult> {

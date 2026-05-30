@@ -439,7 +439,7 @@ function Inquiries() {
           ) : (
             <>
               <p style={{ margin: '0 0 12px', fontSize: 13, color: '#facc15', fontWeight: 600 }}>
-                ⚠ Email delivery failed — share these credentials with the user manually:
+                ⚠ Applicant did not receive email (verify ametronyx.com on Resend). A copy was sent to your founder inbox — forward these credentials:
               </p>
               <table style={{ width: '100%', fontSize: 13, borderCollapse: 'collapse' }}>
                 <tbody>
