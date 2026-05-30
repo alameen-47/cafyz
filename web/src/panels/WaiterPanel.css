@@ -15,6 +15,27 @@
   margin-top: 4px;
 }
 
+.waiter-floor-head-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.waiter-setup-btn {
+  flex-shrink: 0;
+  min-height: 44px;
+  white-space: nowrap;
+}
+
+@media (max-width: 600px) {
+  .waiter-setup-btn {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
 .waiter-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));

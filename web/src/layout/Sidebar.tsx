@@ -9,8 +9,9 @@ import './Sidebar.css';
 const ALL_NAV: { id: Screen; label: string }[] = [
   { id: 'manager',   label: 'Overview' },
   { id: 'pos',       label: 'Point of Sale' },
-  { id: 'waiter',    label: 'Tables' },
-  { id: 'kds',       label: 'Kitchen' },
+  { id: 'waiter',      label: 'Floor Plan' },
+  { id: 'tableSetup',  label: 'Table Setup' },
+  { id: 'kds',         label: 'Kitchen' },
   { id: 'menu',      label: 'Menu' },
   { id: 'inventory', label: 'Inventory' },
   { id: 'staff',     label: 'Staff' },

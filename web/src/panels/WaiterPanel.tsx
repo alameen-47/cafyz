@@ -125,8 +125,22 @@ export function WaiterPanel() {
       {/* ── Floor map ───────────────────────────────────────────────── */}
       <div className="waiter-floor">
         <div className="waiter-floor-head">
-          <p className="eyebrow">Floor · {user?.restaurant_name || 'Service'}</p>
-          <h2 className="serif">Table map</h2>
+          <div className="waiter-floor-head-top">
+            <div>
+              <p className="eyebrow">Floor · {user?.restaurant_name || 'Service'}</p>
+              <h2 className="serif">Table map</h2>
+            </div>
+            {(user?.role === 'owner' || user?.role === 'manager') &&
+              user?.allowedScreens.includes('tableSetup') && (
+              <button
+                type="button"
+                className="btn-gold waiter-setup-btn"
+                onClick={() => navigate('/tables/setup')}
+              >
+                + Add Table
+              </button>
+            )}
+          </div>
           {error && <p style={{ color: 'var(--danger)', fontSize: 12 }}>{error}</p>}
         </div>
 

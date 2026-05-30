@@ -6,6 +6,7 @@ export const ROUTES: Record<Screen, string> = {
   pos:              '/pos',
   kds:              '/kds',
   waiter:           '/tables',
+  tableSetup:       '/tables/setup',
   menu:             '/menu',
   inventory:        '/inventory',
   staff:            '/staff',
@@ -26,12 +27,13 @@ export function screenFromPath(pathname: string): Screen {
   const entry = Object.entries(ROUTES).find(([, path]) => path === pathname);
   if (entry) return entry[0] as Screen;
   if (pathname.startsWith('/mobile/table')) return 'mobileTableDetail';
+  if (pathname === '/tables/setup') return 'tableSetup';
   if (pathname === '/roles') return 'roles';
   return 'manager';
 }
 
 export const DESKTOP_SHELL_SCREENS: Screen[] = [
-  'manager', 'pos', 'kds', 'waiter', 'menu', 'inventory', 'staff', 'reports', 'roles',
+  'manager', 'pos', 'kds', 'waiter', 'tableSetup', 'menu', 'inventory', 'staff', 'reports', 'roles',
 ];
 
 export const MOBILE_SCREENS: Screen[] = [

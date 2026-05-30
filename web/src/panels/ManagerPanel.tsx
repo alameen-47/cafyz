@@ -93,17 +93,33 @@ function Overview({ onNav }: { onNav: (s: Section) => void }) {
         <p style={{ color: 'var(--text2)', fontSize: 13, margin: '16px 0' }}>Loading stats…</p>
       ) : (
         <div className="mgr-kpis">
-          {kpis.map(k => (
-            <div key={k.label} className="mgr-kpi card">
-              <div className="mgr-kpi-top">
-                <span className="mgr-kpi-emoji">{k.emoji}</span>
-                {k.delta && <span className={`mgr-kpi-delta ${k.up ? 'up' : 'dn'}`}>{k.delta}</span>}
-              </div>
-              <p className="mgr-kpi-label">{k.label}</p>
-              <p className="serif mgr-kpi-val">{k.val}</p>
-              <p className="mgr-kpi-sub">{k.sub}</p>
-            </div>
-          ))}
+          {kpis.map(k => {
+            const isTables = k.label.includes('Tables');
+            const content = (
+              <>
+                <div className="mgr-kpi-top">
+                  <span className="mgr-kpi-emoji">{k.emoji}</span>
+                  {k.delta && <span className={`mgr-kpi-delta ${k.up ? 'up' : 'dn'}`}>{k.delta}</span>}
+                </div>
+                <p className="mgr-kpi-label">{k.label}</p>
+                <p className="serif mgr-kpi-val">{k.val}</p>
+                <p className="mgr-kpi-sub">{k.sub}</p>
+                {isTables && <span className="mgr-kpi-link">Manage tables →</span>}
+              </>
+            );
+            return isTables ? (
+              <button
+                key={k.label}
+                type="button"
+                className="mgr-kpi card mgr-kpi-clickable"
+                onClick={() => navigate('/tables/setup')}
+              >
+                {content}
+              </button>
+            ) : (
+              <div key={k.label} className="mgr-kpi card">{content}</div>
+            );
+          })}
         </div>
       )}
 
@@ -307,15 +323,22 @@ function TablesTab() {
 
   return (
     <div className="mgr-overview">
-      <p className="eyebrow">Floor · Zones</p>
-      <h1 className="serif mgr-greeting">Tables</h1>
-      <p className="mgr-sub">{tables.length} tables across {zones.length || 0} zones</p>
-      {error && <p style={{ color: 'var(--danger)', fontSize: 13, margin: '4px 0' }}>{error}</p>}
+      <div className="mgr-table-setup-head">
+        <div>
+          <p className="eyebrow">Floor · Zones</p>
+          <h1 className="serif mgr-greeting">Table Setup</h1>
+          <p className="mgr-sub">{tables.length} tables across {zones.length || 0} zones</p>
+        </div>
+        <button
+          type="button"
+          className="btn-gold mgr-add-table-btn"
+          onClick={() => setAdding(a => !a)}
+        >
+          {adding ? 'Cancel' : '+ Add Table'}
+        </button>
+      </div>
 
-      <button className="btn-gold" style={{ marginBottom: 16 }}
-        onClick={() => setAdding(a => !a)}>
-        {adding ? 'Cancel' : '+ Add Table'}
-      </button>
+      {error && <p className="mgr-inline-error">{error}</p>}
 
       {adding && (
         <div className="mgr-add-row">
@@ -1174,6 +1197,7 @@ function ProfileTab() {
 // ── Manager Panel shell ───────────────────────────────────────────────────────
 export function ManagerPanel({ section: initialSection }: { section?: string }) {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const plan = user?.plan ?? 'basic';
   const hasReservations = PLAN_HAS_RESERVATIONS[plan] ?? false;
   const SECTIONS = BASE_SECTIONS.filter(s => !s.minPlan || hasReservations);
@@ -1191,13 +1215,24 @@ export function ManagerPanel({ section: initialSection }: { section?: string }) 
     (sectionMap[initialSection ?? ''] ?? 'overview') as Section,
   );
 
+  function goTab(id: Section) {
+    setActive(id);
+    if (id === 'tables') navigate('/tables/setup');
+    else if (id === 'overview') navigate('/');
+    else if (id === 'profile') navigate('/profile');
+    else if (id === 'inventory') navigate('/inventory');
+    else if (id === 'staff') navigate('/staff');
+    else if (id === 'reports') navigate('/reports');
+    else if (id === 'roles') navigate('/roles');
+  }
+
   return (
     <div className="mgr-root">
       <div className="mgr-tabs">
         {SECTIONS.map(s => (
           <button key={s.id}
             className={`mgr-tab ${active === s.id ? 'active' : ''}`}
-            onClick={() => setActive(s.id)}
+            onClick={() => goTab(s.id)}
           >
             {s.label}
           </button>

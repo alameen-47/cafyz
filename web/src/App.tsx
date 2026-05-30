@@ -102,7 +102,8 @@ export default function App() {
         <Route path="/"          element={<SmartHomeRoute />} />
         <Route path="/pos"       element={<RequireScreen screen="pos"><POSPanel /></RequireScreen>} />
         <Route path="/menu"      element={<RequireScreen screen="menu"><MenuPanel /></RequireScreen>} />
-        <Route path="/tables"    element={<RequireScreen screen="waiter"><WaiterPanel /></RequireScreen>} />
+        <Route path="/tables"        element={<RequireScreen screen="waiter"><WaiterPanel /></RequireScreen>} />
+        <Route path="/tables/setup"  element={<RequireScreen screen="tableSetup"><ManagerPanel section="tables" /></RequireScreen>} />
         <Route path="/kds"       element={<RequireScreen screen="kds"><KDSPanel /></RequireScreen>} />
         <Route path="/inventory" element={<RequireScreen screen="inventory"><ManagerPanel section="inventory" /></RequireScreen>} />
         <Route path="/staff"     element={<RequireScreen screen="staff"><ManagerPanel section="staff" /></RequireScreen>} />

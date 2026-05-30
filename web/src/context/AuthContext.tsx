@@ -57,8 +57,8 @@ export const ROLE_DEFAULT_PATH: Record<Role, string> = {
 
 // Legacy nav (used in places that haven't migrated to plan-aware yet)
 export const ROLE_NAV: Record<Role, Screen[]> = {
-  owner:   ['manager','pos','waiter','kds','menu','inventory','staff','reports','roles','license'],
-  manager: ['manager','pos','waiter','kds','menu','inventory','staff','reports','roles','license'],
+  owner:   ['manager','tableSetup','pos','waiter','kds','menu','inventory','staff','reports','roles','license'],
+  manager: ['manager','tableSetup','pos','waiter','kds','menu','inventory','staff','reports','roles','license'],
   cashier: ['pos','menu','inventory','reports','roles','license'],
   waiter:  ['waiter','license'],
   kitchen: ['kds','license'],
@@ -111,7 +111,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const token  = localStorage.getItem(KEY_TOKEN);
     if (stored && token) {
       try {
-        setUser(JSON.parse(stored));
+        const parsed = JSON.parse(stored) as AuthUser;
+        setUser(buildAuthUser(
+          {
+            id: parsed.id,
+            name: parsed.name,
+            initials: parsed.initials,
+            email: parsed.email,
+            role: parsed.role as ApiUser['role'],
+            status: 'active',
+            restaurant_id: parsed.restaurant_id,
+            start_time: '—',
+          },
+          parsed.restaurant_name ?? '',
+          parsed.plan ?? 'basic',
+        ));
         setLoading(false);
         authApi.me().catch(() => {
           localStorage.removeItem(KEY_TOKEN);

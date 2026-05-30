@@ -39,7 +39,7 @@ router.get('/:id', async (req: AuthRequest, res, next) => {
 });
 
 // POST /api/tables
-router.post('/', requireRole('manager'), async (req: AuthRequest, res, next) => {
+router.post('/', requireRole('owner', 'manager'), async (req: AuthRequest, res, next) => {
   try {
     const rid = req.user!.restaurant_id;
     const data = TableSchema.parse(req.body);
@@ -54,7 +54,7 @@ router.post('/', requireRole('manager'), async (req: AuthRequest, res, next) => 
 });
 
 // PUT /api/tables/:id
-router.put('/:id', requireRole('manager'), async (req: AuthRequest, res, next) => {
+router.put('/:id', requireRole('owner', 'manager'), async (req: AuthRequest, res, next) => {
   try {
     const rid = req.user!.restaurant_id;
     const data = TableSchema.partial().parse(req.body);
@@ -101,7 +101,7 @@ router.patch('/:id/status', async (req: AuthRequest, res, next) => {
 });
 
 // DELETE /api/tables/:id
-router.delete('/:id', requireRole('manager'), async (req: AuthRequest, res, next) => {
+router.delete('/:id', requireRole('owner', 'manager'), async (req: AuthRequest, res, next) => {
   try {
     const rid = req.user!.restaurant_id;
     const ex = await getDb().execute({ sql: 'SELECT id FROM restaurant_tables WHERE id=? AND restaurant_id=?', args: [(req.params.id as string), rid] });

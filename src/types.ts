@@ -4,6 +4,7 @@ export type Screen =
   | 'pos'
   | 'kds'
   | 'waiter'
+  | 'tableSetup'
   | 'menu'
   | 'inventory'
   | 'staff'
