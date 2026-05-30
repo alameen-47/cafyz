@@ -4,6 +4,9 @@
 
 import { getRestaurantLogo } from './restaurantLogoStorage';
 import { logoDataUrlToEscPos } from './logoThermalRaster';
+import { formatPrinterConnectError, getPrinterEnvironment } from './printerEnvironment';
+
+export { getPrinterEnvironment, formatPrinterConnectError } from './printerEnvironment';
 
 // ── ESC/POS Builder ───────────────────────────────────────────────────────────
 
@@ -326,9 +329,17 @@ async function writeChunked(
 }
 
 export async function connectBluetooth(): Promise<string> {
-  if (!('bluetooth' in navigator)) {
-    throw new Error('Web Bluetooth is not supported in this browser. Use Chrome or Edge.');
+  const env = getPrinterEnvironment();
+  if (env.platform === 'ios') {
+    throw new Error(formatPrinterConnectError(new Error('ios'), env));
   }
+  if (!env.isSecureContext) {
+    throw new Error('Bluetooth requires HTTPS. Open the site via https://.');
+  }
+  if (!('bluetooth' in navigator)) {
+    throw new Error(formatPrinterConnectError(new Error('unsupported'), env));
+  }
+  try {
   const device = await (navigator as any).bluetooth.requestDevice({
     acceptAllDevices: true,
     optionalServices: BT_SERVICES,
@@ -370,6 +381,9 @@ export async function connectBluetooth(): Promise<string> {
   });
 
   return device.name || 'Bluetooth Printer';
+  } catch (err) {
+    throw new Error(formatPrinterConnectError(err, env));
+  }
 }
 
 export async function connectUSB(): Promise<string> {

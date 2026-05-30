@@ -5,6 +5,8 @@ import {
   connectBluetooth, connectUSB, disconnectPrinter, printerStatus, print as printReceipt,
   type ReceiptData,
 } from '../services/PrintService';
+import { PrinterHelpBanner } from '../components/PrinterHelpBanner';
+import { getPrinterEnvironment, isIosDevice } from '../services/printerEnvironment';
 import { getRestaurantLogo, syncRestaurantLogoCache } from '../services/restaurantLogoStorage';
 import { Modal } from '../components/Modal';
 import './POSPanel.css';
@@ -91,6 +93,7 @@ export function POSPanel() {
 
   const cartMap = Object.fromEntries(cart.map(c => [c.menuItem.id, c.qty]));
   const tableObj = tables.find(t => t.id === selectedTable);
+  const printerEnv = getPrinterEnvironment();
 
   const subtotal = cart.reduce((s, c) => s + c.menuItem.price * c.qty, 0);
   const billable = payState === 'comped' ? 0 : subtotal;
@@ -374,11 +377,21 @@ export function POSPanel() {
 
         {/* ── Printer status bar ─────────────────────────────────────────── */}
         <div className="pos-printer-bar">
+          <PrinterHelpBanner />
           {printer.type !== 'none' ? (
             <span className="pos-printer-connected">
               {printer.type === 'bluetooth' ? '🔵' : '🔌'} {printer.name}
               <button type="button" className="pos-printer-disconnect" onClick={handleDisconnect}>×</button>
             </span>
+          ) : isIosDevice() ? (
+            <button
+              type="button"
+              className="pos-printer-connect-btn pos-printer-ios-print"
+              onClick={() => handlePrint()}
+              disabled={printBusy || cart.length === 0}
+            >
+              {printBusy ? '…' : '🖨 Print receipt (AirPrint / share)'}
+            </button>
           ) : (
             <button
               type="button"
@@ -390,7 +403,7 @@ export function POSPanel() {
             </button>
           )}
 
-          {showConnect && printer.type === 'none' && (
+          {showConnect && printer.type === 'none' && !isIosDevice() && (
             <>
               <div
                 className="pos-printer-menu-backdrop"
@@ -398,8 +411,12 @@ export function POSPanel() {
                 aria-hidden
               />
               <div className="pos-printer-menu" role="menu">
-                <button type="button" onClick={handleConnectBluetooth}>🔵 Bluetooth</button>
-                <button type="button" onClick={handleConnectUSB}>🔌 USB</button>
+                {printerEnv.canUseBluetooth && (
+                  <button type="button" onClick={handleConnectBluetooth}>🔵 Bluetooth</button>
+                )}
+                {printerEnv.usbAvailable && printerEnv.platform !== 'ios' && (
+                  <button type="button" onClick={handleConnectUSB}>🔌 USB</button>
+                )}
                 <button
                   type="button"
                   className="pos-printer-menu-browser"

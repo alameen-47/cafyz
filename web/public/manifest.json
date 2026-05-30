@@ -8,6 +8,13 @@
   "theme_color": "#8B5CF6",
   "orientation": "any",
   "id": "/",
+  "scope": "/",
+  "permissions": [
+    {
+      "name": "bluetooth",
+      "description": "Connect to Bluetooth thermal receipt printers"
+    }
+  ],
   "icons": [
     {
       "src": "icon-192.png",

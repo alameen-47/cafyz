@@ -75,12 +75,24 @@ textarea,
   pointer-events: auto;
 }
 
-/* ── Shell: tablet & mobile ───────────────────────────────────────────────── */
+/* ── Shell: phone & small tablet (hamburger drawer) ──────────────────────── */
 @media (max-width: 1024px) {
   .sidebar-backdrop {
     display: block;
   }
 
+  .app-shell--mobile-nav .app-main {
+    width: 100%;
+    max-width: 100vw;
+    flex: 1;
+    min-width: 0;
+  }
+
+  .app-shell--mobile-nav .sidebar:not(.sidebar--open) {
+    transform: translateX(-100%);
+  }
+
+  /* Full-width content — sidebar is fixed off-screen until opened */
   .app-main {
     width: 100%;
     flex: 1;
@@ -187,6 +199,8 @@ textarea,
 /* Lock body scroll when mobile nav open */
 body.nav-open {
   overflow: hidden;
+  overscroll-behavior: none;
+  touch-action: none;
 }
 
 /* Horizontal scroll for wide data on tablet */

@@ -2,8 +2,7 @@ import { useEffect, useState, type ReactNode } from 'react';
 import type { Screen } from '@shared/types';
 import { Sidebar } from './Sidebar';
 import { TopBar } from './TopBar';
-
-const MOBILE_NAV_MQ = '(max-width: 1024px)';
+import { MOBILE_NAV_MQ } from './layoutBreakpoints';
 
 const CRUMBS: Partial<Record<Screen, [string, string]>> = {
   manager:   ['Operations', 'Overview'],
@@ -33,7 +32,9 @@ export function AppShell({
   children: ReactNode;
 }) {
   const [navOpen, setNavOpen] = useState(false);
-  const [mobileNav, setMobileNav] = useState(false);
+  const [mobileNav, setMobileNav] = useState(() =>
+    typeof window !== 'undefined' ? window.matchMedia(MOBILE_NAV_MQ).matches : false,
+  );
   const crumb = CRUMBS[active] ?? ['Cafyz', 'Panel'];
   const cover = COVERS[active] ?? 'Service · Dinner';
 
@@ -67,7 +68,15 @@ export function AppShell({
   }, [active]);
 
   return (
-    <div className={`app-shell${navOpen && mobileNav ? ' app-shell--nav-open' : ''}`}>
+    <div
+      className={[
+        'app-shell',
+        mobileNav ? 'app-shell--mobile-nav' : '',
+        navOpen && mobileNav ? 'app-shell--nav-open' : '',
+      ]
+        .filter(Boolean)
+        .join(' ')}
+    >
       <div
         className={`sidebar-backdrop ${navOpen && mobileNav ? 'open' : ''}`}
         onClick={() => setNavOpen(false)}

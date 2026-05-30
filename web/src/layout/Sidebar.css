@@ -37,6 +37,7 @@
   color: var(--text0);
 }
 
+/* Phones & small tablets — sidebar hidden until hamburger opens drawer */
 @media (max-width: 1024px) {
   .sidebar {
     position: fixed;
@@ -47,7 +48,7 @@
     width: min(var(--sidebar-width), 88vw);
     min-width: 0;
     max-width: 88vw;
-    transform: translateX(-110%);
+    transform: translateX(-100%);
     visibility: hidden;
     pointer-events: none;
     box-shadow: 8px 0 32px rgba(0, 0, 0, 0.35);
@@ -79,6 +80,11 @@
     transform: none;
     visibility: visible;
     pointer-events: auto;
+    box-shadow: none;
+  }
+
+  .sidebar-close-btn {
+    display: none !important;
   }
 }
 
