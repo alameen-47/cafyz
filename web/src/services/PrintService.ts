@@ -507,7 +507,7 @@ async function requireLogoEscPos(logoUrl: string): Promise<Uint8Array> {
     const detail = e instanceof Error ? e.message : 'unknown error';
     throw new Error(
       `Logo could not be sent to the printer (${detail}). ` +
-      'Re-upload the logo in Manager → Restaurant Profile (PNG, under 500 KB).',
+      'Re-upload the logo in Manager → Restaurant Profile (PNG or JPG, up to 2 MB).',
     );
   }
 }

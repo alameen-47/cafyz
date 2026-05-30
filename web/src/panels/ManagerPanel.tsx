@@ -10,7 +10,7 @@ import { PLAN_HAS_RESERVATIONS } from '../config/planAccess';
 import { RolesPanel } from './RolesPanel';
 import {
   clearRestaurantLogo, getRestaurantLogo, normalizeLogoForPrint,
-  saveRestaurantLogoFromFile, setRestaurantLogo,
+  previewLogoFile, saveRestaurantLogoFromFile, setRestaurantLogo,
 } from '../services/restaurantLogoStorage';
 import {
   connectBluetooth, connectUSB, disconnectPrinter, printerStatus, printTest,
@@ -910,22 +910,37 @@ function ProfileTab() {
   async function onPickLogo(e: ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     e.target.value = '';
-    if (!file || !user?.restaurant_id) return;
-    setUploading(true); setUploadMsg(''); setError('');
+    const restaurantId = restaurant?.id ?? user?.restaurant_id;
+    if (!file) return;
+    if (!restaurantId) {
+      setError('Restaurant profile is still loading — wait a second and try again.');
+      return;
+    }
+
+    setUploading(true);
+    setUploadMsg('');
+    setError('');
+
+    const tempPreview = previewLogoFile(file);
+    setLogoPreview(tempPreview);
+
     try {
-      const dataUrl = await saveRestaurantLogoFromFile(user.restaurant_id, file);
+      const dataUrl = await saveRestaurantLogoFromFile(restaurantId, file);
       setLogoPreview(dataUrl);
       setUploadMsg('✓ Logo saved on this device');
     } catch (err) {
+      setLogoPreview(getRestaurantLogo(restaurantId));
       setError((err as Error).message);
     } finally {
+      URL.revokeObjectURL(tempPreview);
       setUploading(false);
     }
   }
 
   function onRemoveLogo() {
-    if (!user?.restaurant_id) return;
-    clearRestaurantLogo(user.restaurant_id);
+    const restaurantId = restaurant?.id ?? user?.restaurant_id;
+    if (!restaurantId) return;
+    clearRestaurantLogo(restaurantId);
     setLogoPreview(undefined);
     setUploadMsg('Logo removed from this device');
   }
@@ -994,8 +1009,14 @@ function ProfileTab() {
       <div className="card" style={{ padding: 16, marginBottom: 12 }}>
         <p className="eyebrow" style={{ marginTop: 0 }}>Logo</p>
         <p className="mgr-sub" style={{ marginTop: 0 }}>
-          Your logo prints on receipts, kitchen tickets, and sales reports on this device. It is stored locally in this browser (not on the server). PNG with transparent background works best.
+          Your logo prints on receipts on this device. PNG or JPG up to 2 MB (not iPhone HEIC). Stored in this browser only.
         </p>
+        {error && (
+          <p style={{ color: 'var(--danger)', fontSize: 12, margin: '8px 0 0' }}>{error}</p>
+        )}
+        {uploadMsg && !error && (
+          <p style={{ color: 'var(--ok, #2ECC8A)', fontSize: 12, margin: '8px 0 0' }}>{uploadMsg}</p>
+        )}
         <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
           <div style={{
             width: 120, height: 120, borderRadius: 12, background: 'rgba(255,255,255,0.04)',
@@ -1007,7 +1028,7 @@ function ProfileTab() {
               : <span style={{ color: 'var(--text2)', fontSize: 11 }}>No logo</span>}
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            <input ref={fileRef} type="file" accept="image/*" hidden onChange={onPickLogo} />
+            <input ref={fileRef} type="file" accept="image/png,image/jpeg,image/webp,image/gif,.png,.jpg,.jpeg,.webp,.gif" hidden onChange={onPickLogo} />
             <button
               className="btn-gold"
               onClick={() => fileRef.current?.click()}
