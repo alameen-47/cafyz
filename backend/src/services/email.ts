@@ -88,8 +88,16 @@ function resolveBrevoSender(): { email: string; name: string } {
   return { email: parsed.email, name: parsed.name ?? name };
 }
 
+/** Resend `from` — must be a verified domain or onboarding@resend.dev for testing. */
+export function resolveResendFrom(): string {
+  if (process.env.RESEND_FROM?.trim()) return stripEnvQuotes(process.env.RESEND_FROM);
+  const name = process.env.SMTP_FROM_NAME ?? 'Cafyz';
+  return `"${name}" <onboarding@resend.dev>`;
+}
+
 function httpFromAddress(system: boolean): string {
-  const custom = process.env.RESEND_FROM ?? process.env.BREVO_FROM;
+  if (isResendConfigured()) return resolveResendFrom();
+  const custom = process.env.BREVO_FROM;
   if (custom) return stripEnvQuotes(custom);
   return smtpFrom(system);
 }
@@ -101,9 +109,7 @@ async function sendViaResend(mail: nodemailer.SendMailOptions): Promise<EmailSen
   const to = normalizeRecipients(mail.to);
   if (!to.length) return { ok: false, error: 'Missing recipient' };
 
-  // RESEND_FROM (a verified-domain sender) must win over any per-call from,
-  // otherwise Resend rejects sends whose sender domain isn't verified.
-  const from = String(process.env.RESEND_FROM?.trim() || mail.from || httpFromAddress(false));
+  const from = resolveResendFrom();
   const body: Record<string, unknown> = {
     from,
     to,
@@ -313,15 +319,22 @@ export async function sendMailReliable(
   if (prefer === 'brevo') {
     result = await tryBrevo() ?? await tryResend();
   } else if (prefer === 'resend') {
-    result = await tryResend() ?? await tryBrevo();
+    result = await tryResend();
   } else {
     result = await tryResend() ?? await tryBrevo();
   }
   if (result) return result;
 
+  if (httpErrors.length) {
+    return { ok: false, error: httpErrors.join(' | ') };
+  }
+
   if (isRenderSmtpBlocked()) {
-    if (httpErrors.length) return { ok: false, error: httpErrors.join(' | ') };
     if (!isSmtpConfigured()) return { ok: false, error: RENDER_SMTP_BLOCKED_MSG };
+  }
+
+  if (prefer === 'resend' || prefer === 'brevo') {
+    return { ok: false, error: `${prefer} not configured or send failed` };
   }
 
   return sendViaSmtp(mail, timeoutMs);
