@@ -855,10 +855,135 @@ export function buildDemoMonthlyReport(meta: RestaurantPrintMeta): MonthlyReport
   };
 }
 
-export async function printSalesReport(data: SalesReportData): Promise<void> {
-  printDialogHtml(buildSalesReportHTML(data));
+export async function printSalesReport(data: SalesReportData, restaurantId?: string): Promise<'bluetooth' | 'usb' | 'dialog'> {
+  return printReportDocument('sales', data, restaurantId);
 }
 
-export async function printMonthlyReport(data: MonthlyReportData): Promise<void> {
-  printDialogHtml(buildMonthlyReportHTML(data));
+export async function printMonthlyReport(data: MonthlyReportData, restaurantId?: string): Promise<'bluetooth' | 'usb' | 'dialog'> {
+  return printReportDocument('monthly', data, restaurantId);
+}
+
+// ── Thermal ESC/POS report layout (58 mm / 32 chars) ───────────────────────────
+
+function fmtReportMoney(n: number): string {
+  return `$${n.toFixed(2)}`;
+}
+
+function truncReportLine(str: string, max: number): string {
+  return str.length > max ? `${str.slice(0, max - 1)}…` : str;
+}
+
+export function buildSalesReportEscPos(data: SalesReportData, width = 32, logoBytes?: Uint8Array): Uint8Array {
+  const b = new EscPosBuilder();
+  const W = width;
+
+  b.init().alignCenter();
+  if (logoBytes) {
+    b.pushBytes(logoBytes).nl(2);
+    b.alignCenter();
+  }
+  b.boldOn().text(truncReportLine(data.restaurantName, W)).boldOff().nl();
+  b.boldOn().text(truncReportLine(data.title, W)).boldOff().nl();
+  b.text(truncReportLine(data.periodLabel, W)).nl();
+  if (data.demo) b.text('** DEMO DATA **').nl();
+  if (data.addressLine) b.text(truncReportLine(data.addressLine, W)).nl();
+  if (data.phone) b.text(`Tel: ${data.phone}`).nl();
+  b.text(new Date().toLocaleString('en-GB')).nl();
+  b.divider(W);
+
+  b.alignLeft();
+  if (data.metrics.length) {
+    b.boldOn().text('Summary').boldOff().nl();
+    for (const m of data.metrics) {
+      b.text(`${truncReportLine(m.label, 16)}: ${m.value}`).nl();
+    }
+    b.divider(W);
+  }
+
+  b.boldOn().text('Breakdown').boldOff().nl();
+  for (const r of data.rows) {
+    b.text(truncReportLine(r.label, W)).nl();
+    b.row(`  ${r.orders ?? '—'} orders`, fmtReportMoney(r.revenue), W);
+  }
+
+  b.divider(W);
+  b.boldOn().row('GROSS REVENUE', fmtReportMoney(data.totalRevenue), W).boldOff().nl();
+  b.text(`Total orders: ${data.totalOrders}`).nl();
+  b.nl().alignCenter().text('Cafyz Reports').nl(2);
+  b.feed(4).cut();
+  return b.build();
+}
+
+export function buildMonthlyReportEscPos(data: MonthlyReportData, width = 32, logoBytes?: Uint8Array): Uint8Array {
+  const b = new EscPosBuilder();
+  const W = width;
+
+  b.init().alignCenter();
+  if (logoBytes) {
+    b.pushBytes(logoBytes).nl(2);
+    b.alignCenter();
+  }
+  b.boldOn().text(truncReportLine(data.restaurantName, W)).boldOff().nl();
+  b.boldOn().text('Monthly Sales Report').boldOff().nl();
+  b.text(truncReportLine(data.monthLabel, W)).nl();
+  if (data.demo) b.text('** DEMO DATA **').nl();
+  if (data.addressLine) b.text(truncReportLine(data.addressLine, W)).nl();
+  if (data.phone) b.text(`Tel: ${data.phone}`).nl();
+  b.text(new Date().toLocaleString('en-GB')).nl();
+  b.divider(W);
+
+  b.alignLeft();
+  b.boldOn().text('Month totals').boldOff().nl();
+  b.text(`Revenue: ${fmtReportMoney(data.totalRevenue)}`).nl();
+  b.text(`Orders:  ${data.totalOrders}`).nl();
+  b.text(`Avg/day: ${fmtReportMoney(data.avgPerDay)}`).nl();
+  b.divider(W);
+
+  b.boldOn().text('Daily breakdown').boldOff().nl();
+  for (const d of data.days) {
+    b.text(truncReportLine(d.day, W)).nl();
+    b.row(`  ${d.orders} orders`, fmtReportMoney(d.revenue), W);
+  }
+
+  b.divider(W);
+  b.boldOn().row('MONTH TOTAL', fmtReportMoney(data.totalRevenue), W).boldOff().nl();
+  b.nl().alignCenter().text('Cafyz Reports').nl(2);
+  b.feed(4).cut();
+  return b.build();
+}
+
+async function dispatchReportPrint(
+  bytes: Uint8Array,
+  html: string,
+): Promise<'bluetooth' | 'usb' | 'dialog'> {
+  if (btChar || usbDevice) {
+    if (btChar) {
+      await printBluetooth(bytes);
+      return 'bluetooth';
+    }
+    await printUSB(bytes);
+    return 'usb';
+  }
+  printDialogHtml(html);
+  return 'dialog';
+}
+
+async function printReportDocument(
+  kind: 'sales' | 'monthly',
+  data: SalesReportData | MonthlyReportData,
+  restaurantId?: string,
+): Promise<'bluetooth' | 'usb' | 'dialog'> {
+  const logoUrl = resolveLogoUrl(data.logoUrl, restaurantId);
+  const report = logoUrl ? { ...data, logoUrl } : data;
+  const logoBytes = report.logoUrl ? await requireLogoEscPos(report.logoUrl) : undefined;
+
+  if (kind === 'sales') {
+    const sales = report as SalesReportData;
+    const bytes = buildSalesReportEscPos(sales, 32, logoBytes);
+    return dispatchReportPrint(bytes, buildSalesReportHTML(sales));
+  }
+
+  const monthly = report as MonthlyReportData;
+  const bytes = buildMonthlyReportEscPos(monthly, 32, logoBytes);
+  return dispatchReportPrint(bytes, buildMonthlyReportHTML(monthly));
 }

@@ -666,23 +666,64 @@ function Reports() {
   const [printBusy,  setPrintBusy]  = useState(false);
   const [printMsg,   setPrintMsg]   = useState('');
   const [printErr,   setPrintErr]   = useState('');
+  const [printer,    setPrinter]    = useState<{ type: 'none' | 'bluetooth' | 'usb'; name: string }>({ type: 'none', name: '' });
 
   useEffect(() => {
+    setPrinter(printerStatus());
     Promise.all([dashboardApi.stats(), dashboardApi.revenue(), restaurantApi.me()])
-      .then(([s, r, rest]) => { setStats(s); setRevenue(r); setRestaurant(rest); })
+      .then(([s, r, rest]) => {
+        setStats(s);
+        setRevenue(r);
+        setRestaurant(rest);
+        syncRestaurantLogoCache(rest);
+      })
       .catch(console.error)
       .finally(() => setLoading(false));
   }, []);
 
   const meta = restaurant ? restaurantPrintMeta(restaurant) : { restaurantName: 'Cafyz Demo Restaurant' };
+  const rid = restaurant?.id;
 
-  async function runPrint(fn: () => Promise<void>, label: string) {
+  async function runPrint(
+    fn: () => Promise<'bluetooth' | 'usb' | 'dialog'>,
+    label: string,
+  ) {
     setPrintBusy(true); setPrintErr(''); setPrintMsg('');
     try {
-      await fn();
-      setPrintMsg(`${label} opened in print preview — allow pop-ups if blocked.`);
+      const channel = await fn();
+      setPrintMsg(
+        channel === 'dialog'
+          ? `${label} opened in print preview — connect Bluetooth/USB to print on thermal paper.`
+          : `${label} sent to ${channel === 'bluetooth' ? 'Bluetooth' : 'USB'} printer.`,
+      );
     } catch (e) { setPrintErr((e as Error).message); }
     finally { setPrintBusy(false); }
+  }
+
+  async function connectReportBT() {
+    setPrintBusy(true); setPrintErr('');
+    try {
+      const name = await connectBluetooth();
+      setPrinter({ type: 'bluetooth', name });
+      setPrintMsg(`Connected to ${name}`);
+    } catch (e) { setPrintErr((e as Error).message); }
+    finally { setPrintBusy(false); }
+  }
+
+  async function connectReportUSB() {
+    setPrintBusy(true); setPrintErr('');
+    try {
+      const name = await connectUSB();
+      setPrinter({ type: 'usb', name });
+      setPrintMsg(`Connected to ${name}`);
+    } catch (e) { setPrintErr((e as Error).message); }
+    finally { setPrintBusy(false); }
+  }
+
+  function disconnectReportPrinter() {
+    disconnectPrinter();
+    setPrinter({ type: 'none', name: '' });
+    setPrintMsg('');
   }
 
   function liveSalesReport(): SalesReportData {
@@ -755,20 +796,50 @@ function Reports() {
     <div className="mgr-overview">
       <p className="eyebrow">Finance · Daily P&L</p>
       <h1 className="serif mgr-greeting">Reports</h1>
-      <p className="mgr-sub">Live service metrics · print sales and monthly reports with your restaurant logo.</p>
+      <p className="mgr-sub">Live service metrics · print sales and monthly reports on Bluetooth, USB, or browser.</p>
+
+      {!loading && (
+        <div className="card" style={{ padding: 14, marginBottom: 12 }}>
+          <p className="eyebrow" style={{ marginTop: 0 }}>Report printer</p>
+          <p className="mgr-sub" style={{ marginTop: 0, marginBottom: 10 }}>
+            Connect a thermal printer once — report buttons below will use it automatically.
+          </p>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+            {printer.type !== 'none' ? (
+              <>
+                <span style={{ fontSize: 13 }}>
+                  {printer.type === 'bluetooth' ? '🔵' : '🔌'} {printer.name}
+                </span>
+                <button type="button" className="btn-outline" onClick={disconnectReportPrinter} disabled={printBusy}>
+                  Disconnect
+                </button>
+              </>
+            ) : (
+              <>
+                <button type="button" className="btn-outline" onClick={connectReportBT} disabled={printBusy}>
+                  🔵 Bluetooth
+                </button>
+                <button type="button" className="btn-outline" onClick={connectReportUSB} disabled={printBusy}>
+                  🔌 USB
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+      )}
 
       {!loading && (
         <div className="mgr-action-row" style={{ marginBottom: 16 }}>
           <button className="btn-outline" disabled={printBusy}
-            onClick={() => runPrint(() => printSalesReport(buildDemoSalesReport(meta)), 'Demo sales report')}>
+            onClick={() => runPrint(() => printSalesReport(buildDemoSalesReport(meta), rid), 'Demo sales report')}>
             🖨 Demo Sales Report
           </button>
           <button className="btn-outline" disabled={printBusy}
-            onClick={() => runPrint(() => printSalesReport(liveSalesReport()), 'Sales report')}>
+            onClick={() => runPrint(() => printSalesReport(liveSalesReport(), rid), 'Sales report')}>
             🖨 Print Sales Report
           </button>
           <button className="btn-gold" disabled={printBusy}
-            onClick={() => runPrint(() => printMonthlyReport(liveMonthlyReport()), 'Monthly report')}>
+            onClick={() => runPrint(() => printMonthlyReport(liveMonthlyReport(), rid), 'Monthly report')}>
             🖨 Print Monthly Report
           </button>
         </div>
