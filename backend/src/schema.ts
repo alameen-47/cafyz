@@ -1,4 +1,5 @@
 import { getDb } from './db.js';
+import { rowNumber, rowString } from './dbRows.js';
 
 export async function runMigrations() {
   const db = getDb();
@@ -250,13 +251,13 @@ async function migrateMenuItemsFlexibleCategory(db: ReturnType<typeof getDb>) {
     sql: `SELECT value FROM app_settings WHERE key='menu_category_flex_v1'`,
     args: [],
   });
-  if (flag.rows.length && String((flag.rows[0] as { value: string }).value) === '1') return;
+  if (flag.rows.length && rowString(flag.rows[0], 'value') === '1') return;
 
   const info = await db.execute({
     sql: `SELECT sql FROM sqlite_master WHERE type='table' AND name='menu_items'`,
     args: [],
   });
-  const ddl = String((info.rows[0] as { sql?: string } | undefined)?.sql ?? '');
+  const ddl = rowString(info.rows[0], 'sql');
   if (ddl.includes('CHECK(category IN')) {
     await db.executeMultiple(`
       CREATE TABLE menu_items_new (
@@ -302,12 +303,12 @@ async function seedAllMenuCategories(db: ReturnType<typeof getDb>) {
 
   const restaurants = await db.execute({ sql: 'SELECT id FROM restaurants', args: [] });
   for (const row of restaurants.rows) {
-    const rid = String((row as { id: string }).id);
+    const rid = rowString(row, 'id');
     const count = await db.execute({
       sql: 'SELECT COUNT(*) AS c FROM menu_categories WHERE restaurant_id=?',
       args: [rid],
     });
-    if (Number((count.rows[0] as { c: number }).c) === 0) {
+    if (rowNumber(count.rows[0], 'c') === 0) {
       for (const cat of DEFAULT_MENU_CATEGORIES) {
         await db.execute({
           sql: `INSERT INTO menu_categories(id, restaurant_id, slug, label, sort_order) VALUES (?,?,?,?,?)`,
@@ -322,7 +323,7 @@ async function seedAllMenuCategories(db: ReturnType<typeof getDb>) {
       args: [rid],
     });
     for (const o of orphans.rows) {
-      const slug = String((o as { category: string }).category);
+      const slug = rowString(o, 'category');
       const exists = await db.execute({
         sql: 'SELECT id FROM menu_categories WHERE restaurant_id=? AND slug=?',
         args: [rid, slug],

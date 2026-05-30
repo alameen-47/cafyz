@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import { getDb } from '../db.js';
+import { rowNumber, rowString, paramId, type InArgs } from '../dbRows.js';
 import { requireAuth, type AuthRequest } from '../middleware/auth.js';
 import { requireRole } from '../middleware/rbac.js';
 import { uid, slugifyCategory } from '../utils.js';
@@ -33,7 +34,7 @@ export async function ensureRestaurantCategories(restaurantId: string) {
     sql: 'SELECT COUNT(*) AS c FROM menu_categories WHERE restaurant_id=?',
     args: [restaurantId],
   });
-  if (Number((count.rows[0] as { c: number }).c) > 0) return;
+  if (rowNumber(count.rows[0], 'c') > 0) return;
 
   for (const cat of DEFAULT_MENU_CATEGORIES) {
     await db.execute({
@@ -108,7 +109,7 @@ router.post('/', requireAuth, requireRole('owner', 'manager', 'cashier'), async 
       sql: 'SELECT COALESCE(MAX(sort_order), -1) + 1 AS next FROM menu_categories WHERE restaurant_id=?',
       args: [rid],
     });
-    const nextSort = data.sort_order ?? Number((sortRow.rows[0] as { next: number }).next);
+    const nextSort = data.sort_order ?? rowNumber(sortRow.rows[0], 'next');
 
     const id = uid();
     await getDb().execute({
@@ -125,26 +126,27 @@ router.post('/', requireAuth, requireRole('owner', 'manager', 'cashier'), async 
 router.put('/:id', requireAuth, requireRole('owner', 'manager', 'cashier'), async (req: AuthRequest, res, next) => {
   try {
     const rid = req.user!.restaurant_id;
+    const categoryId = paramId(req.params.id);
     const data = UpdateSchema.parse(req.body);
     const db = getDb();
     const ex = await db.execute({
       sql: 'SELECT * FROM menu_categories WHERE id=? AND restaurant_id=?',
-      args: [req.params.id, rid],
+      args: [categoryId, rid],
     });
     if (!ex.rows.length) { res.status(404).json({ error: 'Category not found' }); return; }
 
     const sets: string[] = [];
-    const args: unknown[] = [];
+    const args: InArgs = [];
     if (data.label !== undefined) { sets.push('label=?'); args.push(data.label.trim()); }
     if (data.sort_order !== undefined) { sets.push('sort_order=?'); args.push(data.sort_order); }
     if (!sets.length) { res.status(400).json({ error: 'No fields to update' }); return; }
 
-    args.push(req.params.id, rid);
+    args.push(categoryId, rid);
     await db.execute({
       sql: `UPDATE menu_categories SET ${sets.join(',')} WHERE id=? AND restaurant_id=?`,
       args,
     });
-    const row = await db.execute({ sql: 'SELECT * FROM menu_categories WHERE id=?', args: [req.params.id] });
+    const row = await db.execute({ sql: 'SELECT * FROM menu_categories WHERE id=?', args: [categoryId] });
     res.json(row.rows[0]);
   } catch (e) { next(e); }
 });
@@ -153,19 +155,20 @@ router.put('/:id', requireAuth, requireRole('owner', 'manager', 'cashier'), asyn
 router.delete('/:id', requireAuth, requireRole('owner', 'manager'), async (req: AuthRequest, res, next) => {
   try {
     const rid = req.user!.restaurant_id;
+    const categoryId = paramId(req.params.id);
     const db = getDb();
     const ex = await db.execute({
       sql: 'SELECT slug FROM menu_categories WHERE id=? AND restaurant_id=?',
-      args: [req.params.id, rid],
+      args: [categoryId, rid],
     });
     if (!ex.rows.length) { res.status(404).json({ error: 'Category not found' }); return; }
 
-    const slug = String((ex.rows[0] as { slug: string }).slug);
+    const slug = rowString(ex.rows[0], 'slug');
     const used = await db.execute({
       sql: 'SELECT COUNT(*) AS c FROM menu_items WHERE restaurant_id=? AND category=?',
       args: [rid, slug],
     });
-    const count = Number((used.rows[0] as { c: number }).c);
+    const count = rowNumber(used.rows[0], 'c');
     if (count > 0) {
       res.status(409).json({
         error: `Cannot delete — ${count} menu item${count === 1 ? '' : 's'} use this category. Move or delete them first.`,
@@ -177,14 +180,14 @@ router.delete('/:id', requireAuth, requireRole('owner', 'manager'), async (req: 
       sql: 'SELECT COUNT(*) AS c FROM menu_categories WHERE restaurant_id=?',
       args: [rid],
     });
-    if (Number((total.rows[0] as { c: number }).c) <= 1) {
+    if (rowNumber(total.rows[0], 'c') <= 1) {
       res.status(400).json({ error: 'At least one category is required.' });
       return;
     }
 
     await db.execute({
       sql: 'DELETE FROM menu_categories WHERE id=? AND restaurant_id=?',
-      args: [req.params.id, rid],
+      args: [categoryId, rid],
     });
     res.status(204).end();
   } catch (e) { next(e); }
