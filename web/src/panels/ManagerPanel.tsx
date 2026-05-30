@@ -9,8 +9,9 @@ import { useAuth } from '../context/AuthContext';
 import { PLAN_HAS_RESERVATIONS } from '../config/planAccess';
 import { RolesPanel } from './RolesPanel';
 import {
-  clearRestaurantLogo, getRestaurantLogo, normalizeLogoForPrint,
-  previewLogoFile, saveRestaurantLogoFromFile, setRestaurantLogo,
+  getRestaurantLogo, previewLogoFile,
+  removeRestaurantLogoEverywhere, saveRestaurantLogoFromFile,
+  syncRestaurantLogoCache,
 } from '../services/restaurantLogoStorage';
 import {
   connectBluetooth, connectUSB, disconnectPrinter, printerStatus, printTest,
@@ -649,7 +650,7 @@ function StaffTab({ onNav }: { onNav: (s: Section) => void }) {
 function restaurantPrintMeta(r: ApiRestaurant): RestaurantPrintMeta {
   return {
     restaurantName: r.name ?? 'Restaurant',
-    logoUrl: getRestaurantLogo(r.id),
+    logoUrl: getRestaurantLogo(r.id, r.logo_url),
     addressLine: [r.address_line1, r.city, r.country].filter(Boolean).join(', ') || undefined,
     phone: r.contact_phone || undefined,
     taxId: r.tax_id || undefined,
@@ -774,9 +775,9 @@ function Reports() {
       )}
       {printMsg && <p style={{ color: 'var(--ok, #2ECC8A)', fontSize: 12 }}>{printMsg}</p>}
       {printErr && <p style={{ color: 'var(--danger)', fontSize: 12 }}>{printErr}</p>}
-      {restaurant && getRestaurantLogo(restaurant.id) && (
+      {restaurant && getRestaurantLogo(restaurant.id, restaurant.logo_url) && (
         <p style={{ fontSize: 12, color: 'var(--text2)', marginBottom: 12 }}>
-          Reports use the logo saved on this device{restaurant.name ? ` · ${restaurant.name}` : ''}.
+          Reports use your restaurant logo (shared with all staff){restaurant.name ? ` · ${restaurant.name}` : ''}.
         </p>
       )}
 
@@ -869,15 +870,8 @@ function ProfileTab() {
     restaurantApi.me()
       .then(r => {
         setRestaurant(r);
-        const storedLogo = getRestaurantLogo(r.id);
-        if (storedLogo) {
-          normalizeLogoForPrint(storedLogo)
-            .then(normalized => {
-              if (normalized !== storedLogo) setRestaurantLogo(r.id, normalized);
-              setLogoPreview(normalized);
-            })
-            .catch(() => setLogoPreview(storedLogo));
-        }
+        syncRestaurantLogoCache(r);
+        setLogoPreview(getRestaurantLogo(r.id, r.logo_url));
         setDraft({
           name: r.name ?? '', timezone: r.timezone ?? '',
           contact_phone: r.contact_phone ?? '', contact_email: r.contact_email ?? '',
@@ -927,9 +921,10 @@ function ProfileTab() {
     try {
       const dataUrl = await saveRestaurantLogoFromFile(restaurantId, file);
       setLogoPreview(dataUrl);
-      setUploadMsg('✓ Logo saved on this device');
+      setRestaurant(prev => prev ? { ...prev, logo_url: dataUrl } : prev);
+      setUploadMsg('✓ Logo saved — shared with all staff on this restaurant');
     } catch (err) {
-      setLogoPreview(getRestaurantLogo(restaurantId));
+      setLogoPreview(getRestaurantLogo(restaurantId, restaurant?.logo_url));
       setError((err as Error).message);
     } finally {
       URL.revokeObjectURL(tempPreview);
@@ -937,12 +932,21 @@ function ProfileTab() {
     }
   }
 
-  function onRemoveLogo() {
+  async function onRemoveLogo() {
     const restaurantId = restaurant?.id ?? user?.restaurant_id;
     if (!restaurantId) return;
-    clearRestaurantLogo(restaurantId);
-    setLogoPreview(undefined);
-    setUploadMsg('Logo removed from this device');
+    setUploading(true);
+    setError('');
+    try {
+      await removeRestaurantLogoEverywhere(restaurantId);
+      setRestaurant(r => r ? { ...r, logo_url: null } : r);
+      setLogoPreview(undefined);
+      setUploadMsg('Logo removed for all staff');
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setUploading(false);
+    }
   }
 
   async function connectBT() {
@@ -974,7 +978,7 @@ function ProfileTab() {
   async function runTestPrint() {
     setPrintBusy(true); setPrintErr(''); setPrintMsg('');
     const rid = user?.restaurant_id ?? restaurant?.id;
-    if (!getRestaurantLogo(rid) && !logoPreview) {
+    if (!getRestaurantLogo(rid, restaurant?.logo_url) && !logoPreview) {
       setPrintErr('Upload a logo first (Upload Logo above), then print the demo receipt.');
       setPrintBusy(false);
       return;
@@ -1009,7 +1013,7 @@ function ProfileTab() {
       <div className="card" style={{ padding: 16, marginBottom: 12 }}>
         <p className="eyebrow" style={{ marginTop: 0 }}>Logo</p>
         <p className="mgr-sub" style={{ marginTop: 0 }}>
-          Preview shows the B&W dithered version exactly as it prints on receipts. PNG/JPG up to 2 MB.
+          Preview shows the B&W receipt version. Saved to your restaurant (all staff devices). PNG/JPG up to 2 MB.
         </p>
         {error && (
           <p style={{ color: 'var(--danger)', fontSize: 12, margin: '8px 0 0' }}>{error}</p>

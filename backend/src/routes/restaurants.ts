@@ -8,6 +8,13 @@ import { uid } from '../utils.js';
 
 const router = Router();
 
+/** data:image/… (dithered logo) or https URL */
+const LogoUrlSchema = z.union([
+  z.literal(''),
+  z.string().url(),
+  z.string().regex(/^data:image\/(png|jpeg|jpg|webp|gif);base64,/, 'Invalid logo data URL'),
+]);
+
 const OnboardingSchema = z.object({
   restaurant_name: z.string().min(1),
   owner_name:      z.string().min(1),
@@ -15,6 +22,21 @@ const OnboardingSchema = z.object({
   password:        z.string().min(8),
   plan:            z.enum(['basic','pro','premium']).optional(),
   timezone:        z.string().optional(),
+});
+
+const UpdateRestaurantSchema = z.object({
+  name:          z.string().min(1).optional(),
+  timezone:      z.string().optional(),
+  logo_url:      LogoUrlSchema.optional(),
+  contact_phone: z.string().max(40).optional(),
+  contact_email: z.string().email().or(z.literal('')).optional(),
+  address_line1: z.string().max(160).optional(),
+  address_line2: z.string().max(160).optional(),
+  city:          z.string().max(80).optional(),
+  country:       z.string().max(80).optional(),
+  postal_code:   z.string().max(24).optional(),
+  tax_id:        z.string().max(80).optional(),
+  website_url:   z.string().url().or(z.literal('')).optional(),
 });
 
 // POST /api/restaurants/onboarding — public, creates restaurant + owner user
@@ -65,20 +87,7 @@ router.get('/me', requireAuth, async (req: AuthRequest, res, next) => {
 router.put('/me', requireAuth, requireRole('owner', 'manager', 'cashier'), async (req: AuthRequest, res, next) => {
   try {
     const rid = req.user!.restaurant_id;
-    const data = z.object({
-      name:          z.string().min(1).optional(),
-      timezone:      z.string().optional(),
-      logo_url:      z.string().url().or(z.literal('')).optional(),
-      contact_phone: z.string().max(40).optional(),
-      contact_email: z.string().email().or(z.literal('')).optional(),
-      address_line1: z.string().max(160).optional(),
-      address_line2: z.string().max(160).optional(),
-      city:          z.string().max(80).optional(),
-      country:       z.string().max(80).optional(),
-      postal_code:   z.string().max(24).optional(),
-      tax_id:        z.string().max(80).optional(),
-      website_url:   z.string().url().or(z.literal('')).optional(),
-    }).parse(req.body);
+    const data = UpdateRestaurantSchema.parse(req.body);
 
     const sets: string[] = []; const args: any[] = [];
     if (data.name          !== undefined) { sets.push('name=?');          args.push(data.name); }

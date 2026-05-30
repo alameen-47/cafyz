@@ -417,8 +417,12 @@ async function requireLogoEscPos(logoUrl: string): Promise<Uint8Array> {
   }
 }
 
-function resolveLogoUrl(logoUrl?: string, restaurantId?: string): string | undefined {
-  return logoUrl ?? getRestaurantLogo(restaurantId);
+function resolveLogoUrl(
+  logoUrl?: string,
+  restaurantId?: string,
+  serverLogoUrl?: string | null,
+): string | undefined {
+  return logoUrl ?? getRestaurantLogo(restaurantId, serverLogoUrl);
 }
 
 async function buildHardwareReceiptBytes(

@@ -1,8 +1,8 @@
-// Restaurant logos are stored on this device only (localStorage), keyed by
-// restaurant id. On upload, logos are converted to dithered B&W — exactly how
-// they print on thermal receipts (light colours become dot patterns, not blank).
+// Restaurant logos: server DB is source of truth (restaurants.logo_url).
+// localStorage caches the logo per device for fast printing offline.
 
 import { colorLogoToPrintableDataUrl } from './logoThermalRaster';
+import { restaurantApi } from './api';
 
 const PREFIX = 'cafyz_restaurant_logo_';
 const MAX_FILE_BYTES = 2 * 1024 * 1024;
@@ -15,30 +15,73 @@ function storageKey(restaurantId: string): string {
   return `${PREFIX}${restaurantId}`;
 }
 
-export function getRestaurantLogo(restaurantId: string | undefined | null): string | undefined {
-  if (!restaurantId) return undefined;
-  try {
-    const v = localStorage.getItem(storageKey(restaurantId));
-    return v && v.startsWith('data:image/') ? v : undefined;
-  } catch {
-    return undefined;
+export function isValidLogoUrl(url: string | null | undefined): url is string {
+  if (!url) return false;
+  return url.startsWith('data:image/') || url.startsWith('http://') || url.startsWith('https://');
+}
+
+/** Cached local copy, then server logo_url from the restaurant record. */
+export function getRestaurantLogo(
+  restaurantId: string | undefined | null,
+  serverLogoUrl?: string | null,
+): string | undefined {
+  if (restaurantId) {
+    try {
+      const local = localStorage.getItem(storageKey(restaurantId));
+      if (local && local.startsWith('data:image/')) return local;
+    } catch {
+      /* ignore */
+    }
   }
+  return isValidLogoUrl(serverLogoUrl) ? serverLogoUrl : undefined;
 }
 
 export function setRestaurantLogo(restaurantId: string, dataUrl: string): void {
-  try {
-    localStorage.setItem(storageKey(restaurantId), dataUrl);
-    window.dispatchEvent(new CustomEvent(RESTAURANT_LOGO_CHANGED, { detail: { restaurantId } }));
-  } catch {
-    throw new Error(
-      'Could not save logo on this device — storage may be full. Try a smaller PNG or JPG under 2 MB.',
-    );
-  }
+  localStorage.setItem(storageKey(restaurantId), dataUrl);
+  window.dispatchEvent(new CustomEvent(RESTAURANT_LOGO_CHANGED, { detail: { restaurantId } }));
 }
 
 export function clearRestaurantLogo(restaurantId: string): void {
   localStorage.removeItem(storageKey(restaurantId));
   window.dispatchEvent(new CustomEvent(RESTAURANT_LOGO_CHANGED, { detail: { restaurantId } }));
+}
+
+/** Pull logo from API into local cache (call after login / restaurantApi.me). */
+export function syncRestaurantLogoCache(restaurant: { id: string; logo_url?: string | null }): void {
+  if (!restaurant.id) return;
+  if (isValidLogoUrl(restaurant.logo_url)) {
+    try {
+      setRestaurantLogo(restaurant.id, restaurant.logo_url);
+    } catch {
+      // localStorage full — getRestaurantLogo still falls back to serverLogoUrl
+    }
+  } else if (!restaurant.logo_url) {
+    clearRestaurantLogo(restaurant.id);
+  }
+}
+
+/** Fetch restaurant from API and refresh logo cache. */
+export async function refreshRestaurantLogoFromServer(restaurantId: string): Promise<string | undefined> {
+  const restaurant = await restaurantApi.me();
+  if (restaurant.id !== restaurantId) return getRestaurantLogo(restaurantId, restaurant.logo_url);
+  syncRestaurantLogoCache(restaurant);
+  return getRestaurantLogo(restaurant.id, restaurant.logo_url);
+}
+
+export async function persistRestaurantLogo(restaurantId: string, dataUrl: string): Promise<void> {
+  try {
+    setRestaurantLogo(restaurantId, dataUrl);
+  } catch {
+    throw new Error(
+      'Could not cache logo on this device — storage may be full. Try a smaller PNG or JPG under 2 MB.',
+    );
+  }
+  await restaurantApi.update({ logo_url: dataUrl });
+}
+
+export async function removeRestaurantLogoEverywhere(restaurantId: string): Promise<void> {
+  clearRestaurantLogo(restaurantId);
+  await restaurantApi.update({ logo_url: '' });
 }
 
 function readFileAsDataUrl(file: File): Promise<string> {
@@ -62,17 +105,15 @@ function isLikelyImageFile(file: File): boolean {
   return IMAGE_EXT.test(file.name);
 }
 
-/** Convert uploaded logo to dithered B&W receipt version (preview = print output). */
 export async function normalizeLogoForPrint(sourceDataUrl: string): Promise<string> {
   return colorLogoToPrintableDataUrl(sourceDataUrl);
 }
 
-/** Instant preview URL while the file is being processed (caller must revoke). */
 export function previewLogoFile(file: File): string {
   return URL.createObjectURL(file);
 }
 
-/** Reads an image file, converts to printable B&W, saves on this device. */
+/** Process image → dithered B&W, save to DB + device cache. */
 export async function saveRestaurantLogoFromFile(restaurantId: string, file: File): Promise<string> {
   if (!restaurantId) {
     throw new Error('Restaurant not loaded yet — wait a moment and try again.');
@@ -94,11 +135,11 @@ export async function saveRestaurantLogoFromFile(restaurantId: string, file: Fil
     throw new Error('Image is still too large after processing — try a simpler logo under 2 MB.');
   }
 
-  setRestaurantLogo(restaurantId, dataUrl);
+  await persistRestaurantLogo(restaurantId, dataUrl);
 
-  const stored = getRestaurantLogo(restaurantId);
+  const stored = getRestaurantLogo(restaurantId, dataUrl);
   if (stored !== dataUrl) {
-    throw new Error('Logo did not persist on this device. Check browser storage is enabled.');
+    throw new Error('Logo saved to server but could not be cached on this device.');
   }
 
   return dataUrl;

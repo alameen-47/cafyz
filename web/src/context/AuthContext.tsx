@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
 import type { Screen } from '@shared/types';
-import { authApi, type ApiUser } from '../services/api';
+import { authApi, restaurantApi, type ApiUser } from '../services/api';
+import { syncRestaurantLogoCache } from '../services/restaurantLogoStorage';
 import { getAllowedScreens, type Plan } from '../config/planAccess';
 
 // ── Role & Plan types ─────────────────────────────────────────────────────────
@@ -89,6 +90,16 @@ function buildAuthUser(u: ApiUser, restaurantName: string, plan: string): AuthUs
   };
 }
 
+async function syncLogoForStaff(user: AuthUser) {
+  if (user.role === 'founder' || !user.restaurant_id) return;
+  try {
+    const rest = await restaurantApi.me();
+    syncRestaurantLogoCache(rest);
+  } catch {
+    // non-fatal — logo falls back on next restaurant fetch
+  }
+}
+
 // ── Provider ──────────────────────────────────────────────────────────────────
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user,    setUser]    = useState<AuthUser | null>(null);
@@ -107,6 +118,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           localStorage.removeItem(KEY_USER);
           setUser(null);
         });
+        restaurantApi.me()
+          .then(rest => syncRestaurantLogoCache(rest))
+          .catch(() => {});
       } catch {
         localStorage.removeItem(KEY_USER);
         localStorage.removeItem(KEY_TOKEN);
@@ -125,6 +139,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const authUser = buildAuthUser(data.user, data.restaurant_name ?? '', plan);
     localStorage.setItem(KEY_USER, JSON.stringify(authUser));
     setUser(authUser);
+    await syncLogoForStaff(authUser);
   }
 
   async function loginWithPin(pin: string) {
@@ -135,14 +150,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const authUser = buildAuthUser(data.user, data.restaurant_name ?? '', plan);
     localStorage.setItem(KEY_USER, JSON.stringify(authUser));
     setUser(authUser);
+    await syncLogoForStaff(authUser);
   }
 
   async function refreshPlan() {
     if (!user) return;
     try {
-      const rest = await (await fetch('/api/restaurants/me', {
-        headers: { Authorization: `Bearer ${localStorage.getItem(KEY_TOKEN)}` },
-      })).json();
+      const rest = await restaurantApi.me();
+      syncRestaurantLogoCache(rest);
       const updated = buildAuthUser(
         { id: user.id, name: user.name, initials: user.initials, email: user.email,
           role: user.role as any, status: 'active', restaurant_id: user.restaurant_id, start_time: '—' },

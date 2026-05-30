@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { kdsApi, restaurantApi, type ApiKdsTicket, type ApiKdsTicketItem, type ApiRestaurant } from '../services/api';
 import { printKitchenTicket } from '../services/PrintService';
+import { syncRestaurantLogoCache } from '../services/restaurantLogoStorage';
 import './KDSPanel.css';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -135,7 +136,7 @@ export function KDSPanel() {
   }, [autoPrint]);
 
   useEffect(() => {
-    restaurantApi.me().then(setRestaurant).catch(() => {});
+    restaurantApi.me().then(r => { setRestaurant(r); syncRestaurantLogoCache(r); }).catch(() => {});
   }, []);
 
   const persistPrinted = () => {

@@ -44,7 +44,8 @@ app.use(cors({
 app.use(rateLimit({ windowMs: 15 * 60 * 1000, max: 500, standardHeaders: true }));
 
 // ── Body parsing ────────────────────────────────────────────────────────────────
-app.use(express.json());
+// Logo uploads store dithered PNG data URLs (up to ~3 MB).
+app.use(express.json({ limit: '4mb' }));
 app.use(express.urlencoded({ extended: true }));
 
 // ── Health ──────────────────────────────────────────────────────────────────────

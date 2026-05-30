@@ -5,7 +5,7 @@ import {
   connectBluetooth, connectUSB, disconnectPrinter, printerStatus, print as printReceipt,
   type ReceiptData,
 } from '../services/PrintService';
-import { getRestaurantLogo } from '../services/restaurantLogoStorage';
+import { getRestaurantLogo, syncRestaurantLogoCache } from '../services/restaurantLogoStorage';
 import './POSPanel.css';
 
 type CartItem     = { menuItem: ApiMenuItem; qty: number; mods: string[] };
@@ -60,6 +60,7 @@ export function POSPanel() {
     Promise.all([menuApi.list(), tablesApi.list(), restaurantApi.me()])
       .then(([m, t, r]) => {
         setMenu(m); setTables(t); setRestaurant(r);
+        syncRestaurantLogoCache(r);
         setProfileDraft({
           name: r.name ?? '', contact_phone: r.contact_phone ?? '', contact_email: r.contact_email ?? '',
           address_line1: r.address_line1 ?? '', address_line2: r.address_line2 ?? '', city: r.city ?? '', country: r.country ?? '',
@@ -232,7 +233,7 @@ export function POSPanel() {
       .filter(Boolean).join(', ');
     return {
       restaurantName: restaurant?.name || user?.restaurant_name || 'Restaurant',
-      logoUrl:        getRestaurantLogo(user?.restaurant_id ?? restaurant?.id),
+      logoUrl:        getRestaurantLogo(user?.restaurant_id ?? restaurant?.id, restaurant?.logo_url),
       addressLine:    address || undefined,
       phone:          restaurant?.contact_phone || undefined,
       taxId:          restaurant?.tax_id || undefined,
@@ -602,7 +603,7 @@ export function POSPanel() {
               <input className="roles-input" placeholder="Tax ID" value={profileDraft.tax_id} onChange={e => setProfileDraft(d => ({ ...d, tax_id: e.target.value }))} />
             </div>
             <p style={{ marginTop: 10, fontSize: 12, color: 'var(--text3)' }}>
-              Staff share contact details from the server. Receipt logo is set per device in Manager → Restaurant Profile.
+              Staff share contact details from the server. Logo is uploaded in Manager → Restaurant Profile (shared with all staff).
             </p>
             <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 12 }}>
               <button className="roles-cancel-btn" onClick={() => setProfileOpen(false)}>Cancel</button>
