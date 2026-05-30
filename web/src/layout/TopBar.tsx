@@ -5,6 +5,8 @@ interface TopBarProps {
   clock?: string;
   cover?: string;
   right?: React.ReactNode;
+  onMenuClick?: () => void;
+  menuOpen?: boolean;
 }
 
 export function TopBar({
@@ -12,9 +14,20 @@ export function TopBar({
   clock = '19:42',
   cover = 'Service · Dinner',
   right,
+  onMenuClick,
+  menuOpen = false,
 }: TopBarProps) {
   return (
     <header className="topbar">
+      <button
+        type="button"
+        className="topbar-menu-btn"
+        onClick={onMenuClick}
+        aria-label={menuOpen ? 'Close navigation menu' : 'Open navigation menu'}
+        aria-expanded={menuOpen}
+      >
+        <span className="topbar-menu-icon" aria-hidden />
+      </button>
       <div className="topbar-crumb">
         <span className="topbar-crumb-parent">{crumb[0]}</span>
         <span className="topbar-crumb-sep">›</span>

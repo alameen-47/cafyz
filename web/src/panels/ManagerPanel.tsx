@@ -474,7 +474,7 @@ function ReservationsTab() {
   };
 
   const ResForm = () => (
-    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginBottom: 12 }}>
+    <div className="form-grid-3" style={{ marginBottom: 12 }}>
       <input className="roles-input" placeholder="Guest name *"
         value={draft.guest_name} onChange={e => setDraft(d => ({ ...d, guest_name: e.target.value }))} />
       <input className="roles-input" placeholder="Covers" type="number" min="1"
@@ -535,7 +535,7 @@ function ReservationsTab() {
             }}>
               {editId === r.id ? (
                 <>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginBottom: 8 }}>
+                  <div className="form-grid-3" style={{ marginBottom: 8 }}>
                     <input className="roles-input" value={draft.guest_name}
                       onChange={e => setDraft(d => ({ ...d, guest_name: e.target.value }))} />
                     <input className="roles-input" type="number" value={draft.covers}
@@ -1123,7 +1123,7 @@ function ProfileTab() {
 
       {/* ── Details ───────────────────────────────────────────────────────── */}
       <div className="card" style={{ padding: 16 }}>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+        <div className="form-grid-2">
           <input className="roles-input" placeholder="Restaurant name" value={draft.name} onChange={e => setDraft(d => ({ ...d, name: e.target.value }))} />
           <input className="roles-input" placeholder="Timezone" value={draft.timezone} onChange={e => setDraft(d => ({ ...d, timezone: e.target.value }))} />
           <input className="roles-input" placeholder="Website URL" value={draft.website_url} onChange={e => setDraft(d => ({ ...d, website_url: e.target.value }))} />

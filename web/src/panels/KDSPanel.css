@@ -35,9 +35,26 @@
   align-items: start;
 }
 
-@media (max-width: 1100px) {
+@media (max-width: 1024px) {
   .kds-columns {
     grid-template-columns: 1fr;
+  }
+
+  .kds-root {
+    padding: 16px;
+  }
+}
+
+@media (max-width: 600px) {
+  .kds-stations {
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 4px;
+  }
+
+  .kds-stations button {
+    flex-shrink: 0;
   }
 }
 

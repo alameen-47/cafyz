@@ -315,14 +315,45 @@
   color: var(--gold);
 }
 
-@media (max-width: 900px) {
+@media (max-width: 1024px) {
   .pos-layout {
     flex-direction: column;
+    min-height: auto;
   }
+
   .pos-order {
     width: 100%;
     min-width: 0;
-    max-height: 45vh;
+    max-height: min(50vh, 520px);
+    border-left: none;
+    border-top: 0.5px solid var(--gold-line);
+  }
+
+  .pos-grid {
+    padding: 16px;
+  }
+
+  .pos-search {
+    min-width: 0;
+    width: 100%;
+    margin-left: 0;
+    order: 10;
+    flex: 1 1 100%;
+  }
+
+  .pos-toolbar {
+    gap: 6px;
+  }
+}
+
+@media (max-width: 600px) {
+  .pos-dishes {
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 10px;
+  }
+
+  .pos-grid {
+    padding: 12px;
   }
 }
 

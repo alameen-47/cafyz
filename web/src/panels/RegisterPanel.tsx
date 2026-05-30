@@ -128,7 +128,7 @@ export function RegisterPanel() {
             />
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+          <div className="form-grid-2">
             <div>
               <label className="login-label">Password</label>
               <input

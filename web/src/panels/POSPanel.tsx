@@ -587,11 +587,11 @@ export function POSPanel() {
         </footer>
       </aside>
       {profileOpen && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', zIndex: 1000, display: 'grid', placeItems: 'center' }}>
-          <div className="card" style={{ width: 'min(760px, 94vw)', maxHeight: '88vh', overflow: 'auto', padding: 18 }}>
+        <div className="modal-overlay">
+          <div className="card modal-panel">
             <p className="eyebrow">Restaurant Profile</p>
             <h3 className="serif" style={{ margin: '4px 0 14px' }}>Brand, billing & contact details</h3>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+            <div className="form-grid-2">
               <input className="roles-input" placeholder="Restaurant name" value={profileDraft.name} onChange={e => setProfileDraft(d => ({ ...d, name: e.target.value }))} />
               <input className="roles-input" placeholder="Contact phone" value={profileDraft.contact_phone} onChange={e => setProfileDraft(d => ({ ...d, contact_phone: e.target.value }))} />
               <input className="roles-input" placeholder="Contact email" value={profileDraft.contact_email} onChange={e => setProfileDraft(d => ({ ...d, contact_email: e.target.value }))} />

@@ -197,3 +197,32 @@
 .fdr-panel-toggle.off { color: var(--text3); }
 .fdr-panel-toggle input { accent-color: var(--plan-color, var(--gold)); width: 13px; height: 13px; }
 .fdr-config-actions { display: flex; gap: 8px; padding-top: 4px; border-top: 0.5px solid var(--line); }
+
+@media (max-width: 1024px) {
+  .fdr-section { padding: 24px 16px; max-width: none; }
+  .fdr-tabs { padding: 0 16px; overflow-x: auto; flex-wrap: nowrap; -webkit-overflow-scrolling: touch; }
+  .fdr-tab { flex-shrink: 0; white-space: nowrap; }
+  .fdr-overview-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .fdr-title { font-size: clamp(22px, 5vw, 28px); }
+  .fdr-gen-row { flex-direction: column; align-items: stretch; }
+  .fdr-gen-field { width: 100%; }
+}
+
+@media (max-width: 768px) {
+  .fdr-overview-grid { grid-template-columns: 1fr; }
+  .fdr-table-head { display: none; }
+  .fdr-table-row,
+  .fdr-keys-row {
+    grid-template-columns: 1fr !important;
+    gap: 8px;
+    padding: 14px 16px;
+  }
+  .fdr-table-row > span,
+  .fdr-keys-row > span {
+    display: block;
+    word-break: break-word;
+  }
+  .fdr-key-cell { max-width: none; white-space: normal; }
+  .fdr-plan-config-grid { grid-template-columns: 1fr; }
+  .fdr-new-key { flex-wrap: wrap; }
+}

@@ -23,7 +23,15 @@ const FOUNDER_NAV: { id: Screen; label: string }[] = [
   { id: 'founder', label: 'Control Center' },
 ];
 
-export function Sidebar({ active }: { active: Screen }) {
+export function Sidebar({
+  active,
+  mobileOpen = false,
+  onNavigate,
+}: {
+  active: Screen;
+  mobileOpen?: boolean;
+  onNavigate?: () => void;
+}) {
   const { user, logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
@@ -55,7 +63,7 @@ export function Sidebar({ active }: { active: Screen }) {
   }
 
   return (
-    <aside className="sidebar">
+    <aside className={`sidebar ${mobileOpen ? 'sidebar--open' : ''}`}>
       <div className="sidebar-brand">
         <div className="sidebar-logo">{isFounder ? '★' : 'C'}</div>
         <div>
@@ -69,6 +77,7 @@ export function Sidebar({ active }: { active: Screen }) {
           <NavLink
             key={item.id}
             to={pathForScreen(item.id)}
+            onClick={onNavigate}
             className={({ isActive }) =>
               `sidebar-nav-item ${isActive || active === item.id ? 'active' : ''}`
             }
