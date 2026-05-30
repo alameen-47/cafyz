@@ -51,6 +51,20 @@ describe('POST /api/menu', () => {
 });
 
 describe('PUT /api/menu/:id', () => {
+  it('manager can set image_url', async () => {
+    const created = await request(app)
+      .post('/api/menu')
+      .set('Authorization', `Bearer ${managerToken}`)
+      .send({ ...newItem, name: 'Photo Item' });
+    const url = 'https://res.cloudinary.com/demo/image/upload/v1/sample.jpg';
+    const res = await request(app)
+      .put(`/api/menu/${created.body.id}`)
+      .set('Authorization', `Bearer ${managerToken}`)
+      .send({ image_url: url });
+    expect(res.status).toBe(200);
+    expect(res.body.image_url).toBe(url);
+  });
+
   it('manager can update price', async () => {
     const created = await request(app)
       .post('/api/menu')

@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { menuApi, ordersApi, restaurantApi, tablesApi, type ApiMenuItem, type ApiRestaurant, type ApiTable } from '../services/api';
+import { menuApi, menuCategoriesApi, ordersApi, restaurantApi, tablesApi, type ApiMenuCategory, type ApiMenuItem, type ApiRestaurant, type ApiTable } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import {
   connectBluetooth, connectUSB, disconnectPrinter, printerStatus, print as printReceipt,
@@ -8,25 +8,19 @@ import {
 import { PrinterHelpBanner } from '../components/PrinterHelpBanner';
 import { getPrinterEnvironment, isIosDevice } from '../services/printerEnvironment';
 import { getRestaurantLogo, syncRestaurantLogoCache } from '../services/restaurantLogoStorage';
+import { buildMenuCategoryTabs, defaultCategorySlug } from '../utils/menuCategories';
+import { MenuItemImage } from '../components/MenuItemImage';
 import { Modal } from '../components/Modal';
 import './POSPanel.css';
 
 type CartItem     = { menuItem: ApiMenuItem; qty: number; mods: string[] };
 type PaymentState = 'open' | 'sent' | 'card' | 'cash' | 'comped';
 
-const CATS = [
-  { id: 'all',      label: 'All' },
-  { id: 'starters', label: 'Starters' },
-  { id: 'mains',    label: 'Mains' },
-  { id: 'desserts', label: 'Desserts' },
-  { id: 'wine',     label: 'Wine' },
-  { id: 'drinks',   label: 'Drinks' },
-];
-
 export function POSPanel() {
   const { user } = useAuth();
 
   const [menu,          setMenu]          = useState<ApiMenuItem[]>([]);
+  const [categories,    setCategories]    = useState<ApiMenuCategory[]>([]);
   const [tables,        setTables]        = useState<ApiTable[]>([]);
   const [cat,           setCat]           = useState('mains');
   const [search,        setSearch]        = useState('');
@@ -60,9 +54,13 @@ export function POSPanel() {
   useEffect(() => { setPrinter(printerStatus()); }, []);
 
   useEffect(() => {
-    Promise.all([menuApi.list(), tablesApi.list(), restaurantApi.me()])
-      .then(([m, t, r]) => {
-        setMenu(m); setTables(t); setRestaurant(r);
+    Promise.all([menuApi.list(), menuCategoriesApi.list(), tablesApi.list(), restaurantApi.me()])
+      .then(([m, cats, t, r]) => {
+        setMenu(m);
+        setCategories(cats);
+        setCat(defaultCategorySlug(cats));
+        setTables(t);
+        setRestaurant(r);
         syncRestaurantLogoCache(r);
         setProfileDraft({
           name: r.name ?? '', contact_phone: r.contact_phone ?? '', contact_email: r.contact_email ?? '',
@@ -80,10 +78,7 @@ export function POSPanel() {
   }, [noteOpen]);
 
   // ── Derived ────────────────────────────────────────────────────────────────
-  const categorised = CATS.map(c => ({
-    ...c,
-    count: c.id === 'all' ? menu.length : menu.filter(m => m.category === c.id).length,
-  }));
+  const categorised = buildMenuCategoryTabs(categories, menu);
 
   const visible = menu
     .filter(m => cat === 'all' || m.category === cat)
@@ -353,7 +348,7 @@ export function POSPanel() {
               disabled={isPaid || payState === 'sent'}
             >
               <div className="pos-dish-plate">
-                <span className="pos-dish-sym serif">{d.symbol || '○'}</span>
+                <MenuItemImage imageUrl={d.image_url} name={d.name} variant="pos-plate" />
                 {d.is_popular === 1 && <span className="pos-popular">★ Popular</span>}
                 {cartMap[d.id] && <span className="pos-dish-qty mono">× {cartMap[d.id]}</span>}
               </div>

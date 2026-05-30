@@ -1,25 +1,24 @@
-import { useState, useEffect, type Dispatch, type SetStateAction } from 'react';
-import { menuApi, type ApiMenuItem } from '../services/api';
+import { useState, useEffect, useRef, type Dispatch, type SetStateAction } from 'react';
+import { menuApi, menuCategoriesApi, type ApiMenuItem, type ApiMenuCategory } from '../services/api';
 import { useAuth } from '../context/AuthContext';
+import { MenuItemImage } from '../components/MenuItemImage';
+import {
+  buildMenuCategoryTabs,
+  categoryLabelMap,
+  defaultCategorySlug,
+  slugifyCategoryLabel,
+} from '../utils/menuCategories';
+import { MENU_IMAGE_ACCEPT, validateMenuImageFile } from '../utils/menuImage';
 import './MenuPanel.css';
-
-const CATS = [
-  { id: 'all',      label: 'All'      },
-  { id: 'starters', label: 'Starters' },
-  { id: 'mains',    label: 'Mains'    },
-  { id: 'desserts', label: 'Desserts' },
-  { id: 'wine',     label: 'Wine'     },
-  { id: 'drinks',   label: 'Drinks'   },
-];
 
 type Draft = {
   name: string; category: string; price: string; description: string;
-  symbol: string; is_popular: boolean; is_available: boolean;
+  image_url: string; is_popular: boolean; is_available: boolean;
 };
 
-const blank = (): Draft => ({
-  name: '', category: 'mains', price: '', description: '',
-  symbol: '○', is_popular: false, is_available: true,
+const blankItem = (categorySlug: string): Draft => ({
+  name: '', category: categorySlug, price: '', description: '',
+  image_url: '', is_popular: false, is_available: true,
 });
 
 /** Module-level form — must NOT be defined inside MenuPanel or inputs lose focus on each keystroke. */
@@ -28,8 +27,13 @@ function MenuItemForm({
   editingName,
   draft,
   setDraft,
+  categoryOptions,
   error,
   busy,
+  imageUploading,
+  imageUploadError,
+  onPickImage,
+  onRemoveImage,
   onClose,
   onSave,
 }: {
@@ -37,12 +41,18 @@ function MenuItemForm({
   editingName?: string;
   draft: Draft;
   setDraft: Dispatch<SetStateAction<Draft>>;
+  categoryOptions: ApiMenuCategory[];
   error: string;
   busy: boolean;
+  imageUploading: boolean;
+  imageUploadError: string;
+  onPickImage: (file: File) => void;
+  onRemoveImage: () => void;
   onClose: () => void;
   onSave: () => void;
 }) {
   const isEdit = formMode === 'edit';
+  const fileRef = useRef<HTMLInputElement>(null);
 
   return (
     <div className="menu-form card" id="menu-form-anchor">
@@ -88,21 +98,56 @@ function MenuItemForm({
             value={draft.category}
             onChange={e => setDraft(d => ({ ...d, category: e.target.value }))}
           >
-            {CATS.filter(c => c.id !== 'all').map(c => (
-              <option key={c.id} value={c.id}>{c.label}</option>
+            {categoryOptions.map(c => (
+              <option key={c.id} value={c.slug}>{c.label}</option>
             ))}
           </select>
         </div>
 
-        <div className="menu-field">
-          <label htmlFor="mf-sym">Symbol / Emoji</label>
-          <input
-            id="mf-sym"
-            className="menu-field-input"
-            placeholder="e.g. 🍮 or ○"
-            value={draft.symbol}
-            onChange={e => setDraft(d => ({ ...d, symbol: e.target.value }))}
-          />
+        <div className="menu-field menu-image-upload full-width">
+          <label htmlFor="mf-image">Item photo</label>
+          <div className="menu-image-upload-box">
+            <div className="menu-image-preview-wrap">
+              <MenuItemImage imageUrl={draft.image_url} name={draft.name || 'Menu item'} variant="menu-card" />
+            </div>
+            <div className="menu-image-upload-actions">
+              <input
+                ref={fileRef}
+                id="mf-image"
+                type="file"
+                accept={MENU_IMAGE_ACCEPT}
+                hidden
+                onChange={e => {
+                  const file = e.target.files?.[0];
+                  e.target.value = '';
+                  if (file) onPickImage(file);
+                }}
+              />
+              <button
+                type="button"
+                className="btn-outline"
+                disabled={busy || imageUploading}
+                onClick={() => fileRef.current?.click()}
+              >
+                {imageUploading ? 'Uploading…' : draft.image_url ? 'Change photo' : 'Upload photo'}
+              </button>
+              {draft.image_url && (
+                <button
+                  type="button"
+                  className="btn-outline"
+                  disabled={busy || imageUploading}
+                  onClick={onRemoveImage}
+                >
+                  Remove photo
+                </button>
+              )}
+              <p className="menu-image-upload-hint">
+                JPEG, PNG, WebP, or GIF · max 5 MB · stored on Cloudinary · shown on Menu &amp; POS
+              </p>
+              {imageUploadError && <p className="menu-image-upload-error">{imageUploadError}</p>}
+              {imageUploading && <p className="menu-image-upload-busy">Uploading to Cloudinary…</p>}
+            </div>
+          </div>
         </div>
 
         <div className="menu-field full-width">
@@ -160,75 +205,275 @@ function MenuItemForm({
   );
 }
 
+function CategoryManagePanel({
+  categories,
+  items,
+  draftLabel,
+  setDraftLabel,
+  editId,
+  editLabel,
+  setEditLabel,
+  confirmDeleteId,
+  setConfirmDeleteId,
+  error,
+  busy,
+  canDelete,
+  onClose,
+  onCreate,
+  onStartEdit,
+  onCancelEdit,
+  onSaveEdit,
+  onDelete,
+}: {
+  categories: ApiMenuCategory[];
+  items: ApiMenuItem[];
+  draftLabel: string;
+  setDraftLabel: Dispatch<SetStateAction<string>>;
+  editId: string | null;
+  editLabel: string;
+  setEditLabel: Dispatch<SetStateAction<string>>;
+  confirmDeleteId: string | null;
+  setConfirmDeleteId: Dispatch<SetStateAction<string | null>>;
+  error: string;
+  busy: boolean;
+  canDelete: boolean;
+  onClose: () => void;
+  onCreate: () => void;
+  onStartEdit: (cat: ApiMenuCategory) => void;
+  onCancelEdit: () => void;
+  onSaveEdit: () => void;
+  onDelete: (id: string) => void;
+}) {
+  const slugPreview = slugifyCategoryLabel(draftLabel);
+
+  return (
+    <div className="menu-form menu-categories-panel card" id="menu-categories-anchor">
+      <div className="menu-form-header">
+        <div>
+          <p className="eyebrow">Menu · Categories</p>
+          <h3 className="menu-form-title serif">Create &amp; manage categories</h3>
+          <p className="menu-categories-hint">
+            Categories appear in the menu filter and on the POS. Item slugs are used internally (e.g. <span className="mono">small_plates</span>).
+          </p>
+        </div>
+        <button type="button" className="menu-form-close" onClick={onClose} title="Close">✕</button>
+      </div>
+
+      <div className="menu-categories-create">
+        <div className="menu-field">
+          <label htmlFor="mc-label">New category name <span className="menu-field-req">*</span></label>
+          <input
+            id="mc-label"
+            className="menu-field-input"
+            placeholder="e.g. Small Plates, Brunch, Cocktails"
+            value={draftLabel}
+            onChange={e => setDraftLabel(e.target.value)}
+          />
+          {draftLabel.trim() && (
+            <p className="menu-categories-slug-preview mono">ID: {slugPreview}</p>
+          )}
+        </div>
+        <button
+          type="button"
+          className="btn-gold"
+          onClick={onCreate}
+          disabled={!draftLabel.trim() || busy}
+        >
+          {busy ? 'Creating…' : '+ Create Category'}
+        </button>
+      </div>
+
+      {error && <p className="menu-form-error">{error}</p>}
+
+      <div className="menu-categories-list">
+        <p className="eyebrow menu-categories-list-title">Your categories</p>
+        {categories.map(cat => {
+          const count = items.filter(i => i.category === cat.slug).length;
+          const isEditing = editId === cat.id;
+          return (
+            <div key={cat.id} className="menu-category-row">
+              {isEditing ? (
+                <>
+                  <input
+                    className="menu-field-input menu-category-edit-input"
+                    value={editLabel}
+                    onChange={e => setEditLabel(e.target.value)}
+                    aria-label="Category name"
+                  />
+                  <span className="mono menu-category-slug">{cat.slug}</span>
+                  <div className="menu-category-row-actions">
+                    <button type="button" className="roles-save-btn sm" onClick={onSaveEdit} disabled={busy || !editLabel.trim()}>
+                      {busy ? '…' : 'Save'}
+                    </button>
+                    <button type="button" className="roles-cancel-btn sm" onClick={onCancelEdit}>Cancel</button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="menu-category-row-main">
+                    <p className="menu-category-label">{cat.label}</p>
+                    <p className="mono menu-category-slug">{cat.slug} · {count} item{count === 1 ? '' : 's'}</p>
+                  </div>
+                  <div className="menu-category-row-actions">
+                    <button type="button" className="roles-edit-btn" onClick={() => onStartEdit(cat)}>Rename</button>
+                    {canDelete && (
+                      confirmDeleteId === cat.id ? (
+                        <>
+                          <button type="button" className="roles-del-confirm" onClick={() => onDelete(cat.id)} disabled={busy}>
+                            {busy ? '…' : 'Confirm'}
+                          </button>
+                          <button type="button" className="roles-cancel-btn sm" onClick={() => setConfirmDeleteId(null)}>✕</button>
+                        </>
+                      ) : (
+                        <button
+                          type="button"
+                          className="roles-del-btn"
+                          onClick={() => setConfirmDeleteId(cat.id)}
+                          disabled={count > 0}
+                          title={count > 0 ? 'Move or delete items in this category first' : 'Delete category'}
+                        >
+                          Delete
+                        </button>
+                      )
+                    )}
+                  </div>
+                </>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 export function MenuPanel() {
   const { user }  = useAuth();
   const canEdit   = user?.role === 'owner' || user?.role === 'manager' || user?.role === 'cashier';
+  const canDeleteCategories = user?.role === 'owner' || user?.role === 'manager';
 
-  const [items,   setItems]   = useState<ApiMenuItem[]>([]);
-  const [cat,     setCat]     = useState('all');
-  const [search,  setSearch]  = useState('');
-  const [loading, setLoading] = useState(true);
-  const [busy,    setBusy]    = useState(false);
-  const [error,   setError]   = useState('');
+  const [items,      setItems]      = useState<ApiMenuItem[]>([]);
+  const [categories, setCategories] = useState<ApiMenuCategory[]>([]);
+  const [cat,        setCat]        = useState('all');
+  const [search,     setSearch]     = useState('');
+  const [loading,    setLoading]    = useState(true);
+  const [busy,       setBusy]       = useState(false);
+  const [error,      setError]      = useState('');
 
-  // formMode: null = closed, 'add' = new item, 'edit' = editing existing
   const [formMode,      setFormMode]      = useState<'add' | 'edit' | null>(null);
   const [editId,        setEditId]        = useState<string | null>(null);
-  const [draft,         setDraft]         = useState<Draft>(blank());
+  const [draft,         setDraft]         = useState<Draft>(blankItem('mains'));
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
 
+  const [categoryPanelOpen, setCategoryPanelOpen] = useState(false);
+  const [categoryDraftLabel, setCategoryDraftLabel] = useState('');
+  const [categoryEditId, setCategoryEditId] = useState<string | null>(null);
+  const [categoryEditLabel, setCategoryEditLabel] = useState('');
+  const [categoryConfirmDelete, setCategoryConfirmDelete] = useState<string | null>(null);
+  const [categoryError, setCategoryError] = useState('');
+  const [categoryBusy, setCategoryBusy] = useState(false);
+
+  const [imageUploading, setImageUploading] = useState(false);
+  const [imageUploadError, setImageUploadError] = useState('');
+
   useEffect(() => {
-    menuApi.list()
-      .then(setItems)
+    Promise.all([menuApi.list(), menuCategoriesApi.list()])
+      .then(([menuItems, cats]) => {
+        setItems(menuItems);
+        setCategories(cats);
+        const defaultSlug = defaultCategorySlug(cats);
+        setDraft(d => ({ ...d, category: d.category || defaultSlug }));
+      })
       .catch(e => setError(e.message))
       .finally(() => setLoading(false));
   }, []);
 
-  // ── Filter ─────────────────────────────────────────────────────────────────
+  const labels = categoryLabelMap(categories);
+  const catCounts = buildMenuCategoryTabs(categories, items);
+  const defaultSlug = defaultCategorySlug(categories);
+
   const visible = items
     .filter(i => cat === 'all' || i.category === cat)
     .filter(i => !search.trim() ||
       i.name.toLowerCase().includes(search.toLowerCase()) ||
       i.description?.toLowerCase().includes(search.toLowerCase()));
 
-  const catCounts = CATS.map(c => ({
-    ...c,
-    count: c.id === 'all' ? items.length : items.filter(i => i.category === c.id).length,
-  }));
-
-  // ── Open add form ──────────────────────────────────────────────────────────
   function startAdd() {
-    setDraft(blank());
+    setCategoryPanelOpen(false);
+    setDraft(blankItem(defaultSlug));
     setFormMode('add');
     setEditId(null);
     setConfirmDelete(null);
+    setError('');
   }
 
-  // ── Open edit form ─────────────────────────────────────────────────────────
+  function openCategoryPanel() {
+    setFormMode(null);
+    setEditId(null);
+    setCategoryPanelOpen(true);
+    setCategoryError('');
+    setCategoryEditId(null);
+    setTimeout(() => document.getElementById('menu-categories-anchor')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
+  }
+
+  function closeCategoryPanel() {
+    setCategoryPanelOpen(false);
+    setCategoryDraftLabel('');
+    setCategoryEditId(null);
+    setCategoryConfirmDelete(null);
+    setCategoryError('');
+  }
+
   function startEdit(item: ApiMenuItem) {
+    setCategoryPanelOpen(false);
     setEditId(item.id);
     setDraft({
       name:         item.name,
       category:     item.category,
       price:        String(item.price),
       description:  item.description ?? '',
-      symbol:       item.symbol ?? '○',
+      image_url:    item.image_url ?? '',
       is_popular:   item.is_popular === 1,
       is_available: item.is_available === 1,
     });
     setFormMode('edit');
     setConfirmDelete(null);
-    // Scroll form into view
+    setImageUploadError('');
+    setError('');
     setTimeout(() => document.getElementById('menu-form-anchor')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
   }
 
   function closeForm() {
     setFormMode(null);
     setEditId(null);
-    setDraft(blank());
+    setDraft(blankItem(defaultSlug));
+    setError('');
+    setImageUploadError('');
   }
 
-  // ── Save add ───────────────────────────────────────────────────────────────
+  async function handlePickImage(file: File) {
+    const validation = validateMenuImageFile(file);
+    if (validation) {
+      setImageUploadError(validation);
+      return;
+    }
+    setImageUploading(true);
+    setImageUploadError('');
+    try {
+      const { url } = await menuApi.uploadImage(file);
+      setDraft(d => ({ ...d, image_url: url }));
+    } catch (e) {
+      setImageUploadError((e as Error).message);
+    } finally {
+      setImageUploading(false);
+    }
+  }
+
+  function handleRemoveImage() {
+    setDraft(d => ({ ...d, image_url: '' }));
+    setImageUploadError('');
+  }
+
   async function saveAdd() {
     if (!draft.name || !draft.price) return;
     setBusy(true); setError('');
@@ -238,7 +483,7 @@ export function MenuPanel() {
         category:     draft.category,
         price:        parseFloat(draft.price),
         description:  draft.description || undefined,
-        symbol:       draft.symbol || '○',
+        image_url:    draft.image_url || null,
         is_popular:   draft.is_popular,
         is_available: draft.is_available,
       });
@@ -248,17 +493,16 @@ export function MenuPanel() {
     finally { setBusy(false); }
   }
 
-  // ── Save edit ──────────────────────────────────────────────────────────────
   async function saveEdit() {
     if (!editId || !draft.name || !draft.price) return;
     setBusy(true); setError('');
     try {
       const updated = await menuApi.update(editId, {
         name:         draft.name,
-        category:     draft.category as ApiMenuItem['category'],
+        category:     draft.category,
         price:        parseFloat(draft.price),
         description:  draft.description,
-        symbol:       draft.symbol,
+        image_url:    draft.image_url || null,
         is_popular:   draft.is_popular,
         is_available: draft.is_available,
       });
@@ -268,7 +512,6 @@ export function MenuPanel() {
     finally { setBusy(false); }
   }
 
-  // ── Delete ─────────────────────────────────────────────────────────────────
   async function deleteItem(id: string) {
     setBusy(true); setError('');
     try {
@@ -280,7 +523,6 @@ export function MenuPanel() {
     finally { setBusy(false); }
   }
 
-  // ── Toggle availability ────────────────────────────────────────────────────
   async function toggleAvailable(item: ApiMenuItem) {
     if (!canEdit) return;
     try {
@@ -289,8 +531,50 @@ export function MenuPanel() {
     } catch (e) { setError((e as Error).message); }
   }
 
+  async function createCategory() {
+    if (!categoryDraftLabel.trim()) return;
+    setCategoryBusy(true); setCategoryError('');
+    try {
+      const created = await menuCategoriesApi.create({ label: categoryDraftLabel.trim() });
+      setCategories(prev => [...prev, created].sort((a, b) => a.sort_order - b.sort_order || a.label.localeCompare(b.label)));
+      setCategoryDraftLabel('');
+      setCat(created.slug);
+    } catch (e) { setCategoryError((e as Error).message); }
+    finally { setCategoryBusy(false); }
+  }
+
+  function startCategoryEdit(catRow: ApiMenuCategory) {
+    setCategoryEditId(catRow.id);
+    setCategoryEditLabel(catRow.label);
+    setCategoryConfirmDelete(null);
+  }
+
+  async function saveCategoryEdit() {
+    if (!categoryEditId || !categoryEditLabel.trim()) return;
+    setCategoryBusy(true); setCategoryError('');
+    try {
+      const updated = await menuCategoriesApi.update(categoryEditId, { label: categoryEditLabel.trim() });
+      setCategories(prev => prev.map(c => c.id === categoryEditId ? updated : c));
+      setCategoryEditId(null);
+    } catch (e) { setCategoryError((e as Error).message); }
+    finally { setCategoryBusy(false); }
+  }
+
+  async function deleteCategory(id: string) {
+    setCategoryBusy(true); setCategoryError('');
+    try {
+      await menuCategoriesApi.delete(id);
+      const removed = categories.find(c => c.id === id);
+      setCategories(prev => prev.filter(c => c.id !== id));
+      setCategoryConfirmDelete(null);
+      if (removed && cat === removed.slug) setCat('all');
+    } catch (e) { setCategoryError((e as Error).message); }
+    finally { setCategoryBusy(false); }
+  }
+
   const editingItem = editId ? items.find(i => i.id === editId) : null;
-  const formOpen    = formMode !== null;
+  const formOpen = formMode !== null;
+  const panelOpen = categoryPanelOpen;
 
   if (loading) return (
     <div className="menu-root">
@@ -300,38 +584,63 @@ export function MenuPanel() {
 
   return (
     <div className="menu-root">
-
-      {/* ── Header ──────────────────────────────────────────────────────── */}
       <div className="menu-header">
         <div>
           <p className="eyebrow">Menu · Catalogue</p>
           <h1 className="serif menu-title">Menu Management</h1>
           <p className="menu-sub">
-            {items.length} items · {items.filter(i => i.is_available === 1).length} available
+            {items.length} items · {categories.length} categories · {items.filter(i => i.is_available === 1).length} available
           </p>
         </div>
-        {canEdit && !formOpen && (
+        {canEdit && !formOpen && !panelOpen && (
           <div className="menu-header-actions">
-            <button className="btn-gold" onClick={startAdd}>+ Add Item</button>
+            <button type="button" className="btn-outline" onClick={openCategoryPanel}>+ Categories</button>
+            <button type="button" className="btn-gold" onClick={startAdd}>+ Add Item</button>
           </div>
         )}
       </div>
 
-      {/* ── Add / Edit form (top, full-width) ───────────────────────────── */}
+      {panelOpen && (
+        <CategoryManagePanel
+          categories={categories}
+          items={items}
+          draftLabel={categoryDraftLabel}
+          setDraftLabel={setCategoryDraftLabel}
+          editId={categoryEditId}
+          editLabel={categoryEditLabel}
+          setEditLabel={setCategoryEditLabel}
+          confirmDeleteId={categoryConfirmDelete}
+          setConfirmDeleteId={setCategoryConfirmDelete}
+          error={categoryError}
+          busy={categoryBusy}
+          canDelete={canDeleteCategories}
+          onClose={closeCategoryPanel}
+          onCreate={createCategory}
+          onStartEdit={startCategoryEdit}
+          onCancelEdit={() => { setCategoryEditId(null); setCategoryEditLabel(''); }}
+          onSaveEdit={saveCategoryEdit}
+          onDelete={deleteCategory}
+        />
+      )}
+
       {formOpen && formMode && (
         <MenuItemForm
           formMode={formMode}
           editingName={editingItem?.name}
           draft={draft}
           setDraft={setDraft}
+          categoryOptions={categories}
           error={error}
           busy={busy}
+          imageUploading={imageUploading}
+          imageUploadError={imageUploadError}
+          onPickImage={handlePickImage}
+          onRemoveImage={handleRemoveImage}
           onClose={closeForm}
           onSave={formMode === 'edit' ? saveEdit : saveAdd}
         />
       )}
 
-      {/* ── Category filter + search ─────────────────────────────────────── */}
       <div className="menu-toolbar">
         {catCounts.map(c => (
           <button key={c.id} type="button"
@@ -354,16 +663,14 @@ export function MenuPanel() {
         </div>
       </div>
 
-      {/* ── Item grid ───────────────────────────────────────────────────── */}
       <div className="menu-grid">
         {visible.map(item => (
           <div
             key={item.id}
             className={`menu-item card${item.is_available !== 1 ? ' unavailable' : ''}${editId === item.id ? ' editing' : ''}`}
           >
-            {/* Card header */}
             <div className="menu-item-top">
-              <span className="menu-item-sym serif">{item.symbol || '○'}</span>
+              <MenuItemImage imageUrl={item.image_url} name={item.name} variant="menu-card" />
               <div className="menu-item-badges">
                 {item.is_popular === 1 && <span className="menu-badge popular">★ Popular</span>}
                 <span className={`menu-badge ${item.is_available === 1 ? 'avail' : 'off'}`}>
@@ -372,20 +679,17 @@ export function MenuPanel() {
               </div>
             </div>
 
-            {/* Card body */}
-            <p className="menu-item-cat eyebrow">{item.category}</p>
+            <p className="menu-item-cat eyebrow">{labels[item.category] ?? item.category}</p>
             <p className="menu-item-name">{item.name}</p>
             <p className="mono menu-item-price">${item.price.toFixed(2)}</p>
             {item.description && (
               <p className="menu-item-desc">{item.description}</p>
             )}
 
-            {/* Editing indicator */}
             {editId === item.id && (
               <p className="menu-item-editing-note">✏ Editing above ↑</p>
             )}
 
-            {/* Actions */}
             {canEdit && (
               <div className="menu-item-actions">
                 <button

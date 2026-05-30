@@ -86,6 +86,34 @@ export const menuApi = {
   create: (d: CreateMenuItemPayload)                                          => post<ApiMenuItem>('/api/menu', d),
   update: (id: string, d: Partial<CreateMenuItemPayload>)                     => put<ApiMenuItem>(`/api/menu/${id}`, d),
   delete: (id: string)                                                        => del(`/api/menu/${id}`),
+  uploadImage: async (file: File): Promise<{ url: string; public_id: string }> => {
+    const token = localStorage.getItem('cafyz_token');
+    const form = new FormData();
+    form.append('image', file);
+    const res = await fetch(`${BASE}/api/menu/upload-image`, {
+      method: 'POST',
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      body: form,
+    });
+    if (res.status === 401) {
+      localStorage.removeItem('cafyz_token');
+      localStorage.removeItem('cafyz_user');
+      window.location.href = '/login';
+      throw new Error('Session expired — please sign in again.');
+    }
+    const data = await res.json().catch(() => ({ error: res.statusText }));
+    if (!res.ok) throw new Error(data.error ?? res.statusText);
+    return data as { url: string; public_id: string };
+  },
+};
+
+export const menuCategoriesApi = {
+  list:   () => get<ApiMenuCategory[]>('/api/menu/categories'),
+  create: (d: { label: string; slug?: string; sort_order?: number }) =>
+    post<ApiMenuCategory>('/api/menu/categories', d),
+  update: (id: string, d: { label?: string; sort_order?: number }) =>
+    put<ApiMenuCategory>(`/api/menu/categories/${id}`, d),
+  delete: (id: string) => del(`/api/menu/categories/${id}`),
 };
 
 // ── Tables ────────────────────────────────────────────────────────────────────
@@ -220,7 +248,17 @@ export interface ApiRestaurant {
 
 export interface ApiMenuItem {
   id: string; restaurant_id: string; name: string; category: string; price: number;
-  description: string; symbol: string; is_popular: number; is_available: number; created_at?: string;
+  description: string; symbol: string; image_url?: string | null;
+  is_popular: number; is_available: number; created_at?: string;
+}
+
+export interface ApiMenuCategory {
+  id: string;
+  restaurant_id: string;
+  slug: string;
+  label: string;
+  sort_order: number;
+  created_at?: string;
 }
 
 export interface ApiTable {
@@ -278,7 +316,8 @@ export interface CreateUserPayload {
 
 export interface CreateMenuItemPayload {
   name: string; category: string; price: number;
-  description?: string; symbol?: string; is_popular?: boolean; is_available?: boolean;
+  description?: string; symbol?: string; image_url?: string | null;
+  is_popular?: boolean; is_available?: boolean;
 }
 
 export interface CreateKdsTicketPayload {

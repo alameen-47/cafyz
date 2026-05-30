@@ -5,6 +5,7 @@ import {
   type ApiTable, type ApiOrder, type ApiMenuItem, type ApiOrderItem,
 } from '../services/api';
 import { pathForScreen } from '../routes';
+import { MenuItemImage } from '../components/MenuItemImage';
 import './MobilePanels.css';
 
 export function MobileTablePanel({ addItemMode }: { addItemMode?: boolean }) {
@@ -155,7 +156,7 @@ export function MobileTablePanel({ addItemMode }: { addItemMode?: boolean }) {
               onClick={() => addToOrder(d)}
               disabled={busy}
             >
-              <span className="serif">{d.symbol || '○'}</span>
+              <MenuItemImage imageUrl={d.image_url} name={d.name} variant="mobile" />
               <p>{d.name}</p>
               <p className="mono">${d.price.toFixed(2)}</p>
             </button>

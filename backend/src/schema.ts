@@ -227,8 +227,113 @@ export async function runMigrations() {
   await addCol(`ALTER TABLE inquiries ADD COLUMN restaurant_id TEXT`, 'restaurant_id');
   await addCol(`ALTER TABLE inquiries ADD COLUMN provisioned_user_id TEXT`, 'provisioned_user_id');
 
+  await migrateMenuItemsFlexibleCategory(db);
+  await seedAllMenuCategories(db);
+  await addCol(`ALTER TABLE menu_items ADD COLUMN image_url TEXT`, 'image_url');
+
   await db.execute({
     sql: `INSERT OR IGNORE INTO app_settings(key,value) VALUES('trial_device_guard_enabled','1')`,
     args: [],
   });
+}
+
+const DEFAULT_MENU_CATEGORIES = [
+  { slug: 'starters', label: 'Starters', sort_order: 0 },
+  { slug: 'mains',    label: 'Mains',    sort_order: 1 },
+  { slug: 'desserts', label: 'Desserts', sort_order: 2 },
+  { slug: 'wine',     label: 'Wine',     sort_order: 3 },
+  { slug: 'drinks',   label: 'Drinks',   sort_order: 4 },
+];
+
+async function migrateMenuItemsFlexibleCategory(db: ReturnType<typeof getDb>) {
+  const flag = await db.execute({
+    sql: `SELECT value FROM app_settings WHERE key='menu_category_flex_v1'`,
+    args: [],
+  });
+  if (flag.rows.length && String((flag.rows[0] as { value: string }).value) === '1') return;
+
+  const info = await db.execute({
+    sql: `SELECT sql FROM sqlite_master WHERE type='table' AND name='menu_items'`,
+    args: [],
+  });
+  const ddl = String((info.rows[0] as { sql?: string } | undefined)?.sql ?? '');
+  if (ddl.includes('CHECK(category IN')) {
+    await db.executeMultiple(`
+      CREATE TABLE menu_items_new (
+        id            TEXT PRIMARY KEY,
+        restaurant_id TEXT NOT NULL REFERENCES restaurants(id) ON DELETE CASCADE,
+        name          TEXT NOT NULL,
+        category      TEXT NOT NULL,
+        price         REAL NOT NULL,
+        description   TEXT NOT NULL DEFAULT '',
+        symbol        TEXT NOT NULL DEFAULT '○',
+        is_popular    INTEGER NOT NULL DEFAULT 0,
+        is_available  INTEGER NOT NULL DEFAULT 1,
+        created_at    TEXT NOT NULL DEFAULT (datetime('now'))
+      );
+      INSERT INTO menu_items_new(id,restaurant_id,name,category,price,description,symbol,is_popular,is_available,created_at)
+        SELECT id,restaurant_id,name,category,price,description,symbol,is_popular,is_available,created_at FROM menu_items;
+      DROP TABLE menu_items;
+      ALTER TABLE menu_items_new RENAME TO menu_items;
+    `);
+  }
+
+  await db.execute({
+    sql: `INSERT OR REPLACE INTO app_settings(key,value) VALUES('menu_category_flex_v1','1')`,
+    args: [],
+  });
+}
+
+async function seedAllMenuCategories(db: ReturnType<typeof getDb>) {
+  await db.executeMultiple(`
+    CREATE TABLE IF NOT EXISTS menu_categories (
+      id            TEXT PRIMARY KEY,
+      restaurant_id TEXT NOT NULL REFERENCES restaurants(id) ON DELETE CASCADE,
+      slug          TEXT NOT NULL,
+      label         TEXT NOT NULL,
+      sort_order    INTEGER NOT NULL DEFAULT 0,
+      created_at    TEXT NOT NULL DEFAULT (datetime('now')),
+      UNIQUE(restaurant_id, slug)
+    );
+  `);
+
+  const { randomUUID } = await import('crypto');
+  const newId = () => randomUUID();
+
+  const restaurants = await db.execute({ sql: 'SELECT id FROM restaurants', args: [] });
+  for (const row of restaurants.rows) {
+    const rid = String((row as { id: string }).id);
+    const count = await db.execute({
+      sql: 'SELECT COUNT(*) AS c FROM menu_categories WHERE restaurant_id=?',
+      args: [rid],
+    });
+    if (Number((count.rows[0] as { c: number }).c) === 0) {
+      for (const cat of DEFAULT_MENU_CATEGORIES) {
+        await db.execute({
+          sql: `INSERT INTO menu_categories(id, restaurant_id, slug, label, sort_order) VALUES (?,?,?,?,?)`,
+          args: [newId(), rid, cat.slug, cat.label, cat.sort_order],
+        });
+      }
+    }
+
+    // Sync any category slugs used on items but missing from menu_categories
+    const orphans = await db.execute({
+      sql: `SELECT DISTINCT category FROM menu_items WHERE restaurant_id=?`,
+      args: [rid],
+    });
+    for (const o of orphans.rows) {
+      const slug = String((o as { category: string }).category);
+      const exists = await db.execute({
+        sql: 'SELECT id FROM menu_categories WHERE restaurant_id=? AND slug=?',
+        args: [rid, slug],
+      });
+      if (!exists.rows.length) {
+        const label = slug.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+        await db.execute({
+          sql: `INSERT INTO menu_categories(id, restaurant_id, slug, label, sort_order) VALUES (?,?,?,?,?)`,
+          args: [newId(), rid, slug, label, 99],
+        });
+      }
+    }
+  }
 }

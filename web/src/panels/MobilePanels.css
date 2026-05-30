@@ -133,6 +133,15 @@
 .mobile-add-dish {
   padding: 16px;
   text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.mobile-add-dish .menu-item-image,
+.mobile-add-dish .menu-item-image-fallback {
+  margin: 0 auto;
 }
 
 .mobile-add-dish .serif {
