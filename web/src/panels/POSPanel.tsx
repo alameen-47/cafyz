@@ -6,6 +6,7 @@ import {
   type ReceiptData,
 } from '../services/PrintService';
 import { getRestaurantLogo, syncRestaurantLogoCache } from '../services/restaurantLogoStorage';
+import { Modal } from '../components/Modal';
 import './POSPanel.css';
 
 type CartItem     = { menuItem: ApiMenuItem; qty: number; mods: string[] };
@@ -390,17 +391,24 @@ export function POSPanel() {
           )}
 
           {showConnect && printer.type === 'none' && (
-            <div className="pos-printer-menu">
-              <button type="button" onClick={handleConnectBluetooth}>🔵 Bluetooth</button>
-              <button type="button" onClick={handleConnectUSB}>🔌 USB</button>
-              <button
-                type="button"
-                onClick={() => { setShowConnect(false); handlePrint(); }}
-                style={{ borderTop: '0.5px solid var(--gold-line)', marginTop: 4, paddingTop: 6, color: 'var(--text3)' }}
-              >
-                🖥 Print via Browser
-              </button>
-            </div>
+            <>
+              <div
+                className="pos-printer-menu-backdrop"
+                onClick={() => setShowConnect(false)}
+                aria-hidden
+              />
+              <div className="pos-printer-menu" role="menu">
+                <button type="button" onClick={handleConnectBluetooth}>🔵 Bluetooth</button>
+                <button type="button" onClick={handleConnectUSB}>🔌 USB</button>
+                <button
+                  type="button"
+                  className="pos-printer-menu-browser"
+                  onClick={() => { setShowConnect(false); handlePrint(); }}
+                >
+                  🖥 Print via Browser
+                </button>
+              </div>
+            </>
           )}
 
           {printError && (
@@ -586,34 +594,34 @@ export function POSPanel() {
           )}
         </footer>
       </aside>
-      {profileOpen && (
-        <div className="modal-overlay">
-          <div className="card modal-panel">
-            <p className="eyebrow">Restaurant Profile</p>
-            <h3 className="serif" style={{ margin: '4px 0 14px' }}>Brand, billing & contact details</h3>
-            <div className="form-grid-2">
-              <input className="roles-input" placeholder="Restaurant name" value={profileDraft.name} onChange={e => setProfileDraft(d => ({ ...d, name: e.target.value }))} />
-              <input className="roles-input" placeholder="Contact phone" value={profileDraft.contact_phone} onChange={e => setProfileDraft(d => ({ ...d, contact_phone: e.target.value }))} />
-              <input className="roles-input" placeholder="Contact email" value={profileDraft.contact_email} onChange={e => setProfileDraft(d => ({ ...d, contact_email: e.target.value }))} />
-              <input className="roles-input" placeholder="Address line 1" value={profileDraft.address_line1} onChange={e => setProfileDraft(d => ({ ...d, address_line1: e.target.value }))} />
-              <input className="roles-input" placeholder="Address line 2" value={profileDraft.address_line2} onChange={e => setProfileDraft(d => ({ ...d, address_line2: e.target.value }))} />
-              <input className="roles-input" placeholder="City" value={profileDraft.city} onChange={e => setProfileDraft(d => ({ ...d, city: e.target.value }))} />
-              <input className="roles-input" placeholder="Country" value={profileDraft.country} onChange={e => setProfileDraft(d => ({ ...d, country: e.target.value }))} />
-              <input className="roles-input" placeholder="Postal code" value={profileDraft.postal_code} onChange={e => setProfileDraft(d => ({ ...d, postal_code: e.target.value }))} />
-              <input className="roles-input" placeholder="Tax ID" value={profileDraft.tax_id} onChange={e => setProfileDraft(d => ({ ...d, tax_id: e.target.value }))} />
-            </div>
-            <p style={{ marginTop: 10, fontSize: 12, color: 'var(--text3)' }}>
-              Staff share contact details from the server. Logo is uploaded in Manager → Restaurant Profile (shared with all staff).
-            </p>
-            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 12 }}>
-              <button className="roles-cancel-btn" onClick={() => setProfileOpen(false)}>Cancel</button>
-              <button className="roles-save-btn" onClick={saveProfile} disabled={profileBusy || !profileDraft.name.trim()}>
-                {profileBusy ? 'Saving…' : 'Save Profile'}
-              </button>
-            </div>
-          </div>
+      <Modal
+        open={profileOpen}
+        onClose={() => setProfileOpen(false)}
+        eyebrow="Restaurant Profile"
+        title="Brand, billing & contact"
+        subtitle="Staff share contact details from the server. Logo is uploaded in Manager → Restaurant Profile."
+        size="lg"
+        footer={
+          <>
+            <button type="button" className="roles-cancel-btn" onClick={() => setProfileOpen(false)}>Cancel</button>
+            <button type="button" className="roles-save-btn" onClick={saveProfile} disabled={profileBusy || !profileDraft.name.trim()}>
+              {profileBusy ? 'Saving…' : 'Save Profile'}
+            </button>
+          </>
+        }
+      >
+        <div className="form-grid-2">
+          <input className="roles-input" placeholder="Restaurant name" value={profileDraft.name} onChange={e => setProfileDraft(d => ({ ...d, name: e.target.value }))} />
+          <input className="roles-input" placeholder="Contact phone" value={profileDraft.contact_phone} onChange={e => setProfileDraft(d => ({ ...d, contact_phone: e.target.value }))} />
+          <input className="roles-input" placeholder="Contact email" value={profileDraft.contact_email} onChange={e => setProfileDraft(d => ({ ...d, contact_email: e.target.value }))} />
+          <input className="roles-input" placeholder="Address line 1" value={profileDraft.address_line1} onChange={e => setProfileDraft(d => ({ ...d, address_line1: e.target.value }))} />
+          <input className="roles-input" placeholder="Address line 2" value={profileDraft.address_line2} onChange={e => setProfileDraft(d => ({ ...d, address_line2: e.target.value }))} />
+          <input className="roles-input" placeholder="City" value={profileDraft.city} onChange={e => setProfileDraft(d => ({ ...d, city: e.target.value }))} />
+          <input className="roles-input" placeholder="Country" value={profileDraft.country} onChange={e => setProfileDraft(d => ({ ...d, country: e.target.value }))} />
+          <input className="roles-input" placeholder="Postal code" value={profileDraft.postal_code} onChange={e => setProfileDraft(d => ({ ...d, postal_code: e.target.value }))} />
+          <input className="roles-input" placeholder="Tax ID" value={profileDraft.tax_id} onChange={e => setProfileDraft(d => ({ ...d, tax_id: e.target.value }))} />
         </div>
-      )}
+      </Modal>
     </div>
   );
 }

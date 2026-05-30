@@ -480,6 +480,17 @@
 }
 .pos-printer-menu button:hover { background: var(--hover); }
 
+.pos-printer-menu-browser {
+  border-top: 0.5px solid var(--gold-line) !important;
+  margin-top: 4px;
+  padding-top: 12px !important;
+  color: var(--text3) !important;
+}
+
+.pos-printer-menu-backdrop {
+  display: none;
+}
+
 .pos-printer-error {
   color: var(--danger);
   font-size: 11px;

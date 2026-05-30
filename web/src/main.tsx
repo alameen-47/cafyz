@@ -6,6 +6,7 @@ import { ThemeProvider } from './context/ThemeContext';
 import App from './App';
 import './styles/global.css';
 import './styles/responsive.css';
+import './styles/modals.css';
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

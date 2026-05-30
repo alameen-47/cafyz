@@ -10,7 +10,8 @@
  */
 import { ALL_PLAN_FEATURES, PLAN_COLOR, PLAN_LABELS, type Plan } from '../config/planAccess';
 import { useAuth } from '../context/AuthContext';
-import './UpgradeModal.css';
+import { useEffect } from 'react';
+import { createPortal } from 'react-dom';
 
 interface Props {
   requiredPlan: Plan;
@@ -32,14 +33,32 @@ export function UpgradeModal({ requiredPlan, featureLabel, onClose }: Props) {
 
   const plansToShow = PLAN_ORDER.filter(p => PLAN_ORDER.indexOf(p) >= PLAN_ORDER.indexOf(requiredPlan));
 
-  return (
-    <div className="upgrade-overlay" onClick={onClose}>
-      <div className="upgrade-modal" onClick={e => e.stopPropagation()}>
+  useEffect(() => {
+    document.body.classList.add('modal-open');
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => {
+      document.body.classList.remove('modal-open');
+      window.removeEventListener('keydown', onKey);
+    };
+  }, [onClose]);
+
+  return createPortal(
+    <div className="upgrade-overlay" onClick={onClose} role="presentation">
+      <div
+        className="upgrade-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="upgrade-modal-title"
+        onClick={e => e.stopPropagation()}
+      >
         {/* Header */}
         <div className="upgrade-header">
-          <button className="upgrade-close" onClick={onClose} aria-label="Close">✕</button>
+          <button type="button" className="upgrade-close" onClick={onClose} aria-label="Close">✕</button>
           <p className="eyebrow">Plan Required</p>
-          <h2 className="serif upgrade-title">
+          <h2 id="upgrade-modal-title" className="serif upgrade-title">
             {featureLabel
               ? <>Unlock <span style={{ color: PLAN_COLOR[requiredPlan] }}>{featureLabel}</span></>
               : <>Upgrade to <span style={{ color: PLAN_COLOR[requiredPlan] }}>{PLAN_LABELS[requiredPlan]}</span></>
@@ -97,6 +116,7 @@ export function UpgradeModal({ requiredPlan, featureLabel, onClose }: Props) {
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
