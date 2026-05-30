@@ -24,8 +24,9 @@ export function LoginPanel() {
     if (!email.trim()) { setLocalErr('Enter your work email.'); return; }
     setBusy(true); setLocalErr(''); clearError();
     try {
-      await login(email, password || 'cafyz2026');
-      goTo('/');
+      await login(email, password);
+      const stored = JSON.parse(localStorage.getItem('cafyz_user') ?? '{}') as { role?: string };
+      goTo(stored.role === 'founder' ? '/founder' : '/');
     } catch (e) {
       setLocalErr((e as Error).message ?? 'Login failed');
       setBusy(false);

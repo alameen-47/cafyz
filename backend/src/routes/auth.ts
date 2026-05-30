@@ -17,13 +17,14 @@ const PinSchema = z.object({ pin: z.string().length(4) });
 router.post('/login', async (req, res, next) => {
   try {
     const { email, password } = LoginSchema.parse(req.body);
+    const emailNorm = email.trim().toLowerCase();
     const db = getDb();
     const row = await db.execute({
       sql: `SELECT u.*, r.name as restaurant_name, r.plan as restaurant_plan
             FROM users u
             JOIN restaurants r ON r.id = u.restaurant_id
-            WHERE u.email=?`,
-      args: [email],
+            WHERE LOWER(u.email)=?`,
+      args: [emailNorm],
     });
     if (!row.rows.length) { res.status(401).json({ error: 'Invalid credentials' }); return; }
     const user = row.rows[0] as Record<string, unknown>;

@@ -5,12 +5,14 @@ import app from './app.js';
 // Render and other cloud hosts often lack working IPv6 routes to Gmail.
 dns.setDefaultResultOrder('ipv4first');
 import { runMigrations } from './schema.js';
+import { ensureFounderAccount } from './services/ensureFounder.js';
 
 const PORT = Number(process.env.PORT ?? 4000);
 
 async function start() {
   await runMigrations();
   console.log('✓ Migrations complete');
+  await ensureFounderAccount();
 
   const server = app.listen(PORT, () => {
     console.log(`🍽  Cafyz API running on http://localhost:${PORT}`);
