@@ -134,6 +134,7 @@ router.patch('/inquiries/:id', ...onlyFounder, async (req, res, next) => {
         provisioned: true,
         alreadyProvisioned: provision.alreadyProvisioned,
         emailSent: provision.emailSent,
+        emailError: provision.emailError,
         // Credentials returned so founder can manually forward if email delivery failed.
         userEmail:    provision.email,
         userPassword: provision.alreadyProvisioned ? null : provision.password,

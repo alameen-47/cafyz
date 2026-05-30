@@ -57,6 +57,8 @@ export type ProvisionResult = {
   alreadyProvisioned: boolean;
   /** True when the credentials email was successfully delivered to the user. */
   emailSent: boolean;
+  /** Resend/SMTP error when user email failed (shown to founder). */
+  emailError?: string;
 };
 
 export async function provisionTrialFromInquiry(
@@ -156,11 +158,15 @@ function userCredentialsHtml(inquiry: InquiryRow, provision: ProvisionResult): s
 </div></body></html>`;
 }
 
-/** Returns true if the credentials email reached the applicant successfully. */
-export async function sendTrialApprovalEmails(inquiry: InquiryRow, provision: ProvisionResult): Promise<boolean> {
+/** Returns delivery result for the applicant credentials email. */
+export async function sendTrialApprovalEmails(
+  inquiry: InquiryRow,
+  provision: ProvisionResult,
+): Promise<{ ok: boolean; error?: string }> {
   if (!isEmailConfigured()) {
-    console.error('[Email] No provider configured — credentials NOT emailed. Set RESEND_API_KEY or SMTP_USER/SMTP_PASS.');
-    return false;
+    const err = 'No email provider configured (RESEND_API_KEY missing)';
+    console.error(`[Email] ${err}`);
+    return { ok: false, error: err };
   }
 
   const trialEnd = trialEndsDateLabel();
@@ -198,11 +204,10 @@ export async function sendTrialApprovalEmails(inquiry: InquiryRow, provision: Pr
   }
   if (!userResult.ok) {
     console.error(`[Email] Credentials to ${provision.email} FAILED: ${userResult.error}`);
-  } else {
-    console.log(`[Email] Credentials sent to ${provision.email} via ${userResult.provider}`);
+    return { ok: false, error: userResult.error };
   }
-
-  return userResult.ok;
+  console.log(`[Email] Credentials sent to ${provision.email} via ${userResult.provider}`);
+  return { ok: true };
 }
 
 /** HTML shown after email-link approval — honest about delivery + credentials if needed. */
@@ -226,9 +231,9 @@ export function buildApprovalResultHtml(provision: ProvisionResult, applicantEma
   }
 
   return `This request is <strong style="color:#2ECC8A">APPROVED</strong>.<br><br>
-    <strong style="color:#facc15">Could not email ${esc(applicantEmail)}</strong> — Resend test mode only sends to your founder inbox until
-    <strong>ametronyx.com</strong> is verified at <a href="https://resend.com/domains" style="color:#8B5CF6">resend.com/domains</a>.<br>
-    A copy with credentials was sent to the founder email. Forward manually:${creds}`;
+    <strong style="color:#facc15">Could not email ${esc(applicantEmail)}</strong><br>
+    <span style="font-size:13px;color:#B8B8C2">${esc(provision.emailError ?? 'Email delivery failed')}</span><br><br>
+    A copy with credentials was sent to the founder inbox. Forward manually:${creds}`;
 }
 
 export async function approveInquiryById(inquiryId: string): Promise<ProvisionResult> {
@@ -243,7 +248,9 @@ export async function approveInquiryById(inquiryId: string): Promise<ProvisionRe
 
   const provision = await provisionTrialFromInquiry(inquiry, db);
   if (!provision.alreadyProvisioned) {
-    provision.emailSent = await sendTrialApprovalEmails(inquiry, provision);
+    const sent = await sendTrialApprovalEmails(inquiry, provision);
+    provision.emailSent = sent.ok;
+    provision.emailError = sent.error;
   }
   return provision;
 }

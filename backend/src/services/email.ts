@@ -1,4 +1,5 @@
 import nodemailer from 'nodemailer';
+import { APP_URL } from '../config/site.js';
 
 /** Prefer IPv4 for SMTP — avoids ENETUNREACH to Gmail over IPv6 on cloud hosts. */
 const SMTP_FAMILY = 4 as const;
@@ -88,28 +89,57 @@ function resolveBrevoSender(): { email: string; name: string } {
   return { email: parsed.email, name: parsed.name ?? name };
 }
 
-/** Resend `from` — must be a verified domain or onboarding@resend.dev (not @gmail.com). */
+const FREE_MAIL_DOMAINS = new Set([
+  'gmail.com', 'googlemail.com', 'yahoo.com', 'hotmail.com', 'outlook.com',
+]);
+
+function appMailDomain(): string | null {
+  try {
+    const host = new URL(APP_URL).hostname.toLowerCase();
+    if (host === 'localhost' || host.endsWith('.onrender.com') || host.endsWith('.vercel.app')) {
+      return null;
+    }
+    // Use full app hostname — Resend often verifies the subdomain (e.g. cafyz.ametronyx.com).
+    if (host.split('.').length >= 2) return host;
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+/** Resend `from` — use verified domain (e.g. noreply@ametronyx.com), not onboarding@resend.dev in production. */
 export function resolveResendFrom(): string {
   const name = process.env.SMTP_FROM_NAME ?? 'Cafyz';
-  const fallback = `"${name}" <onboarding@resend.dev>`;
+  const testFallback = `"${name}" <onboarding@resend.dev>`;
 
-  if (!process.env.RESEND_FROM?.trim()) return fallback;
+  const senderEmail = (
+    process.env.RESEND_SENDER_EMAIL?.trim()
+    ?? (process.env.RESEND_FROM?.trim() ? parseFromHeader(stripEnvQuotes(process.env.RESEND_FROM)).email : null)
+  )?.toLowerCase();
 
-  const from = stripEnvQuotes(process.env.RESEND_FROM);
-  const email = parseFromHeader(from).email.toLowerCase();
-  const domain = email.split('@')[1] ?? '';
-
-  // Resend cannot send from @gmail.com — domain must be verified in Resend dashboard.
-  if (domain === 'gmail.com' || domain === 'googlemail.com' || domain === 'yahoo.com' || domain === 'hotmail.com') {
+  if (senderEmail && senderEmail !== 'onboarding@resend.dev') {
+    const domain = senderEmail.split('@')[1] ?? '';
+    if (!FREE_MAIL_DOMAINS.has(domain)) {
+      const displayName = process.env.RESEND_FROM?.trim()
+        ? (parseFromHeader(stripEnvQuotes(process.env.RESEND_FROM)).name ?? name)
+        : name;
+      return `"${displayName}" <${senderEmail}>`;
+    }
     // eslint-disable-next-line no-console
-    console.warn(
-      `[Resend] RESEND_FROM uses @${domain} — not allowed. Using onboarding@resend.dev. ` +
-      'Verify ametronyx.com at https://resend.com/domains and set RESEND_FROM=Cafyz <noreply@ametronyx.com>',
-    );
-    return fallback;
+    console.warn(`[Resend] Cannot send from @${domain}. Using verified app domain instead.`);
   }
 
-  return from;
+  const mailDomain = appMailDomain();
+  if (mailDomain) {
+    const local = process.env.RESEND_SENDER_LOCAL ?? 'noreply';
+    return `"${name}" <${local}@${mailDomain}>`;
+  }
+
+  return testFallback;
+}
+
+export function isResendTestSender(): boolean {
+  return resolveResendFrom().includes('onboarding@resend.dev');
 }
 
 function httpFromAddress(system: boolean): string {
