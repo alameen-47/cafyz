@@ -190,6 +190,8 @@ router.post('/', async (req, res, next) => {
       founder: boolean;
       user: boolean;
       smtp: boolean;
+      founder_provider?: string;
+      user_provider?: string;
       founder_error?: string;
       user_error?: string;
     } = { founder: false, user: false, smtp: isEmailConfigured() };
@@ -212,9 +214,13 @@ router.post('/', async (req, res, next) => {
       ]);
       emailStatus.founder = founderResult.ok;
       emailStatus.user = userResult.ok;
+      if (founderResult.ok) emailStatus.founder_provider = founderResult.provider;
+      if (userResult.ok) emailStatus.user_provider = userResult.provider;
       if (!founderResult.ok) emailStatus.founder_error = founderResult.error;
       if (!userResult.ok) emailStatus.user_error = userResult.error;
-      if (founderResult.ok) console.log(`[SMTP] founder inquiry notification sent to ${ADMIN_EMAIL}`);
+      if (founderResult.ok) {
+        console.log(`[Email] founder inquiry notification sent to ${ADMIN_EMAIL} via ${founderResult.provider ?? 'unknown'}`);
+      }
     } else {
       console.error('[Email] not configured — set RESEND_API_KEY (Render free) or SMTP_USER/SMTP_PASSWORD');
     }

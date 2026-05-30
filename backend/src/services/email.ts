@@ -53,17 +53,44 @@ function normalizeRecipients(to: nodemailer.SendMailOptions['to']): string[] {
   });
 }
 
+function stripEnvQuotes(value: string): string {
+  const t = value.trim();
+  if (
+    (t.startsWith('"') && t.endsWith('"'))
+    || (t.startsWith("'") && t.endsWith("'"))
+  ) {
+    return t.slice(1, -1).trim();
+  }
+  return t;
+}
+
 function parseFromHeader(from: string): { email: string; name?: string } {
-  const m = from.match(/^"([^"]*)"\s*<([^>]+)>$/);
-  if (m) return { name: m[1] || undefined, email: m[2] };
-  const m2 = from.match(/^([^<]+)<([^>]+)>$/);
+  const raw = stripEnvQuotes(from);
+  const m = raw.match(/^"([^"]*)"\s*<([^>]+)>$/);
+  if (m) return { name: m[1] || undefined, email: m[2].trim() };
+  const m2 = raw.match(/^([^<]+)<([^>]+)>$/);
   if (m2) return { name: m2[1].trim() || undefined, email: m2[2].trim() };
-  return { email: from.replace(/^<|>$/g, '').trim() };
+  return { email: raw.replace(/^<|>$/g, '').trim() };
+}
+
+function resolveBrevoSender(): { email: string; name: string } {
+  const email = (
+    process.env.BREVO_SENDER_EMAIL
+    ?? process.env.SMTP_FROM
+    ?? process.env.SMTP_USER
+    ?? ''
+  ).trim();
+  const name = (process.env.BREVO_SENDER_NAME ?? process.env.SMTP_FROM_NAME ?? 'Cafyz').trim();
+  if (email) return { email, name };
+
+  const fromHeader = stripEnvQuotes(process.env.BREVO_FROM?.trim() ?? smtpFrom(false));
+  const parsed = parseFromHeader(fromHeader);
+  return { email: parsed.email, name: parsed.name ?? name };
 }
 
 function httpFromAddress(system: boolean): string {
   const custom = process.env.RESEND_FROM ?? process.env.BREVO_FROM;
-  if (custom) return custom;
+  if (custom) return stripEnvQuotes(custom);
   return smtpFrom(system);
 }
 
@@ -112,13 +139,13 @@ async function sendViaBrevo(mail: nodemailer.SendMailOptions): Promise<EmailSend
   const to = normalizeRecipients(mail.to);
   if (!to.length) return { ok: false, error: 'Missing recipient' };
 
-  // BREVO_FROM (a verified sender) must win over any per-call from, otherwise
-  // Brevo rejects the send with "sender not valid".
-  const fromHeader = String(process.env.BREVO_FROM?.trim() || mail.from || httpFromAddress(false));
-  const { email, name } = parseFromHeader(fromHeader);
+  const { email, name } = resolveBrevoSender();
+  if (!email) {
+    return { ok: false, error: 'Brevo sender missing — set BREVO_SENDER_EMAIL (must be verified in Brevo)' };
+  }
 
   const payload: Record<string, unknown> = {
-    sender: { email, name: name ?? process.env.SMTP_FROM_NAME ?? 'Cafyz' },
+    sender: { email, name },
     to: to.map((address) => ({ email: address })),
     subject: String(mail.subject ?? '(no subject)'),
     htmlContent: String(mail.html ?? mail.text ?? ''),
@@ -259,26 +286,42 @@ export async function sendMailReliable(
   mail: nodemailer.SendMailOptions,
   timeoutMs = Number(process.env.SMTP_SEND_TIMEOUT_MS ?? 12000),
 ): Promise<EmailSendResult> {
-  if (isResendConfigured()) {
+  const httpErrors: string[] = [];
+  const prefer = (process.env.EMAIL_PROVIDER ?? '').toLowerCase();
+
+  const tryResend = async () => {
+    if (!isResendConfigured()) return null;
     const r = await sendViaResend(mail);
     if (r.ok) return r;
     // eslint-disable-next-line no-console
     console.error('[Resend] send failed:', r.error);
-  }
+    httpErrors.push(r.error);
+    return null;
+  };
 
-  if (isBrevoConfigured()) {
+  const tryBrevo = async () => {
+    if (!isBrevoConfigured()) return null;
     const r = await sendViaBrevo(mail);
     if (r.ok) return r;
     // eslint-disable-next-line no-console
     console.error('[Brevo] send failed:', r.error);
-  }
+    httpErrors.push(r.error);
+    return null;
+  };
 
-  if (isRenderSmtpBlocked() && !isSmtpConfigured()) {
-    return { ok: false, error: RENDER_SMTP_BLOCKED_MSG };
+  let result: EmailSendResult | null = null;
+  if (prefer === 'brevo') {
+    result = await tryBrevo() ?? await tryResend();
+  } else if (prefer === 'resend') {
+    result = await tryResend() ?? await tryBrevo();
+  } else {
+    result = await tryResend() ?? await tryBrevo();
   }
+  if (result) return result;
 
-  if (isRenderSmtpBlocked() && (isResendConfigured() || isBrevoConfigured())) {
-    return { ok: false, error: `HTTP email failed; ${RENDER_SMTP_BLOCKED_MSG}` };
+  if (isRenderSmtpBlocked()) {
+    if (httpErrors.length) return { ok: false, error: httpErrors.join(' | ') };
+    if (!isSmtpConfigured()) return { ok: false, error: RENDER_SMTP_BLOCKED_MSG };
   }
 
   return sendViaSmtp(mail, timeoutMs);
