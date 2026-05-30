@@ -1,6 +1,9 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 import request from 'supertest';
+import bcrypt from 'bcryptjs';
 import app from '../app.js';
+import { getDb } from '../db.js';
+import { uid } from '../utils.js';
 import {
   setupTestDb,
   OWNER_EMAIL, OWNER_PASS,
@@ -48,6 +51,35 @@ describe('POST /api/auth/login', () => {
       .send({ email: 'nobody@nowhere.com', password: 'any' });
 
     expect(res.status).toBe(401);
+  });
+
+  it('logs in when duplicate email exists and password matches the newer trial account', async () => {
+    const email = 'dup-trial@test.io';
+    const oldPw = 'OldTrialPass1';
+    const newPw = 'NewTrialPass2';
+    const db = getDb();
+    const restA = uid();
+    const restB = uid();
+    await db.execute({
+      sql: `INSERT INTO restaurants(id,name,slug,plan,timezone) VALUES(?,?,?,?,?), (?,?,?,?,?)`,
+      args: [restA, 'Cafe A', 'cafe-a', 'pro', 'UTC', restB, 'Cafe B', 'cafe-b', 'pro', 'UTC'],
+    });
+    await db.execute({
+      sql: `INSERT INTO users(id,restaurant_id,name,initials,email,password_hash,role,status,start_time,created_at)
+            VALUES(?,?,?,?,?,?,?,?,?,datetime('now','-2 day')),
+                   (?,?,?,?,?,?,?,?,?,datetime('now'))`,
+      args: [
+        uid(), restA, 'User A', 'UA', email, await bcrypt.hash(oldPw, 4), 'manager', 'active', '—',
+        uid(), restB, 'User B', 'UB', email, await bcrypt.hash(newPw, 4), 'manager', 'active', '—',
+      ],
+    });
+
+    const res = await request(app)
+      .post('/api/auth/login')
+      .send({ email, password: newPw });
+
+    expect(res.status).toBe(200);
+    expect(res.body.restaurant_name).toBe('Cafe B');
   });
 });
 

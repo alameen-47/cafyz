@@ -164,7 +164,8 @@ function actionHtml(title: string, body: string) {
 router.post('/', async (req, res, next) => {
   try {
     const body = InquirySchema.parse(req.body);
-    const { name, restaurant_name, email, plan, message, device_id } = body;
+    const { name, restaurant_name, plan, message, device_id } = body;
+    const email = body.email.trim().toLowerCase();
 
     const ip = clientIp(req);
     const ua = String(req.headers['user-agent'] ?? '');

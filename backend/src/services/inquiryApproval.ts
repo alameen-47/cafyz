@@ -31,8 +31,13 @@ function slugify(name: string): string {
   return `${base || 'restaurant'}-${randomBytes(3).toString('hex')}`;
 }
 
+/** Copy-paste friendly — no ambiguous 0/O, 1/l; avoids email clients mangling base64 symbols. */
 function generatePassword(): string {
-  return randomBytes(9).toString('base64url').slice(0, 12);
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
+  let out = '';
+  const bytes = randomBytes(12);
+  for (let i = 0; i < 12; i++) out += chars[bytes[i]! % chars.length];
+  return out;
 }
 
 function generateKeyCode(plan: string): string {
@@ -90,7 +95,7 @@ export async function provisionTrialFromInquiry(
   const expiresAt = trialEndsAt();
   const restId = uid();
   const slug = slugify(inquiry.restaurant_name);
-  const userId = uid();
+  const emailLower = inquiry.email.trim().toLowerCase();
   const password = generatePassword();
   const pwHash = await bcrypt.hash(password, 10);
   const initials = inquiry.name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2) || 'MG';
@@ -104,10 +109,25 @@ export async function provisionTrialFromInquiry(
     args: [restId, inquiry.restaurant_name, slug, plan, 'UTC'],
   });
 
-  await db.execute({
-    sql: `INSERT INTO users(id,restaurant_id,name,initials,email,password_hash,role,status,start_time) VALUES(?,?,?,?,?,?,?,?,?)`,
-    args: [userId, restId, inquiry.name, initials, inquiry.email.toLowerCase(), pwHash, 'manager', 'active', '—'],
+  const existingUser = await db.execute({
+    sql: `SELECT id FROM users WHERE LOWER(email)=? AND role IN ('manager','owner') ORDER BY created_at DESC LIMIT 1`,
+    args: [emailLower],
   });
+
+  let userId: string;
+  if (existingUser.rows.length) {
+    userId = String((existingUser.rows[0] as Record<string, unknown>).id);
+    await db.execute({
+      sql: `UPDATE users SET restaurant_id=?, name=?, initials=?, password_hash=?, role='manager', status='active' WHERE id=?`,
+      args: [restId, inquiry.name, initials, pwHash, userId],
+    });
+  } else {
+    userId = uid();
+    await db.execute({
+      sql: `INSERT INTO users(id,restaurant_id,name,initials,email,password_hash,role,status,start_time) VALUES(?,?,?,?,?,?,?,?,?)`,
+      args: [userId, restId, inquiry.name, initials, emailLower, pwHash, 'manager', 'active', '—'],
+    });
+  }
 
   await db.execute({
     sql: `INSERT INTO license_keys(id,key_code,plan,restaurant_id,activated_at,expires_at,note) VALUES(?,?,?,?,?,?,?)`,
@@ -122,7 +142,7 @@ export async function provisionTrialFromInquiry(
   return {
     restaurantId: restId,
     userId,
-    email: inquiry.email.toLowerCase(),
+    email: emailLower,
     password,
     plan,
     licenseKey: keyCode,
@@ -151,6 +171,7 @@ function userCredentialsHtml(inquiry: InquiryRow, provision: ProvisionResult): s
       <tr><td style="padding:8px 0;color:#8A8A9A">Password</td><td><strong style="font-family:monospace">${esc(provision.password)}</strong></td></tr>
       <tr><td style="padding:8px 0;color:#8A8A9A">License key</td><td><strong style="font-family:monospace">${esc(provision.licenseKey)}</strong></td></tr>
     </table>
+    <p style="margin:12px 0;font-size:12px;color:#8A8A9A">Login credentials do not expire. Your ${TRIAL_DAYS}-day trial ends ${trialEnd}; billing starts after that. Copy the password exactly (no spaces).</p>
     <p style="margin:20px 0 8px;font-size:13px;color:#B8B8C2">Open the <strong>Manager Panel</strong> and use <strong>Role Management</strong> to add cashiers, waiters, and kitchen staff.</p>
     <a href="${LOGIN_URL}" style="display:inline-block;background:#8B5CF6;color:#07060F;font-size:13px;font-weight:800;text-decoration:none;padding:12px 22px;border-radius:10px;margin-top:8px">Sign in to Manager Panel →</a>
     <div style="margin-top:12px;font-size:12px;color:#5A5A6A;word-break:break-all">${LOGIN_URL}</div>

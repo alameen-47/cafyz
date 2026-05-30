@@ -18,18 +18,28 @@ router.post('/login', async (req, res, next) => {
   try {
     const { email, password } = LoginSchema.parse(req.body);
     const emailNorm = email.trim().toLowerCase();
+    const passNorm = password.trim();
     const db = getDb();
     const row = await db.execute({
       sql: `SELECT u.*, r.name as restaurant_name, r.plan as restaurant_plan
             FROM users u
             JOIN restaurants r ON r.id = u.restaurant_id
-            WHERE LOWER(u.email)=?`,
+            WHERE LOWER(u.email)=?
+            ORDER BY u.created_at DESC`,
       args: [emailNorm],
     });
     if (!row.rows.length) { res.status(401).json({ error: 'Invalid credentials' }); return; }
-    const user = row.rows[0] as Record<string, unknown>;
-    const ok = await bcrypt.compare(password, String(user.password_hash));
-    if (!ok) { res.status(401).json({ error: 'Invalid credentials' }); return; }
+
+    // Same email can exist on multiple trial restaurants — check every account's password.
+    let user: Record<string, unknown> | null = null;
+    for (const candidate of row.rows) {
+      const u = candidate as Record<string, unknown>;
+      if (await bcrypt.compare(passNorm, String(u.password_hash))) {
+        user = u;
+        break;
+      }
+    }
+    if (!user) { res.status(401).json({ error: 'Invalid credentials' }); return; }
     const token = signToken({
       id: String(user.id),
       role: String(user.role),
