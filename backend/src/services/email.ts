@@ -88,11 +88,28 @@ function resolveBrevoSender(): { email: string; name: string } {
   return { email: parsed.email, name: parsed.name ?? name };
 }
 
-/** Resend `from` — must be a verified domain or onboarding@resend.dev for testing. */
+/** Resend `from` — must be a verified domain or onboarding@resend.dev (not @gmail.com). */
 export function resolveResendFrom(): string {
-  if (process.env.RESEND_FROM?.trim()) return stripEnvQuotes(process.env.RESEND_FROM);
   const name = process.env.SMTP_FROM_NAME ?? 'Cafyz';
-  return `"${name}" <onboarding@resend.dev>`;
+  const fallback = `"${name}" <onboarding@resend.dev>`;
+
+  if (!process.env.RESEND_FROM?.trim()) return fallback;
+
+  const from = stripEnvQuotes(process.env.RESEND_FROM);
+  const email = parseFromHeader(from).email.toLowerCase();
+  const domain = email.split('@')[1] ?? '';
+
+  // Resend cannot send from @gmail.com — domain must be verified in Resend dashboard.
+  if (domain === 'gmail.com' || domain === 'googlemail.com' || domain === 'yahoo.com' || domain === 'hotmail.com') {
+    // eslint-disable-next-line no-console
+    console.warn(
+      `[Resend] RESEND_FROM uses @${domain} — not allowed. Using onboarding@resend.dev. ` +
+      'Verify ametronyx.com at https://resend.com/domains and set RESEND_FROM=Cafyz <noreply@ametronyx.com>',
+    );
+    return fallback;
+  }
+
+  return from;
 }
 
 function httpFromAddress(system: boolean): string {

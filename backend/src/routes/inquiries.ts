@@ -197,21 +197,21 @@ router.post('/', async (req, res, next) => {
     } = { founder: false, user: false, smtp: isEmailConfigured() };
 
     if (emailStatus.smtp) {
-      const [founderResult, userResult] = await Promise.all([
-        sendMailReliable({
-          from:    smtpFrom(true),
-          to:      ADMIN_EMAIL,
-          subject: `[Cafyz] Trial approval needed — ${plan.toUpperCase()} · ${restaurant_name}`,
-          html:    adminHtml({ name, restaurantName: restaurant_name, email, plan, message, approveUrl, denyUrl }),
-        }, 12000),
-        sendMailReliable({
-          from:    smtpFrom(false),
-          to:      email,
-          replyTo: ADMIN_EMAIL,
-          subject: `We received your request, ${name.split(' ')[0]} ✓ (pending approval)`,
-          html:    autoReplyHtml(name, restaurant_name, plan),
-        }, 12000),
-      ]);
+      // Sequential sends — Resend free tier allows 2 req/s; parallel often triggers 429.
+      const founderResult = await sendMailReliable({
+        from:    smtpFrom(true),
+        to:      ADMIN_EMAIL,
+        subject: `[Cafyz] Trial approval needed — ${plan.toUpperCase()} · ${restaurant_name}`,
+        html:    adminHtml({ name, restaurantName: restaurant_name, email, plan, message, approveUrl, denyUrl }),
+      }, 12000);
+      await new Promise((r) => setTimeout(r, 600));
+      const userResult = await sendMailReliable({
+        from:    smtpFrom(false),
+        to:      email,
+        replyTo: ADMIN_EMAIL,
+        subject: `We received your request, ${name.split(' ')[0]} ✓ (pending approval)`,
+        html:    autoReplyHtml(name, restaurant_name, plan),
+      }, 12000);
       emailStatus.founder = founderResult.ok;
       emailStatus.user = userResult.ok;
       if (founderResult.ok) emailStatus.founder_provider = founderResult.provider;
