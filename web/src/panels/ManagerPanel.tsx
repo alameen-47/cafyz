@@ -1009,7 +1009,7 @@ function ProfileTab() {
       <div className="card" style={{ padding: 16, marginBottom: 12 }}>
         <p className="eyebrow" style={{ marginTop: 0 }}>Logo</p>
         <p className="mgr-sub" style={{ marginTop: 0 }}>
-          Your logo prints on receipts on this device. PNG or JPG up to 2 MB (not iPhone HEIC). Stored in this browser only.
+          Preview shows the B&W dithered version exactly as it prints on receipts. PNG/JPG up to 2 MB.
         </p>
         {error && (
           <p style={{ color: 'var(--danger)', fontSize: 12, margin: '8px 0 0' }}>{error}</p>

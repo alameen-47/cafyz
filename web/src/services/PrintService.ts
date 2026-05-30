@@ -3,6 +3,7 @@
 // ESC/POS command builder is self-contained — no dependencies.
 
 import { getRestaurantLogo } from './restaurantLogoStorage';
+import { logoDataUrlToEscPos } from './logoThermalRaster';
 
 // ── ESC/POS Builder ───────────────────────────────────────────────────────────
 
@@ -400,107 +401,11 @@ export function printerStatus(): { type: 'none' | 'bluetooth' | 'usb'; name: str
   return { type: 'none', name: '' };
 }
 
-// ── ESC/POS raster logo renderer ──────────────────────────────────────────────
-// Converts a logo (device data URL or https) to GS v 0 raster bytes. When a logo
-// is configured we never silently skip it on thermal printers.
+// ── ESC/POS raster logo (via shared dithered thermal pipeline) ─────────────────
 
-const THERMAL_LOGO_MAX_WIDTH = 384;
-
-function canvasToEscPosRaster(canvas: HTMLCanvasElement): Uint8Array {
-  const width = canvas.width;
-  const height = canvas.height;
-  if (width < 1 || height < 1) {
-    throw new Error('Logo rendered with zero size.');
-  }
-
-  const ctx = canvas.getContext('2d');
-  if (!ctx) throw new Error('Could not read logo pixels.');
-
-  const { data } = ctx.getImageData(0, 0, width, height);
-  const bytesPerRow = Math.ceil(width / 8);
-  const bitmap      = new Uint8Array(bytesPerRow * height);
-
-  for (let y = 0; y < height; y++) {
-    for (let x = 0; x < width; x++) {
-      const i   = (y * width + x) * 4;
-      const a   = data[i + 3];
-      const lum = a < 128 ? 255 : Math.round(0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2]);
-      if (lum < 128) {
-        bitmap[y * bytesPerRow + Math.floor(x / 8)] |= (0x80 >> (x % 8));
-      }
-    }
-  }
-
-  // GS v 0 — raster bit image (mode 0). Supported by Epson, Xprinter, Munbyn, etc.
-  const header = new Uint8Array([
-    0x1d, 0x76, 0x30, 0x00,
-    bytesPerRow & 0xff, (bytesPerRow >> 8) & 0xff,
-    height & 0xff,      (height >> 8) & 0xff,
-  ]);
-  const result = new Uint8Array(header.length + bitmap.length);
-  result.set(header);
-  result.set(bitmap, header.length);
-  return result;
-}
-
-function drawSourceToCanvas(
-  source: CanvasImageSource,
-  srcW: number,
-  srcH: number,
-  maxWidthDots: number,
-): HTMLCanvasElement {
-  const targetW = Math.min(srcW, maxWidthDots);
-  const targetH = Math.min(Math.round(srcH * (targetW / srcW)), 240);
-
-  const canvas = document.createElement('canvas');
-  canvas.width  = Math.max(1, targetW);
-  canvas.height = Math.max(1, targetH);
-  const ctx = canvas.getContext('2d');
-  if (!ctx) throw new Error('Could not prepare logo canvas.');
-
-  ctx.fillStyle = '#ffffff';
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
-  ctx.drawImage(source, 0, 0, canvas.width, canvas.height);
-  return canvas;
-}
-
-async function rasterizeLogoUrlToEscPos(url: string): Promise<Uint8Array> {
-  const local = url.startsWith('data:') || url.startsWith('blob:');
-
-  if (local) {
-    const res = await fetch(url);
-    const blob = await res.blob();
-    const bitmap = await createImageBitmap(blob);
-    try {
-      if (bitmap.width < 1 || bitmap.height < 1) {
-        throw new Error('Logo image has no usable dimensions.');
-      }
-      const canvas = drawSourceToCanvas(bitmap, bitmap.width, bitmap.height, THERMAL_LOGO_MAX_WIDTH);
-      return canvasToEscPosRaster(canvas);
-    } finally {
-      bitmap.close();
-    }
-  }
-
-  const img = await new Promise<HTMLImageElement>((resolve, reject) => {
-    const el = new Image();
-    el.crossOrigin = 'anonymous';
-    el.onload = () => resolve(el);
-    el.onerror = () => reject(new Error('Logo image could not be loaded.'));
-    el.src = url;
-  });
-  await img.decode().catch(() => {});
-  const w = img.naturalWidth || img.width;
-  const h = img.naturalHeight || img.height;
-  if (w < 1 || h < 1) throw new Error('Logo image has no usable dimensions.');
-  const canvas = drawSourceToCanvas(img, w, h, THERMAL_LOGO_MAX_WIDTH);
-  return canvasToEscPosRaster(canvas);
-}
-
-/** Required when logoUrl is set — throws instead of printing without the logo. */
 async function requireLogoEscPos(logoUrl: string): Promise<Uint8Array> {
   try {
-    const bytes = await rasterizeLogoUrlToEscPos(logoUrl);
+    const bytes = await logoDataUrlToEscPos(logoUrl);
     if (bytes.length < 12) throw new Error('Raster data empty.');
     return bytes;
   } catch (e) {

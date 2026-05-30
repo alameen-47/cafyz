@@ -1,10 +1,11 @@
 // Restaurant logos are stored on this device only (localStorage), keyed by
-// restaurant id. Images are normalized for thermal receipt printing before save.
+// restaurant id. On upload, logos are converted to dithered B&W — exactly how
+// they print on thermal receipts (light colours become dot patterns, not blank).
+
+import { colorLogoToPrintableDataUrl } from './logoThermalRaster';
 
 const PREFIX = 'cafyz_restaurant_logo_';
 const MAX_FILE_BYTES = 2 * 1024 * 1024;
-const PRINT_MAX_WIDTH = 384;
-const PRINT_MAX_HEIGHT = 240;
 
 export const RESTAURANT_LOGO_CHANGED = 'cafyz:restaurant-logo-changed';
 
@@ -53,60 +54,17 @@ function readFileAsDataUrl(file: File): Promise<string> {
   });
 }
 
-function loadImageFromDataUrl(dataUrl: string): Promise<HTMLImageElement> {
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    img.onload = () => {
-      if (img.naturalWidth < 1 || img.naturalHeight < 1) {
-        reject(new Error('Image has no usable dimensions.'));
-        return;
-      }
-      resolve(img);
-    };
-    img.onerror = () => reject(new Error('Could not decode image. Use PNG or JPG (not HEIC).'));
-    img.src = dataUrl;
-  });
-}
-
 function isLikelyImageFile(file: File): boolean {
   if (file.type.startsWith('image/')) {
-    // Browsers often cannot decode HEIC in canvas — steer users to PNG/JPG.
     if (/heic|heif/i.test(file.type) || /\.heic$/i.test(file.name)) return false;
     return true;
   }
   return IMAGE_EXT.test(file.name);
 }
 
-/** Resize/compress logo so thermal raster + localStorage stay reliable. */
+/** Convert uploaded logo to dithered B&W receipt version (preview = print output). */
 export async function normalizeLogoForPrint(sourceDataUrl: string): Promise<string> {
-  const img = await loadImageFromDataUrl(sourceDataUrl);
-  const srcW = img.naturalWidth;
-  const srcH = img.naturalHeight;
-
-  const scale = Math.min(1, PRINT_MAX_WIDTH / srcW, PRINT_MAX_HEIGHT / srcH);
-  const targetW = Math.max(1, Math.round(srcW * scale));
-  const targetH = Math.max(1, Math.round(srcH * scale));
-
-  const canvas = document.createElement('canvas');
-  canvas.width = targetW;
-  canvas.height = targetH;
-  const ctx = canvas.getContext('2d');
-  if (!ctx) throw new Error('Could not prepare logo canvas.');
-
-  ctx.fillStyle = '#ffffff';
-  ctx.fillRect(0, 0, targetW, targetH);
-  ctx.drawImage(img, 0, 0, targetW, targetH);
-
-  let normalized = '';
-  try {
-    normalized = canvas.toDataURL('image/png');
-  } catch {
-    throw new Error('Could not process image. Try PNG or JPG.');
-  }
-  if (!normalized.startsWith('data:image/')) {
-    throw new Error('Logo normalization failed.');
-  }
-  return normalized;
+  return colorLogoToPrintableDataUrl(sourceDataUrl);
 }
 
 /** Instant preview URL while the file is being processed (caller must revoke). */
@@ -114,7 +72,7 @@ export function previewLogoFile(file: File): string {
   return URL.createObjectURL(file);
 }
 
-/** Reads an image file, normalizes it, saves on this device; returns the data URL. */
+/** Reads an image file, converts to printable B&W, saves on this device. */
 export async function saveRestaurantLogoFromFile(restaurantId: string, file: File): Promise<string> {
   if (!restaurantId) {
     throw new Error('Restaurant not loaded yet — wait a moment and try again.');
@@ -133,12 +91,11 @@ export async function saveRestaurantLogoFromFile(restaurantId: string, file: Fil
   const dataUrl = await normalizeLogoForPrint(raw);
 
   if (dataUrl.length > 3_000_000) {
-    throw new Error('Image is still too large after resize — try a simpler logo under 2 MB.');
+    throw new Error('Image is still too large after processing — try a simpler logo under 2 MB.');
   }
 
   setRestaurantLogo(restaurantId, dataUrl);
 
-  // Verify round-trip so we never show “saved” when localStorage silently failed.
   const stored = getRestaurantLogo(restaurantId);
   if (stored !== dataUrl) {
     throw new Error('Logo did not persist on this device. Check browser storage is enabled.');
