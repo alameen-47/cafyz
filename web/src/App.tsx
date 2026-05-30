@@ -107,6 +107,7 @@ export default function App() {
         <Route path="/inventory" element={<RequireScreen screen="inventory"><ManagerPanel section="inventory" /></RequireScreen>} />
         <Route path="/staff"     element={<RequireScreen screen="staff"><ManagerPanel section="staff" /></RequireScreen>} />
         <Route path="/reports"   element={<RequireScreen screen="reports"><ManagerPanel section="reports" /></RequireScreen>} />
+        <Route path="/profile"   element={<RequireScreen screen="manager"><ManagerPanel section="profile" /></RequireScreen>} />
         <Route path="/roles"     element={<RequireScreen screen="roles"><RolesPanel /></RequireScreen>} />
         <Route path="/license"   element={<LicensePanel />} />
       </Route>

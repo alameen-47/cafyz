@@ -11,6 +11,8 @@ import { RolesPanel } from './RolesPanel';
 import { uploadImage, isCloudinaryConfigured } from '../services/cloudinary';
 import {
   connectBluetooth, connectUSB, disconnectPrinter, printerStatus, printTest,
+  printSalesReport, printMonthlyReport, buildDemoSalesReport, buildDemoMonthlyReport,
+  type RestaurantPrintMeta, type SalesReportData,
 } from '../services/PrintService';
 import './ManagerPanel.css';
 
@@ -75,6 +77,7 @@ function Overview({ onNav }: { onNav: (s: Section) => void }) {
       </p>
 
       <div className="mgr-action-row">
+        <button className="btn-outline" onClick={() => onNav('profile')}>Restaurant Profile</button>
         <button className="btn-outline" onClick={() => onNav('reports')}>Export</button>
         <button className="btn-outline" onClick={() => onNav('reports')}>Daily Report</button>
         <button className="btn-outline" onClick={() => navigate('/license')}>License / Upgrade</button>
@@ -640,17 +643,95 @@ function StaffTab({ onNav }: { onNav: (s: Section) => void }) {
 }
 
 // ── Reports ───────────────────────────────────────────────────────────────────
+function restaurantPrintMeta(r: ApiRestaurant): RestaurantPrintMeta {
+  return {
+    restaurantName: r.name ?? 'Restaurant',
+    logoUrl: r.logo_url || undefined,
+    addressLine: [r.address_line1, r.city, r.country].filter(Boolean).join(', ') || undefined,
+    phone: r.contact_phone || undefined,
+    taxId: r.tax_id || undefined,
+    email: r.contact_email || undefined,
+  };
+}
+
 function Reports() {
-  const [stats,   setStats]   = useState<ApiDashboardStats | null>(null);
-  const [revenue, setRevenue] = useState<ApiRevenueRow[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [stats,      setStats]      = useState<ApiDashboardStats | null>(null);
+  const [revenue,    setRevenue]    = useState<ApiRevenueRow[]>([]);
+  const [restaurant, setRestaurant] = useState<ApiRestaurant | null>(null);
+  const [loading,    setLoading]    = useState(true);
+  const [printBusy,  setPrintBusy]  = useState(false);
+  const [printMsg,   setPrintMsg]   = useState('');
+  const [printErr,   setPrintErr]   = useState('');
 
   useEffect(() => {
-    Promise.all([dashboardApi.stats(), dashboardApi.revenue()])
-      .then(([s, r]) => { setStats(s); setRevenue(r); })
+    Promise.all([dashboardApi.stats(), dashboardApi.revenue(), restaurantApi.me()])
+      .then(([s, r, rest]) => { setStats(s); setRevenue(r); setRestaurant(rest); })
       .catch(console.error)
       .finally(() => setLoading(false));
   }, []);
+
+  const meta = restaurant ? restaurantPrintMeta(restaurant) : { restaurantName: 'Cafyz Demo Restaurant' };
+
+  async function runPrint(fn: () => Promise<void>, label: string) {
+    setPrintBusy(true); setPrintErr(''); setPrintMsg('');
+    try {
+      await fn();
+      setPrintMsg(`${label} opened in print preview — allow pop-ups if blocked.`);
+    } catch (e) { setPrintErr((e as Error).message); }
+    finally { setPrintBusy(false); }
+  }
+
+  function liveSalesReport(): SalesReportData {
+    const today = new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+    const totalRevenue = revenue.reduce((s, r) => s + (r.revenue ?? 0), 0);
+    const totalOrders = revenue.reduce((s, r) => s + (r.order_count ?? 0), 0);
+    const hasLive = revenue.length > 0;
+    return {
+      ...meta,
+      title: hasLive ? 'Sales Report' : 'Daily Sales Report',
+      periodLabel: hasLive ? `Last 30 days · as of ${today}` : `${today} (no paid orders yet — showing demo)`,
+      demo: !hasLive,
+      metrics: stats ? [
+        { label: 'Orders today', value: String(stats.orders_today) },
+        { label: 'Paid today', value: String(stats.orders_paid) },
+        { label: 'Tables occupied', value: `${stats.tables_occupied}/${stats.tables_total}` },
+      ] : [],
+      rows: hasLive
+        ? [...revenue].reverse().slice(0, 14).map(r => ({
+            label: r.day,
+            orders: r.order_count,
+            revenue: r.revenue ?? 0,
+          }))
+        : buildDemoSalesReport(meta).rows,
+      totalRevenue: hasLive ? totalRevenue : buildDemoSalesReport(meta).totalRevenue,
+      totalOrders: hasLive ? totalOrders : buildDemoSalesReport(meta).totalOrders,
+    };
+  }
+
+  function liveMonthlyReport() {
+    const now = new Date();
+    const monthLabel = now.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
+    const monthPrefix = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    const monthRows = revenue.filter(r => String(r.day).startsWith(monthPrefix));
+    const hasLive = monthRows.length > 0;
+    if (!hasLive) return buildDemoMonthlyReport(meta);
+    const days = monthRows.map(r => ({
+      day: r.day,
+      orders: r.order_count ?? 0,
+      revenue: r.revenue ?? 0,
+    }));
+    const totalRevenue = days.reduce((s, d) => s + d.revenue, 0);
+    const totalOrders = days.reduce((s, d) => s + d.orders, 0);
+    return {
+      ...meta,
+      monthLabel,
+      demo: false,
+      days,
+      totalRevenue,
+      totalOrders,
+      avgPerDay: days.length ? totalRevenue / days.length : 0,
+    };
+  }
 
   const statsRows = stats ? [
     { label: 'Orders Today',    value: String(stats.orders_today),    delta: '',      up: true  },
@@ -670,7 +751,31 @@ function Reports() {
     <div className="mgr-overview">
       <p className="eyebrow">Finance · Daily P&L</p>
       <h1 className="serif mgr-greeting">Reports</h1>
-      <p className="mgr-sub">Live service metrics · last 30 days.</p>
+      <p className="mgr-sub">Live service metrics · print sales and monthly reports with your restaurant logo.</p>
+
+      {!loading && (
+        <div className="mgr-action-row" style={{ marginBottom: 16 }}>
+          <button className="btn-outline" disabled={printBusy}
+            onClick={() => runPrint(() => printSalesReport(buildDemoSalesReport(meta)), 'Demo sales report')}>
+            🖨 Demo Sales Report
+          </button>
+          <button className="btn-outline" disabled={printBusy}
+            onClick={() => runPrint(() => printSalesReport(liveSalesReport()), 'Sales report')}>
+            🖨 Print Sales Report
+          </button>
+          <button className="btn-gold" disabled={printBusy}
+            onClick={() => runPrint(() => printMonthlyReport(liveMonthlyReport()), 'Monthly report')}>
+            🖨 Print Monthly Report
+          </button>
+        </div>
+      )}
+      {printMsg && <p style={{ color: 'var(--ok, #2ECC8A)', fontSize: 12 }}>{printMsg}</p>}
+      {printErr && <p style={{ color: 'var(--danger)', fontSize: 12 }}>{printErr}</p>}
+      {restaurant?.logo_url && (
+        <p style={{ fontSize: 12, color: 'var(--text2)', marginBottom: 12 }}>
+          Reports include your uploaded logo{restaurant.name ? ` · ${restaurant.name}` : ''}.
+        </p>
+      )}
 
       {loading ? (
         <p style={{ color: 'var(--text2)', fontSize: 13, marginTop: 16 }}>Loading reports…</p>
@@ -865,7 +970,7 @@ function ProfileTab() {
       {/* ── Logo ──────────────────────────────────────────────────────────── */}
       <div className="card" style={{ padding: 16, marginBottom: 12 }}>
         <p className="eyebrow" style={{ marginTop: 0 }}>Logo</p>
-        <p className="mgr-sub" style={{ marginTop: 0 }}>Printed on receipts and kitchen tickets. PNG or SVG with a transparent background works best.</p>
+        <p className="mgr-sub" style={{ marginTop: 0 }}>Your logo prints on receipts, kitchen tickets, and sales reports. PNG with transparent background works best.</p>
         <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
           <div style={{
             width: 120, height: 120, borderRadius: 12, background: 'rgba(255,255,255,0.04)',
@@ -926,8 +1031,8 @@ function ProfileTab() {
 
       {/* ── Printer ───────────────────────────────────────────────────────── */}
       <div className="card" style={{ padding: 16, marginTop: 12 }}>
-        <p className="eyebrow" style={{ marginTop: 0 }}>Receipt Printer</p>
-        <p className="mgr-sub" style={{ marginTop: 0 }}>Connect a Bluetooth or USB thermal printer (e.g. PT-210) and run a test print to confirm the logo prints correctly.</p>
+        <p className="eyebrow" style={{ marginTop: 0 }}>Receipt Printer · Demo Receipt</p>
+        <p className="mgr-sub" style={{ marginTop: 0 }}>Connect a Bluetooth/USB thermal printer or use browser print. Demo receipt uses your logo exactly as uploaded.</p>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
           {printer.type !== 'none' ? (
             <>
@@ -947,7 +1052,7 @@ function ProfileTab() {
             </>
           )}
           <button className="btn-gold" onClick={runTestPrint} disabled={printBusy}>
-            {printBusy ? 'Printing…' : '🖨 Test Print'}
+            {printBusy ? 'Printing…' : '🖨 Print Demo Receipt'}
           </button>
         </div>
         {printMsg && <p style={{ color: 'var(--ok, #2ECC8A)', fontSize: 12, marginBottom: 0 }}>{printMsg}</p>}

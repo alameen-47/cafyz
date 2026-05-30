@@ -633,3 +633,179 @@ export async function printKitchenTicket(
   printDialogHtml(buildKitchenTicketHTML(data));
   return 'dialog';
 }
+
+// ── Sales & monthly reports (browser print — logo rendered via <img>) ─────────
+
+export interface RestaurantPrintMeta {
+  restaurantName: string;
+  logoUrl?:       string;
+  addressLine?:   string;
+  phone?:         string;
+  taxId?:         string;
+  email?:         string;
+}
+
+export interface SalesReportData extends RestaurantPrintMeta {
+  title:        string;
+  periodLabel:  string;
+  generatedAt?: string;
+  metrics:      { label: string; value: string }[];
+  rows:         { label: string; orders?: number; revenue: number }[];
+  totalRevenue: number;
+  totalOrders:  number;
+  demo?:        boolean;
+}
+
+export interface MonthlyReportData extends RestaurantPrintMeta {
+  monthLabel:   string;
+  generatedAt?: string;
+  days:         { day: string; orders: number; revenue: number }[];
+  totalRevenue: number;
+  totalOrders:  number;
+  avgPerDay:    number;
+  demo?:        boolean;
+}
+
+function reportStyles(): string {
+  return `
+  @page { size: A4 portrait; margin: 14mm; }
+  body { font-family: Inter, Arial, sans-serif; font-size: 13px; color: #111; margin: 0; }
+  .header { text-align: center; margin-bottom: 18px; }
+  .header img { max-width: 180px; max-height: 90px; object-fit: contain; margin: 0 auto 10px; display: block; }
+  h1 { font-size: 22px; margin: 6px 0 4px; }
+  h2 { font-size: 15px; margin: 0 0 6px; color: #444; font-weight: 600; }
+  .meta { font-size: 12px; color: #555; line-height: 1.5; }
+  .demo { display: inline-block; background: #fef3c7; color: #92400e; font-size: 11px; padding: 2px 8px; border-radius: 999px; margin-top: 6px; }
+  table { width: 100%; border-collapse: collapse; margin-top: 14px; }
+  th, td { border-bottom: 1px solid #ddd; padding: 8px 6px; text-align: left; }
+  th { font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; color: #666; }
+  td.num, th.num { text-align: right; }
+  .metrics { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: 16px 0; }
+  .metric { border: 1px solid #e5e7eb; border-radius: 8px; padding: 10px; }
+  .metric-label { font-size: 11px; color: #666; text-transform: uppercase; }
+  .metric-val { font-size: 20px; font-weight: 700; margin-top: 4px; }
+  .total { margin-top: 16px; font-size: 16px; font-weight: 700; text-align: right; }
+  .footer { margin-top: 24px; font-size: 11px; color: #888; text-align: center; }
+  @media print { .no-print { display: none; } }`;
+}
+
+function reportHeader(meta: RestaurantPrintMeta, title: string, periodLabel: string, demo?: boolean): string {
+  const gen = new Date().toLocaleString('en-GB');
+  return `<div class="header">
+    ${meta.logoUrl ? `<img src="${meta.logoUrl}" alt="Logo" crossorigin="anonymous" />` : ''}
+    <h1>${meta.restaurantName}</h1>
+    <h2>${title}</h2>
+    <div class="meta">
+      ${periodLabel}<br/>
+      ${meta.addressLine ? `${meta.addressLine}<br/>` : ''}
+      ${meta.phone ? `Tel: ${meta.phone}<br/>` : ''}
+      ${meta.taxId ? `Tax ID: ${meta.taxId}<br/>` : ''}
+      Generated: ${gen}
+    </div>
+    ${demo ? '<div class="demo">DEMO SAMPLE DATA</div>' : ''}
+  </div>`;
+}
+
+export function buildSalesReportHTML(data: SalesReportData): string {
+  const fmt = (n: number) => `$${n.toFixed(2)}`;
+  const metrics = data.metrics.map(m => `
+    <div class="metric"><div class="metric-label">${m.label}</div><div class="metric-val">${m.value}</div></div>`).join('');
+  const rows = data.rows.map(r => `
+    <tr>
+      <td>${r.label}</td>
+      <td class="num">${r.orders ?? '—'}</td>
+      <td class="num">${fmt(r.revenue)}</td>
+    </tr>`).join('');
+
+  return `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${data.title}</title>
+  <style>${reportStyles()}</style></head><body>
+  ${reportHeader(data, data.title, data.periodLabel, data.demo)}
+  <div class="metrics">${metrics}</div>
+  <table>
+    <thead><tr><th>Item / Category</th><th class="num">Orders</th><th class="num">Revenue</th></tr></thead>
+    <tbody>${rows}</tbody>
+  </table>
+  <div class="total">Total orders: ${data.totalOrders} · Gross revenue: ${fmt(data.totalRevenue)}</div>
+  <div class="footer">Cafyz Hospitality OS · ${data.restaurantName}</div>
+  </body></html>`;
+}
+
+export function buildMonthlyReportHTML(data: MonthlyReportData): string {
+  const fmt = (n: number) => `$${n.toFixed(2)}`;
+  const rows = data.days.map(d => `
+    <tr><td>${d.day}</td><td class="num">${d.orders}</td><td class="num">${fmt(d.revenue)}</td></tr>`).join('');
+
+  return `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Monthly Report</title>
+  <style>${reportStyles()}</style></head><body>
+  ${reportHeader(data, 'Monthly Sales Report', data.monthLabel, data.demo)}
+  <div class="metrics">
+    <div class="metric"><div class="metric-label">Total Revenue</div><div class="metric-val">${fmt(data.totalRevenue)}</div></div>
+    <div class="metric"><div class="metric-label">Total Orders</div><div class="metric-val">${data.totalOrders}</div></div>
+    <div class="metric"><div class="metric-label">Avg / Day</div><div class="metric-val">${fmt(data.avgPerDay)}</div></div>
+  </div>
+  <table>
+    <thead><tr><th>Date</th><th class="num">Orders</th><th class="num">Revenue</th></tr></thead>
+    <tbody>${rows}</tbody>
+  </table>
+  <div class="total">Month total: ${fmt(data.totalRevenue)}</div>
+  <div class="footer">Cafyz Hospitality OS · ${data.restaurantName}</div>
+  </body></html>`;
+}
+
+export function buildDemoSalesReport(meta: RestaurantPrintMeta): SalesReportData {
+  const today = new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+  return {
+    ...meta,
+    title: 'Daily Sales Report',
+    periodLabel: today,
+    demo: true,
+    metrics: [
+      { label: 'Covers served', value: '86' },
+      { label: 'Avg check', value: '$33.03' },
+      { label: 'Tables turned', value: '24' },
+    ],
+    rows: [
+      { label: 'Mains — Grill', orders: 28, revenue: 812.0 },
+      { label: 'Mains — Pasta', orders: 19, revenue: 456.5 },
+      { label: 'Starters', orders: 34, revenue: 408.0 },
+      { label: 'Desserts', orders: 22, revenue: 264.0 },
+      { label: 'Beverages', orders: 61, revenue: 488.0 },
+      { label: 'Wine & Bar', orders: 38, revenue: 912.0 },
+    ],
+    totalOrders: 47,
+    totalRevenue: 2840.5,
+  };
+}
+
+export function buildDemoMonthlyReport(meta: RestaurantPrintMeta): MonthlyReportData {
+  const now = new Date();
+  const monthLabel = now.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
+  const days = Array.from({ length: 7 }, (_, i) => ({
+    day: (() => {
+      const d = new Date(now);
+      d.setDate(d.getDate() - (6 - i));
+      return d.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' });
+    })(),
+    orders: 30 + i * 4,
+    revenue: 1200 + i * 180,
+  }));
+  const totalRevenue = days.reduce((s, d) => s + d.revenue, 0);
+  const totalOrders = days.reduce((s, d) => s + d.orders, 0);
+  return {
+    ...meta,
+    monthLabel,
+    demo: true,
+    days,
+    totalRevenue,
+    totalOrders,
+    avgPerDay: totalRevenue / days.length,
+  };
+}
+
+export async function printSalesReport(data: SalesReportData): Promise<void> {
+  printDialogHtml(buildSalesReportHTML(data));
+}
+
+export async function printMonthlyReport(data: MonthlyReportData): Promise<void> {
+  printDialogHtml(buildMonthlyReportHTML(data));
+}

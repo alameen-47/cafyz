@@ -62,7 +62,7 @@ router.get('/me', requireAuth, async (req: AuthRequest, res, next) => {
 });
 
 // PUT /api/restaurants/me — requireAuth, updates name/timezone
-router.put('/me', requireAuth, requireRole('manager','cashier'), async (req: AuthRequest, res, next) => {
+router.put('/me', requireAuth, requireRole('owner', 'manager', 'cashier'), async (req: AuthRequest, res, next) => {
   try {
     const rid = req.user!.restaurant_id;
     const data = z.object({

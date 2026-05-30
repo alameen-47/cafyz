@@ -4,7 +4,7 @@ import { requireAuth, type AuthRequest } from '../middleware/auth.js';
 import { requireRole } from '../middleware/rbac.js';
 
 const router = Router();
-router.use(requireAuth, requireRole('manager','cashier'));
+router.use(requireAuth, requireRole('owner', 'manager', 'cashier'));
 
 // GET /api/dashboard/stats
 router.get('/stats', async (req: AuthRequest, res, next) => {
