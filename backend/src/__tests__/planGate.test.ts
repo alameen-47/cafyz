@@ -96,12 +96,11 @@ describe('Plan gates — plan upgrade', () => {
   });
 });
 
-describe('Plan gates — founder bypasses all', () => {
-  it('founder can access kds regardless of plan', async () => {
+describe('Plan gates — founder scope isolation', () => {
+  it('founder cannot access restaurant KDS routes', async () => {
     const res = await request(app)
       .get('/api/kds/tickets')
       .set('Authorization', `Bearer ${founderToken}`);
-    // Founder routes go to /api/founder — kds still needs requirePlan but founder bypasses it
-    expect(res.status).toBe(200);
+    expect(res.status).toBe(403);
   });
 });

@@ -1,4 +1,4 @@
-/** Detect browser / PWA context for thermal printer APIs (Web Bluetooth / Web USB). */
+import { isNativeApp } from './platformEnv';
 
 export type PrinterPlatform = 'ios' | 'android' | 'desktop' | 'unknown';
 
@@ -46,13 +46,25 @@ export function getPrinterEnvironment(): PrinterEnvironment {
   const guidance: string[] = [];
 
   if (platform === 'ios') {
-    guidance.push(
-      'Apple does not allow Bluetooth thermal printers from any iPhone browser — Safari, Chrome, and home-screen apps all use the same engine without Web Bluetooth.',
-      'This is an Apple platform rule, not a Cafyz bug. No website can connect to BT ESC/POS printers on iPhone.',
-      'Options: (1) Tap “Print receipt” below for AirPrint if your printer supports Wi‑Fi/AirPrint. (2) Use an Android tablet or phone with Chrome for Bluetooth thermal receipts. (3) Use a Mac/PC with Chrome for Bluetooth/USB.',
-    );
+    if (isNativeApp()) {
+      guidance.push(
+        'Cafyz native app: connect a BLE thermal printer via Bluetooth below.',
+        'Classic Bluetooth-only printers need a BLE model or use AirPrint / “Print via Browser” for Wi‑Fi printers.',
+      );
+    } else {
+      guidance.push(
+        'Apple does not allow Bluetooth thermal printers from any iPhone browser — Safari, Chrome, and home-screen apps all use the same engine without Web Bluetooth.',
+        'This is an Apple platform rule, not a Cafyz bug. No website can connect to BT ESC/POS printers on iPhone.',
+        'Options: (1) Install the Cafyz iOS app from the App Store build for BLE printing. (2) Tap “Print receipt” for AirPrint. (3) Use Android or desktop for classic BT/USB.',
+      );
+    }
   } else if (platform === 'android') {
-    if (isStandalone) {
+    if (isNativeApp()) {
+      guidance.push(
+        'Cafyz native app: connect a BLE thermal printer via Bluetooth below.',
+        'Turn on Bluetooth and Location. Pair the printer in Android Settings if the picker is empty.',
+      );
+    } else if (isStandalone) {
       guidance.push(
         'If Bluetooth fails from the home-screen icon, open cafyz in Chrome from the address bar (not the bookmark icon) and connect there.',
       );
@@ -76,10 +88,21 @@ export function getPrinterEnvironment(): PrinterEnvironment {
     guidance.unshift('Open the site via HTTPS — Bluetooth/USB printing does not work on insecure http:// pages.');
   }
 
-  const canUseBluetooth =
-    isSecureContext &&
-    bluetoothAvailable &&
-    platform !== 'ios';
+  const canUseBluetooth = isNativeApp()
+    ? true
+    : isSecureContext && platform !== 'ios' && bluetoothAvailable;
+
+  if (isNativeApp()) {
+    return {
+      platform,
+      isStandalone: true,
+      isSecureContext: true,
+      bluetoothAvailable: true,
+      usbAvailable: false,
+      canUseBluetooth: true,
+      guidance,
+    };
+  }
 
   return {
     platform,
@@ -97,8 +120,8 @@ export function formatPrinterConnectError(err: unknown, env = getPrinterEnvironm
   const name = e?.name ?? '';
   const msg = e?.message ?? String(err);
 
-  if (env.platform === 'ios') {
-    return 'Bluetooth thermal printers are not supported on iPhone/iPad. Use “Print via Browser” or an Android device with Chrome.';
+  if (env.platform === 'ios' && !isNativeApp()) {
+    return 'Bluetooth thermal printers are not supported in iPhone Safari. Install the Cafyz iOS app or use “Print via Browser”.';
   }
 
   if (name === 'NotFoundError' || msg.includes('User cancelled')) {

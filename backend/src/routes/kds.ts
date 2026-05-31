@@ -2,13 +2,14 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { getDb } from '../db.js';
 import { requireAuth, type AuthRequest } from '../middleware/auth.js';
+import { requireRole } from '../middleware/rbac.js';
 import { uid } from '../utils.js';
 
 const router = Router();
 router.use(requireAuth);
 
 // GET /api/kds/tickets?status=new&station=GRILL
-router.get('/tickets', async (req: AuthRequest, res, next) => {
+router.get('/tickets', requireRole('owner', 'manager', 'cashier', 'waiter', 'kitchen'), async (req: AuthRequest, res, next) => {
   try {
     const rid = req.user!.restaurant_id;
     const { status, station } = req.query;
@@ -30,7 +31,7 @@ router.get('/tickets', async (req: AuthRequest, res, next) => {
 });
 
 // GET /api/kds/tickets/:id
-router.get('/tickets/:id', async (req: AuthRequest, res, next) => {
+router.get('/tickets/:id', requireRole('owner', 'manager', 'cashier', 'waiter', 'kitchen'), async (req: AuthRequest, res, next) => {
   try {
     const rid = req.user!.restaurant_id;
     const db = getDb();
@@ -42,7 +43,7 @@ router.get('/tickets/:id', async (req: AuthRequest, res, next) => {
 });
 
 // POST /api/kds/tickets  (create ticket from order)
-router.post('/tickets', async (req: AuthRequest, res, next) => {
+router.post('/tickets', requireRole('owner', 'manager', 'cashier', 'waiter'), async (req: AuthRequest, res, next) => {
   try {
     const rid = req.user!.restaurant_id;
     const data = z.object({
@@ -81,7 +82,7 @@ router.post('/tickets', async (req: AuthRequest, res, next) => {
 });
 
 // PATCH /api/kds/tickets/:id/fire  (new → prep)
-router.patch('/tickets/:id/fire', async (req: AuthRequest, res, next) => {
+router.patch('/tickets/:id/fire', requireRole('owner', 'manager', 'kitchen'), async (req: AuthRequest, res, next) => {
   try {
     const rid = req.user!.restaurant_id;
     const db = getDb();
@@ -93,7 +94,7 @@ router.patch('/tickets/:id/fire', async (req: AuthRequest, res, next) => {
 });
 
 // PATCH /api/kds/tickets/:id/ready  (prep → ready)
-router.patch('/tickets/:id/ready', async (req: AuthRequest, res, next) => {
+router.patch('/tickets/:id/ready', requireRole('owner', 'manager', 'kitchen'), async (req: AuthRequest, res, next) => {
   try {
     const rid = req.user!.restaurant_id;
     const db = getDb();
@@ -105,7 +106,7 @@ router.patch('/tickets/:id/ready', async (req: AuthRequest, res, next) => {
 });
 
 // PATCH /api/kds/tickets/:id/delivered
-router.patch('/tickets/:id/delivered', async (req: AuthRequest, res, next) => {
+router.patch('/tickets/:id/delivered', requireRole('owner', 'manager', 'kitchen'), async (req: AuthRequest, res, next) => {
   try {
     const rid = req.user!.restaurant_id;
     const db = getDb();
@@ -117,7 +118,7 @@ router.patch('/tickets/:id/delivered', async (req: AuthRequest, res, next) => {
 });
 
 // DELETE /api/kds/tickets/:id
-router.delete('/tickets/:id', async (req: AuthRequest, res, next) => {
+router.delete('/tickets/:id', requireRole('owner', 'manager'), async (req: AuthRequest, res, next) => {
   try {
     const rid = req.user!.restaurant_id;
     const db = getDb();

@@ -83,6 +83,13 @@ backend/.env
 # Vite web build
 web/dist
 
+# Native release binaries (build locally)
+releases/desktop/
+releases/*.apk
+releases/*.dmg
+releases/*.exe
+releases/*.AppImage
+
 # Backend compiled output (Render builds this itself)
 backend/dist
 

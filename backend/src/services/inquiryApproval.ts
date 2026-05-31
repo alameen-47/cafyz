@@ -114,20 +114,15 @@ export async function provisionTrialFromInquiry(
     args: [emailLower],
   });
 
-  let userId: string;
   if (existingUser.rows.length) {
-    userId = String((existingUser.rows[0] as Record<string, unknown>).id);
-    await db.execute({
-      sql: `UPDATE users SET restaurant_id=?, name=?, initials=?, password_hash=?, role='manager', status='active' WHERE id=?`,
-      args: [restId, inquiry.name, initials, pwHash, userId],
-    });
-  } else {
-    userId = uid();
-    await db.execute({
-      sql: `INSERT INTO users(id,restaurant_id,name,initials,email,password_hash,role,status,start_time) VALUES(?,?,?,?,?,?,?,?,?)`,
-      args: [userId, restId, inquiry.name, initials, emailLower, pwHash, 'manager', 'active', '—'],
-    });
+    throw new Error('An account with this email already exists. Ask the user to use Forgot Password.');
   }
+
+  const userId = uid();
+  await db.execute({
+    sql: `INSERT INTO users(id,restaurant_id,name,initials,email,password_hash,role,status,start_time) VALUES(?,?,?,?,?,?,?,?,?)`,
+    args: [userId, restId, inquiry.name, initials, emailLower, pwHash, 'manager', 'active', '—'],
+  });
 
   await db.execute({
     sql: `INSERT INTO license_keys(id,key_code,plan,restaurant_id,activated_at,expires_at,note) VALUES(?,?,?,?,?,?,?)`,

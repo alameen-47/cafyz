@@ -8,7 +8,8 @@ import { VitePWA } from 'vite-plugin-pwa';
 // always points to the web/ directory whether running locally or on Vercel.
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-export default defineConfig({
+export default defineConfig(({ mode }) => ({
+  base: mode === 'capacitor' ? './' : '/',
   plugins: [
     react(),
     VitePWA({
@@ -55,4 +56,4 @@ export default defineConfig({
       },
     },
   },
-});
+}));

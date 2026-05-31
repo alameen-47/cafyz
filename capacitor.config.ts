@@ -1,0 +1,34 @@
+import type { CapacitorConfig } from '@capacitor/cli';
+
+const config: CapacitorConfig = {
+  appId: 'com.cafyz.app',
+  appName: 'Cafyz',
+  webDir: 'web/dist',
+  android: { path: 'cap-android' },
+  ios: { path: 'cap-ios' },
+  server: {
+    androidScheme: 'https',
+    iosScheme: 'https',
+  },
+  plugins: {
+    SplashScreen: {
+      launchAutoHide: true,
+      backgroundColor: '#07060F',
+      showSpinner: false,
+    },
+    StatusBar: {
+      style: 'DARK',
+      backgroundColor: '#07060F',
+    },
+    BluetoothLe: {
+      displayStrings: {
+        scanning: 'Scanning for thermal printers…',
+        cancel: 'Cancel',
+        availableDevices: 'Available printers',
+        noDeviceFound: 'No printer found. Put it in pairing mode.',
+      },
+    },
+  },
+};
+
+export default config;

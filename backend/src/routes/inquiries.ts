@@ -4,7 +4,7 @@ import { createHash, randomBytes, timingSafeEqual } from 'crypto';
 import nodemailer from 'nodemailer';
 import { getDb } from '../db.js';
 import { uid } from '../utils.js';
-import { APP_URL, TRIAL_DAYS, appPath, trialEndsDateLabel } from '../config/site.js';
+import { APP_URL, TRIAL_DAYS, TRIAL_REQUEST_COOLDOWN_DAYS, appPath, trialEndsDateLabel } from '../config/site.js';
 import { approveInquiryById, buildApprovalResultHtml } from '../services/inquiryApproval.js';
 import { ADMIN_EMAIL, isEmailConfigured, sendMailReliable, smtpFrom } from '../services/email.js';
 
@@ -172,6 +172,24 @@ router.post('/', async (req, res, next) => {
     const deviceHash = sha256Hex(`dev:${device_id}`);
     const ipHash     = sha256Hex(`ip:${ip}`);
     const uaHash     = sha256Hex(`ua:${ua}`);
+
+    // Enforce cooldown by device/IP to reduce automated abuse.
+    const recent = await getDb().execute({
+      sql: `SELECT id, created_at
+            FROM inquiries
+            WHERE (device_hash=? OR ip_hash=?)
+              AND created_at >= datetime('now', '-${Math.max(1, TRIAL_REQUEST_COOLDOWN_DAYS)} day')
+            ORDER BY created_at DESC
+            LIMIT 1`,
+      args: [deviceHash, ipHash],
+    });
+    if (recent.rows.length) {
+      res.status(429).json({
+        ok: false,
+        error: `A request from this device/network already exists. Try again after ${TRIAL_REQUEST_COOLDOWN_DAYS} days.`,
+      });
+      return;
+    }
 
     // Block multiple trial requests from the same system address (device/IP)
     const id = uid();

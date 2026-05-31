@@ -5,6 +5,13 @@
 import { getRestaurantLogo } from './restaurantLogoStorage';
 import { logoDataUrlToEscPos } from './logoThermalRaster';
 import { formatPrinterConnectError, getPrinterEnvironment } from './printerEnvironment';
+import {
+  canUseNativeBle,
+  nativeConnectBluetooth,
+  nativePrintBluetooth,
+  nativeDisconnectPrinter,
+  nativePrinterStatus,
+} from './nativePrinter';
 
 export { getPrinterEnvironment, formatPrinterConnectError } from './printerEnvironment';
 
@@ -312,6 +319,7 @@ let btChar:   any = null;  // BluetoothRemoteGATTCharacteristic
 let btDevice: any = null;  // BluetoothDevice
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 let usbDevice: any = null; // USBDevice
+let usbOutEndpointNumber: number | null = null;
 
 async function writeChunked(
   char: { writeValue: (data: Uint8Array) => Promise<void> },
@@ -329,6 +337,14 @@ async function writeChunked(
 }
 
 export async function connectBluetooth(): Promise<string> {
+  if (canUseNativeBle()) {
+    try {
+      return await nativeConnectBluetooth();
+    } catch (err) {
+      throw new Error(formatPrinterConnectError(err, getPrinterEnvironment()));
+    }
+  }
+
   const env = getPrinterEnvironment();
   if (env.platform === 'ios') {
     throw new Error(formatPrinterConnectError(new Error('ios'), env));
@@ -390,26 +406,56 @@ export async function connectUSB(): Promise<string> {
   if (!('usb' in navigator)) {
     throw new Error('Web USB is not supported in this browser. Use Chrome or Edge.');
   }
-  // Class code 7 = Printer
-  const device = await (navigator as any).usb.requestDevice({ filters: [{ classCode: 7 }] });
+  // Many ESC/POS printers expose vendor-specific interfaces; allow broad selection.
+  const device = await (navigator as any).usb.requestDevice({ filters: [] });
   await device.open();
   if (device.configuration === null) await device.selectConfiguration(1);
+  const cfg = device.configuration;
+  if (!cfg) throw new Error('USB printer has no active configuration.');
 
-  // Claim first interface
-  const iface = device.configuration.interfaces[0];
-  await device.claimInterface(iface.interfaceNumber);
+  // Claim first interface with an OUT endpoint and remember endpoint number.
+  let endpoint: number | null = null;
+  for (const iface of cfg.interfaces) {
+    let foundOnInterface = false;
+    for (const alt of iface.alternates) {
+      const out = alt.endpoints.find((e: { direction: string; endpointNumber: number }) => e.direction === 'out');
+      if (!out) continue;
+      await device.claimInterface(iface.interfaceNumber);
+      if (alt.alternateSetting !== iface.alternate.alternateSetting) {
+        await device.selectAlternateInterface(iface.interfaceNumber, alt.alternateSetting);
+      }
+      endpoint = out.endpointNumber;
+      foundOnInterface = true;
+      break;
+    }
+    if (foundOnInterface) break;
+  }
+
+  if (endpoint === null) {
+    await device.close().catch(() => {});
+    throw new Error('No writable USB endpoint found on this printer.');
+  }
 
   usbDevice = device;
-  return device.productName || 'USB Printer';
+  usbOutEndpointNumber = endpoint;
+  return device.productName || `USB Printer (${device.vendorId}:${device.productId})`;
 }
 
 export function disconnectPrinter() {
+  nativeDisconnectPrinter();
   if (btDevice?.gatt?.connected) btDevice.gatt.disconnect();
   btChar = null; btDevice = null;
   if (usbDevice) { usbDevice.close().catch(() => {}); usbDevice = null; }
+  usbOutEndpointNumber = null;
+}
+
+function isBluetoothConnected(): boolean {
+  return !!btChar || nativePrinterStatus().type === 'bluetooth';
 }
 
 export function printerStatus(): { type: 'none' | 'bluetooth' | 'usb'; name: string } {
+  const native = nativePrinterStatus();
+  if (native.type === 'bluetooth') return native;
   if (btDevice) return { type: 'bluetooth', name: btDevice.name || 'BT Printer' };
   if (usbDevice) return { type: 'usb', name: usbDevice.productName || 'USB Printer' };
   return { type: 'none', name: '' };
@@ -456,21 +502,29 @@ async function buildHardwareKitchenBytes(data: KitchenTicketData): Promise<Uint8
 
 // ── Print dispatcher ──────────────────────────────────────────────────────────
 
+async function sendBluetooth(data: Uint8Array): Promise<void> {
+  if (btChar) {
+    await writeChunked(btChar, data);
+    return;
+  }
+  if (nativePrinterStatus().type === 'bluetooth') {
+    await nativePrintBluetooth(data);
+    return;
+  }
+  throw new Error('Bluetooth printer not connected.');
+}
+
 async function printBluetooth(data: Uint8Array): Promise<void> {
-  if (!btChar) throw new Error('Bluetooth printer not connected.');
-  await writeChunked(btChar, data);
+  await sendBluetooth(data);
 }
 
 async function printUSB(data: Uint8Array): Promise<void> {
   if (!usbDevice) throw new Error('USB printer not connected.');
-  const iface    = usbDevice.configuration!.interfaces[0];
-  const altIface = iface.alternates[0];
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const endpoint = altIface.endpoints.find((e: any) => e.direction === 'out');
-  if (!endpoint) throw new Error('No OUT endpoint on USB printer.');
+  const endpointNumber = usbOutEndpointNumber;
+  if (endpointNumber === null) throw new Error('No OUT endpoint on USB printer.');
   const chunkSize = 4096;
   for (let i = 0; i < data.length; i += chunkSize) {
-    await usbDevice.transferOut(endpoint.endpointNumber, data.slice(i, i + chunkSize));
+    await usbDevice.transferOut(endpointNumber, data.slice(i, i + chunkSize));
   }
 }
 
@@ -603,9 +657,9 @@ export async function print(
   const logoUrl = resolveLogoUrl(receiptData.logoUrl, restaurantId);
   const data: ReceiptData = logoUrl ? { ...receiptData, logoUrl } : receiptData;
 
-  if (btChar || usbDevice) {
+  if (isBluetoothConnected() || usbDevice) {
     const bytes = await buildHardwareReceiptBytes(data, width, escposData);
-    if (btChar) {
+    if (isBluetoothConnected()) {
       await printBluetooth(bytes);
       return 'bluetooth';
     }
@@ -656,14 +710,19 @@ export async function printTest(opts: {
 export async function printKitchenTicket(
   data: KitchenTicketData,
   restaurantId?: string,
+  opts?: { allowDialog?: boolean },
 ): Promise<'bluetooth' | 'usb' | 'dialog'> {
   const logoUrl = resolveLogoUrl(data.logoUrl, restaurantId);
   const ticket: KitchenTicketData = logoUrl ? { ...data, logoUrl } : data;
+  const allowDialog = opts?.allowDialog ?? true;
 
-  if (btChar || usbDevice) {
+  if (isBluetoothConnected() || usbDevice) {
     const bytes = await buildHardwareKitchenBytes(ticket);
-    if (btChar) { await printBluetooth(bytes); return 'bluetooth'; }
+    if (isBluetoothConnected()) { await printBluetooth(bytes); return 'bluetooth'; }
     await printUSB(bytes); return 'usb';
+  }
+  if (!allowDialog) {
+    throw new Error('No Bluetooth/USB printer connected for auto-print.');
   }
   await printKitchenDialog(ticket);
   return 'dialog';
@@ -970,8 +1029,8 @@ async function dispatchReportPrint(
   bytes: Uint8Array,
   html: string,
 ): Promise<'bluetooth' | 'usb' | 'dialog'> {
-  if (btChar || usbDevice) {
-    if (btChar) {
+  if (isBluetoothConnected() || usbDevice) {
+    if (isBluetoothConnected()) {
       await printBluetooth(bytes);
       return 'bluetooth';
     }

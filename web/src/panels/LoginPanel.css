@@ -237,6 +237,32 @@
   margin-bottom: 4px;
 }
 
+.login-success-message {
+  font-size: 12px;
+  color: #22c55e;
+  margin-top: -4px;
+  margin-bottom: 4px;
+}
+
+.login-secondary-links {
+  display: flex;
+  justify-content: center;
+  margin-top: 10px;
+}
+
+.login-link-btn {
+  border: 0;
+  background: transparent;
+  color: var(--gold);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.login-link-btn:hover {
+  text-decoration: underline;
+}
+
 .login-quick {
   margin-top: 32px;
   padding-top: 24px;

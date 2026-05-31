@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { kdsApi, restaurantApi, type ApiKdsTicket, type ApiKdsTicketItem, type ApiRestaurant } from '../services/api';
-import { printKitchenTicket } from '../services/PrintService';
+import { connectBluetooth, connectUSB, disconnectPrinter, printKitchenTicket, printerStatus } from '../services/PrintService';
+import { PrinterHelpBanner } from '../components/PrinterHelpBanner';
 import { syncRestaurantLogoCache } from '../services/restaurantLogoStorage';
 import './KDSPanel.css';
 
@@ -118,9 +119,12 @@ export function KDSPanel() {
   const [loading, setLoading] = useState(true);
   const [error,   setError]   = useState('');
   const [autoPrint, setAutoPrint] = useState(() => localStorage.getItem('cafyz_kds_auto_print') !== '0');
+  const [printer, setPrinter] = useState<{ type: 'none' | 'bluetooth' | 'usb'; name: string }>({ type: 'none', name: '' });
+  const [printBusy, setPrintBusy] = useState(false);
   const printedRef = useRef<Set<string>>(new Set());
 
   useEffect(() => {
+    setPrinter(printerStatus());
     try {
       const raw = sessionStorage.getItem('cafyz_kds_printed_ids');
       if (!raw) return;
@@ -149,6 +153,7 @@ export function KDSPanel() {
 
   const tryAutoPrint = async (list: ApiKdsTicket[]) => {
     if (!autoPrint) return;
+    if (printerStatus().type === 'none') return;
     const fresh = list
       .filter(t => t.status === 'new')
       .filter(t => !printedRef.current.has(t.id))
@@ -169,15 +174,43 @@ export function KDSPanel() {
             mods: typeof i.mods === 'string' ? JSON.parse(i.mods || '[]') : (i.mods ?? []),
             alert: Boolean(i.alert),
           })),
-        }, restaurant?.id);
+        }, restaurant?.id, { allowDialog: false });
+        printedRef.current.add(t.id);
       } catch (e) {
         setError((e as Error).message || 'Auto-print failed');
-      } finally {
-        printedRef.current.add(t.id);
       }
     }
     persistPrinted();
   };
+
+  async function connectKdsBluetooth() {
+    setPrintBusy(true); setError('');
+    try {
+      const name = await connectBluetooth();
+      setPrinter({ type: 'bluetooth', name });
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setPrintBusy(false);
+    }
+  }
+
+  async function connectKdsUsb() {
+    setPrintBusy(true); setError('');
+    try {
+      const name = await connectUSB();
+      setPrinter({ type: 'usb', name });
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setPrintBusy(false);
+    }
+  }
+
+  function disconnectKdsPrinter() {
+    disconnectPrinter();
+    setPrinter({ type: 'none', name: '' });
+  }
 
   const load = useCallback(() => {
     kdsApi.list({ status: undefined })
@@ -240,12 +273,23 @@ export function KDSPanel() {
   return (
     <div className="kds-root">
       {error && <p style={{ color: 'var(--danger)', padding: '4px 16px', fontSize: 12 }}>{error}</p>}
+      <PrinterHelpBanner />
 
       <div className="kds-stations">
         <label style={{ marginRight: 10, display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--text2)' }}>
           <input type="checkbox" checked={autoPrint} onChange={e => setAutoPrint(e.target.checked)} />
           Auto-print new tickets
         </label>
+        {printer.type !== 'none' ? (
+          <button type="button" onClick={disconnectKdsPrinter}>
+            {printer.type === 'bluetooth' ? '🔵' : '🔌'} {printer.name} · Disconnect
+          </button>
+        ) : (
+          <>
+            <button type="button" onClick={connectKdsBluetooth} disabled={printBusy}>🔵 Connect Bluetooth</button>
+            <button type="button" onClick={connectKdsUsb} disabled={printBusy}>🔌 Connect USB</button>
+          </>
+        )}
         {STATIONS.map(s => (
           <button
             key={s}

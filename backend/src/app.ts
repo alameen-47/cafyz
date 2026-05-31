@@ -21,6 +21,28 @@ import { requireAuth }   from './middleware/auth.js';
 import { errorHandler, notFound } from './middleware/errorHandler.js';
 
 const app = express();
+app.set('trust proxy', 1);
+const isTestEnv = process.env.NODE_ENV === 'test';
+
+const globalLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: isTestEnv ? 100000 : 500,
+  standardHeaders: true,
+});
+
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: isTestEnv ? 100000 : 25,
+  standardHeaders: true,
+  message: { error: 'Too many authentication attempts. Try again shortly.' },
+});
+
+const inquiryLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: isTestEnv ? 100000 : 20,
+  standardHeaders: true,
+  message: { error: 'Too many requests. Please try again later.' },
+});
 
 // ── Security ───────────────────────────────────────────────────────────────────
 app.use(helmet());
@@ -41,7 +63,7 @@ app.use(cors({
   },
   credentials: true,
 }));
-app.use(rateLimit({ windowMs: 15 * 60 * 1000, max: 500, standardHeaders: true }));
+app.use(globalLimiter);
 
 // ── Body parsing ────────────────────────────────────────────────────────────────
 // Logo uploads store dithered PNG data URLs (up to ~3 MB).
@@ -52,7 +74,7 @@ app.use(express.urlencoded({ extended: true }));
 app.get('/health', (_req, res) => res.json({ status: 'ok', ts: new Date().toISOString() }));
 
 // ── Routes ──────────────────────────────────────────────────────────────────────
-app.use('/api/auth',         authRoutes);
+app.use('/api/auth',         authLimiter, authRoutes);
 app.use('/api/users',        userRoutes);
 app.use('/api/menu',         menuRoutes);
 app.use('/api/orders',       orderRoutes);
@@ -64,7 +86,7 @@ app.use('/api/dashboard',    requireAuth, requirePlan('pro'),     dashboardRoute
 app.use('/api/restaurants',  restaurantRoutes);
 app.use('/api/licenses',     licenseRoutes);
 app.use('/api/founder',      founderRoutes);
-app.use('/api/inquiries',    inquiryRoutes);
+app.use('/api/inquiries',    inquiryLimiter, inquiryRoutes);
 
 // ── Error handling ──────────────────────────────────────────────────────────────
 app.use(notFound);

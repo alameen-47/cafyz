@@ -50,6 +50,10 @@ export const authApi = {
     post<LoginResponse>('/api/auth/login', { email, password }),
   pin: (pin: string) =>
     post<LoginResponse>('/api/auth/pin', { pin }),
+  forgotPassword: (email: string) =>
+    post<{ ok: boolean; message: string }>('/api/auth/forgot-password', { email }),
+  resetPassword: (token: string, password: string) =>
+    post<{ ok: boolean; message: string }>('/api/auth/reset-password', { token, password }),
   me: () => get<ApiUser>('/api/auth/me'),
   onboarding: (data: {
     restaurant_name: string; owner_name: string;
@@ -257,7 +261,7 @@ export interface LoginResponse {
 
 export interface ApiUser {
   id: string; restaurant_id: string; name: string; initials: string; email: string;
-  role: 'owner' | 'manager' | 'cashier' | 'waiter' | 'kitchen';
+  role: 'owner' | 'manager' | 'cashier' | 'waiter' | 'kitchen' | 'founder';
   status: 'active' | 'break' | 'off'; start_time: string; created_at?: string;
 }
 

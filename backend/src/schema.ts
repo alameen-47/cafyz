@@ -31,6 +31,15 @@ export async function runMigrations() {
       UNIQUE(restaurant_id, email)
     );
 
+    CREATE TABLE IF NOT EXISTS password_reset_tokens (
+      id         TEXT PRIMARY KEY,
+      user_id    TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      token_hash TEXT NOT NULL UNIQUE,
+      expires_at TEXT NOT NULL,
+      used_at    TEXT,
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+
     CREATE TABLE IF NOT EXISTS restaurant_tables (
       id            TEXT PRIMARY KEY,
       restaurant_id TEXT NOT NULL REFERENCES restaurants(id) ON DELETE CASCADE,
@@ -178,6 +187,14 @@ export async function runMigrations() {
     CREATE INDEX IF NOT EXISTS idx_inquiries_device_created ON inquiries(device_hash, created_at);
     CREATE INDEX IF NOT EXISTS idx_inquiries_ip_created     ON inquiries(ip_hash, created_at);
     CREATE INDEX IF NOT EXISTS idx_inquiries_status_created ON inquiries(status, created_at);
+    CREATE INDEX IF NOT EXISTS idx_reset_tokens_user        ON password_reset_tokens(user_id, created_at);
+    CREATE INDEX IF NOT EXISTS idx_users_restaurant_email   ON users(restaurant_id, email);
+    CREATE INDEX IF NOT EXISTS idx_orders_rest_status_time  ON orders(restaurant_id, status, created_at);
+    CREATE INDEX IF NOT EXISTS idx_tables_restaurant_status ON restaurant_tables(restaurant_id, status);
+    CREATE INDEX IF NOT EXISTS idx_menu_rest_cat_available  ON menu_items(restaurant_id, category, is_available);
+    CREATE INDEX IF NOT EXISTS idx_kds_rest_status_time     ON kds_tickets(restaurant_id, status, created_at);
+    CREATE INDEX IF NOT EXISTS idx_reservations_rest_time   ON reservations(restaurant_id, res_time);
+    CREATE INDEX IF NOT EXISTS idx_inventory_rest_name      ON inventory(restaurant_id, name);
 
     CREATE TABLE IF NOT EXISTS app_settings (
       key         TEXT PRIMARY KEY,

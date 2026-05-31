@@ -30,9 +30,7 @@ describe('POST /api/restaurants/onboarding', () => {
     expect(res.body.restaurant.timezone).toBe('Europe/Paris');
   });
 
-  it('allows same email across different restaurants (multi-tenant)', async () => {
-    // email uniqueness is scoped to (restaurant_id, email) — same email can
-    // own separate restaurants
+  it('rejects creating a second account with an existing email', async () => {
     const res = await request(app)
       .post('/api/restaurants/onboarding')
       .send({
@@ -42,9 +40,8 @@ describe('POST /api/restaurants/onboarding', () => {
         password: 'securepass123',
       });
 
-    // 201 because it's a *new* restaurant with a different restaurant_id
-    expect(res.status).toBe(201);
-    expect(res.body.restaurant.name).toBe('Second Bistro');
+    expect(res.status).toBe(409);
+    expect(String(res.body.error ?? '')).toContain('forgot password');
   });
 
   it('rejects password shorter than 8 chars', async () => {

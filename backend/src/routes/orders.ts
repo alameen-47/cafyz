@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { getDb } from '../db.js';
 import { requireAuth, type AuthRequest } from '../middleware/auth.js';
+import { requireRole } from '../middleware/rbac.js';
 import { uid } from '../utils.js';
 
 const router = Router();
@@ -32,7 +33,7 @@ function catToStation(category: string): string {
 }
 
 // ── GET /api/orders ───────────────────────────────────────────────────────────
-router.get('/', async (req: AuthRequest, res, next) => {
+router.get('/', requireRole('owner', 'manager', 'cashier', 'waiter', 'kitchen'), async (req: AuthRequest, res, next) => {
   try {
     const rid = req.user!.restaurant_id;
     const { status, table_id } = req.query;
@@ -50,7 +51,7 @@ router.get('/', async (req: AuthRequest, res, next) => {
 });
 
 // ── GET /api/orders/:id ───────────────────────────────────────────────────────
-router.get('/:id', async (req: AuthRequest, res, next) => {
+router.get('/:id', requireRole('owner', 'manager', 'cashier', 'waiter', 'kitchen'), async (req: AuthRequest, res, next) => {
   try {
     const rid = req.user!.restaurant_id;
     const db  = getDb();
@@ -72,7 +73,7 @@ router.get('/:id', async (req: AuthRequest, res, next) => {
 });
 
 // ── POST /api/orders ──────────────────────────────────────────────────────────
-router.post('/', async (req: AuthRequest, res, next) => {
+router.post('/', requireRole('owner', 'manager', 'cashier', 'waiter'), async (req: AuthRequest, res, next) => {
   try {
     const rid  = req.user!.restaurant_id;
     const data = OrderSchema.parse(req.body);
@@ -95,7 +96,7 @@ router.post('/', async (req: AuthRequest, res, next) => {
 });
 
 // ── PUT /api/orders/:id ───────────────────────────────────────────────────────
-router.put('/:id', async (req: AuthRequest, res, next) => {
+router.put('/:id', requireRole('owner', 'manager', 'cashier', 'waiter'), async (req: AuthRequest, res, next) => {
   try {
     const rid  = req.user!.restaurant_id;
     const data = OrderSchema.partial().parse(req.body);
@@ -119,7 +120,7 @@ router.put('/:id', async (req: AuthRequest, res, next) => {
 });
 
 // ── PATCH /api/orders/:id/status ─────────────────────────────────────────────
-router.patch('/:id/status', async (req: AuthRequest, res, next) => {
+router.patch('/:id/status', requireRole('owner', 'manager', 'cashier', 'waiter'), async (req: AuthRequest, res, next) => {
   try {
     const rid = req.user!.restaurant_id;
     const { status } = z.object({
@@ -217,7 +218,7 @@ router.patch('/:id/status', async (req: AuthRequest, res, next) => {
 });
 
 // ── POST /api/orders/:id/items ────────────────────────────────────────────────
-router.post('/:id/items', async (req: AuthRequest, res, next) => {
+router.post('/:id/items', requireRole('owner', 'manager', 'cashier', 'waiter'), async (req: AuthRequest, res, next) => {
   try {
     const rid  = req.user!.restaurant_id;
     const data = OrderItemSchema.parse(req.body);
@@ -254,7 +255,7 @@ router.post('/:id/items', async (req: AuthRequest, res, next) => {
 });
 
 // ── PUT /api/orders/:id/items/:itemId ─────────────────────────────────────────
-router.put('/:id/items/:itemId', async (req: AuthRequest, res, next) => {
+router.put('/:id/items/:itemId', requireRole('owner', 'manager', 'cashier', 'waiter'), async (req: AuthRequest, res, next) => {
   try {
     const rid    = req.user!.restaurant_id;
     const data   = z.object({
@@ -292,7 +293,7 @@ router.put('/:id/items/:itemId', async (req: AuthRequest, res, next) => {
 });
 
 // ── DELETE /api/orders/:id/items/:itemId ──────────────────────────────────────
-router.delete('/:id/items/:itemId', async (req: AuthRequest, res, next) => {
+router.delete('/:id/items/:itemId', requireRole('owner', 'manager', 'cashier', 'waiter'), async (req: AuthRequest, res, next) => {
   try {
     const rid    = req.user!.restaurant_id;
     const db     = getDb();
@@ -317,13 +318,9 @@ router.delete('/:id/items/:itemId', async (req: AuthRequest, res, next) => {
 });
 
 // ── DELETE /api/orders/:id ────────────────────────────────────────────────────
-router.delete('/:id', async (req: AuthRequest, res, next) => {
+router.delete('/:id', requireRole('owner', 'manager'), async (req: AuthRequest, res, next) => {
   try {
     const rid = req.user!.restaurant_id;
-    if (req.user!.role !== 'manager' && req.user!.role !== 'owner') {
-      res.status(403).json({ error: 'Manager only' });
-      return;
-    }
     const db = getDb();
     const id = req.params.id as string;
 

@@ -21,7 +21,7 @@ const UserSchema = z.object({
 });
 
 // GET /api/users
-router.get('/', requireRole('manager','cashier'), async (req: AuthRequest, res, next) => {
+router.get('/', requireRole('owner','manager'), async (req: AuthRequest, res, next) => {
   try {
     const rid = req.user!.restaurant_id;
     const rows = await getDb().execute({
@@ -33,7 +33,7 @@ router.get('/', requireRole('manager','cashier'), async (req: AuthRequest, res, 
 });
 
 // GET /api/users/:id
-router.get('/:id', requireRole('manager','cashier'), async (req: AuthRequest, res, next) => {
+router.get('/:id', requireRole('owner','manager'), async (req: AuthRequest, res, next) => {
   try {
     const rid = req.user!.restaurant_id;
     const row = await getDb().execute({
@@ -46,7 +46,7 @@ router.get('/:id', requireRole('manager','cashier'), async (req: AuthRequest, re
 });
 
 // POST /api/users
-router.post('/', requireRole('manager','cashier'), async (req: AuthRequest, res, next) => {
+router.post('/', requireRole('owner','manager'), async (req: AuthRequest, res, next) => {
   try {
     const rid = req.user!.restaurant_id;
     const data = UserSchema.parse(req.body);
@@ -54,9 +54,19 @@ router.post('/', requireRole('manager','cashier'), async (req: AuthRequest, res,
     const pw = data.password ? await bcrypt.hash(data.password, 10) : await bcrypt.hash('cafyz2026', 10);
     const ph = data.pin ? await bcrypt.hash(data.pin, 10) : null;
     const initials = data.initials ?? data.name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0,2);
+    const emailNorm = data.email.trim().toLowerCase();
+    const emailExists = await getDb().execute({
+      sql: 'SELECT id FROM users WHERE restaurant_id=? AND LOWER(email)=?',
+      args: [rid, emailNorm],
+    });
+    if (emailExists.rows.length) {
+      res.status(409).json({ error: 'A user with this email already exists in your restaurant' });
+      return;
+    }
+
     await getDb().execute({
       sql: `INSERT INTO users(id,restaurant_id,name,initials,email,password_hash,role,status,start_time,pin_hash) VALUES(?,?,?,?,?,?,?,?,?,?)`,
-      args: [id, rid, data.name, initials, data.email, pw, data.role, data.status??'active', data.start_time??'—', ph],
+      args: [id, rid, data.name, initials, emailNorm, pw, data.role, data.status??'active', data.start_time??'—', ph],
     });
     const row = await getDb().execute({ sql: 'SELECT id,name,initials,email,role,status,start_time FROM users WHERE id=?', args: [id] });
     res.status(201).json(row.rows[0]);
@@ -64,19 +74,36 @@ router.post('/', requireRole('manager','cashier'), async (req: AuthRequest, res,
 });
 
 // PUT /api/users/:id
-router.put('/:id', requireRole('manager','cashier'), async (req: AuthRequest, res, next) => {
+router.put('/:id', requireRole('owner','manager'), async (req: AuthRequest, res, next) => {
   try {
     const rid = req.user!.restaurant_id;
     const data = UserSchema.partial().parse(req.body);
     const db = getDb();
     const existing = await db.execute({ sql: 'SELECT * FROM users WHERE id=? AND restaurant_id=?', args: [(req.params.id as string), rid] });
     if (!existing.rows.length) { res.status(404).json({ error: 'User not found' }); return; }
+    const target = existing.rows[0] as Record<string, unknown>;
+    if (req.user!.role === 'manager' && String(target.role) === 'owner') {
+      res.status(403).json({ error: 'Only owner can modify owner accounts' });
+      return;
+    }
 
     const sets: string[] = [];
     const args: any[] = [];
 
     if (data.name)       { sets.push('name=?');       args.push(data.name); }
-    if (data.email)      { sets.push('email=?');      args.push(data.email); }
+    if (data.email) {
+      const emailNorm = data.email.trim().toLowerCase();
+      const emailExists = await db.execute({
+        sql: 'SELECT id FROM users WHERE restaurant_id=? AND LOWER(email)=? AND id!=?',
+        args: [rid, emailNorm, (req.params.id as string)],
+      });
+      if (emailExists.rows.length) {
+        res.status(409).json({ error: 'A user with this email already exists in your restaurant' });
+        return;
+      }
+      sets.push('email=?');
+      args.push(emailNorm);
+    }
     if (data.role)       { sets.push('role=?');       args.push(data.role); }
     if (data.status)     { sets.push('status=?');     args.push(data.status); }
     if (data.start_time) { sets.push('start_time=?'); args.push(data.start_time); }
@@ -94,25 +121,35 @@ router.put('/:id', requireRole('manager','cashier'), async (req: AuthRequest, re
 });
 
 // PATCH /api/users/:id/status
-router.patch('/:id/status', requireRole('manager','cashier'), async (req: AuthRequest, res, next) => {
+router.patch('/:id/status', requireRole('owner','manager'), async (req: AuthRequest, res, next) => {
   try {
     const rid = req.user!.restaurant_id;
     const { status } = z.object({ status: z.enum(['active','break','off']) }).parse(req.body);
     const db = getDb();
-    const ex = await db.execute({ sql: 'SELECT id FROM users WHERE id=? AND restaurant_id=?', args: [(req.params.id as string), rid] });
+    const ex = await db.execute({ sql: 'SELECT id,role FROM users WHERE id=? AND restaurant_id=?', args: [(req.params.id as string), rid] });
     if (!ex.rows.length) { res.status(404).json({ error: 'User not found' }); return; }
+    const target = ex.rows[0] as Record<string, unknown>;
+    if (req.user!.role === 'manager' && String(target.role) === 'owner') {
+      res.status(403).json({ error: 'Only owner can modify owner accounts' });
+      return;
+    }
     await db.execute({ sql: 'UPDATE users SET status=? WHERE id=? AND restaurant_id=?', args: [status, (req.params.id as string), rid] });
     res.json({ id: (req.params.id as string), status });
   } catch (e) { next(e); }
 });
 
 // DELETE /api/users/:id
-router.delete('/:id', requireRole('manager'), async (req: AuthRequest, res, next) => {
+router.delete('/:id', requireRole('owner','manager'), async (req: AuthRequest, res, next) => {
   try {
     const rid = req.user!.restaurant_id;
     const db = getDb();
-    const ex = await db.execute({ sql: 'SELECT id FROM users WHERE id=? AND restaurant_id=?', args: [(req.params.id as string), rid] });
+    const ex = await db.execute({ sql: 'SELECT id,role FROM users WHERE id=? AND restaurant_id=?', args: [(req.params.id as string), rid] });
     if (!ex.rows.length) { res.status(404).json({ error: 'User not found' }); return; }
+    const target = ex.rows[0] as Record<string, unknown>;
+    if (req.user!.role === 'manager' && String(target.role) === 'owner') {
+      res.status(403).json({ error: 'Only owner can remove owner accounts' });
+      return;
+    }
     await db.execute({ sql: 'DELETE FROM users WHERE id=? AND restaurant_id=?', args: [(req.params.id as string), rid] });
     res.status(204).end();
   } catch (e) { next(e); }

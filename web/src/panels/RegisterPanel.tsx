@@ -19,6 +19,7 @@ export function RegisterPanel() {
   const [step, setStep] = useState<'form' | 'done'>('form');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const [existingEmail, setExistingEmail] = useState('');
 
   const [restaurantName, setRestaurantName] = useState('');
   const [ownerName, setOwnerName]           = useState('');
@@ -30,6 +31,7 @@ export function RegisterPanel() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError('');
+    setExistingEmail('');
 
     if (!restaurantName.trim()) { setError('Restaurant name is required.'); return; }
     if (!ownerName.trim())      { setError('Your name is required.'); return; }
@@ -56,7 +58,11 @@ export function RegisterPanel() {
       setStep('done');
       setTimeout(() => { window.location.href = '/'; }, 1800);
     } catch (e) {
-      setError((e as Error).message);
+      const msg = (e as Error).message ?? 'Could not create account';
+      setError(msg);
+      if (msg.toLowerCase().includes('forgot password') || msg.toLowerCase().includes('already exists')) {
+        setExistingEmail(email.trim().toLowerCase());
+      }
     } finally {
       setBusy(false);
     }
@@ -164,6 +170,14 @@ export function RegisterPanel() {
           </div>
 
           {error && <p className="login-error">{error}</p>}
+          {existingEmail && (
+            <p className="login-register-signin">
+              Account already exists.{' '}
+              <a href={`/login?mode=forgot&email=${encodeURIComponent(existingEmail)}`}>
+                Reset password →
+              </a>
+            </p>
+          )}
 
           <button type="submit" className="login-btn" disabled={busy}>
             {busy ? 'Creating your restaurant…' : 'Create Restaurant & Sign In'}

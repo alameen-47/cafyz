@@ -3,9 +3,14 @@ import { ZodError } from 'zod';
 
 export function errorHandler(err: Error, _req: Request, res: Response, _next: NextFunction) {
   console.error('[ERROR]', err.message);
+  const isProd = process.env.NODE_ENV === 'production';
 
   if (err instanceof ZodError) {
-    res.status(400).json({ error: 'Validation error', details: err.errors });
+    if (isProd) {
+      res.status(400).json({ error: 'Validation error' });
+    } else {
+      res.status(400).json({ error: 'Validation error', details: err.errors });
+    }
     return;
   }
 
@@ -14,7 +19,11 @@ export function errorHandler(err: Error, _req: Request, res: Response, _next: Ne
                : code.includes('SQLITE_CONSTRAINT') ? 400
                : 500;
 
-  res.status(status).json({ error: err.message ?? 'Internal server error' });
+  const message =
+    status >= 500 && isProd
+      ? 'Internal server error'
+      : (err.message ?? 'Internal server error');
+  res.status(status).json({ error: message });
 }
 
 export function notFound(_req: Request, res: Response) {

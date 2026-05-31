@@ -4,7 +4,12 @@ import jwt from 'jsonwebtoken';
 export interface AuthPayload { id: string; role: string; email: string; restaurant_id: string; }
 export interface AuthRequest extends Request { user?: AuthPayload; }
 
-export const JWT_SECRET = process.env.JWT_SECRET ?? 'cafyz-dev-secret-change-in-prod';
+const DEFAULT_DEV_SECRET = 'cafyz-dev-secret-change-in-prod';
+const configuredSecret = process.env.JWT_SECRET?.trim();
+if (process.env.NODE_ENV === 'production' && (!configuredSecret || configuredSecret === DEFAULT_DEV_SECRET)) {
+  throw new Error('JWT_SECRET must be set to a strong secret in production');
+}
+export const JWT_SECRET = configuredSecret || DEFAULT_DEV_SECRET;
 export const JWT_EXPIRES = '24h';
 
 export function signToken(payload: AuthPayload) {

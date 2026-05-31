@@ -44,6 +44,19 @@ router.post('/onboarding', async (req, res, next) => {
   try {
     const data = OnboardingSchema.parse(req.body);
     const db = getDb();
+    const emailNorm = data.email.trim().toLowerCase();
+
+    const existingAccount = await db.execute({
+      sql: `SELECT id FROM users WHERE LOWER(email)=? LIMIT 1`,
+      args: [emailNorm],
+    });
+    if (existingAccount.rows.length) {
+      res.status(409).json({
+        error: 'Account already exists for this email. Use forgot password to recover access.',
+        code: 'ACCOUNT_EXISTS_USE_FORGOT_PASSWORD',
+      });
+      return;
+    }
 
     const restId = uid();
     const slug = data.restaurant_name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
@@ -57,13 +70,13 @@ router.post('/onboarding', async (req, res, next) => {
     const initials = data.owner_name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0,2);
     await db.execute({
       sql: `INSERT INTO users(id,restaurant_id,name,initials,email,password_hash,role,status,start_time) VALUES(?,?,?,?,?,?,?,?,?)`,
-      args: [ownerId, restId, data.owner_name, initials, data.email, pwHash, 'owner', 'active', '—'],
+      args: [ownerId, restId, data.owner_name, initials, emailNorm, pwHash, 'owner', 'active', '—'],
     });
 
     const restaurant = await db.execute({ sql: 'SELECT * FROM restaurants WHERE id=?', args: [restId] });
     const user = await db.execute({ sql: 'SELECT id,name,initials,email,role,status FROM users WHERE id=?', args: [ownerId] });
 
-    const token = signToken({ id: ownerId, role: 'owner', email: data.email, restaurant_id: restId });
+    const token = signToken({ id: ownerId, role: 'owner', email: emailNorm, restaurant_id: restId });
 
     res.status(201).json({
       token,

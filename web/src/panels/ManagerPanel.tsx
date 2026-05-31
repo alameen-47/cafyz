@@ -1197,7 +1197,7 @@ function ProfileTab() {
     setError('');
     try {
       await removeRestaurantLogoEverywhere(restaurantId);
-      setRestaurant(r => r ? { ...r, logo_url: null } : r);
+      setRestaurant(r => r ? { ...r, logo_url: undefined } : r);
       setLogoPreview(undefined);
       setUploadMsg('Logo removed for all staff');
     } catch (err) {

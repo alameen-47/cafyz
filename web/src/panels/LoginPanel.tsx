@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
+import { authApi } from '../services/api';
 import './LoginPanel.css';
 
 // Post-login navigation uses a full-page reload instead of React Router navigate()
@@ -11,14 +12,29 @@ function goTo(path: string) { window.location.href = path; }
 export function LoginPanel() {
   const { login, loginWithPin, error, clearError } = useAuth();
   const { theme, toggleTheme } = useTheme();
+  const params = new URLSearchParams(window.location.search);
+  const initialMode = params.get('mode') === 'forgot'
+    ? 'forgot'
+    : (params.get('mode') === 'reset' ? 'reset' : 'login');
 
-  const [email,    setEmail]    = useState('');
+  const [mode,     setMode]     = useState<'login' | 'forgot' | 'reset'>(initialMode);
+  const [email,    setEmail]    = useState(params.get('email') ?? '');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [pin,      setPin]      = useState<number[]>([]);
   const [busy,     setBusy]     = useState(false);
   const [localErr, setLocalErr] = useState('');
+  const [localMsg, setLocalMsg] = useState('');
+  const [resetToken] = useState(params.get('token') ?? '');
 
   const displayError = localErr || error;
+
+  function switchMode(next: 'login' | 'forgot' | 'reset') {
+    setMode(next);
+    setLocalErr('');
+    setLocalMsg('');
+    clearError();
+  }
 
   async function handleLogin() {
     if (!email.trim()) { setLocalErr('Enter your work email.'); return; }
@@ -29,6 +45,38 @@ export function LoginPanel() {
       goTo(stored.role === 'founder' ? '/founder' : '/');
     } catch (e) {
       setLocalErr((e as Error).message ?? 'Login failed');
+      setBusy(false);
+    }
+  }
+
+  async function handleForgotPassword() {
+    if (!email.trim()) { setLocalErr('Enter your email to reset your password.'); return; }
+    setBusy(true); setLocalErr(''); setLocalMsg(''); clearError();
+    try {
+      const data = await authApi.forgotPassword(email);
+      setLocalMsg(data.message);
+    } catch (e) {
+      setLocalErr((e as Error).message ?? 'Could not start password reset');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleResetPassword() {
+    if (!resetToken) { setLocalErr('Reset token is missing. Request a new reset link.'); return; }
+    if (password.length < 8) { setLocalErr('Password must be at least 8 characters.'); return; }
+    if (password !== confirmPassword) { setLocalErr('Passwords do not match.'); return; }
+    setBusy(true); setLocalErr(''); setLocalMsg(''); clearError();
+    try {
+      const data = await authApi.resetPassword(resetToken, password);
+      setLocalMsg(data.message);
+      setPassword('');
+      setConfirmPassword('');
+      setMode('login');
+      window.history.replaceState({}, '', '/login');
+    } catch (e) {
+      setLocalErr((e as Error).message ?? 'Could not reset password');
+    } finally {
       setBusy(false);
     }
   }
@@ -84,9 +132,19 @@ export function LoginPanel() {
 
       {/* ── Desktop right pane ────────────────────────────────────── */}
       <section className="login-right">
-        <p className="eyebrow">Sign In · Concierge</p>
-        <h2 className="serif login-title">Welcome back.</h2>
-        <p className="login-sub">Enter your work email to continue.</p>
+        <p className="eyebrow">
+          {mode === 'login' ? 'Sign In · Concierge' : mode === 'forgot' ? 'Account Recovery' : 'Set New Password'}
+        </p>
+        <h2 className="serif login-title">
+          {mode === 'login' ? 'Welcome back.' : mode === 'forgot' ? 'Forgot password?' : 'Reset password'}
+        </h2>
+        <p className="login-sub">
+          {mode === 'login'
+            ? 'Enter your work email to continue.'
+            : mode === 'forgot'
+            ? 'Enter your email and we will send a reset link.'
+            : 'Choose a new password for your account.'}
+        </p>
 
         <label className="login-field">
           <span>Work email</span>
@@ -94,30 +152,66 @@ export function LoginPanel() {
             type="email"
             value={email}
             onChange={e => { setEmail(e.target.value); setLocalErr(''); clearError(); }}
-            onKeyDown={e => e.key === 'Enter' && handleLogin()}
+            onKeyDown={e => e.key === 'Enter' && (mode === 'login' ? handleLogin() : handleForgotPassword())}
+            disabled={mode === 'reset'}
           />
         </label>
         <label className="login-field">
-          <span>Passphrase</span>
+          <span>{mode === 'reset' ? 'New passphrase' : 'Passphrase'}</span>
           <input
             type="password"
             value={password}
             onChange={e => setPassword(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && handleLogin()}
+            onKeyDown={e => e.key === 'Enter' && (mode === 'reset' ? handleResetPassword() : handleLogin())}
             placeholder="••••••••••••"
+            disabled={mode === 'forgot'}
           />
         </label>
+        {mode === 'reset' && (
+          <label className="login-field">
+            <span>Confirm passphrase</span>
+            <input
+              type="password"
+              value={confirmPassword}
+              onChange={e => setConfirmPassword(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && handleResetPassword()}
+              placeholder="Repeat new passphrase"
+            />
+          </label>
+        )}
 
         {displayError && <p className="login-error">{displayError}</p>}
+        {localMsg && <p className="login-success-message">{localMsg}</p>}
 
         <button
           type="button"
           className="login-submit"
-          onClick={handleLogin}
+          onClick={
+            mode === 'login'
+              ? handleLogin
+              : mode === 'forgot'
+                ? handleForgotPassword
+                : handleResetPassword
+          }
           disabled={busy}
         >
-          {busy ? 'Signing in…' : 'Enter Cafyz →'}
+          {busy
+            ? (mode === 'login' ? 'Signing in…' : mode === 'forgot' ? 'Sending link…' : 'Resetting…')
+            : (mode === 'login' ? 'Enter Cafyz →' : mode === 'forgot' ? 'Send reset link' : 'Save new password')}
         </button>
+
+        <div className="login-secondary-links">
+          {mode === 'login' && (
+            <button type="button" className="login-link-btn" onClick={() => switchMode('forgot')}>
+              Forgot password?
+            </button>
+          )}
+          {mode !== 'login' && (
+            <button type="button" className="login-link-btn" onClick={() => switchMode('login')}>
+              Back to sign in
+            </button>
+          )}
+        </div>
 
         {/* ── Get Account link ─────────────────────────────────────── */}
         <div className="login-get-account-bar">
@@ -129,7 +223,7 @@ export function LoginPanel() {
       </section>
 
       {/* ── Mobile PIN pane ────────────────────────────────────────── */}
-      <section className="login-mobile-only">
+      <section className="login-mobile-only" style={{ display: mode === 'login' ? undefined : 'none' }}>
         <div className="login-mobile-head">
           <div className="login-logo">C</div>
           <p className="serif">Cafyz</p>

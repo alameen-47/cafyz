@@ -14,9 +14,9 @@ describe('GET /api/users', () => {
     expect(res.body.length).toBeGreaterThan(0);
   });
 
-  it('cashier can list users', async () => {
+  it('cashier cannot list users', async () => {
     const res = await request(app).get('/api/users').set('Authorization', `Bearer ${cashierToken}`);
-    expect(res.status).toBe(200);
+    expect(res.status).toBe(403);
   });
 
   it('waiter cannot list users', async () => {
