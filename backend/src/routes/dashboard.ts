@@ -1,10 +1,27 @@
 import { Router } from 'express';
 import { getDb } from '../db.js';
+import { rowNumber } from '../dbRows.js';
 import { requireAuth, type AuthRequest } from '../middleware/auth.js';
 import { requireRole } from '../middleware/rbac.js';
+import { RevenueQuerySchema, resolveRevenueWindow, periodLabel } from '../reportPeriod.js';
 
 const router = Router();
 router.use(requireAuth, requireRole('owner', 'manager', 'cashier'));
+
+const REVENUE_SELECT = `
+  SELECT date(o.created_at) as day,
+         COUNT(DISTINCT o.id) as order_count,
+         COALESCE(SUM(oi.qty * m.price), 0) as revenue
+  FROM orders o
+  JOIN order_items oi ON oi.order_id = o.id
+  JOIN menu_items m   ON m.id = oi.menu_item_id
+  WHERE o.status = 'paid'
+    AND o.restaurant_id = ?
+    AND date(o.created_at) >= date(?)
+    AND date(o.created_at) <= date(?)
+  GROUP BY date(o.created_at)
+  ORDER BY day ASC
+`;
 
 // GET /api/dashboard/stats
 router.get('/stats', async (req: AuthRequest, res, next) => {
@@ -18,40 +35,49 @@ router.get('/stats', async (req: AuthRequest, res, next) => {
       db.execute({ sql: "SELECT COUNT(*) as low FROM inventory WHERE restaurant_id=? AND CAST(current AS REAL)/CAST(par AS REAL) < 0.4", args: [rid] }),
     ]);
     res.json({
-      orders_today:    Number(orders.rows[0].cnt)     ?? 0,
-      orders_paid:     Number(orders.rows[0].paid)    ?? 0,
-      tables_total:    Number(tables.rows[0].total)   ?? 0,
-      tables_occupied: Number(tables.rows[0].occupied)?? 0,
-      staff_total:     Number(staff.rows[0].total)    ?? 0,
-      staff_active:    Number(staff.rows[0].active)   ?? 0,
-      staff_on_break:  Number(staff.rows[0].on_break) ?? 0,
-      inventory_low:   Number(inv.rows[0].low)        ?? 0,
+      orders_today:    rowNumber(orders.rows[0], 'cnt'),
+      orders_paid:     rowNumber(orders.rows[0], 'paid'),
+      tables_total:    rowNumber(tables.rows[0], 'total'),
+      tables_occupied: rowNumber(tables.rows[0], 'occupied'),
+      staff_total:     rowNumber(staff.rows[0], 'total'),
+      staff_active:    rowNumber(staff.rows[0], 'active'),
+      staff_on_break:  rowNumber(staff.rows[0], 'on_break'),
+      inventory_low:   rowNumber(inv.rows[0], 'low'),
     });
   } catch (e) { next(e); }
 });
 
-// GET /api/dashboard/revenue
+// GET /api/dashboard/revenue?period=day|week|month|range&date=&month=&from=&to=
 router.get('/revenue', async (req: AuthRequest, res, next) => {
   try {
     const rid = req.user!.restaurant_id;
-    const db = getDb();
-    const rows = await db.execute({
-      sql: `
-        SELECT date(o.created_at) as day,
-               COUNT(*) as order_count,
-               SUM(oi.qty * m.price) as revenue
-        FROM orders o
-        JOIN order_items oi ON oi.order_id = o.id
-        JOIN menu_items m   ON m.id = oi.menu_item_id
-        WHERE o.status = 'paid'
-          AND o.restaurant_id = ?
-          AND o.created_at >= datetime('now', '-30 days')
-        GROUP BY date(o.created_at)
-        ORDER BY day ASC
-      `,
-      args: [rid],
+    const query = RevenueQuerySchema.parse(req.query);
+    const { from, to, period } = resolveRevenueWindow(query);
+
+    const rows = await getDb().execute({
+      sql: REVENUE_SELECT,
+      args: [rid, from, to],
     });
-    res.json(rows.rows);
+
+    const data = rows.rows.map(r => ({
+      day: String(r.day ?? ''),
+      order_count: rowNumber(r, 'order_count'),
+      revenue: rowNumber(r, 'revenue'),
+    }));
+
+    const totalRevenue = data.reduce((s, r) => s + r.revenue, 0);
+    const totalOrders = data.reduce((s, r) => s + r.order_count, 0);
+
+    res.json({
+      period,
+      from,
+      to,
+      periodLabel: periodLabel(query, from, to),
+      rows: data,
+      totalRevenue,
+      totalOrders,
+      dayCount: data.length,
+    });
   } catch (e) { next(e); }
 });
 

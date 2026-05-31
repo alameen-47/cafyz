@@ -153,6 +153,52 @@ describe('Dashboard', () => {
     const res = await request(app).get('/api/dashboard/stats').set('Authorization', `Bearer ${waiterToken}`);
     expect(res.status).toBe(403);
   });
+
+  it('GET /api/dashboard/revenue returns period metadata', async () => {
+    const res = await request(app)
+      .get('/api/dashboard/revenue?period=range&from=2020-01-01&to=2030-12-31')
+      .set('Authorization', `Bearer ${managerToken}`);
+    expect(res.status).toBe(200);
+    expect(res.body).toMatchObject({
+      period: 'range',
+      from: '2020-01-01',
+      to: '2030-12-31',
+    });
+    expect(Array.isArray(res.body.rows)).toBe(true);
+    expect(typeof res.body.totalRevenue).toBe('number');
+    expect(typeof res.body.totalOrders).toBe('number');
+    expect(typeof res.body.periodLabel).toBe('string');
+  });
+
+  it('GET /api/dashboard/revenue supports day period', async () => {
+    const res = await request(app)
+      .get('/api/dashboard/revenue?period=day&date=2026-05-01')
+      .set('Authorization', `Bearer ${managerToken}`);
+    expect(res.status).toBe(200);
+    expect(res.body.period).toBe('day');
+    expect(res.body.from).toBe('2026-05-01');
+    expect(res.body.to).toBe('2026-05-01');
+  });
+
+  it('GET /api/dashboard/revenue supports week period', async () => {
+    const res = await request(app)
+      .get('/api/dashboard/revenue?period=week&date=2026-05-15')
+      .set('Authorization', `Bearer ${managerToken}`);
+    expect(res.status).toBe(200);
+    expect(res.body.period).toBe('week');
+    expect(res.body.from).toBe('2026-05-11');
+    expect(res.body.to).toBe('2026-05-17');
+  });
+
+  it('GET /api/dashboard/revenue supports month period', async () => {
+    const res = await request(app)
+      .get('/api/dashboard/revenue?period=month&month=2026-05')
+      .set('Authorization', `Bearer ${managerToken}`);
+    expect(res.status).toBe(200);
+    expect(res.body.period).toBe('month');
+    expect(res.body.from).toBe('2026-05-01');
+    expect(res.body.to).toBe('2026-05-31');
+  });
 });
 
 // ── Reservations ──────────────────────────────────────────────────────────────

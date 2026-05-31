@@ -3,8 +3,12 @@ import { useNavigate } from 'react-router-dom';
 import {
   dashboardApi, inventoryApi, restaurantApi, usersApi, reservationsApi, tablesApi,
   type ApiDashboardStats, type ApiInventoryItem, type ApiRestaurant, type ApiUser,
-  type ApiReservation, type ApiRevenueRow, type ApiTable,
+  type ApiReservation, type ApiRevenueResponse, type ApiTable,
 } from '../services/api';
+import {
+  todayISO, currentMonthISO, weekBounds, formatDateISO,
+  REPORT_PERIOD_LABELS, type ReportPeriod,
+} from '../utils/reportPeriod';
 import { useAuth } from '../context/AuthContext';
 import { PLAN_HAS_RESERVATIONS } from '../config/planAccess';
 import { RolesPanel } from './RolesPanel';
@@ -707,28 +711,55 @@ function restaurantPrintMeta(r: ApiRestaurant): RestaurantPrintMeta {
   };
 }
 
+const REPORT_PERIODS: ReportPeriod[] = ['day', 'week', 'month', 'range'];
+
 function Reports() {
-  const [stats,      setStats]      = useState<ApiDashboardStats | null>(null);
-  const [revenue,    setRevenue]    = useState<ApiRevenueRow[]>([]);
-  const [restaurant, setRestaurant] = useState<ApiRestaurant | null>(null);
-  const [loading,    setLoading]    = useState(true);
-  const [printBusy,  setPrintBusy]  = useState(false);
-  const [printMsg,   setPrintMsg]   = useState('');
-  const [printErr,   setPrintErr]   = useState('');
-  const [printer,    setPrinter]    = useState<{ type: 'none' | 'bluetooth' | 'usb'; name: string }>({ type: 'none', name: '' });
+  const [period,         setPeriod]         = useState<ReportPeriod>('week');
+  const [selectedDate,   setSelectedDate]     = useState(todayISO);
+  const [selectedMonth,  setSelectedMonth]    = useState(currentMonthISO);
+  const [rangeFrom,      setRangeFrom]        = useState(() => {
+    const d = new Date();
+    d.setDate(d.getDate() - 29);
+    return formatDateISO(d);
+  });
+  const [rangeTo,        setRangeTo]          = useState(todayISO);
+  const [stats,          setStats]            = useState<ApiDashboardStats | null>(null);
+  const [report,         setReport]           = useState<ApiRevenueResponse | null>(null);
+  const [restaurant,     setRestaurant]       = useState<ApiRestaurant | null>(null);
+  const [loading,        setLoading]          = useState(true);
+  const [revenueLoading, setRevenueLoading]  = useState(false);
+  const [printBusy,      setPrintBusy]        = useState(false);
+  const [printMsg,       setPrintMsg]         = useState('');
+  const [printErr,       setPrintErr]         = useState('');
+  const [printer,        setPrinter]          = useState<{ type: 'none' | 'bluetooth' | 'usb'; name: string }>({ type: 'none', name: '' });
 
   useEffect(() => {
     setPrinter(printerStatus());
-    Promise.all([dashboardApi.stats(), dashboardApi.revenue(), restaurantApi.me()])
-      .then(([s, r, rest]) => {
+    Promise.all([dashboardApi.stats(), restaurantApi.me()])
+      .then(([s, rest]) => {
         setStats(s);
-        setRevenue(r);
         setRestaurant(rest);
         syncRestaurantLogoCache(rest);
       })
       .catch(console.error)
       .finally(() => setLoading(false));
   }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    setRevenueLoading(true);
+    const query =
+      period === 'day'   ? { period: 'day' as const, date: selectedDate }
+      : period === 'week'  ? { period: 'week' as const, date: selectedDate }
+      : period === 'month' ? { period: 'month' as const, month: selectedMonth }
+      : { period: 'range' as const, from: rangeFrom, to: rangeTo };
+
+    dashboardApi.revenue(query)
+      .then(r => { if (!cancelled) setReport(r); })
+      .catch(console.error)
+      .finally(() => { if (!cancelled) setRevenueLoading(false); });
+    return () => { cancelled = true; };
+  }, [period, selectedDate, selectedMonth, rangeFrom, rangeTo]);
 
   const meta = restaurant ? restaurantPrintMeta(restaurant) : { restaurantName: 'Cafyz Demo Restaurant' };
   const rid = restaurant?.id;
@@ -776,14 +807,17 @@ function Reports() {
   }
 
   function liveSalesReport(): SalesReportData {
-    const today = new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
-    const totalRevenue = revenue.reduce((s, r) => s + (r.revenue ?? 0), 0);
-    const totalOrders = revenue.reduce((s, r) => s + (r.order_count ?? 0), 0);
-    const hasLive = revenue.length > 0;
+    const rows = report?.rows ?? [];
+    const hasLive = rows.length > 0;
+    const title =
+      period === 'day'   ? 'Daily Sales Report'
+      : period === 'week'  ? 'Weekly Sales Report'
+      : period === 'range' ? 'Sales Report'
+      : 'Sales Report';
     return {
       ...meta,
-      title: hasLive ? 'Sales Report' : 'Daily Sales Report',
-      periodLabel: hasLive ? `Last 30 days · as of ${today}` : `${today} (no paid orders yet — showing demo)`,
+      title,
+      periodLabel: report?.periodLabel ?? 'Selected period',
       demo: !hasLive,
       metrics: stats ? [
         { label: 'Orders today', value: String(stats.orders_today) },
@@ -791,40 +825,44 @@ function Reports() {
         { label: 'Tables occupied', value: `${stats.tables_occupied}/${stats.tables_total}` },
       ] : [],
       rows: hasLive
-        ? [...revenue].reverse().slice(0, 14).map(r => ({
+        ? [...rows].reverse().map(r => ({
             label: r.day,
             orders: r.order_count,
             revenue: r.revenue ?? 0,
           }))
         : buildDemoSalesReport(meta).rows,
-      totalRevenue: hasLive ? totalRevenue : buildDemoSalesReport(meta).totalRevenue,
-      totalOrders: hasLive ? totalOrders : buildDemoSalesReport(meta).totalOrders,
+      totalRevenue: hasLive ? (report?.totalRevenue ?? 0) : buildDemoSalesReport(meta).totalRevenue,
+      totalOrders: hasLive ? (report?.totalOrders ?? 0) : buildDemoSalesReport(meta).totalOrders,
     };
   }
 
   function liveMonthlyReport() {
-    const now = new Date();
-    const monthLabel = now.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
-    const monthPrefix = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-    const monthRows = revenue.filter(r => String(r.day).startsWith(monthPrefix));
-    const hasLive = monthRows.length > 0;
+    const rows = report?.rows ?? [];
+    const hasLive = rows.length > 0;
     if (!hasLive) return buildDemoMonthlyReport(meta);
-    const days = monthRows.map(r => ({
+    const days = rows.map(r => ({
       day: r.day,
       orders: r.order_count ?? 0,
       revenue: r.revenue ?? 0,
     }));
-    const totalRevenue = days.reduce((s, d) => s + d.revenue, 0);
-    const totalOrders = days.reduce((s, d) => s + d.orders, 0);
+    const totalRevenue = report?.totalRevenue ?? 0;
+    const totalOrders = report?.totalOrders ?? 0;
     return {
       ...meta,
-      monthLabel,
+      monthLabel: report?.periodLabel ?? selectedMonth,
       demo: false,
       days,
       totalRevenue,
       totalOrders,
       avgPerDay: days.length ? totalRevenue / days.length : 0,
     };
+  }
+
+  function printCurrentReport() {
+    if (period === 'month') {
+      return runPrint(() => printMonthlyReport(liveMonthlyReport(), rid), 'Monthly report');
+    }
+    return runPrint(() => printSalesReport(liveSalesReport(), rid), 'Sales report');
   }
 
   const statsRows = stats ? [
@@ -838,14 +876,108 @@ function Reports() {
       delta: stats.inventory_low > 0 ? '⚠' : '', up: false },
   ] : [];
 
-  // Total revenue last 30 days
-  const totalRevenue = revenue.reduce((s, r) => s + (r.revenue ?? 0), 0);
+  const revenueRows = report?.rows ?? [];
+  const totalRevenue = report?.totalRevenue ?? 0;
+  const weekSpan = period === 'week' ? weekBounds(selectedDate) : null;
 
   return (
     <div className="mgr-overview">
       <p className="eyebrow">Finance · Daily P&L</p>
       <h1 className="serif mgr-greeting">Reports</h1>
-      <p className="mgr-sub">Live service metrics · print sales and monthly reports on Bluetooth, USB, or browser.</p>
+      <p className="mgr-sub">Daily, weekly, and monthly revenue · print on Bluetooth, USB, or browser.</p>
+
+      {!loading && (
+        <div className="card" style={{ padding: 16, marginBottom: 16 }}>
+          <p className="eyebrow" style={{ marginTop: 0 }}>Report period</p>
+          <div className="mgr-range-btns" style={{ marginBottom: 12 }}>
+            {REPORT_PERIODS.map(p => (
+              <button
+                key={p}
+                type="button"
+                className={`mgr-range${period === p ? ' active' : ''}`}
+                onClick={() => setPeriod(p)}
+              >
+                {REPORT_PERIOD_LABELS[p]}
+              </button>
+            ))}
+          </div>
+          <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
+            {period === 'day' && (
+              <label style={{ fontSize: 13 }}>
+                Date{' '}
+                <input
+                  type="date"
+                  value={selectedDate}
+                  onChange={e => setSelectedDate(e.target.value)}
+                  className="mgr-input"
+                  style={{ marginLeft: 6 }}
+                />
+              </label>
+            )}
+            {period === 'week' && (
+              <label style={{ fontSize: 13 }}>
+                Week containing{' '}
+                <input
+                  type="date"
+                  value={selectedDate}
+                  onChange={e => setSelectedDate(e.target.value)}
+                  className="mgr-input"
+                  style={{ marginLeft: 6 }}
+                />
+              </label>
+            )}
+            {period === 'month' && (
+              <label style={{ fontSize: 13 }}>
+                Month{' '}
+                <input
+                  type="month"
+                  value={selectedMonth}
+                  onChange={e => setSelectedMonth(e.target.value)}
+                  className="mgr-input"
+                  style={{ marginLeft: 6 }}
+                />
+              </label>
+            )}
+            {period === 'range' && (
+              <>
+                <label style={{ fontSize: 13 }}>
+                  From{' '}
+                  <input
+                    type="date"
+                    value={rangeFrom}
+                    max={rangeTo}
+                    onChange={e => setRangeFrom(e.target.value)}
+                    className="mgr-input"
+                    style={{ marginLeft: 6 }}
+                  />
+                </label>
+                <label style={{ fontSize: 13 }}>
+                  To{' '}
+                  <input
+                    type="date"
+                    value={rangeTo}
+                    min={rangeFrom}
+                    onChange={e => setRangeTo(e.target.value)}
+                    className="mgr-input"
+                    style={{ marginLeft: 6 }}
+                  />
+                </label>
+              </>
+            )}
+            {weekSpan && (
+              <span style={{ fontSize: 12, color: 'var(--text2)' }}>
+                {weekSpan.from} → {weekSpan.to}
+              </span>
+            )}
+            {report?.periodLabel && (
+              <span style={{ fontSize: 12, color: 'var(--text3)' }}>{report.periodLabel}</span>
+            )}
+            {revenueLoading && (
+              <span style={{ fontSize: 12, color: 'var(--text3)' }}>Updating…</span>
+            )}
+          </div>
+        </div>
+      )}
 
       {!loading && (
         <div className="card" style={{ padding: 14, marginBottom: 12 }}>
@@ -879,17 +1011,13 @@ function Reports() {
 
       {!loading && (
         <div className="mgr-action-row" style={{ marginBottom: 16 }}>
+          <button className="btn-gold" disabled={printBusy || revenueLoading}
+            onClick={() => printCurrentReport()}>
+            🖨 Print {REPORT_PERIOD_LABELS[period]} Report
+          </button>
           <button className="btn-outline" disabled={printBusy}
             onClick={() => runPrint(() => printSalesReport(buildDemoSalesReport(meta), rid), 'Demo sales report')}>
-            🖨 Demo Sales Report
-          </button>
-          <button className="btn-outline" disabled={printBusy}
-            onClick={() => runPrint(() => printSalesReport(liveSalesReport(), rid), 'Sales report')}>
-            🖨 Print Sales Report
-          </button>
-          <button className="btn-gold" disabled={printBusy}
-            onClick={() => runPrint(() => printMonthlyReport(liveMonthlyReport(), rid), 'Monthly report')}>
-            🖨 Print Monthly Report
+            🖨 Demo layout
           </button>
         </div>
       )}
@@ -906,22 +1034,32 @@ function Reports() {
       ) : (
         <>
           {/* Revenue summary */}
-          {revenue.length > 0 && (
+          {!revenueLoading && revenueRows.length > 0 && (
             <div className="card" style={{ padding: '16px 20px', marginBottom: 20, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div>
-                <p className="eyebrow" style={{ marginBottom: 4 }}>Revenue · 30 days</p>
+                <p className="eyebrow" style={{ marginBottom: 4 }}>
+                  Revenue · {report?.periodLabel ?? REPORT_PERIOD_LABELS[period]}
+                </p>
                 <p className="serif" style={{ fontSize: 28, color: 'var(--gold)' }}>
                   ${totalRevenue.toFixed(2)}
                 </p>
               </div>
               <div style={{ textAlign: 'right' }}>
                 <p style={{ fontSize: 11, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: 1 }}>
-                  {revenue.length} days tracked
+                  {report?.totalOrders ?? 0} orders · {revenueRows.length} days
                 </p>
                 <p style={{ fontSize: 13, color: 'var(--text1)', marginTop: 4 }}>
-                  avg ${revenue.length ? (totalRevenue / revenue.length).toFixed(0) : 0}/day
+                  avg ${revenueRows.length ? (totalRevenue / revenueRows.length).toFixed(0) : 0}/day
                 </p>
               </div>
+            </div>
+          )}
+          {!revenueLoading && revenueRows.length === 0 && (
+            <div className="card" style={{ padding: '16px 20px', marginBottom: 20 }}>
+              <p className="eyebrow" style={{ marginBottom: 4 }}>No paid orders</p>
+              <p style={{ fontSize: 13, color: 'var(--text2)', margin: 0 }}>
+                No revenue recorded for {report?.periodLabel ?? 'this period'}. Print still uses demo data until orders are paid.
+              </p>
             </div>
           )}
 
@@ -940,12 +1078,12 @@ function Reports() {
           </div>
 
           {/* Daily revenue breakdown */}
-          {revenue.length > 0 && (
+          {revenueRows.length > 0 && (
             <div className="mgr-report-table card" style={{ marginTop: 20 }}>
               <div className="mgr-report-head">
                 <span>Date</span><span>Orders</span><span>Revenue</span>
               </div>
-              {[...revenue].reverse().slice(0, 14).map(r => (
+              {[...revenueRows].reverse().map(r => (
                 <div key={r.day} className="mgr-report-row">
                   <span className="mgr-report-label mono" style={{ fontSize: 12 }}>{r.day}</span>
                   <span className="mgr-report-val">{r.order_count}</span>

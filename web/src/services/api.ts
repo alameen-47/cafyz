@@ -172,9 +172,32 @@ export const inventoryApi = {
 };
 
 // ── Dashboard ─────────────────────────────────────────────────────────────────
+export type RevenuePeriod = 'day' | 'week' | 'month' | 'range';
+
+export interface RevenueQueryParams {
+  period?: RevenuePeriod;
+  date?:  string;
+  month?: string;
+  from?:  string;
+  to?:    string;
+}
+
+function revenueQueryString(q?: RevenueQueryParams): string {
+  if (!q) return '';
+  const p = new URLSearchParams();
+  if (q.period) p.set('period', q.period);
+  if (q.date)   p.set('date', q.date);
+  if (q.month)  p.set('month', q.month);
+  if (q.from)   p.set('from', q.from);
+  if (q.to)     p.set('to', q.to);
+  const s = p.toString();
+  return s ? `?${s}` : '';
+}
+
 export const dashboardApi = {
   stats:   () => get<ApiDashboardStats>('/api/dashboard/stats'),
-  revenue: () => get<ApiRevenueRow[]>('/api/dashboard/revenue'),
+  revenue: (q?: RevenueQueryParams) =>
+    get<ApiRevenueResponse>(`/api/dashboard/revenue${revenueQueryString(q)}`),
 };
 
 // ── Licenses ──────────────────────────────────────────────────────────────────
@@ -307,6 +330,17 @@ export interface ApiDashboardStats {
 }
 
 export interface ApiRevenueRow { day: string; order_count: number; revenue: number; }
+
+export interface ApiRevenueResponse {
+  period: RevenuePeriod;
+  from: string;
+  to: string;
+  periodLabel: string;
+  rows: ApiRevenueRow[];
+  totalRevenue: number;
+  totalOrders: number;
+  dayCount: number;
+}
 
 // ── Payload Types ─────────────────────────────────────────────────────────────
 export interface CreateUserPayload {
