@@ -6,6 +6,7 @@ cd "$ROOT"
 
 API_URL="${VITE_API_URL:-https://cafyz.onrender.com}"
 APP_URL="${VITE_APP_URL:-https://cafyz.ametronyx.com}"
+APP_ICONS_ZIP="${APP_ICONS_ZIP:-}"
 
 # Capacitor 8 requires JDK 21 for Android builds
 if [[ -z "${JAVA_HOME:-}" ]]; then
@@ -19,8 +20,21 @@ if [[ -z "${JAVA_HOME:-}" ]]; then
 fi
 
 echo "==> Building web bundle for native shells (API: $API_URL)"
-echo "==> Regenerating branded icons from logo-source.png"
-npm run gen-icons
+if [[ -n "$APP_ICONS_ZIP" && -f "$APP_ICONS_ZIP" ]]; then
+  echo "==> Applying custom app icons from: $APP_ICONS_ZIP"
+  ICON_TMP_DIR="$(mktemp -d)"
+  unzip -qo "$APP_ICONS_ZIP" -d "$ICON_TMP_DIR"
+  cp -f "$ICON_TMP_DIR/Assets.xcassets/AppIcon.appiconset/"* "cap-ios/App/App/Assets.xcassets/AppIcon.appiconset/"
+  for d in mdpi hdpi xhdpi xxhdpi xxxhdpi; do
+    cp -f "$ICON_TMP_DIR/android/mipmap-$d/ic_launcher.png" "cap-android/app/src/main/res/mipmap-$d/ic_launcher.png"
+    cp -f "$ICON_TMP_DIR/android/mipmap-$d/ic_launcher.png" "cap-android/app/src/main/res/mipmap-$d/ic_launcher_round.png"
+    cp -f "$ICON_TMP_DIR/android/mipmap-$d/ic_launcher.png" "cap-android/app/src/main/res/mipmap-$d/ic_launcher_foreground.png"
+  done
+  rm -rf "$ICON_TMP_DIR"
+else
+  echo "==> Regenerating branded icons from logo-source.png"
+  npm run gen-icons
+fi
 VITE_API_URL="$API_URL" VITE_APP_URL="$APP_URL" npx vite build --config web/vite.config.ts --mode capacitor
 
 echo "==> Syncing Capacitor (Android + iOS)"

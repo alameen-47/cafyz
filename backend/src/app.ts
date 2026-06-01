@@ -55,8 +55,14 @@ app.use(cors({
     const allowed = process.env.ALLOWED_ORIGIN
       ? process.env.ALLOWED_ORIGIN.split(',').map(s => s.trim())
       : ['http://localhost:5173', 'http://localhost:5174', 'http://127.0.0.1:5173'];
+    const isNativeLocalhost =
+      /^https?:\/\/localhost(?::\d+)?$/i.test(origin) ||
+      /^https?:\/\/127\.0\.0\.1(?::\d+)?$/i.test(origin) ||
+      /^capacitor:\/\/localhost$/i.test(origin) ||
+      /^ionic:\/\/localhost$/i.test(origin);
     const ok =
       allowed.includes(origin) ||
+      isNativeLocalhost ||
       /\.vercel\.app$/.test(origin) ||
       /^https:\/\/([a-z0-9-]+\.)?ametronyx\.com$/i.test(origin);
     cb(ok ? null : new Error(`CORS: ${origin} not allowed`), ok);

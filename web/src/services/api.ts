@@ -4,7 +4,11 @@
 
 // In dev, relative URLs go through the Vite proxy (→ localhost:4000).
 // In production, set VITE_API_URL to the backend origin (e.g. https://api.cafyz.io).
-const BASE = (import.meta as any).env?.VITE_API_URL ?? '';
+const ENV = (import.meta as any).env ?? {};
+const ENV_BASE = String(ENV.VITE_API_URL ?? '').trim();
+const IS_DEV = Boolean(ENV.DEV);
+const DEFAULT_RENDER_BASE = String(ENV.VITE_NATIVE_API_URL ?? 'https://cafyz.onrender.com').trim();
+const BASE = ENV_BASE || (IS_DEV ? '' : DEFAULT_RENDER_BASE);
 
 async function request<T = unknown>(
   method: string,
