@@ -37,6 +37,31 @@ const BASE_SECTIONS: { id: Section; label: string; minPlan?: 'premium' }[] = [
   { id: 'roles',       label: 'Role Management' },
 ];
 
+const CURRENCY_OPTIONS = [
+  { code: 'USD', label: 'US Dollar ($)' },
+  { code: 'EUR', label: 'Euro (€)' },
+  { code: 'GBP', label: 'British Pound (£)' },
+  { code: 'AED', label: 'UAE Dirham (AED)' },
+  { code: 'SAR', label: 'Saudi Riyal (SAR)' },
+  { code: 'INR', label: 'Indian Rupee (INR)' },
+  { code: 'PKR', label: 'Pakistani Rupee (PKR)' },
+  { code: 'BDT', label: 'Bangladeshi Taka (BDT)' },
+  { code: 'NGN', label: 'Nigerian Naira (NGN)' },
+  { code: 'ZAR', label: 'South African Rand (ZAR)' },
+] as const;
+
+const LANGUAGE_OPTIONS = [
+  { code: 'en', label: 'English' },
+  { code: 'ar', label: 'Arabic' },
+  { code: 'fr', label: 'French' },
+  { code: 'es', label: 'Spanish' },
+  { code: 'de', label: 'German' },
+  { code: 'hi', label: 'Hindi' },
+  { code: 'ur', label: 'Urdu' },
+] as const;
+
+const DATE_FORMAT_OPTIONS = ['DD/MM/YYYY', 'MM/DD/YYYY', 'YYYY-MM-DD'] as const;
+
 // ── Overview ──────────────────────────────────────────────────────────────────
 function Overview({ onNav }: { onNav: (s: Section) => void }) {
   const { user }   = useAuth();
@@ -1106,9 +1131,12 @@ function ProfileTab() {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const [saveMsg, setSaveMsg] = useState('');
   const [draft, setDraft] = useState({
     name: '', timezone: '', contact_phone: '', contact_email: '',
     address_line1: '', address_line2: '', city: '', country: '', postal_code: '', tax_id: '', website_url: '',
+    currency_code: 'USD', language_code: 'en', date_format: 'DD/MM/YYYY',
+    service_charge_pct: '', tax_rate_pct: '', receipt_footer: '',
   });
 
   // Logo (device localStorage only)
@@ -1136,6 +1164,12 @@ function ProfileTab() {
           address_line1: r.address_line1 ?? '', address_line2: r.address_line2 ?? '',
           city: r.city ?? '', country: r.country ?? '', postal_code: r.postal_code ?? '', tax_id: r.tax_id ?? '',
           website_url: r.website_url ?? '',
+          currency_code: r.currency_code ?? 'USD',
+          language_code: r.language_code ?? 'en',
+          date_format: r.date_format ?? 'DD/MM/YYYY',
+          service_charge_pct: r.service_charge_pct == null ? '' : String(r.service_charge_pct),
+          tax_rate_pct: r.tax_rate_pct == null ? '' : String(r.tax_rate_pct),
+          receipt_footer: r.receipt_footer ?? '',
         });
       })
       .catch(e => setError(e.message))
@@ -1143,10 +1177,45 @@ function ProfileTab() {
   }, []);
 
   async function save() {
-    setBusy(true); setError('');
+    setBusy(true);
+    setError('');
+    setSaveMsg('');
     try {
-      const updated = await restaurantApi.update(draft);
+      const parseOptionalPercent = (value: string, label: string) => {
+        const raw = value.trim();
+        if (!raw) return null;
+        const n = Number(raw);
+        if (!Number.isFinite(n)) throw new Error(`${label} must be a valid number.`);
+        if (n < 0 || n > 100) throw new Error(`${label} must be between 0 and 100.`);
+        return Number(n.toFixed(2));
+      };
+
+      const payload = {
+        ...draft,
+        name: draft.name.trim(),
+        timezone: draft.timezone.trim(),
+        contact_phone: draft.contact_phone.trim(),
+        contact_email: draft.contact_email.trim(),
+        address_line1: draft.address_line1.trim(),
+        address_line2: draft.address_line2.trim(),
+        city: draft.city.trim(),
+        country: draft.country.trim(),
+        postal_code: draft.postal_code.trim(),
+        tax_id: draft.tax_id.trim(),
+        website_url: draft.website_url.trim(),
+        receipt_footer: draft.receipt_footer.trim(),
+        service_charge_pct: parseOptionalPercent(draft.service_charge_pct, 'Service charge'),
+        tax_rate_pct: parseOptionalPercent(draft.tax_rate_pct, 'Tax rate'),
+      };
+
+      const updated = await restaurantApi.update(payload);
       setRestaurant(updated);
+      setDraft(d => ({
+        ...d,
+        service_charge_pct: updated.service_charge_pct == null ? '' : String(updated.service_charge_pct),
+        tax_rate_pct: updated.tax_rate_pct == null ? '' : String(updated.tax_rate_pct),
+      }));
+      setSaveMsg('Profile settings saved.');
       const stored = localStorage.getItem('cafyz_user');
       if (stored) {
         try {
@@ -1266,6 +1335,7 @@ function ProfileTab() {
       <h1 className="serif mgr-greeting">Restaurant Profile</h1>
       <p className="mgr-sub">Shared by all staff assigned to this restaurant in Role Management.</p>
       {error && <p style={{ color: 'var(--danger)', fontSize: 13 }}>{error}</p>}
+      {saveMsg && !error && <p style={{ color: 'var(--ok, #2ECC8A)', fontSize: 13 }}>{saveMsg}</p>}
 
       {/* ── Logo ──────────────────────────────────────────────────────────── */}
       <div className="card mgr-profile-card">
@@ -1306,9 +1376,36 @@ function ProfileTab() {
 
       {/* ── Details ───────────────────────────────────────────────────────── */}
       <div className="card mgr-profile-card">
+        <p className="eyebrow" style={{ marginTop: 0 }}>General profile settings</p>
+        <p className="mgr-sub" style={{ marginTop: 0, marginBottom: 12 }}>
+          These defaults are used across reports, receipts, and account-level preferences.
+        </p>
         <div className="form-grid-2">
           <input className="roles-input" placeholder="Restaurant name" value={draft.name} onChange={e => setDraft(d => ({ ...d, name: e.target.value }))} />
           <input className="roles-input" placeholder="Timezone" value={draft.timezone} onChange={e => setDraft(d => ({ ...d, timezone: e.target.value }))} />
+          <select className="roles-input" value={draft.currency_code} onChange={e => setDraft(d => ({ ...d, currency_code: e.target.value }))}>
+            {CURRENCY_OPTIONS.map(opt => <option key={opt.code} value={opt.code}>{opt.label}</option>)}
+          </select>
+          <select className="roles-input" value={draft.language_code} onChange={e => setDraft(d => ({ ...d, language_code: e.target.value }))}>
+            {LANGUAGE_OPTIONS.map(opt => <option key={opt.code} value={opt.code}>{opt.label}</option>)}
+          </select>
+          <select className="roles-input" value={draft.date_format} onChange={e => setDraft(d => ({ ...d, date_format: e.target.value }))}>
+            {DATE_FORMAT_OPTIONS.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+          </select>
+          <input
+            className="roles-input"
+            placeholder="Service charge % (optional)"
+            inputMode="decimal"
+            value={draft.service_charge_pct}
+            onChange={e => setDraft(d => ({ ...d, service_charge_pct: e.target.value }))}
+          />
+          <input
+            className="roles-input"
+            placeholder="Tax rate % (optional)"
+            inputMode="decimal"
+            value={draft.tax_rate_pct}
+            onChange={e => setDraft(d => ({ ...d, tax_rate_pct: e.target.value }))}
+          />
           <input className="roles-input" placeholder="Website URL" value={draft.website_url} onChange={e => setDraft(d => ({ ...d, website_url: e.target.value }))} />
           <input className="roles-input" placeholder="Phone" value={draft.contact_phone} onChange={e => setDraft(d => ({ ...d, contact_phone: e.target.value }))} />
           <input className="roles-input" placeholder="Email" value={draft.contact_email} onChange={e => setDraft(d => ({ ...d, contact_email: e.target.value }))} />
@@ -1318,6 +1415,7 @@ function ProfileTab() {
           <input className="roles-input" placeholder="Country" value={draft.country} onChange={e => setDraft(d => ({ ...d, country: e.target.value }))} />
           <input className="roles-input" placeholder="Postal code" value={draft.postal_code} onChange={e => setDraft(d => ({ ...d, postal_code: e.target.value }))} />
           <input className="roles-input" placeholder="Tax ID" value={draft.tax_id} onChange={e => setDraft(d => ({ ...d, tax_id: e.target.value }))} />
+          <input className="roles-input mgr-input-span2" placeholder="Receipt footer (optional)" value={draft.receipt_footer} onChange={e => setDraft(d => ({ ...d, receipt_footer: e.target.value }))} />
         </div>
         <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 12 }}>
           <button className="btn-gold" onClick={save} disabled={busy || !draft.name.trim()}>

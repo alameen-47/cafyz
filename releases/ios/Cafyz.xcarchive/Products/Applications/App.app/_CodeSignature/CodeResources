@@ -30,7 +30,7 @@
 		</data>
 		<key>Frameworks/Capacitor.framework/Capacitor</key>
 		<data>
-		GbhsRWOlIAQJeh/itGIIky+xlKs=
+		er7NEV2geCpvYCJm8FxjRw8y9s4=
 		</data>
 		<key>Frameworks/Capacitor.framework/Capacitor.bundle/Info.plist</key>
 		<data>
@@ -54,7 +54,7 @@
 		</data>
 		<key>Frameworks/CapacitorApp.framework/CapacitorApp</key>
 		<data>
-		vZm/2ACySEzIgz6F1NhzxprVCYo=
+		l4jwT9IqZiU0o2A3jPSV0A0Weww=
 		</data>
 		<key>Frameworks/CapacitorApp.framework/Info.plist</key>
 		<data>
@@ -66,7 +66,7 @@
 		</data>
 		<key>Frameworks/CapacitorCommunityBluetoothLe.framework/CapacitorCommunityBluetoothLe</key>
 		<data>
-		4QFStPhXVsUXbTuQy/gCdJh9nrs=
+		OyJ1V56wMpu7+j/n1DA32xp7718=
 		</data>
 		<key>Frameworks/CapacitorCommunityBluetoothLe.framework/Info.plist</key>
 		<data>
@@ -78,7 +78,7 @@
 		</data>
 		<key>Frameworks/CapacitorKeyboard.framework/CapacitorKeyboard</key>
 		<data>
-		WvbrakRzyswN4iG+zy2J4tJk1KY=
+		ljdbXwj0UYloARLjNYdL8lUMUZk=
 		</data>
 		<key>Frameworks/CapacitorKeyboard.framework/Info.plist</key>
 		<data>
@@ -90,7 +90,7 @@
 		</data>
 		<key>Frameworks/CapacitorSplashScreen.framework/CapacitorSplashScreen</key>
 		<data>
-		INp0uSYnS8uEcbyVeQa0oWMITFA=
+		AuAGnd0ywTD+lmxQ6/mqE2IgbKA=
 		</data>
 		<key>Frameworks/CapacitorSplashScreen.framework/Info.plist</key>
 		<data>
@@ -102,7 +102,7 @@
 		</data>
 		<key>Frameworks/CapacitorStatusBar.framework/CapacitorStatusBar</key>
 		<data>
-		dVA8vDApYYolaaU71Hyk1iBscSE=
+		r76FP7MpwHj9XFEWKaQR/jFX8UM=
 		</data>
 		<key>Frameworks/CapacitorStatusBar.framework/Info.plist</key>
 		<data>
@@ -122,7 +122,7 @@
 		</data>
 		<key>Frameworks/Cordova.framework/Cordova</key>
 		<data>
-		+tr1VnxERh9/1iyqz3rkYBAe6oE=
+		zeO7q5VEKA2EZaU8/9qPUJw7IRw=
 		</data>
 		<key>Frameworks/Cordova.framework/Info.plist</key>
 		<data>
@@ -265,7 +265,7 @@
 		<dict>
 			<key>hash2</key>
 			<data>
-			0tNWloWXCBtgO8PG+PcUsbIlWEwkMAIUVCYbTpwMnKI=
+			9fLehLOxfTPsaUR8Cwu/9e3aKOC8ADAklZVKdnlypxY=
 			</data>
 		</dict>
 		<key>Frameworks/Capacitor.framework/Capacitor.bundle/Info.plist</key>
@@ -307,7 +307,7 @@
 		<dict>
 			<key>hash2</key>
 			<data>
-			XL8AKp3bdS276U/3mqxa6x46WHjBGlr9+rBBRhNw6qU=
+			hyUPgfTkrW4G9EFp7RcULd58DVAZf9gND0IUm+4Z5rw=
 			</data>
 		</dict>
 		<key>Frameworks/CapacitorApp.framework/Info.plist</key>
@@ -328,7 +328,7 @@
 		<dict>
 			<key>hash2</key>
 			<data>
-			F/eNILIROZk9uwI5rtmZPmZFTr2zji7KblyrnjERzIc=
+			szpz/qByG8ipZC8YXiVFqgZkC41Y3/ub+APfGKrGwHA=
 			</data>
 		</dict>
 		<key>Frameworks/CapacitorCommunityBluetoothLe.framework/Info.plist</key>
@@ -349,7 +349,7 @@
 		<dict>
 			<key>hash2</key>
 			<data>
-			G4dA+IgBib0CRmeuloI1FergtfxDB2iYGLjxznpd9ic=
+			DiF2/CC2aBvDcNMB2wl5Dtqkui6ZYs43UTxQ1VVKEeQ=
 			</data>
 		</dict>
 		<key>Frameworks/CapacitorKeyboard.framework/Info.plist</key>
@@ -370,7 +370,7 @@
 		<dict>
 			<key>hash2</key>
 			<data>
-			dj+vXYAmLSQ1pb+AhXzkswD8yupr9qPVctiyHzTqsEU=
+			GK4ab7GMZPynQFpC5RNURJwJBsxbwLDY2WlJFS7KQeE=
 			</data>
 		</dict>
 		<key>Frameworks/CapacitorSplashScreen.framework/Info.plist</key>
@@ -391,7 +391,7 @@
 		<dict>
 			<key>hash2</key>
 			<data>
-			JjkqwjzlMm+F8o4k7X1KwOlNJd27YKXYXD0g11prNMo=
+			ujdUN3mR6KOGoe4hFfVMuAg0RfGwkNvPlvKPFfuB3sE=
 			</data>
 		</dict>
 		<key>Frameworks/CapacitorStatusBar.framework/Info.plist</key>
@@ -426,7 +426,7 @@
 		<dict>
 			<key>hash2</key>
 			<data>
-			3cDm531gfwvyqg2PeNK3ZLXJLAa7+FASO2zkFwe+JAQ=
+			Ff8SQOBlnI2KPpdHF0XdEwRLaZQ5ri6jf22HawwCOS0=
 			</data>
 		</dict>
 		<key>Frameworks/Cordova.framework/Info.plist</key>

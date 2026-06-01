@@ -74,6 +74,9 @@ export const restaurantApi = {
     address_line1?: string; address_line2?: string;
     city?: string; country?: string; postal_code?: string;
     tax_id?: string; website_url?: string;
+    currency_code?: string; language_code?: string; date_format?: string;
+    service_charge_pct?: number | null; tax_rate_pct?: number | null;
+    receipt_footer?: string;
   }) => put<ApiRestaurant>('/api/restaurants/me', d),
   branches: ()                                             => get<ApiRestaurant[]>('/api/restaurants/branches'),
 };
@@ -275,6 +278,9 @@ export interface ApiRestaurant {
   logo_url?: string; contact_phone?: string; contact_email?: string;
   address_line1?: string; address_line2?: string; city?: string;
   country?: string; postal_code?: string; tax_id?: string; website_url?: string;
+  currency_code?: string; language_code?: string; date_format?: string;
+  service_charge_pct?: number | null; tax_rate_pct?: number | null;
+  receipt_footer?: string;
 }
 
 export interface ApiMenuItem {

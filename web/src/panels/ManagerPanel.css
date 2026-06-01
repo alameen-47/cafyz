@@ -310,7 +310,15 @@
   min-width: min(220px, 100%);
 }
 
+.mgr-input-span2 {
+  grid-column: span 2;
+}
+
 @media (max-width: 480px) {
+  .mgr-input-span2 {
+    grid-column: span 1;
+  }
+
   .mgr-logo-actions .btn-gold,
   .mgr-logo-actions .btn-outline {
     width: 100%;

@@ -37,6 +37,12 @@ const UpdateRestaurantSchema = z.object({
   postal_code:   z.string().max(24).optional(),
   tax_id:        z.string().max(80).optional(),
   website_url:   z.string().url().or(z.literal('')).optional(),
+  currency_code: z.enum(['USD', 'EUR', 'GBP', 'AED', 'SAR', 'INR', 'PKR', 'BDT', 'NGN', 'ZAR']).optional(),
+  language_code: z.enum(['en', 'ar', 'fr', 'es', 'de', 'hi', 'ur']).optional(),
+  date_format:   z.enum(['DD/MM/YYYY', 'MM/DD/YYYY', 'YYYY-MM-DD']).optional(),
+  service_charge_pct: z.number().min(0).max(100).nullable().optional(),
+  tax_rate_pct:       z.number().min(0).max(100).nullable().optional(),
+  receipt_footer:     z.string().max(180).optional(),
 });
 
 // POST /api/restaurants/onboarding — public, creates restaurant + owner user
@@ -115,6 +121,12 @@ router.put('/me', requireAuth, requireRole('owner', 'manager', 'cashier'), async
     if (data.postal_code   !== undefined) { sets.push('postal_code=?');   args.push(data.postal_code || null); }
     if (data.tax_id        !== undefined) { sets.push('tax_id=?');        args.push(data.tax_id || null); }
     if (data.website_url   !== undefined) { sets.push('website_url=?');   args.push(data.website_url || null); }
+    if (data.currency_code !== undefined) { sets.push('currency_code=?'); args.push(data.currency_code); }
+    if (data.language_code !== undefined) { sets.push('language_code=?'); args.push(data.language_code); }
+    if (data.date_format   !== undefined) { sets.push('date_format=?');   args.push(data.date_format); }
+    if (data.service_charge_pct !== undefined) { sets.push('service_charge_pct=?'); args.push(data.service_charge_pct); }
+    if (data.tax_rate_pct       !== undefined) { sets.push('tax_rate_pct=?');       args.push(data.tax_rate_pct); }
+    if (data.receipt_footer     !== undefined) { sets.push('receipt_footer=?');     args.push(data.receipt_footer || null); }
     if (!sets.length) { res.status(400).json({ error: 'Nothing to update' }); return; }
     args.push(rid);
     await getDb().execute({ sql: `UPDATE restaurants SET ${sets.join(',')} WHERE id=?`, args });
