@@ -5,9 +5,48 @@ import { getDb } from '../db.js';
 import { requireAuth, type AuthRequest } from '../middleware/auth.js';
 import { requireRole } from '../middleware/rbac.js';
 import { uid } from '../utils.js';
+import { sendMailReliable, smtpFrom } from '../services/email.js';
+import { appPath } from '../config/site.js';
 
 const router = Router();
 router.use(requireAuth);
+
+function generatePin(): string {
+  return String(Math.floor(1000 + Math.random() * 9000));
+}
+
+async function sendUserPinEmail(data: {
+  to: string;
+  userName: string;
+  role: string;
+  restaurantName: string;
+  pin: string;
+}) {
+  const subject = `Your Cafyz login PIN (${data.role})`;
+  const html = `
+    <div style="font-family:Arial,sans-serif;max-width:560px;margin:0 auto;padding:20px;color:#111827">
+      <h2 style="margin:0 0 12px">Your role login is ready</h2>
+      <p style="margin:0 0 10px">Hi ${data.userName},</p>
+      <p style="margin:0 0 10px">
+        You were added to <strong>${data.restaurantName}</strong> as <strong>${data.role}</strong>.
+      </p>
+      <p style="margin:0 0 8px">Use this 4-digit PIN to log in:</p>
+      <div style="display:inline-block;font-size:28px;font-weight:700;letter-spacing:4px;padding:10px 14px;border:1px solid #d1d5db;border-radius:8px;background:#f9fafb">
+        ${data.pin}
+      </div>
+      <p style="margin:14px 0 0;font-size:13px;color:#4b5563">
+        Open: <a href="${appPath('/login')}" target="_blank" rel="noreferrer">${appPath('/login')}</a>
+      </p>
+    </div>
+  `;
+
+  return sendMailReliable({
+    from: smtpFrom(false),
+    to: data.to,
+    subject,
+    html,
+  });
+}
 
 const UserSchema = z.object({
   name:       z.string().min(2),
@@ -52,7 +91,9 @@ router.post('/', requireRole('owner','manager'), async (req: AuthRequest, res, n
     const data = UserSchema.parse(req.body);
     const id = uid();
     const pw = data.password ? await bcrypt.hash(data.password, 10) : await bcrypt.hash('cafyz2026', 10);
-    const ph = data.pin ? await bcrypt.hash(data.pin, 10) : null;
+    const generatedPin = generatePin();
+    const pinToSave = data.pin ?? generatedPin;
+    const ph = await bcrypt.hash(pinToSave, 10);
     const initials = data.initials ?? data.name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0,2);
     const emailNorm = data.email.trim().toLowerCase();
     const emailExists = await getDb().execute({
@@ -68,8 +109,26 @@ router.post('/', requireRole('owner','manager'), async (req: AuthRequest, res, n
       sql: `INSERT INTO users(id,restaurant_id,name,initials,email,password_hash,role,status,start_time,pin_hash) VALUES(?,?,?,?,?,?,?,?,?,?)`,
       args: [id, rid, data.name, initials, emailNorm, pw, data.role, data.status??'active', data.start_time??'—', ph],
     });
+    const restRow = await getDb().execute({ sql: 'SELECT name FROM restaurants WHERE id=?', args: [rid] });
+    const restaurantName = String(restRow.rows[0]?.name ?? 'your restaurant');
+    const emailResult = await sendUserPinEmail({
+      to: emailNorm,
+      userName: data.name,
+      role: data.role,
+      restaurantName,
+      pin: pinToSave,
+    });
+
     const row = await getDb().execute({ sql: 'SELECT id,name,initials,email,role,status,start_time FROM users WHERE id=?', args: [id] });
-    res.status(201).json(row.rows[0]);
+    res.status(201).json({
+      ...row.rows[0],
+      pin_delivery: {
+        sent: emailResult.ok,
+        message: emailResult.ok
+          ? `PIN sent to ${emailNorm}`
+          : `User created, but PIN email failed: ${emailResult.error}`,
+      },
+    });
   } catch (e) { next(e); }
 });
 

@@ -25,10 +25,10 @@ const STATUS_COLOR = { active: 'var(--success)', break: 'var(--warning)', off: '
 
 type DraftUser = {
   name: string; email: string; role: Exclude<Role,'owner'|'founder'>;
-  status: 'active' | 'break' | 'off'; start_time: string; pin: string;
+  status: 'active' | 'break' | 'off'; start_time: string;
 };
 
-const blank = (): DraftUser => ({ name: '', email: '', role: 'waiter', status: 'active', start_time: '18:00', pin: '' });
+const blank = (): DraftUser => ({ name: '', email: '', role: 'waiter', status: 'active', start_time: '18:00' });
 
 export function RolesPanel() {
   const { user: me } = useAuth();
@@ -42,6 +42,7 @@ export function RolesPanel() {
   const [confirmDelete, setConfirmDelete]= useState<string | null>(null);
   const [busy,          setBusy]         = useState(false);
   const [error,         setError]        = useState('');
+  const [notice,        setNotice]       = useState('');
   const [loading,       setLoading]      = useState(true);
 
   useEffect(() => {
@@ -59,7 +60,7 @@ export function RolesPanel() {
   function startEdit(s: ApiUser) {
     setEditId(s.id);
     setDraft({ name: s.name, email: s.email, role: s.role as Exclude<Role,'owner'|'founder'>,
-               status: s.status, start_time: s.start_time, pin: '' });
+               status: s.status, start_time: s.start_time });
     setAdding(false);
   }
 
@@ -70,7 +71,6 @@ export function RolesPanel() {
       const updated = await usersApi.update(editId, {
         name: draft.name, email: draft.email, role: draft.role,
         status: draft.status, start_time: draft.start_time,
-        ...(draft.pin ? { pin: draft.pin } : {}),
       });
       setStaff(prev => prev.map(s => s.id === editId ? updated : s));
       setEditId(null);
@@ -83,15 +83,15 @@ export function RolesPanel() {
 
   async function confirmAdd() {
     if (!draft.name || !draft.email) return;
-    setBusy(true); setError('');
+    setBusy(true); setError(''); setNotice('');
     try {
       const created = await usersApi.create({
         name: draft.name, email: draft.email, role: draft.role,
         status: draft.status, start_time: draft.start_time,
         password: 'cafyz2026',
-        ...(draft.pin ? { pin: draft.pin } : {}),
-      });
+      }) as ApiUser & { pin_delivery?: { sent: boolean; message: string } };
       setStaff(prev => [...prev, created]);
+      setNotice(created.pin_delivery?.message ?? 'User created and PIN generated.');
       setAdding(false);
     } catch (e) { setError((e as Error).message); }
     finally { setBusy(false); }
@@ -147,6 +147,7 @@ export function RolesPanel() {
       </div>
 
       {error && <p style={{ color: 'var(--danger)', fontSize: 13, marginBottom: 12 }}>{error}</p>}
+      {notice && <p style={{ color: 'var(--success)', fontSize: 13, marginBottom: 12 }}>{notice}</p>}
 
       {/* ── Role summary cards ───────────────────────────────────── */}
       <div className="roles-cards">
@@ -171,7 +172,6 @@ export function RolesPanel() {
           <div className="roles-form-grid">
             <input placeholder="Full name"       value={draft.name}  onChange={e => setDraft(d => ({ ...d, name:  e.target.value }))} className="roles-input" />
             <input placeholder="Work email"      value={draft.email} onChange={e => setDraft(d => ({ ...d, email: e.target.value }))} className="roles-input" />
-            <input placeholder="PIN (4 digits)"  value={draft.pin}   onChange={e => setDraft(d => ({ ...d, pin:   e.target.value }))} className="roles-input" maxLength={4} />
             <select value={draft.role} onChange={e => setDraft(d => ({ ...d, role: e.target.value as DraftUser['role'] }))} className="roles-select">
               {ROLES.map(r => <option key={r} value={r}>{ROLE_LABELS[r]}</option>)}
             </select>

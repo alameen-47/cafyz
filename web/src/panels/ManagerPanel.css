@@ -27,6 +27,11 @@
 
 .mgr-tab:hover { color: var(--text1); }
 .mgr-tab.active { color: var(--gold); border-bottom-color: var(--gold); }
+.mgr-tab:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--gold) 70%, transparent);
+  outline-offset: -2px;
+  color: var(--text0);
+}
 
 .mgr-body { flex: 1; overflow: auto; }
 
@@ -276,6 +281,81 @@
   margin-bottom: 12px;
 }
 
+.mgr-section-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.mgr-info-hint {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: -4px;
+  outline: none;
+}
+
+.mgr-info-icon {
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  border: 1px solid var(--gold-line2);
+  color: var(--gold);
+  font-size: 11px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.04);
+  cursor: help;
+}
+
+.mgr-info-tooltip {
+  position: absolute;
+  left: 24px;
+  top: 50%;
+  transform: translateY(-50%);
+  min-width: 210px;
+  max-width: 300px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  font-size: 12px;
+  line-height: 1.35;
+  color: var(--text0);
+  background: color-mix(in srgb, var(--bg2) 92%, #000 8%);
+  border: 1px solid var(--line2);
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.28);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s ease;
+  z-index: 8;
+}
+
+.mgr-info-hint:hover .mgr-info-tooltip,
+.mgr-info-hint:focus .mgr-info-tooltip,
+.mgr-info-hint:focus-within .mgr-info-tooltip {
+  opacity: 1;
+}
+
+.mgr-profile-card .roles-input {
+  color: var(--text0);
+  background: color-mix(in srgb, var(--bg2) 94%, #fff 6%);
+  border-color: var(--line2);
+}
+
+.mgr-profile-card .roles-input::placeholder {
+  color: var(--text2);
+  opacity: 1;
+}
+
+.mgr-profile-card .roles-input:focus,
+.mgr-profile-card .roles-input:focus-visible {
+  border-color: var(--gold);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--gold) 28%, transparent);
+}
+
 .mgr-logo-row {
   display: flex;
   align-items: center;
@@ -315,6 +395,24 @@
 }
 
 @media (max-width: 480px) {
+  .mgr-profile-card {
+    padding: 14px;
+  }
+
+  .mgr-section-head {
+    justify-content: space-between;
+    align-items: flex-start;
+  }
+
+  .mgr-info-tooltip {
+    left: auto;
+    right: 0;
+    top: calc(100% + 6px);
+    transform: none;
+    min-width: 180px;
+    max-width: min(280px, calc(100vw - 44px));
+  }
+
   .mgr-input-span2 {
     grid-column: span 1;
   }
@@ -487,6 +585,17 @@
 
   .mgr-inv-current {
     width: 100%;
+  }
+
+  .mgr-profile-card .form-grid-2 {
+    grid-template-columns: 1fr;
+  }
+
+  .mgr-profile-card .btn-gold,
+  .mgr-profile-card .btn-outline,
+  .mgr-profile-card .roles-btn {
+    width: 100%;
+    justify-content: center;
   }
 }
 

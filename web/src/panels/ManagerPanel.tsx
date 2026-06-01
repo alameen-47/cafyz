@@ -62,6 +62,15 @@ const LANGUAGE_OPTIONS = [
 
 const DATE_FORMAT_OPTIONS = ['DD/MM/YYYY', 'MM/DD/YYYY', 'YYYY-MM-DD'] as const;
 
+function InfoHint({ label }: { label: string }) {
+  return (
+    <span className="mgr-info-hint" tabIndex={0} role="note" aria-label={label}>
+      <span className="mgr-info-icon" aria-hidden="true">i</span>
+      <span className="mgr-info-tooltip">{label}</span>
+    </span>
+  );
+}
+
 // ── Overview ──────────────────────────────────────────────────────────────────
 function Overview({ onNav }: { onNav: (s: Section) => void }) {
   const { user }   = useAuth();
@@ -1333,16 +1342,15 @@ function ProfileTab() {
     <div className="mgr-overview">
       <p className="eyebrow">Brand · Identity · Billing</p>
       <h1 className="serif mgr-greeting">Restaurant Profile</h1>
-      <p className="mgr-sub">Shared by all staff assigned to this restaurant in Role Management.</p>
       {error && <p style={{ color: 'var(--danger)', fontSize: 13 }}>{error}</p>}
       {saveMsg && !error && <p style={{ color: 'var(--ok, #2ECC8A)', fontSize: 13 }}>{saveMsg}</p>}
 
       {/* ── Logo ──────────────────────────────────────────────────────────── */}
       <div className="card mgr-profile-card">
-        <p className="eyebrow" style={{ marginTop: 0 }}>Logo</p>
-        <p className="mgr-sub" style={{ marginTop: 0 }}>
-          Preview shows the B&W receipt version. Saved to your restaurant (all staff devices). PNG/JPG up to 2 MB.
-        </p>
+        <div className="mgr-section-head">
+          <p className="eyebrow" style={{ marginTop: 0 }}>Logo</p>
+          <InfoHint label="Logo is shared with all staff in this restaurant. PNG/JPG, up to 2 MB." />
+        </div>
         {error && (
           <p style={{ color: 'var(--danger)', fontSize: 12, margin: '8px 0 0' }}>{error}</p>
         )}
@@ -1376,10 +1384,10 @@ function ProfileTab() {
 
       {/* ── Details ───────────────────────────────────────────────────────── */}
       <div className="card mgr-profile-card">
-        <p className="eyebrow" style={{ marginTop: 0 }}>General profile settings</p>
-        <p className="mgr-sub" style={{ marginTop: 0, marginBottom: 12 }}>
-          These defaults are used across reports, receipts, and account-level preferences.
-        </p>
+        <div className="mgr-section-head">
+          <p className="eyebrow" style={{ marginTop: 0 }}>General profile settings</p>
+          <InfoHint label="These defaults are used in reports, receipts, and account preferences." />
+        </div>
         <div className="form-grid-2">
           <input className="roles-input" placeholder="Restaurant name" value={draft.name} onChange={e => setDraft(d => ({ ...d, name: e.target.value }))} />
           <input className="roles-input" placeholder="Timezone" value={draft.timezone} onChange={e => setDraft(d => ({ ...d, timezone: e.target.value }))} />
@@ -1426,8 +1434,10 @@ function ProfileTab() {
 
       {/* ── Printer ───────────────────────────────────────────────────────── */}
       <div className="card" style={{ padding: 16, marginTop: 12 }}>
-        <p className="eyebrow" style={{ marginTop: 0 }}>Receipt Printer · Demo Receipt</p>
-        <p className="mgr-sub" style={{ marginTop: 0 }}>Connect a Bluetooth/USB thermal printer or use browser print. Demo receipt uses your logo exactly as uploaded.</p>
+        <div className="mgr-section-head">
+          <p className="eyebrow" style={{ marginTop: 0 }}>Receipt Printer · Demo Receipt</p>
+          <InfoHint label="Connect Bluetooth or USB thermal printer, then print a demo receipt with your current logo." />
+        </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
           {printer.type !== 'none' ? (
             <>
