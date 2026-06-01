@@ -41,7 +41,14 @@
 
 .pos-pill span {
   font-size: 10px;
-  opacity: 0.7;
+  opacity: 0.78;
+  color: inherit;
+}
+
+.pos-pill.active span {
+  opacity: 1;
+  color: inherit;
+  font-weight: 700;
 }
 
 .pos-search {
@@ -611,6 +618,11 @@
 [data-theme='light'] .pos-pill {
   background: #ffffff;
   border: 1px solid rgba(29, 78, 216, 0.22);
+}
+[data-theme='light'] .pos-pill.active {
+  background: var(--gold-dim);
+  border-color: var(--gold-dim);
+  color: #ffffff;
 }
 [data-theme='light'] .pos-alt-pay button {
   border: 1px solid rgba(0, 0, 0, 0.16);
