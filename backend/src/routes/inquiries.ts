@@ -103,7 +103,7 @@ function adminHtml(args: {
       </div>
     </div>
   </div>
-  <div style="padding:16px 32px;background:#07060F;text-align:center;font-size:11px;color:#5A5A6A">Cafyz Hospitality OS · Inquiry received ${new Date().toUTCString()}</div>
+  <div style="padding:16px 32px;background:#07060F;text-align:center;font-size:11px;color:#5A5A6A">Cafyz Restaurant Management Platform · Inquiry received ${new Date().toUTCString()}</div>
 </div>
 </body>
 </html>`;
@@ -119,7 +119,7 @@ function autoReplyHtml(name: string, restaurantName: string, plan: string) {
 <div style="max-width:560px;margin:40px auto;border:0.5px solid rgba(139,92,246,0.3);border-radius:16px;overflow:hidden">
   <div style="background:linear-gradient(135deg,#130F28 0%,#0E0B1C 100%);padding:40px 32px 32px">
     <div style="width:52px;height:52px;background:#8B5CF6;border-radius:14px;line-height:52px;text-align:center;font-family:Georgia,serif;font-size:28px;color:#07060F;font-weight:700;margin-bottom:24px">C</div>
-    <div style="font-size:11px;color:#8B5CF6;text-transform:uppercase;letter-spacing:2px;margin-bottom:10px">Cafyz Hospitality OS</div>
+    <div style="font-size:11px;color:#8B5CF6;text-transform:uppercase;letter-spacing:2px;margin-bottom:10px">Cafyz Restaurant Management Platform</div>
     <div style="font-family:Georgia,serif;font-size:32px;color:#F5F5F0;line-height:1.2;margin-bottom:12px">We received<br>your request, <em style="color:#8B5CF6;font-style:italic">${first}.</em></div>
     <div style="font-size:14px;color:#8A8A9A;line-height:1.6">Thank you for your interest in Cafyz. Your request is now <strong style="color:#F5F5F0">pending founder approval</strong>. Once approved, you’ll receive a <strong style="color:#2ECC8A">${TRIAL_DAYS}-day free trial</strong> on any plan — no charge until the trial ends.</div>
   </div>

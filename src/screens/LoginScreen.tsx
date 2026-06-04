@@ -137,7 +137,7 @@ function DesktopLogin({
           </View>
           <View>
             <Text style={dl.brandName}>Cafyz</Text>
-            <Text style={dl.brandSub}>HOSPITALITY OS</Text>
+            <Text style={dl.brandSub}>RESTAURANT MANAGEMENT PLATFORM</Text>
           </View>
         </View>
 
@@ -165,8 +165,8 @@ function DesktopLogin({
         {/* Quote card */}
         <View style={dl.quoteCard}>
           <Text style={dl.quoteText}>
-            "The line moves like jazz again. We won an hour back of dinner
-            service in the first month."
+            "Order flow became smooth again. We won an hour back in
+            operations in the first month."
           </Text>
           <View style={dl.quoteAuthor}>
             <View style={dl.quoteAvatar}>
@@ -242,7 +242,7 @@ function DesktopLogin({
         </View>
 
         <View style={dl.footer}>
-          <Text style={dl.footerText}>© Cafyz Hospitality SAS · 2026</Text>
+          <Text style={dl.footerText}>© Cafyz Restaurant Management Solutions · 2026</Text>
           <Text style={dl.footerMono}>v 04.2 · MICHELIN</Text>
         </View>
       </ScrollView>

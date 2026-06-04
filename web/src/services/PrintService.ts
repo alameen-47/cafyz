@@ -852,7 +852,7 @@ export function buildSalesReportHTML(data: SalesReportData): string {
     <tbody>${rows}</tbody>
   </table>
   <div class="total">Total orders: ${data.totalOrders} · Gross revenue: ${fmt(data.totalRevenue)}</div>
-  <div class="footer">Cafyz Hospitality OS · ${data.restaurantName}</div>
+  <div class="footer">Cafyz Restaurant Management Platform · ${data.restaurantName}</div>
   </body></html>`;
 }
 
@@ -874,7 +874,7 @@ export function buildMonthlyReportHTML(data: MonthlyReportData): string {
     <tbody>${rows}</tbody>
   </table>
   <div class="total">Month total: ${fmt(data.totalRevenue)}</div>
-  <div class="footer">Cafyz Hospitality OS · ${data.restaurantName}</div>
+  <div class="footer">Cafyz Restaurant Management Platform · ${data.restaurantName}</div>
   </body></html>`;
 }
 

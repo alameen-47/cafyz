@@ -4,7 +4,7 @@ export function getCafyzWebAppHtml(): string {
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1"/>
-<title>Cafyz — Hospitality OS</title>
+<title>Cafyz — Restaurant Management Platform</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,600;1,600&display=swap" rel="stylesheet"/>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
@@ -413,7 +413,7 @@ tr:nth-child(even) td{background:rgba(255,255,255,0.02)}
           <div class="login-logo"><span>C</span></div>
           <div>
             <div class="login-brand-name">Cafyz</div>
-            <div class="login-brand-sub">HOSPITALITY OS</div>
+            <div class="login-brand-sub">RESTAURANT MANAGEMENT PLATFORM</div>
           </div>
         </div>
         <div class="stats-row">
@@ -428,7 +428,7 @@ tr:nth-child(even) td{background:rgba(255,255,255,0.02)}
         </div>
       </div>
       <div class="quote-card">
-        <div class="quote-text serif">"The line moves like jazz again. We won an hour back of dinner service in the first month."</div>
+        <div class="quote-text serif">"Order flow became smooth again. We won an hour back in operations in the first month."</div>
         <div class="quote-author">
           <div class="quote-av"><span>HL</span></div>
           <div>
@@ -464,7 +464,7 @@ tr:nth-child(even) td{background:rgba(255,255,255,0.02)}
         <button class="alt-btn">Pair Device</button>
       </div>
       <div class="login-footer">
-        <span>© Cafyz Hospitality SAS · 2026</span>
+        <span>© Cafyz Restaurant Management Solutions · 2026</span>
         <span class="mono">v 04.2 · MICHELIN</span>
       </div>
     </div>

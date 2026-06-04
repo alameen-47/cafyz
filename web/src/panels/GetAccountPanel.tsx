@@ -51,7 +51,7 @@ const PLANS: PlanDef[] = [
     badge:   'Most Popular',
     color:   '#8b5cf6',
     icon:    '✦',
-    tagline: 'The full hospitality stack for serious operators.',
+    tagline: 'The complete restaurant management platform for serious operators.',
     features: [
       'Everything in Basic',
       'Kitchen Display System (KDS)',
@@ -160,7 +160,7 @@ export function GetAccountPanel() {
           <div className="ga-logo">C</div>
           <div>
             <p className="serif ga-brand-name">Cafyz</p>
-            <p className="mono ga-brand-sub">HOSPITALITY OS</p>
+            <p className="mono ga-brand-sub">RESTAURANT MANAGEMENT PLATFORM</p>
           </div>
         </div>
 
@@ -192,7 +192,7 @@ export function GetAccountPanel() {
         </div>
 
         <div className="ga-quote">
-          <p className="serif ga-quote-text">"We recovered a full hour of dinner service in the first month."</p>
+          <p className="serif ga-quote-text">"We recovered a full hour of operations time in the first month."</p>
           <div className="ga-quote-author">
             <div className="ga-quote-av">HL</div>
             <div>
@@ -283,7 +283,7 @@ export function GetAccountPanel() {
                 <label className="ga-field">
                   <span>Message <span className="ga-optional">(optional)</span></span>
                   <textarea
-                    placeholder="Tell us about your restaurant — seats, covers per service, any special requirements…"
+                    placeholder="Tell us about your restaurant operations — seats, average daily covers, any special requirements…"
                     value={form.message}
                     onChange={set('message')}
                     rows={3}
