@@ -258,7 +258,10 @@ export const founderApi = {
   setPlan:        (restaurantId: string, plan: string)                                 => patch<ApiRestaurant>(`/api/founder/restaurants/${restaurantId}/plan`, { plan }),
   deleteRestaurant: (restaurantId: string)                                              => del(`/api/founder/restaurants/${restaurantId}`),
   planConfig:     ()                                                                    => get<ApiPlanConfig[]>('/api/founder/plan-config'),
-  updatePlanConfig: (plan: string, d: Partial<{ panels_json: string; label: string; description: string; price_monthly: number; currency_symbol: string }>) =>
+  updatePlanConfig: (plan: string, d: Partial<{
+    panels_json: string; label: string; description: string; price_monthly: number; currency_symbol: string;
+    billing_interval_unit: 'month' | 'year'; billing_interval_count: number;
+  }>) =>
     put<ApiPlanConfig>(`/api/founder/plan-config/${plan}`, d),
 };
 
@@ -451,5 +454,9 @@ export interface ApiFounderInquiry {
 
 export interface ApiPlanConfig {
   plan: string; panels_json: string; label: string; description: string;
-  price_monthly: number; currency_symbol?: string; updated_at: string;
+  price_monthly: number;
+  currency_symbol?: string;
+  billing_interval_unit?: 'month' | 'year';
+  billing_interval_count?: number;
+  updated_at: string;
 }

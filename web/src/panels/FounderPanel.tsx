@@ -20,6 +20,13 @@ const TABS: { id: Tab; label: string }[] = [
 
 const CURRENCY_SYMBOL_OPTIONS = ['$', '€', '£', '₹', '¥', 'AED'];
 
+function formatBillingCycle(config: ApiPlanConfig): string {
+  const unit = config.billing_interval_unit ?? 'month';
+  const count = config.billing_interval_count ?? 1;
+  if (count <= 1) return unit === 'year' ? '/yr' : '/mo';
+  return `every ${count} ${unit}${count > 1 ? 's' : ''}`;
+}
+
 // ── Overview ──────────────────────────────────────────────────────────────────
 function Overview({ onTab }: { onTab: (t: Tab) => void }) {
   const [stats,   setStats]   = useState<ApiFounderStats | null>(null);
@@ -543,6 +550,8 @@ function PlanConfig() {
         description:   draft.description,
         price_monthly: draft.price_monthly,
         currency_symbol: draft.currency_symbol,
+        billing_interval_unit: draft.billing_interval_unit,
+        billing_interval_count: draft.billing_interval_count,
       });
       setConfigs(prev => prev.map(c => c.plan === editPlan ? updated : c));
       setEditPlan(null);
@@ -593,9 +602,31 @@ function PlanConfig() {
                           onChange={e => setDraft(d => ({ ...d, price_monthly: +e.target.value }))} style={{ width: 90 }} />
                         <span>/mo</span>
                       </span>
-                    ) : `${c.currency_symbol ?? '$'}${c.price_monthly}/mo`}
+                    ) : `${c.currency_symbol ?? '$'}${c.price_monthly} ${formatBillingCycle(c)}`}
                   </span>
                 </div>
+                {isEditing && (
+                  <div style={{ display: 'inline-flex', gap: 6, alignItems: 'center', marginBottom: 10 }}>
+                    <input
+                      className="fdr-input"
+                      type="number"
+                      min={1}
+                      max={60}
+                      value={draft.billing_interval_count ?? c.billing_interval_count ?? 1}
+                      onChange={e => setDraft(d => ({ ...d, billing_interval_count: Math.max(1, Number(e.target.value || 1)) }))}
+                      style={{ width: 80 }}
+                    />
+                    <select
+                      className="fdr-select"
+                      value={draft.billing_interval_unit ?? c.billing_interval_unit ?? 'month'}
+                      onChange={e => setDraft(d => ({ ...d, billing_interval_unit: e.target.value as 'month' | 'year' }))}
+                      style={{ width: 110 }}
+                    >
+                      <option value="month">Month(s)</option>
+                      <option value="year">Year(s)</option>
+                    </select>
+                  </div>
+                )}
 
                 {isEditing ? (
                   <textarea className="fdr-desc-input" value={draft.description ?? ''}

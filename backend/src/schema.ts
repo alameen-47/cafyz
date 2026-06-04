@@ -170,6 +170,8 @@ export async function runMigrations() {
       description   TEXT NOT NULL DEFAULT '',
       price_monthly REAL NOT NULL DEFAULT 0,
       currency_symbol TEXT NOT NULL DEFAULT '$',
+      billing_interval_unit  TEXT NOT NULL DEFAULT 'month',
+      billing_interval_count INTEGER NOT NULL DEFAULT 1,
       updated_at    TEXT NOT NULL DEFAULT (datetime('now'))
     );
 
@@ -262,13 +264,17 @@ export async function runMigrations() {
   await addCol(`ALTER TABLE inquiries ADD COLUMN restaurant_id TEXT`, 'restaurant_id');
   await addCol(`ALTER TABLE inquiries ADD COLUMN provisioned_user_id TEXT`, 'provisioned_user_id');
   await addCol(`ALTER TABLE plan_config ADD COLUMN currency_symbol TEXT NOT NULL DEFAULT '$'`, 'currency_symbol');
+  await addCol(`ALTER TABLE plan_config ADD COLUMN billing_interval_unit TEXT NOT NULL DEFAULT 'month'`, 'billing_interval_unit');
+  await addCol(`ALTER TABLE plan_config ADD COLUMN billing_interval_count INTEGER NOT NULL DEFAULT 1`, 'billing_interval_count');
 
   // Ensure founder plan config always exists (production-safe bootstrap)
   await db.executeMultiple(`
-    INSERT OR IGNORE INTO plan_config(plan,panels_json,label,description,price_monthly,currency_symbol) VALUES
-    ('basic','["pos","menu","waiter","license"]','Basic','Core POS, menu, and floor management for small venues.',49,'$'),
-    ('pro','["pos","menu","waiter","kds","manager","inventory","staff","reports","roles","license"]','Pro','Everything in Basic plus KDS, full manager dashboard, inventory, staff & reports.',99,'$'),
-    ('premium','["pos","menu","waiter","kds","manager","inventory","staff","reports","roles","license"]','Premium','Everything in Pro plus reservations, multi-branch, and priority support.',199,'$');
+    INSERT OR IGNORE INTO plan_config(
+      plan,panels_json,label,description,price_monthly,currency_symbol,billing_interval_unit,billing_interval_count
+    ) VALUES
+    ('basic','["pos","menu","waiter","license"]','Basic','Core POS, menu, and floor management for small venues.',49,'$','month',1),
+    ('pro','["pos","menu","waiter","kds","manager","inventory","staff","reports","roles","license"]','Pro','Everything in Basic plus KDS, full manager dashboard, inventory, staff & reports.',99,'$','month',1),
+    ('premium','["pos","menu","waiter","kds","manager","inventory","staff","reports","roles","license"]','Premium','Everything in Pro plus reservations, multi-branch, and priority support.',199,'$','month',1);
   `);
 
   await migrateMenuItemsFlexibleCategory(db);

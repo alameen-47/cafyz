@@ -93,6 +93,8 @@ router.put('/plan-config/:plan', ...onlyFounder, async (req: AuthRequest, res, n
       description:   z.string().optional(),
       price_monthly: z.number().optional(),
       currency_symbol: z.string().min(1).max(4).optional(),
+      billing_interval_unit: z.enum(['month', 'year']).optional(),
+      billing_interval_count: z.number().int().min(1).max(60).optional(),
     }).parse(req.body);
 
     const sets: string[] = ['updated_at=datetime(\'now\')'];
@@ -102,6 +104,8 @@ router.put('/plan-config/:plan', ...onlyFounder, async (req: AuthRequest, res, n
     if (data.description   !== undefined) { sets.push('description=?');   args.push(data.description); }
     if (data.price_monthly !== undefined) { sets.push('price_monthly=?'); args.push(data.price_monthly); }
     if (data.currency_symbol !== undefined) { sets.push('currency_symbol=?'); args.push(data.currency_symbol); }
+    if (data.billing_interval_unit !== undefined) { sets.push('billing_interval_unit=?'); args.push(data.billing_interval_unit); }
+    if (data.billing_interval_count !== undefined) { sets.push('billing_interval_count=?'); args.push(data.billing_interval_count); }
     args.push(planName);
 
     await getDb().execute({ sql: `UPDATE plan_config SET ${sets.join(',')} WHERE plan=?`, args });

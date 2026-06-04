@@ -66,6 +66,8 @@ async function seed() {
       description: 'Core POS, menu, and floor management for small venues.',
       price_monthly: 49,
       currency_symbol: '$',
+      billing_interval_unit: 'month',
+      billing_interval_count: 1,
       panels: ['pos','menu','waiter','license'],
     },
     {
@@ -74,6 +76,8 @@ async function seed() {
       description: 'Everything in Basic plus KDS, full manager dashboard, inventory, staff & reports.',
       price_monthly: 99,
       currency_symbol: '$',
+      billing_interval_unit: 'month',
+      billing_interval_count: 1,
       panels: ['pos','menu','waiter','kds','manager','inventory','staff','reports','roles','license'],
     },
     {
@@ -82,15 +86,27 @@ async function seed() {
       description: 'Everything in Pro plus reservations, multi-branch, and priority support.',
       price_monthly: 199,
       currency_symbol: '$',
+      billing_interval_unit: 'month',
+      billing_interval_count: 1,
       panels: ['pos','menu','waiter','kds','manager','inventory','staff','reports','roles','license'],
     },
   ];
 
   for (const p of planConfigs) {
     await db.execute({
-      sql: `INSERT OR IGNORE INTO plan_config(plan,panels_json,label,description,price_monthly,currency_symbol)
-            VALUES(?,?,?,?,?,?)`,
-      args: [p.plan, JSON.stringify(p.panels), p.label, p.description, p.price_monthly, p.currency_symbol],
+      sql: `INSERT OR IGNORE INTO plan_config(
+              plan,panels_json,label,description,price_monthly,currency_symbol,billing_interval_unit,billing_interval_count
+            ) VALUES(?,?,?,?,?,?,?,?)`,
+      args: [
+        p.plan,
+        JSON.stringify(p.panels),
+        p.label,
+        p.description,
+        p.price_monthly,
+        p.currency_symbol,
+        p.billing_interval_unit,
+        p.billing_interval_count,
+      ],
     });
   }
   console.log('✓ Plan config seeded');
