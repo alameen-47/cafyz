@@ -18,6 +18,8 @@ export async function runMigrations() {
       date_format       TEXT NOT NULL DEFAULT 'DD/MM/YYYY',
       service_charge_pct REAL,
       tax_rate_pct       REAL,
+      tax_type           TEXT NOT NULL DEFAULT 'VAT',
+      tax_included       INTEGER NOT NULL DEFAULT 0,
       receipt_footer     TEXT,
       created_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
@@ -167,6 +169,7 @@ export async function runMigrations() {
       label         TEXT NOT NULL,
       description   TEXT NOT NULL DEFAULT '',
       price_monthly REAL NOT NULL DEFAULT 0,
+      currency_symbol TEXT NOT NULL DEFAULT '$',
       updated_at    TEXT NOT NULL DEFAULT (datetime('now'))
     );
 
@@ -251,11 +254,14 @@ export async function runMigrations() {
   await addCol(`ALTER TABLE restaurants ADD COLUMN date_format TEXT NOT NULL DEFAULT 'DD/MM/YYYY'`, 'date_format');
   await addCol(`ALTER TABLE restaurants ADD COLUMN service_charge_pct REAL`, 'service_charge_pct');
   await addCol(`ALTER TABLE restaurants ADD COLUMN tax_rate_pct REAL`, 'tax_rate_pct');
+  await addCol(`ALTER TABLE restaurants ADD COLUMN tax_type TEXT NOT NULL DEFAULT 'VAT'`, 'tax_type');
+  await addCol(`ALTER TABLE restaurants ADD COLUMN tax_included INTEGER NOT NULL DEFAULT 0`, 'tax_included');
   await addCol(`ALTER TABLE restaurants ADD COLUMN receipt_footer TEXT`, 'receipt_footer');
   await addCol(`ALTER TABLE inquiries ADD COLUMN is_retry INTEGER NOT NULL DEFAULT 0`, 'is_retry');
   await addCol(`ALTER TABLE inquiries ADD COLUMN retry_of_id TEXT`, 'retry_of_id');
   await addCol(`ALTER TABLE inquiries ADD COLUMN restaurant_id TEXT`, 'restaurant_id');
   await addCol(`ALTER TABLE inquiries ADD COLUMN provisioned_user_id TEXT`, 'provisioned_user_id');
+  await addCol(`ALTER TABLE plan_config ADD COLUMN currency_symbol TEXT NOT NULL DEFAULT '$'`, 'currency_symbol');
 
   await migrateMenuItemsFlexibleCategory(db);
   await seedAllMenuCategories(db);

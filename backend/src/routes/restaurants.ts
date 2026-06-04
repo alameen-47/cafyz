@@ -42,6 +42,8 @@ const UpdateRestaurantSchema = z.object({
   date_format:   z.enum(['DD/MM/YYYY', 'MM/DD/YYYY', 'YYYY-MM-DD']).optional(),
   service_charge_pct: z.number().min(0).max(100).nullable().optional(),
   tax_rate_pct:       z.number().min(0).max(100).nullable().optional(),
+  tax_type:           z.string().min(1).max(40).optional(),
+  tax_included:       z.boolean().optional(),
   receipt_footer:     z.string().max(180).optional(),
 });
 
@@ -126,6 +128,8 @@ router.put('/me', requireAuth, requireRole('owner', 'manager', 'cashier'), async
     if (data.date_format   !== undefined) { sets.push('date_format=?');   args.push(data.date_format); }
     if (data.service_charge_pct !== undefined) { sets.push('service_charge_pct=?'); args.push(data.service_charge_pct); }
     if (data.tax_rate_pct       !== undefined) { sets.push('tax_rate_pct=?');       args.push(data.tax_rate_pct); }
+    if (data.tax_type           !== undefined) { sets.push('tax_type=?');           args.push(data.tax_type); }
+    if (data.tax_included       !== undefined) { sets.push('tax_included=?');       args.push(data.tax_included ? 1 : 0); }
     if (data.receipt_footer     !== undefined) { sets.push('receipt_footer=?');     args.push(data.receipt_footer || null); }
     if (!sets.length) { res.status(400).json({ error: 'Nothing to update' }); return; }
     args.push(rid);

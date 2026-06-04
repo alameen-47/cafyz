@@ -76,6 +76,7 @@ export const restaurantApi = {
     tax_id?: string; website_url?: string;
     currency_code?: string; language_code?: string; date_format?: string;
     service_charge_pct?: number | null; tax_rate_pct?: number | null;
+    tax_type?: string; tax_included?: boolean;
     receipt_footer?: string;
   }) => put<ApiRestaurant>('/api/restaurants/me', d),
   branches: ()                                             => get<ApiRestaurant[]>('/api/restaurants/branches'),
@@ -257,7 +258,7 @@ export const founderApi = {
   setPlan:        (restaurantId: string, plan: string)                                 => patch<ApiRestaurant>(`/api/founder/restaurants/${restaurantId}/plan`, { plan }),
   deleteRestaurant: (restaurantId: string)                                              => del(`/api/founder/restaurants/${restaurantId}`),
   planConfig:     ()                                                                    => get<ApiPlanConfig[]>('/api/founder/plan-config'),
-  updatePlanConfig: (plan: string, d: Partial<{ panels_json: string; label: string; description: string; price_monthly: number }>) =>
+  updatePlanConfig: (plan: string, d: Partial<{ panels_json: string; label: string; description: string; price_monthly: number; currency_symbol: string }>) =>
     put<ApiPlanConfig>(`/api/founder/plan-config/${plan}`, d),
 };
 
@@ -283,6 +284,7 @@ export interface ApiRestaurant {
   country?: string; postal_code?: string; tax_id?: string; website_url?: string;
   currency_code?: string; language_code?: string; date_format?: string;
   service_charge_pct?: number | null; tax_rate_pct?: number | null;
+  tax_type?: string; tax_included?: number | boolean;
   receipt_footer?: string;
 }
 
@@ -449,5 +451,5 @@ export interface ApiFounderInquiry {
 
 export interface ApiPlanConfig {
   plan: string; panels_json: string; label: string; description: string;
-  price_monthly: number; updated_at: string;
+  price_monthly: number; currency_symbol?: string; updated_at: string;
 }

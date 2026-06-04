@@ -92,9 +92,17 @@ export function POSPanel() {
 
   const subtotal = cart.reduce((s, c) => s + c.menuItem.price * c.qty, 0);
   const billable = payState === 'comped' ? 0 : subtotal;
-  const service  = billable * 0.18;
-  const tax      = billable * 0.0875;
-  const total    = billable + service + tax;
+  const serviceRate = Math.max(0, Number(restaurant?.service_charge_pct ?? 18));
+  const taxRate = Math.max(0, Number(restaurant?.tax_rate_pct ?? 8.75));
+  const taxType = (restaurant?.tax_type || 'Tax').trim() || 'Tax';
+  const taxIncluded = restaurant?.tax_included === 1 || restaurant?.tax_included === true;
+  const service = billable * (serviceRate / 100);
+  const taxableAmount = billable + service;
+  const tax = taxIncluded && taxRate > 0
+    ? taxableAmount - taxableAmount / (1 + taxRate / 100)
+    : taxableAmount * (taxRate / 100);
+  const preTaxTotal = taxableAmount - tax;
+  const total = taxIncluded ? taxableAmount : taxableAmount + tax;
 
   const isPaid   = payState === 'card' || payState === 'cash' || payState === 'comped';
   const statusLabel = payState === 'card'  ? 'Paid · Card'
@@ -244,6 +252,10 @@ export function POSPanel() {
       service,
       tax,
       total,
+      serviceRate,
+      taxRate,
+      taxLabel: taxType,
+      taxIncluded,
       payMethod,
       note: note || undefined,
     };
@@ -554,8 +566,17 @@ export function POSPanel() {
         {/* Totals */}
         <footer className="pos-totals">
           <div className="pos-total-row"><span>Subtotal</span><span className="mono">${subtotal.toFixed(2)}</span></div>
-          <div className="pos-total-row"><span>Service · 18%</span><span className="mono">${service.toFixed(2)}</span></div>
-          <div className="pos-total-row"><span>Tax · 8.75%</span><span className="mono">${tax.toFixed(2)}</span></div>
+          <div className="pos-total-row"><span>Service · {serviceRate.toFixed(2)}%</span><span className="mono">${service.toFixed(2)}</span></div>
+          {taxIncluded && (
+            <div className="pos-total-row">
+              <span>Amount before {taxType}</span>
+              <span className="mono">${preTaxTotal.toFixed(2)}</span>
+            </div>
+          )}
+          <div className="pos-total-row">
+            <span>{taxType} · {taxRate.toFixed(2)}%{taxIncluded ? ' (included)' : ''}</span>
+            <span className="mono">${tax.toFixed(2)}</span>
+          </div>
           <div className="pos-total-final"><span>Total Due</span><span className="serif">${total.toFixed(2)}</span></div>
 
           {/* New Check button — shown after payment is finalised */}

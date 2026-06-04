@@ -2,7 +2,9 @@
 .fdr-root { display: flex; flex-direction: column; height: 100%; overflow: hidden; }
 .fdr-tabs {
   display: flex;
+  flex-wrap: wrap;
   gap: 2px;
+  row-gap: 0;
   padding: 0 32px;
   border-bottom: 1px solid var(--line);
   background: var(--surface);
@@ -286,7 +288,7 @@
 
 @media (max-width: 1024px) {
   .fdr-section { padding: 24px 16px; max-width: none; }
-  .fdr-tabs { padding: 0 16px; overflow-x: auto; flex-wrap: nowrap; -webkit-overflow-scrolling: touch; }
+  .fdr-tabs { padding: 0 16px; overflow-x: auto; -webkit-overflow-scrolling: touch; }
   .fdr-tab { flex-shrink: 0; white-space: nowrap; }
   .fdr-overview-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .fdr-title { font-size: clamp(22px, 5vw, 28px); }

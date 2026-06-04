@@ -18,6 +18,8 @@ const TABS: { id: Tab; label: string }[] = [
   { id: 'plan-config', label: 'Plan Config' },
 ];
 
+const CURRENCY_SYMBOL_OPTIONS = ['$', '€', '£', '₹', '¥', 'AED'];
+
 // ── Overview ──────────────────────────────────────────────────────────────────
 function Overview({ onTab }: { onTab: (t: Tab) => void }) {
   const [stats,   setStats]   = useState<ApiFounderStats | null>(null);
@@ -540,6 +542,7 @@ function PlanConfig() {
         label:         draft.label,
         description:   draft.description,
         price_monthly: draft.price_monthly,
+        currency_symbol: draft.currency_symbol,
       });
       setConfigs(prev => prev.map(c => c.plan === editPlan ? updated : c));
       setEditPlan(null);
@@ -575,9 +578,22 @@ function PlanConfig() {
                   </span>
                   <span className="fdr-config-price mono">
                     {isEditing ? (
-                      <input className="fdr-input" type="number" value={draft.price_monthly ?? 0}
-                        onChange={e => setDraft(d => ({ ...d, price_monthly: +e.target.value }))} style={{ width: 70 }} />
-                    ) : `$${c.price_monthly}/mo`}
+                      <span style={{ display: 'inline-flex', gap: 6, alignItems: 'center' }}>
+                        <select
+                          className="fdr-select"
+                          value={draft.currency_symbol ?? c.currency_symbol ?? '$'}
+                          onChange={e => setDraft(d => ({ ...d, currency_symbol: e.target.value }))}
+                          style={{ width: 72 }}
+                        >
+                          {CURRENCY_SYMBOL_OPTIONS.map(sym => (
+                            <option key={sym} value={sym}>{sym}</option>
+                          ))}
+                        </select>
+                        <input className="fdr-input" type="number" value={draft.price_monthly ?? 0}
+                          onChange={e => setDraft(d => ({ ...d, price_monthly: +e.target.value }))} style={{ width: 90 }} />
+                        <span>/mo</span>
+                      </span>
+                    ) : `${c.currency_symbol ?? '$'}${c.price_monthly}/mo`}
                   </span>
                 </div>
 

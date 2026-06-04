@@ -84,7 +84,11 @@ export interface ReceiptData {
   items:          { name: string; qty: number; price: number }[];
   subtotal:       number;
   service:        number;
+  serviceRate?:   number;
   tax:            number;
+  taxRate?:       number;
+  taxLabel?:      string;
+  taxIncluded?:   boolean;
   total:          number;
   payMethod?:     string;
   note?:          string;
@@ -151,8 +155,11 @@ export function buildReceipt(data: ReceiptData, width = 32, logoBytes?: Uint8Arr
   // Totals
   b.divider(W);
   b.row('Subtotal', fmt(data.subtotal), W);
-  b.row('Service 18%', fmt(data.service), W);
-  b.row('Tax 8.75%', fmt(data.tax), W);
+  b.row(`Service ${Number(data.serviceRate ?? 18).toFixed(2)}%`, fmt(data.service), W);
+  if (data.taxIncluded) {
+    b.row(`Amount before ${data.taxLabel ?? 'Tax'}`, fmt((data.subtotal + data.service) - data.tax), W);
+  }
+  b.row(`${data.taxLabel ?? 'Tax'} ${Number(data.taxRate ?? 8.75).toFixed(2)}%${data.taxIncluded ? ' (incl.)' : ''}`, fmt(data.tax), W);
   b.divider(W);
   b.boldOn().row('TOTAL DUE', fmt(data.total), W).boldOff();
 
@@ -221,8 +228,9 @@ ${data.note ? `<p style="font-size:11px;margin:4px 0">Note: ${data.note}</p>` : 
 <hr>
 <table>
   <tr><td>Subtotal</td><td class="right">${fmt(data.subtotal)}</td></tr>
-  <tr><td>Service 18%</td><td class="right">${fmt(data.service)}</td></tr>
-  <tr><td>Tax 8.75%</td><td class="right">${fmt(data.tax)}</td></tr>
+  <tr><td>Service ${Number(data.serviceRate ?? 18).toFixed(2)}%</td><td class="right">${fmt(data.service)}</td></tr>
+  ${data.taxIncluded ? `<tr><td>Amount before ${data.taxLabel ?? 'Tax'}</td><td class="right">${fmt((data.subtotal + data.service) - data.tax)}</td></tr>` : ''}
+  <tr><td>${data.taxLabel ?? 'Tax'} ${Number(data.taxRate ?? 8.75).toFixed(2)}%${data.taxIncluded ? ' (included)' : ''}</td><td class="right">${fmt(data.tax)}</td></tr>
 </table>
 <hr>
 <table>

@@ -92,6 +92,7 @@ router.put('/plan-config/:plan', ...onlyFounder, async (req: AuthRequest, res, n
       label:         z.string().optional(),
       description:   z.string().optional(),
       price_monthly: z.number().optional(),
+      currency_symbol: z.string().min(1).max(4).optional(),
     }).parse(req.body);
 
     const sets: string[] = ['updated_at=datetime(\'now\')'];
@@ -100,6 +101,7 @@ router.put('/plan-config/:plan', ...onlyFounder, async (req: AuthRequest, res, n
     if (data.label         !== undefined) { sets.push('label=?');         args.push(data.label); }
     if (data.description   !== undefined) { sets.push('description=?');   args.push(data.description); }
     if (data.price_monthly !== undefined) { sets.push('price_monthly=?'); args.push(data.price_monthly); }
+    if (data.currency_symbol !== undefined) { sets.push('currency_symbol=?'); args.push(data.currency_symbol); }
     args.push(planName);
 
     await getDb().execute({ sql: `UPDATE plan_config SET ${sets.join(',')} WHERE plan=?`, args });

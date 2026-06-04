@@ -61,6 +61,7 @@ const LANGUAGE_OPTIONS = [
 ] as const;
 
 const DATE_FORMAT_OPTIONS = ['DD/MM/YYYY', 'MM/DD/YYYY', 'YYYY-MM-DD'] as const;
+const TAX_TYPE_OPTIONS = ['VAT', 'GST', 'Sales Tax', 'Service Tax', 'HST', 'PST', 'Custom'] as const;
 
 function InfoHint({ label }: { label: string }) {
   return (
@@ -1181,7 +1182,7 @@ function ProfileTab() {
     name: '', timezone: '', contact_phone: '', contact_email: '',
     address_line1: '', address_line2: '', city: '', country: '', postal_code: '', tax_id: '', website_url: '',
     currency_code: 'USD', language_code: 'en', date_format: 'DD/MM/YYYY',
-    service_charge_pct: '', tax_rate_pct: '', receipt_footer: '',
+    service_charge_pct: '', tax_rate_pct: '', tax_type: 'VAT', custom_tax_type: '', tax_included: false, receipt_footer: '',
   });
 
   // Logo (device localStorage only)
@@ -1214,6 +1215,9 @@ function ProfileTab() {
           date_format: r.date_format ?? 'DD/MM/YYYY',
           service_charge_pct: r.service_charge_pct == null ? '' : String(r.service_charge_pct),
           tax_rate_pct: r.tax_rate_pct == null ? '' : String(r.tax_rate_pct),
+          tax_type: r.tax_type && TAX_TYPE_OPTIONS.includes(r.tax_type as typeof TAX_TYPE_OPTIONS[number]) ? r.tax_type : 'Custom',
+          custom_tax_type: r.tax_type && TAX_TYPE_OPTIONS.includes(r.tax_type as typeof TAX_TYPE_OPTIONS[number]) ? '' : (r.tax_type ?? ''),
+          tax_included: r.tax_included === 1 || r.tax_included === true,
           receipt_footer: r.receipt_footer ?? '',
         });
       })
@@ -1249,6 +1253,8 @@ function ProfileTab() {
         tax_id: draft.tax_id.trim(),
         website_url: draft.website_url.trim(),
         receipt_footer: draft.receipt_footer.trim(),
+        tax_type: (draft.tax_type === 'Custom' ? draft.custom_tax_type : draft.tax_type).trim() || 'VAT',
+        tax_included: draft.tax_included,
         service_charge_pct: parseOptionalPercent(draft.service_charge_pct, 'Service charge'),
         tax_rate_pct: parseOptionalPercent(draft.tax_rate_pct, 'Tax rate'),
       };
@@ -1450,6 +1456,31 @@ function ProfileTab() {
             value={draft.tax_rate_pct}
             onChange={e => setDraft(d => ({ ...d, tax_rate_pct: e.target.value }))}
           />
+          <select
+            className="roles-input"
+            value={draft.tax_type}
+            onChange={e => setDraft(d => ({ ...d, tax_type: e.target.value }))}
+          >
+            {TAX_TYPE_OPTIONS.map(opt => (
+              <option key={opt} value={opt}>{opt}</option>
+            ))}
+          </select>
+          {draft.tax_type === 'Custom' && (
+            <input
+              className="roles-input"
+              placeholder="Custom tax type (e.g. CGST+SGST)"
+              value={draft.custom_tax_type}
+              onChange={e => setDraft(d => ({ ...d, custom_tax_type: e.target.value }))}
+            />
+          )}
+          <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--text1)' }}>
+            <input
+              type="checkbox"
+              checked={draft.tax_included}
+              onChange={e => setDraft(d => ({ ...d, tax_included: e.target.checked }))}
+            />
+            Tax included in menu prices
+          </label>
           <input className="roles-input" placeholder="Website URL" value={draft.website_url} onChange={e => setDraft(d => ({ ...d, website_url: e.target.value }))} />
           <input className="roles-input" placeholder="Phone" value={draft.contact_phone} onChange={e => setDraft(d => ({ ...d, contact_phone: e.target.value }))} />
           <input className="roles-input" placeholder="Email" value={draft.contact_email} onChange={e => setDraft(d => ({ ...d, contact_email: e.target.value }))} />
