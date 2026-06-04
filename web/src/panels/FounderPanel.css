@@ -72,6 +72,11 @@
 }
 .fdr-table-row:hover { background: var(--hover); }
 
+.fdr-rest-head,
+.fdr-rest-row {
+  grid-template-columns: 1.5fr 1fr 90px 60px 1fr 120px 96px !important;
+}
+
 .fdr-rest-name { font-weight: 600; }
 .fdr-slug      { font-size: 11px; color: var(--text2); }
 .fdr-plan-pill {

@@ -47,6 +47,34 @@ router.patch('/restaurants/:id/plan', ...onlyFounder, async (req: AuthRequest, r
   } catch (e) { next(e); }
 });
 
+// DELETE /api/founder/restaurants/:id — hard-delete a restaurant tenant
+router.delete('/restaurants/:id', ...onlyFounder, async (req: AuthRequest, res, next) => {
+  try {
+    const rid = String(req.params.id);
+    if (!rid || rid === 'CAFYZ_SYSTEM') {
+      res.status(400).json({ error: 'This restaurant cannot be deleted.' });
+      return;
+    }
+
+    const db = getDb();
+    const existing = await db.execute({
+      sql: `SELECT id, name FROM restaurants WHERE id=? LIMIT 1`,
+      args: [rid],
+    });
+    if (!existing.rows.length) {
+      res.status(404).json({ error: 'Restaurant not found' });
+      return;
+    }
+
+    await db.execute({
+      sql: `DELETE FROM restaurants WHERE id=?`,
+      args: [rid],
+    });
+
+    res.json({ ok: true, id: rid });
+  } catch (e) { next(e); }
+});
+
 // GET /api/founder/plan-config — get plan feature configuration
 router.get('/plan-config', ...onlyFounder, async (_req, res, next) => {
   try {

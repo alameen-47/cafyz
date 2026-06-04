@@ -96,6 +96,23 @@ function Restaurants() {
     finally { setBusy(null); }
   }
 
+  async function deleteRestaurant(row: ApiFounderRestaurant) {
+    const confirmDelete = window.confirm(
+      `Delete restaurant "${row.name}"? This will permanently remove its users, orders, tables, menu, and related data.`,
+    );
+    if (!confirmDelete) return;
+
+    setBusy(row.id); setError('');
+    try {
+      await founderApi.deleteRestaurant(row.id);
+      setRests(prev => prev.filter(r => r.id !== row.id));
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(null);
+    }
+  }
+
   return (
     <div className="fdr-section">
       <p className="eyebrow">Network · All Tenants</p>
@@ -105,16 +122,17 @@ function Restaurants() {
 
       {loading ? <p className="fdr-loading">Loading…</p> : (
         <div className="card fdr-table">
-          <div className="fdr-table-head">
+          <div className="fdr-table-head fdr-rest-head">
             <span>Restaurant</span>
             <span>Slug</span>
             <span>Plan</span>
             <span>Users</span>
             <span>Active Key</span>
             <span>Change Plan</span>
+            <span>Delete</span>
           </div>
           {rests.map(r => (
-            <div key={r.id} className="fdr-table-row">
+            <div key={r.id} className="fdr-table-row fdr-rest-row">
               <span className="fdr-rest-name">{r.name}</span>
               <span className="mono fdr-slug">{r.slug}</span>
               <span className="fdr-plan-pill"
@@ -137,6 +155,15 @@ function Restaurants() {
                   ))}
                 </select>
                 {busy === r.id && <span className="fdr-busy">…</span>}
+              </div>
+              <div className="fdr-row-actions">
+                <button
+                  className="roles-del-btn"
+                  onClick={() => deleteRestaurant(r)}
+                  disabled={busy === r.id}
+                >
+                  {busy === r.id ? 'Deleting…' : 'Delete'}
+                </button>
               </div>
             </div>
           ))}

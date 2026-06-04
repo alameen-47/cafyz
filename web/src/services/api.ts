@@ -255,6 +255,7 @@ export const founderApi = {
   cancelLicenseRequest: (id: string)                                                   =>
     patch<{ id: string; status: string }>(`/api/founder/license-requests/${id}`, { status: 'cancelled' }),
   setPlan:        (restaurantId: string, plan: string)                                 => patch<ApiRestaurant>(`/api/founder/restaurants/${restaurantId}/plan`, { plan }),
+  deleteRestaurant: (restaurantId: string)                                              => del(`/api/founder/restaurants/${restaurantId}`),
   planConfig:     ()                                                                    => get<ApiPlanConfig[]>('/api/founder/plan-config'),
   updatePlanConfig: (plan: string, d: Partial<{ panels_json: string; label: string; description: string; price_monthly: number }>) =>
     put<ApiPlanConfig>(`/api/founder/plan-config/${plan}`, d),
