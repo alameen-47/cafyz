@@ -224,9 +224,9 @@ export function KDSPanel() {
 
   useEffect(() => { load(); }, [load]);
 
-  // Poll every 15s for new tickets
+  // Poll frequently so auto-print feels near real-time after order send.
   useEffect(() => {
-    const t = setInterval(load, 15000);
+    const t = setInterval(load, 5000);
     return () => clearInterval(t);
   }, [load]);
 

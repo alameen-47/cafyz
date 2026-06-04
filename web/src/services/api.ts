@@ -209,6 +209,8 @@ export const dashboardApi = {
   stats:   () => get<ApiDashboardStats>('/api/dashboard/stats'),
   revenue: (q?: RevenueQueryParams) =>
     get<ApiRevenueResponse>(`/api/dashboard/revenue${revenueQueryString(q)}`),
+  soldItems: (q?: RevenueQueryParams) =>
+    get<ApiSoldItemsResponse>(`/api/dashboard/sold-items${revenueQueryString(q)}`),
 };
 
 // ── Licenses ──────────────────────────────────────────────────────────────────
@@ -353,6 +355,31 @@ export interface ApiRevenueResponse {
   rows: ApiRevenueRow[];
   totalRevenue: number;
   totalOrders: number;
+  dayCount: number;
+}
+
+export interface ApiSoldItemRow {
+  menu_item_id: string;
+  item_name: string;
+  qty_sold: number;
+  revenue: number;
+}
+
+export interface ApiSoldItemsDay {
+  day: string;
+  totalQty: number;
+  totalRevenue: number;
+  items: ApiSoldItemRow[];
+}
+
+export interface ApiSoldItemsResponse {
+  period: RevenuePeriod;
+  from: string;
+  to: string;
+  periodLabel: string;
+  days: ApiSoldItemsDay[];
+  totalQty: number;
+  totalRevenue: number;
   dayCount: number;
 }
 

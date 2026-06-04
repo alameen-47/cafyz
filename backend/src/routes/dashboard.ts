@@ -23,6 +23,23 @@ const REVENUE_SELECT = `
   ORDER BY day ASC
 `;
 
+const SOLD_ITEMS_SELECT = `
+  SELECT date(o.created_at) as day,
+         m.id as menu_item_id,
+         m.name as item_name,
+         SUM(oi.qty) as qty_sold,
+         COALESCE(SUM(oi.qty * m.price), 0) as revenue
+  FROM orders o
+  JOIN order_items oi ON oi.order_id = o.id
+  JOIN menu_items m   ON m.id = oi.menu_item_id
+  WHERE o.status = 'paid'
+    AND o.restaurant_id = ?
+    AND date(o.created_at) >= date(?)
+    AND date(o.created_at) <= date(?)
+  GROUP BY date(o.created_at), m.id, m.name
+  ORDER BY day ASC, qty_sold DESC, item_name ASC
+`;
+
 // GET /api/dashboard/stats
 router.get('/stats', async (req: AuthRequest, res, next) => {
   try {
@@ -77,6 +94,66 @@ router.get('/revenue', async (req: AuthRequest, res, next) => {
       totalRevenue,
       totalOrders,
       dayCount: data.length,
+    });
+  } catch (e) { next(e); }
+});
+
+// GET /api/dashboard/sold-items?period=day|week|month|range&date=&month=&from=&to=
+router.get('/sold-items', async (req: AuthRequest, res, next) => {
+  try {
+    const rid = req.user!.restaurant_id;
+    const query = RevenueQuerySchema.parse(req.query);
+    const { from, to, period } = resolveRevenueWindow(query);
+
+    const rows = await getDb().execute({
+      sql: SOLD_ITEMS_SELECT,
+      args: [rid, from, to],
+    });
+
+    const byDay = new Map<string, {
+      day: string;
+      totalQty: number;
+      totalRevenue: number;
+      items: { menu_item_id: string; item_name: string; qty_sold: number; revenue: number }[];
+    }>();
+
+    for (const r of rows.rows) {
+      const day = String(r.day ?? '');
+      const entry = byDay.get(day) ?? {
+        day,
+        totalQty: 0,
+        totalRevenue: 0,
+        items: [],
+      };
+      const item = {
+        menu_item_id: String(r.menu_item_id ?? ''),
+        item_name: String(r.item_name ?? 'Unknown item'),
+        qty_sold: rowNumber(r, 'qty_sold'),
+        revenue: rowNumber(r, 'revenue'),
+      };
+      entry.items.push(item);
+      entry.totalQty += item.qty_sold;
+      entry.totalRevenue += item.revenue;
+      byDay.set(day, entry);
+    }
+
+    const days = Array.from(byDay.values()).map(d => ({
+      ...d,
+      // Keep list compact and high-signal in UI by default.
+      items: d.items.slice(0, 30),
+    }));
+    const totalQty = days.reduce((sum, d) => sum + d.totalQty, 0);
+    const totalRevenue = days.reduce((sum, d) => sum + d.totalRevenue, 0);
+
+    res.json({
+      period,
+      from,
+      to,
+      periodLabel: periodLabel(query, from, to),
+      days,
+      totalQty,
+      totalRevenue,
+      dayCount: days.length,
     });
   } catch (e) { next(e); }
 });

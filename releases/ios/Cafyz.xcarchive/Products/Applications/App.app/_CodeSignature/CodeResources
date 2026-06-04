@@ -4,9 +4,17 @@
 <dict>
 	<key>files</key>
 	<dict>
+		<key>AppIcon60x60@2x.png</key>
+		<data>
+		IvfsgDyEH7Nct41uiObcSAdLxkc=
+		</data>
+		<key>AppIcon76x76@2x~ipad.png</key>
+		<data>
+		tPYcRLF6YmIr+a0Weydt8qrUsxg=
+		</data>
 		<key>Assets.car</key>
 		<data>
-		KKkfIM9RmxDhMBk6nEkIQ0Bw5IY=
+		tGZOyxm7T/+0zK+CKO5tESsY96s=
 		</data>
 		<key>Base.lproj/LaunchScreen.storyboardc/01J-lp-oVM-view-snD-IY-ifK.nib</key>
 		<data>
@@ -30,7 +38,7 @@
 		</data>
 		<key>Frameworks/Capacitor.framework/Capacitor</key>
 		<data>
-		er7NEV2geCpvYCJm8FxjRw8y9s4=
+		uZujzRmZpZYjvYK5vmEnyDs/5sc=
 		</data>
 		<key>Frameworks/Capacitor.framework/Capacitor.bundle/Info.plist</key>
 		<data>
@@ -54,7 +62,7 @@
 		</data>
 		<key>Frameworks/CapacitorApp.framework/CapacitorApp</key>
 		<data>
-		l4jwT9IqZiU0o2A3jPSV0A0Weww=
+		Cgii0W9BSXjstUy5xAmBQzAeQEY=
 		</data>
 		<key>Frameworks/CapacitorApp.framework/Info.plist</key>
 		<data>
@@ -66,7 +74,7 @@
 		</data>
 		<key>Frameworks/CapacitorCommunityBluetoothLe.framework/CapacitorCommunityBluetoothLe</key>
 		<data>
-		OyJ1V56wMpu7+j/n1DA32xp7718=
+		glWeUZZ2nZHdOnGT1zFZ3HG6Jgs=
 		</data>
 		<key>Frameworks/CapacitorCommunityBluetoothLe.framework/Info.plist</key>
 		<data>
@@ -78,7 +86,7 @@
 		</data>
 		<key>Frameworks/CapacitorKeyboard.framework/CapacitorKeyboard</key>
 		<data>
-		ljdbXwj0UYloARLjNYdL8lUMUZk=
+		L0Ayi2mQOojg1UKOU8EKuJYZAew=
 		</data>
 		<key>Frameworks/CapacitorKeyboard.framework/Info.plist</key>
 		<data>
@@ -90,7 +98,7 @@
 		</data>
 		<key>Frameworks/CapacitorSplashScreen.framework/CapacitorSplashScreen</key>
 		<data>
-		AuAGnd0ywTD+lmxQ6/mqE2IgbKA=
+		CEtnIsvPrst67j1JhssZREacBtU=
 		</data>
 		<key>Frameworks/CapacitorSplashScreen.framework/Info.plist</key>
 		<data>
@@ -102,7 +110,7 @@
 		</data>
 		<key>Frameworks/CapacitorStatusBar.framework/CapacitorStatusBar</key>
 		<data>
-		r76FP7MpwHj9XFEWKaQR/jFX8UM=
+		H5d3t6PnzkNpm6y/cShS+V0tfGA=
 		</data>
 		<key>Frameworks/CapacitorStatusBar.framework/Info.plist</key>
 		<data>
@@ -122,7 +130,7 @@
 		</data>
 		<key>Frameworks/Cordova.framework/Cordova</key>
 		<data>
-		zeO7q5VEKA2EZaU8/9qPUJw7IRw=
+		V6JD17q5JZ6CDFtvCx5Cugn70ik=
 		</data>
 		<key>Frameworks/Cordova.framework/Info.plist</key>
 		<data>
@@ -156,21 +164,21 @@
 		<data>
 		UNv7kmr/tCo7ZRw5dvIPA4cqLqY=
 		</data>
-		<key>public/assets/index-CTxw8W6J.js</key>
+		<key>public/assets/index-fGUi19Xd.css</key>
 		<data>
-		4pKkLtvCo0Ykw5ZG29DRi6RrN1A=
+		f4rcWnwdyRVdGS/x9jH0GNQtxuE=
 		</data>
-		<key>public/assets/index-DAdf9rwD.css</key>
+		<key>public/assets/index-jQezP42P.js</key>
 		<data>
-		RF87Sqf8ip9VDlgml/xY4gBo5FY=
+		Y18XcC7e4EFfi5atzKMX9mEgvL0=
 		</data>
-		<key>public/assets/web-DCJL34Vn.js</key>
+		<key>public/assets/web-COjCrf1F.js</key>
 		<data>
-		2gLE0JtQGdncXjooIIAzlZntqpc=
+		5WomwoIAJn7OwXF9vaDwgDAdEqw=
 		</data>
-		<key>public/assets/web-DsE_CkzB.js</key>
+		<key>public/assets/web-MnJ5KyD8.js</key>
 		<data>
-		WiAQ7EzBKAY7l5aUkQ0uSRf7DJY=
+		Jjq0WBT6AId6WRRoWh/e6vWyddk=
 		</data>
 		<key>public/cordova.js</key>
 		<data>
@@ -194,7 +202,7 @@
 		</data>
 		<key>public/index.html</key>
 		<data>
-		o4Q3kvI+odqPOpHNwG+oO85aC3Q=
+		UYfXMeU0g7tOqyTr7+JtA3v1SJM=
 		</data>
 		<key>public/logo-source.png</key>
 		<data>
@@ -210,7 +218,7 @@
 		</data>
 		<key>public/sw.js</key>
 		<data>
-		V1aas37y0Rts32KMfWbO/Gy5nN8=
+		RlWLPpaa7sCdrGtVdpV0/bPBPSk=
 		</data>
 		<key>public/workbox-835c8c05.js</key>
 		<data>
@@ -219,11 +227,25 @@
 	</dict>
 	<key>files2</key>
 	<dict>
+		<key>AppIcon60x60@2x.png</key>
+		<dict>
+			<key>hash2</key>
+			<data>
+			ZlleAhkDHpDGm82ceh/h1F338fesdgbblqrO3Uc/IzE=
+			</data>
+		</dict>
+		<key>AppIcon76x76@2x~ipad.png</key>
+		<dict>
+			<key>hash2</key>
+			<data>
+			ibim1p6cPEbXMafaSF4GMn0d47Y76qUCMQGJEaMuqDw=
+			</data>
+		</dict>
 		<key>Assets.car</key>
 		<dict>
 			<key>hash2</key>
 			<data>
-			RSrUnlkzQWRkT21lw4ka5kxEs9Wob3LoBQlQM1jsokw=
+			K22npaDRt/7RlOh1aDqOY3MNUxgQJPQ2ao4ZhAoGD90=
 			</data>
 		</dict>
 		<key>Base.lproj/LaunchScreen.storyboardc/01J-lp-oVM-view-snD-IY-ifK.nib</key>
@@ -265,7 +287,7 @@
 		<dict>
 			<key>hash2</key>
 			<data>
-			9fLehLOxfTPsaUR8Cwu/9e3aKOC8ADAklZVKdnlypxY=
+			95j+T4SxgXKI/zJ3bxqcvIgyJTERBL+Uy2UBN2FLxE0=
 			</data>
 		</dict>
 		<key>Frameworks/Capacitor.framework/Capacitor.bundle/Info.plist</key>
@@ -307,7 +329,7 @@
 		<dict>
 			<key>hash2</key>
 			<data>
-			hyUPgfTkrW4G9EFp7RcULd58DVAZf9gND0IUm+4Z5rw=
+			1vtJTj0xiveIY9JZBVU5TO0mT1GH/puBb/k/bSy/k+g=
 			</data>
 		</dict>
 		<key>Frameworks/CapacitorApp.framework/Info.plist</key>
@@ -328,7 +350,7 @@
 		<dict>
 			<key>hash2</key>
 			<data>
-			szpz/qByG8ipZC8YXiVFqgZkC41Y3/ub+APfGKrGwHA=
+			fXcxCZGgURxIRxNTljihhEdau7B0Te3/DHYjR4j72y8=
 			</data>
 		</dict>
 		<key>Frameworks/CapacitorCommunityBluetoothLe.framework/Info.plist</key>
@@ -349,7 +371,7 @@
 		<dict>
 			<key>hash2</key>
 			<data>
-			DiF2/CC2aBvDcNMB2wl5Dtqkui6ZYs43UTxQ1VVKEeQ=
+			+tESivqLmTwLY59vVu5cG7kR9SYSGvS07EWJROqoI5g=
 			</data>
 		</dict>
 		<key>Frameworks/CapacitorKeyboard.framework/Info.plist</key>
@@ -370,7 +392,7 @@
 		<dict>
 			<key>hash2</key>
 			<data>
-			GK4ab7GMZPynQFpC5RNURJwJBsxbwLDY2WlJFS7KQeE=
+			GHvqRUuWiBB4+nRKTKcxNQ0hgLlZIkyLlzxQz3xDops=
 			</data>
 		</dict>
 		<key>Frameworks/CapacitorSplashScreen.framework/Info.plist</key>
@@ -391,7 +413,7 @@
 		<dict>
 			<key>hash2</key>
 			<data>
-			ujdUN3mR6KOGoe4hFfVMuAg0RfGwkNvPlvKPFfuB3sE=
+			HaWi4o7bizPJvmu5igHdtwOjulCOd0qIRcEPWDVLxMw=
 			</data>
 		</dict>
 		<key>Frameworks/CapacitorStatusBar.framework/Info.plist</key>
@@ -426,7 +448,7 @@
 		<dict>
 			<key>hash2</key>
 			<data>
-			Ff8SQOBlnI2KPpdHF0XdEwRLaZQ5ri6jf22HawwCOS0=
+			Umjwei5cEX6D6ZrX75VpQgEk1PMyKlUrNvcVu/ZoGIk=
 			</data>
 		</dict>
 		<key>Frameworks/Cordova.framework/Info.plist</key>
@@ -471,32 +493,32 @@
 			uKUAr1+Tyzb3tu4R+FCmMTWVDPTCUi2cSfnMooGiguE=
 			</data>
 		</dict>
-		<key>public/assets/index-CTxw8W6J.js</key>
+		<key>public/assets/index-fGUi19Xd.css</key>
 		<dict>
 			<key>hash2</key>
 			<data>
-			sEO+oB4QQ/UV0Hd+oKNKzZXTN5s+8ueHLf17yXRs1g8=
+			tXgOrjPJBOLPnfLvNx9kVzYDRwNkZ4k84PliZjl0JG0=
 			</data>
 		</dict>
-		<key>public/assets/index-DAdf9rwD.css</key>
+		<key>public/assets/index-jQezP42P.js</key>
 		<dict>
 			<key>hash2</key>
 			<data>
-			+eAMBFY6YvI5Nwxk2gsW0LnN4Qol0gCiURgwx7mp/jg=
+			0oDwjWV0LpHgSChgw4I8RioXYcbAjIy2aqWCmGEbwvE=
 			</data>
 		</dict>
-		<key>public/assets/web-DCJL34Vn.js</key>
+		<key>public/assets/web-COjCrf1F.js</key>
 		<dict>
 			<key>hash2</key>
 			<data>
-			1/Bcp56I7f69SBbUeBWGXSiEKfsFVmZQzdJbAX2JMQ0=
+			jcWMCLXMxIgoCs6iB5lvOKCRnXlPTasG4jn+8Jlp5Qo=
 			</data>
 		</dict>
-		<key>public/assets/web-DsE_CkzB.js</key>
+		<key>public/assets/web-MnJ5KyD8.js</key>
 		<dict>
 			<key>hash2</key>
 			<data>
-			fwfDb92Fu4grv0mIA5/h6Zpip62rObdoR7jMuD1Cufw=
+			KNOzp3Fo5iuk9uefgvRFNISykVqVewtbcEujGnDzDvg=
 			</data>
 		</dict>
 		<key>public/cordova.js</key>
@@ -538,7 +560,7 @@
 		<dict>
 			<key>hash2</key>
 			<data>
-			91kma438e1wvFu6H2GNaVf7QIJRn/20qHixvXOk14mA=
+			ICMI04D6IkGWcyjcKzUV/bMJHh0lwL6nySrfk22MZAY=
 			</data>
 		</dict>
 		<key>public/logo-source.png</key>
@@ -566,7 +588,7 @@
 		<dict>
 			<key>hash2</key>
 			<data>
-			zVQj07titUoQ261kaNi58GYE4FchLCdvzaX5fPvICjA=
+			Bh+PGzEPHf4MbOV8B4N5aPzEHSQIpzWLh5zeq4azMl8=
 			</data>
 		</dict>
 		<key>public/workbox-835c8c05.js</key>

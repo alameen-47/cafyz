@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import {
   dashboardApi, inventoryApi, restaurantApi, usersApi, reservationsApi, tablesApi,
   type ApiDashboardStats, type ApiInventoryItem, type ApiRestaurant, type ApiUser,
-  type ApiReservation, type ApiRevenueResponse, type ApiTable,
+  type ApiReservation, type ApiRevenueResponse, type ApiSoldItemsResponse, type ApiTable,
 } from '../services/api';
 import {
   todayISO, currentMonthISO, weekBounds, formatDateISO,
@@ -759,6 +759,7 @@ function Reports() {
   const [rangeTo,        setRangeTo]          = useState(todayISO);
   const [stats,          setStats]            = useState<ApiDashboardStats | null>(null);
   const [report,         setReport]           = useState<ApiRevenueResponse | null>(null);
+  const [soldItems,      setSoldItems]        = useState<ApiSoldItemsResponse | null>(null);
   const [restaurant,     setRestaurant]       = useState<ApiRestaurant | null>(null);
   const [loading,        setLoading]          = useState(true);
   const [revenueLoading, setRevenueLoading]  = useState(false);
@@ -788,8 +789,12 @@ function Reports() {
       : period === 'month' ? { period: 'month' as const, month: selectedMonth }
       : { period: 'range' as const, from: rangeFrom, to: rangeTo };
 
-    dashboardApi.revenue(query)
-      .then(r => { if (!cancelled) setReport(r); })
+    Promise.all([dashboardApi.revenue(query), dashboardApi.soldItems(query)])
+      .then(([r, sold]) => {
+        if (cancelled) return;
+        setReport(r);
+        setSoldItems(sold);
+      })
       .catch(console.error)
       .finally(() => { if (!cancelled) setRevenueLoading(false); });
     return () => { cancelled = true; };
@@ -911,6 +916,7 @@ function Reports() {
   ] : [];
 
   const revenueRows = report?.rows ?? [];
+  const soldItemDays = soldItems?.days ?? [];
   const totalRevenue = report?.totalRevenue ?? 0;
   const weekSpan = period === 'week' ? weekBounds(selectedDate) : null;
 
@@ -1128,6 +1134,36 @@ function Reports() {
               ))}
             </div>
           )}
+
+          {/* Sold items breakdown */}
+          <div className="card" style={{ marginTop: 20, padding: 16 }}>
+            <p className="eyebrow" style={{ marginTop: 0, marginBottom: 10 }}>
+              Items sold per day · {soldItems?.periodLabel ?? report?.periodLabel ?? REPORT_PERIOD_LABELS[period]}
+            </p>
+            {revenueLoading ? (
+              <p style={{ fontSize: 12, color: 'var(--text3)', margin: 0 }}>Loading sold items…</p>
+            ) : soldItemDays.length === 0 ? (
+              <p style={{ fontSize: 12, color: 'var(--text3)', margin: 0 }}>
+                No paid sales data for this period yet.
+              </p>
+            ) : (
+              <>
+                <div style={{ display: 'grid', gridTemplateColumns: '110px 1fr 80px 100px', gap: 8, fontSize: 10, textTransform: 'uppercase', letterSpacing: 1, color: 'var(--text3)', marginBottom: 8 }}>
+                  <span>Date</span><span>Top sold items</span><span style={{ textAlign: 'right' }}>Qty</span><span style={{ textAlign: 'right' }}>Revenue</span>
+                </div>
+                {[...soldItemDays].reverse().map(day => (
+                  <div key={day.day} style={{ display: 'grid', gridTemplateColumns: '110px 1fr 80px 100px', gap: 8, alignItems: 'start', padding: '8px 0', borderTop: '0.5px solid var(--line)' }}>
+                    <span className="mono" style={{ fontSize: 12, color: 'var(--text1)' }}>{day.day}</span>
+                    <span style={{ fontSize: 12, color: 'var(--text1)' }}>
+                      {day.items.slice(0, 4).map(i => `${i.item_name} (${i.qty_sold})`).join(' · ')}
+                    </span>
+                    <span style={{ fontSize: 12, color: 'var(--text1)', textAlign: 'right' }}>{day.totalQty}</span>
+                    <span className="serif" style={{ fontSize: 12, color: 'var(--gold)', textAlign: 'right' }}>${day.totalRevenue.toFixed(2)}</span>
+                  </div>
+                ))}
+              </>
+            )}
+          </div>
         </>
       )}
     </div>
