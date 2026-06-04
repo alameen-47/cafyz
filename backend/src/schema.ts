@@ -263,6 +263,14 @@ export async function runMigrations() {
   await addCol(`ALTER TABLE inquiries ADD COLUMN provisioned_user_id TEXT`, 'provisioned_user_id');
   await addCol(`ALTER TABLE plan_config ADD COLUMN currency_symbol TEXT NOT NULL DEFAULT '$'`, 'currency_symbol');
 
+  // Ensure founder plan config always exists (production-safe bootstrap)
+  await db.executeMultiple(`
+    INSERT OR IGNORE INTO plan_config(plan,panels_json,label,description,price_monthly,currency_symbol) VALUES
+    ('basic','["pos","menu","waiter","license"]','Basic','Core POS, menu, and floor management for small venues.',49,'$'),
+    ('pro','["pos","menu","waiter","kds","manager","inventory","staff","reports","roles","license"]','Pro','Everything in Basic plus KDS, full manager dashboard, inventory, staff & reports.',99,'$'),
+    ('premium','["pos","menu","waiter","kds","manager","inventory","staff","reports","roles","license"]','Premium','Everything in Pro plus reservations, multi-branch, and priority support.',199,'$');
+  `);
+
   await migrateMenuItemsFlexibleCategory(db);
   await seedAllMenuCategories(db);
   await addCol(`ALTER TABLE menu_items ADD COLUMN image_url TEXT`, 'image_url');

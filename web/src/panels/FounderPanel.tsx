@@ -638,6 +638,14 @@ function PlanConfig() {
               </div>
             );
           })}
+          {configs.length === 0 && (
+            <div className="card" style={{ padding: 16 }}>
+              <p className="eyebrow">No plan config found</p>
+              <p style={{ fontSize: 13, color: 'var(--text2)', margin: 0 }}>
+                Plan configuration is not initialized yet. Restart backend once to auto-bootstrap default plan config.
+              </p>
+            </div>
+          )}
         </div>
       )}
     </div>
