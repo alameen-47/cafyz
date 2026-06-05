@@ -5,7 +5,8 @@ import { pathForScreen } from '../routes';
 import { useAuth, ROLE_LABELS } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { PLAN_LABELS, PLAN_COLOR, DEFAULT_PLAN_PANELS, type Plan } from '../config/planAccess';
-import { getRestaurantLogo, RESTAURANT_LOGO_CHANGED } from '../services/restaurantLogoStorage';
+import { restaurantApi } from '../services/api';
+import { getRestaurantLogo, RESTAURANT_LOGO_CHANGED, syncRestaurantLogoCache } from '../services/restaurantLogoStorage';
 import './Sidebar.css';
 
 const ALL_NAV: { id: Screen; label: string }[] = [
@@ -41,6 +42,7 @@ export function Sidebar({
   const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
   const [logoRefreshTick, setLogoRefreshTick] = useState(0);
+  const [serverLogoUrl, setServerLogoUrl] = useState<string | undefined>(undefined);
 
   const isFounder = user?.role === 'founder';
   const plan = user?.plan ?? 'basic';
@@ -64,8 +66,27 @@ export function Sidebar({
   const restaurantName = user?.restaurant_name || 'Cafyz';
   const sidebarLogoSrc = useMemo(() => {
     if (isFounder) return '/logo.png';
-    return getRestaurantLogo(user?.restaurant_id) ?? '/logo.png';
-  }, [isFounder, user?.restaurant_id, logoRefreshTick]);
+    return getRestaurantLogo(user?.restaurant_id, serverLogoUrl) ?? '/logo.png';
+  }, [isFounder, user?.restaurant_id, serverLogoUrl, logoRefreshTick]);
+
+  useEffect(() => {
+    if (!user?.restaurant_id || isFounder) {
+      setServerLogoUrl(undefined);
+      return;
+    }
+    let mounted = true;
+    restaurantApi.me()
+      .then((r) => {
+        if (!mounted) return;
+        syncRestaurantLogoCache(r);
+        setServerLogoUrl(r.logo_url ?? undefined);
+      })
+      .catch(() => {
+        if (!mounted) return;
+        setServerLogoUrl(undefined);
+      });
+    return () => { mounted = false; };
+  }, [user?.restaurant_id, isFounder]);
 
   useEffect(() => {
     const refresh = () => setLogoRefreshTick(v => v + 1);

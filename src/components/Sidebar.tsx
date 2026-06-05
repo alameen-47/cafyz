@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Image, type ImageSourcePropType } from 'react-native';
 import { Colors, Radius, Typography } from '../theme';
 import type { Screen } from '../types';
 
@@ -24,22 +24,46 @@ interface SidebarProps {
   active: Screen;
   onNavigate: (screen: Screen) => void;
   collapsed?: boolean;
+  restaurantLogoUrl?: string | null;
+  restaurantName?: string;
+  restaurantSub?: string;
+  userName?: string;
+  userRole?: string;
+  userInitials?: string;
 }
 
-export function Sidebar({ active, onNavigate, collapsed = false }: SidebarProps) {
+function isRenderableLogo(url?: string | null): url is string {
+  if (!url) return false;
+  return url.startsWith('data:image/') || url.startsWith('http://') || url.startsWith('https://');
+}
+
+export function Sidebar({
+  active,
+  onNavigate,
+  collapsed = false,
+  restaurantLogoUrl,
+  restaurantName = 'Cafyz',
+  restaurantSub = 'SAINT · PARIS 6e',
+  userName = 'Mireille Vasseur',
+  userRole = "Maître d'hôtel",
+  userInitials = 'MV',
+}: SidebarProps) {
   const w = collapsed ? 72 : 240;
+  const logoSource: ImageSourcePropType = isRenderableLogo(restaurantLogoUrl)
+    ? { uri: restaurantLogoUrl }
+    : require('../../logo.png');
 
   return (
     <View style={[styles.sidebar, { width: w, minWidth: w }]}>
       {/* Brand */}
       <View style={styles.brand}>
         <View style={styles.logo}>
-          <Text style={styles.logoText}>C</Text>
+          <Image source={logoSource} style={styles.logoImage} resizeMode="cover" />
         </View>
         {!collapsed && (
           <View>
-            <Text style={styles.brandName}>Cafyz</Text>
-            <Text style={styles.brandSub}>SAINT · PARIS 6e</Text>
+            <Text style={styles.brandName}>{restaurantName}</Text>
+            <Text style={styles.brandSub}>{restaurantSub}</Text>
           </View>
         )}
       </View>
@@ -76,12 +100,12 @@ export function Sidebar({ active, onNavigate, collapsed = false }: SidebarProps)
       {/* User */}
       <View style={styles.footer}>
         <View style={styles.avatar}>
-          <Text style={styles.avatarText}>MV</Text>
+          <Text style={styles.avatarText}>{userInitials}</Text>
         </View>
         {!collapsed && (
           <View style={styles.footerInfo}>
-            <Text style={styles.footerName}>Mireille Vasseur</Text>
-            <Text style={styles.footerRole}>Maître d'hôtel</Text>
+            <Text style={styles.footerName}>{userName}</Text>
+            <Text style={styles.footerRole}>{userRole}</Text>
           </View>
         )}
       </View>
@@ -112,15 +136,13 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: Radius.md,
-    backgroundColor: Colors.gold,
     alignItems: 'center',
     justifyContent: 'center',
+    overflow: 'hidden',
   },
-  logoText: {
-    fontFamily: Typography.serif,
-    fontSize: 20,
-    color: '#0A0A0F',
-    fontWeight: '700',
+  logoImage: {
+    width: '100%',
+    height: '100%',
   },
   brandName: {
     fontFamily: Typography.serif,
