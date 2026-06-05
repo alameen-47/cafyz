@@ -34,14 +34,17 @@
   width: 44px;
   height: 44px;
   border-radius: 12px;
-  background: var(--gold);
-  color: var(--on-gold);
-  font-family: var(--font-serif);
-  font-size: 24px;
-  font-weight: 700;
   display: flex;
   align-items: center;
   justify-content: center;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.login-logo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 .login-brand-name {
@@ -355,14 +358,17 @@
   width: 40px;
   height: 40px;
   border-radius: 10px;
-  background: var(--gold);
-  color: var(--on-gold);
-  font-size: 22px;
-  font-weight: 700;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  overflow: hidden;
+}
+
+.login-logo-mark img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 .login-register-form {

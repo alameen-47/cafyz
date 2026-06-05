@@ -1,9 +1,11 @@
+import { useEffect, useMemo, useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import type { Screen } from '@shared/types';
 import { pathForScreen } from '../routes';
 import { useAuth, ROLE_LABELS } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { PLAN_LABELS, PLAN_COLOR, DEFAULT_PLAN_PANELS, type Plan } from '../config/planAccess';
+import { getRestaurantLogo, RESTAURANT_LOGO_CHANGED } from '../services/restaurantLogoStorage';
 import './Sidebar.css';
 
 const ALL_NAV: { id: Screen; label: string }[] = [
@@ -38,6 +40,7 @@ export function Sidebar({
   const { user, logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
+  const [logoRefreshTick, setLogoRefreshTick] = useState(0);
 
   const isFounder = user?.role === 'founder';
   const plan = user?.plan ?? 'basic';
@@ -59,6 +62,24 @@ export function Sidebar({
   }
 
   const restaurantName = user?.restaurant_name || 'Cafyz';
+  const sidebarLogoSrc = useMemo(() => {
+    if (isFounder) return '/logo.png';
+    return getRestaurantLogo(user?.restaurant_id) ?? '/logo.png';
+  }, [isFounder, user?.restaurant_id, logoRefreshTick]);
+
+  useEffect(() => {
+    const refresh = () => setLogoRefreshTick(v => v + 1);
+    const onLogoChanged = () => refresh();
+    const onStorage = (e: StorageEvent) => {
+      if (e.key?.startsWith('cafyz_restaurant_logo_')) refresh();
+    };
+    window.addEventListener(RESTAURANT_LOGO_CHANGED, onLogoChanged as EventListener);
+    window.addEventListener('storage', onStorage);
+    return () => {
+      window.removeEventListener(RESTAURANT_LOGO_CHANGED, onLogoChanged as EventListener);
+      window.removeEventListener('storage', onStorage);
+    };
+  }, []);
 
   function handleLogout() {
     logout();
@@ -83,7 +104,9 @@ export function Sidebar({
         </button>
       )}
       <div className="sidebar-brand">
-        <div className="sidebar-logo">{isFounder ? '★' : 'C'}</div>
+        <div className="sidebar-logo">
+          <img src={sidebarLogoSrc} alt={`${restaurantName} logo`} />
+        </div>
         <div>
           <p className="sidebar-brand-name serif">{isFounder ? 'Cafyz HQ' : restaurantName}</p>
           <p className="sidebar-brand-sub mono">{isFounder ? 'FOUNDER' : restaurantName.toUpperCase()}</p>

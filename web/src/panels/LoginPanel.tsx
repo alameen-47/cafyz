@@ -163,7 +163,9 @@ export function LoginPanel() {
       {/* ── Desktop left pane ─────────────────────────────────────── */}
       <section className="login-left">
         <div className="login-brand">
-          <div className="login-logo">C</div>
+          <div className="login-logo">
+            <img src="/logo.png" alt="Cafyz logo" />
+          </div>
           <div>
             <p className="serif login-brand-name">Cafyz</p>
             <p className="mono login-brand-sub">
@@ -329,7 +331,9 @@ export function LoginPanel() {
         style={{ display: undefined }}
       >
         <div className="login-mobile-head">
-          <div className="login-logo">C</div>
+          <div className="login-logo">
+            <img src="/logo.png" alt="Cafyz logo" />
+          </div>
           <p className="serif">Cafyz</p>
         </div>
         <p className="eyebrow">Restaurant Operations · Welcome</p>

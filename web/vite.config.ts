@@ -17,7 +17,7 @@ export default defineConfig(({ mode }) => ({
       // manifest.json lives in web/public/ — we manage it manually.
       manifest: false,
       // Include icon assets in the precache manifest.
-      includeAssets: ['icon.svg', 'icon-192.png', 'icon-512.png', 'apple-touch-icon.png'],
+      includeAssets: ['icon.svg', 'icon-192.png', 'icon-512.png', 'apple-touch-icon.png', 'logo.png', 'logo_no_bg.png'],
       workbox: {
         // Pre-cache everything Vite emits: JS chunks, CSS, HTML, fonts, images.
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],

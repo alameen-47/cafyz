@@ -169,7 +169,9 @@ export function GetAccountPanel() {
         <a href="/login" className="ga-back">← Back to Sign In</a>
 
         <div className="ga-brand">
-          <div className="ga-logo">C</div>
+          <div className="ga-logo">
+            <img src="/logo.png" alt="Cafyz logo" />
+          </div>
           <div>
             <p className="serif ga-brand-name">Cafyz</p>
             <p className="mono ga-brand-sub">RESTAURANT MANAGEMENT PLATFORM</p>

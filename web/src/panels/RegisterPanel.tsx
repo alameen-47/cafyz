@@ -92,7 +92,9 @@ export function RegisterPanel() {
     <div className="login-root login-root--centered">
       <div className="login-card">
         <div className="login-logo-row">
-          <span className="login-logo-mark serif">C</span>
+          <span className="login-logo-mark">
+            <img src="/logo.png" alt="Cafyz logo" />
+          </span>
           <span className="login-logo-text serif">Cafyz</span>
         </div>
         <p className="login-tagline">Create your restaurant</p>
