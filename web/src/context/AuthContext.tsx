@@ -12,6 +12,7 @@ export interface AuthUser {
   name: string;
   initials: string;
   email: string;
+  phone?: string;
   role: Role;
   restaurant_id: string;
   restaurant_name: string;
@@ -23,8 +24,10 @@ interface AuthCtx {
   user: AuthUser | null;
   loading: boolean;
   error: string;
-  login: (email: string, password: string) => Promise<void>;
-  loginWithPin: (pin: string) => Promise<void>;
+  login: (email: string, password: string, deviceId?: string) => Promise<void>;
+  requestLoginOtp: (phone: string) => Promise<{ message: string; devOtp?: string }>;
+  loginWithOtp: (phone: string, otp: string) => Promise<void>;
+  loginWithPin: (email: string, pin: string, deviceId: string) => Promise<void>;
   logout: () => void;
   clearError: () => void;
   refreshPlan: () => Promise<void>;
@@ -32,7 +35,7 @@ interface AuthCtx {
 
 const AuthContext = createContext<AuthCtx>({
   user: null, loading: true, error: '',
-  login: async () => {}, loginWithPin: async () => {},
+  login: async () => {}, requestLoginOtp: async () => ({ message: '' }), loginWithOtp: async () => {}, loginWithPin: async () => {},
   logout: () => {}, clearError: () => {}, refreshPlan: async () => {},
 });
 
@@ -82,6 +85,7 @@ function buildAuthUser(u: ApiUser, restaurantName: string, plan: string): AuthUs
     name:            u.name,
     initials:        u.initials || u.name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2),
     email:           u.email,
+    phone:           u.phone,
     role,
     restaurant_id:   u.restaurant_id,
     restaurant_name: restaurantName,
@@ -118,6 +122,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             name: parsed.name,
             initials: parsed.initials,
             email: parsed.email,
+            phone: parsed.phone,
             role: parsed.role as ApiUser['role'],
             status: 'active',
             restaurant_id: parsed.restaurant_id,
@@ -145,9 +150,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  async function login(email: string, password: string) {
+  async function requestLoginOtp(phone: string) {
     setError('');
-    const data = await authApi.login(email, password);
+    const data = await authApi.requestOtp(phone);
+    return { message: data.message, devOtp: data.dev_otp };
+  }
+
+  async function login(email: string, password: string, deviceId?: string) {
+    setError('');
+    const data = await authApi.login(email, password, deviceId);
     localStorage.setItem(KEY_TOKEN, data.token);
     const plan = (data as any).restaurant_plan ?? 'basic';
     const authUser = buildAuthUser(data.user, data.restaurant_name ?? '', plan);
@@ -156,9 +167,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await syncLogoForStaff(authUser);
   }
 
-  async function loginWithPin(pin: string) {
+  async function loginWithOtp(phone: string, otp: string) {
     setError('');
-    const data = await authApi.pin(pin);
+    const data = await authApi.verifyOtp(phone, otp);
+    localStorage.setItem(KEY_TOKEN, data.token);
+    const plan = (data as any).restaurant_plan ?? 'basic';
+    const authUser = buildAuthUser(data.user, data.restaurant_name ?? '', plan);
+    localStorage.setItem(KEY_USER, JSON.stringify(authUser));
+    setUser(authUser);
+    await syncLogoForStaff(authUser);
+  }
+
+  async function loginWithPin(email: string, pin: string, deviceId: string) {
+    setError('');
+    const data = await authApi.pin(email, pin, deviceId);
     localStorage.setItem(KEY_TOKEN, data.token);
     const plan = (data as any).restaurant_plan ?? 'basic';
     const authUser = buildAuthUser(data.user, data.restaurant_name ?? '', plan);
@@ -174,6 +196,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       syncRestaurantLogoCache(rest);
       const updated = buildAuthUser(
         { id: user.id, name: user.name, initials: user.initials, email: user.email,
+          phone: user.phone,
           role: user.role as any, status: 'active', restaurant_id: user.restaurant_id, start_time: '—' },
         user.restaurant_name,
         rest.plan ?? 'basic',
@@ -190,7 +213,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, loading, error, login, loginWithPin, logout, clearError: () => setError(''), refreshPlan }}>
+    <AuthContext.Provider value={{ user, loading, error, login, requestLoginOtp, loginWithOtp, loginWithPin, logout, clearError: () => setError(''), refreshPlan }}>
       {!loading && children}
     </AuthContext.Provider>
   );

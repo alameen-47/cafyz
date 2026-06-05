@@ -32,8 +32,8 @@ export async function setupTestDb() {
   });
 
   await db.executeMultiple(`
-    INSERT INTO users(id,restaurant_id,name,initials,email,password_hash,role,status,start_time,pin_hash)
-    VALUES('${managerId}','TEST_REST','Test Manager','TM','manager@test.com','${pw}','manager','active','18:00','${pin1}');
+    INSERT INTO users(id,restaurant_id,name,initials,email,phone,password_hash,role,status,start_time,pin_hash)
+    VALUES('${managerId}','TEST_REST','Test Manager','TM','manager@test.com','+971500000001','${pw}','manager','active','18:00','${pin1}');
     INSERT INTO users(id,restaurant_id,name,initials,email,password_hash,role,status,start_time)
     VALUES('${cashierId}','TEST_REST','Test Cashier','TC','cashier@test.com','${pw}','cashier','active','18:00');
     INSERT INTO users(id,restaurant_id,name,initials,email,password_hash,role,status,start_time)

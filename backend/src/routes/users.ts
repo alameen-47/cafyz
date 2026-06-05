@@ -7,6 +7,7 @@ import { requireRole } from '../middleware/rbac.js';
 import { uid } from '../utils.js';
 import { sendMailReliable, smtpFrom } from '../services/email.js';
 import { appPath } from '../config/site.js';
+import { isValidPhoneE164, normalizePhone, sendOtpSms } from '../services/sms.js';
 
 const router = Router();
 router.use(requireAuth);
@@ -21,8 +22,9 @@ async function sendUserPinEmail(data: {
   role: string;
   restaurantName: string;
   pin: string;
+  password: string;
 }) {
-  const subject = `Your Cafyz login PIN (${data.role})`;
+  const subject = `Your Cafyz account credentials (${data.role})`;
   const html = `
     <div style="font-family:Arial,sans-serif;max-width:560px;margin:0 auto;padding:20px;color:#111827">
       <h2 style="margin:0 0 12px">Your role login is ready</h2>
@@ -34,6 +36,11 @@ async function sendUserPinEmail(data: {
       <div style="display:inline-block;font-size:28px;font-weight:700;letter-spacing:4px;padding:10px 14px;border:1px solid #d1d5db;border-radius:8px;background:#f9fafb">
         ${data.pin}
       </div>
+      <p style="margin:14px 0 8px">Use this email/password for full sign-in and device registration:</p>
+      <p style="margin:0 0 0;font-size:14px;line-height:1.6">
+        Email: <strong>${data.to}</strong><br />
+        Password: <strong>${data.password}</strong>
+      </p>
       <p style="margin:14px 0 0;font-size:13px;color:#4b5563">
         Open: <a href="${appPath('/login')}" target="_blank" rel="noreferrer">${appPath('/login')}</a>
       </p>
@@ -52,6 +59,7 @@ const UserSchema = z.object({
   name:       z.string().min(2),
   initials:   z.string().max(3).optional(),
   email:      z.string().email(),
+  phone:      z.string().min(8).optional(),
   password:   z.string().min(6).optional(),
   role:       z.enum(['manager','cashier','waiter','kitchen']),
   status:     z.enum(['active','break','off']).optional(),
@@ -64,7 +72,7 @@ router.get('/', requireRole('owner','manager'), async (req: AuthRequest, res, ne
   try {
     const rid = req.user!.restaurant_id;
     const rows = await getDb().execute({
-      sql: 'SELECT id,name,initials,email,role,status,start_time,created_at FROM users WHERE restaurant_id=? ORDER BY name',
+      sql: 'SELECT id,name,initials,email,phone,role,status,start_time,created_at FROM users WHERE restaurant_id=? ORDER BY name',
       args: [rid],
     });
     res.json(rows.rows);
@@ -76,7 +84,7 @@ router.get('/:id', requireRole('owner','manager'), async (req: AuthRequest, res,
   try {
     const rid = req.user!.restaurant_id;
     const row = await getDb().execute({
-      sql: 'SELECT id,name,initials,email,role,status,start_time,created_at FROM users WHERE id=? AND restaurant_id=?',
+      sql: 'SELECT id,name,initials,email,phone,role,status,start_time,created_at FROM users WHERE id=? AND restaurant_id=?',
       args: [(req.params.id as string), rid],
     });
     if (!row.rows.length) { res.status(404).json({ error: 'User not found' }); return; }
@@ -90,12 +98,18 @@ router.post('/', requireRole('owner','manager'), async (req: AuthRequest, res, n
     const rid = req.user!.restaurant_id;
     const data = UserSchema.parse(req.body);
     const id = uid();
-    const pw = data.password ? await bcrypt.hash(data.password, 10) : await bcrypt.hash('cafyz2026', 10);
+    const plainPassword = data.password?.trim() || 'cafyz2026';
+    const pw = await bcrypt.hash(plainPassword, 10);
     const generatedPin = generatePin();
     const pinToSave = data.pin ?? generatedPin;
     const ph = await bcrypt.hash(pinToSave, 10);
     const initials = data.initials ?? data.name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0,2);
     const emailNorm = data.email.trim().toLowerCase();
+    const phoneNorm = data.phone ? normalizePhone(data.phone) : null;
+    if (phoneNorm && !isValidPhoneE164(phoneNorm)) {
+      res.status(400).json({ error: 'Phone must be in international format (e.g. +971500000000)' });
+      return;
+    }
     const emailExists = await getDb().execute({
       sql: 'SELECT id FROM users WHERE restaurant_id=? AND LOWER(email)=?',
       args: [rid, emailNorm],
@@ -104,29 +118,56 @@ router.post('/', requireRole('owner','manager'), async (req: AuthRequest, res, n
       res.status(409).json({ error: 'A user with this email already exists in your restaurant' });
       return;
     }
+    if (phoneNorm) {
+      const phoneExists = await getDb().execute({
+        sql: 'SELECT id FROM users WHERE phone=?',
+        args: [phoneNorm],
+      });
+      if (phoneExists.rows.length) {
+        res.status(409).json({ error: 'A user with this phone number already exists' });
+        return;
+      }
+    }
 
     await getDb().execute({
-      sql: `INSERT INTO users(id,restaurant_id,name,initials,email,password_hash,role,status,start_time,pin_hash) VALUES(?,?,?,?,?,?,?,?,?,?)`,
-      args: [id, rid, data.name, initials, emailNorm, pw, data.role, data.status??'active', data.start_time??'—', ph],
+      sql: `INSERT INTO users(id,restaurant_id,name,initials,email,phone,password_hash,role,status,start_time,pin_hash) VALUES(?,?,?,?,?,?,?,?,?,?,?)`,
+      args: [id, rid, data.name, initials, emailNorm, phoneNorm, pw, data.role, data.status??'active', data.start_time??'—', ph],
     });
     const restRow = await getDb().execute({ sql: 'SELECT name FROM restaurants WHERE id=?', args: [rid] });
     const restaurantName = String(restRow.rows[0]?.name ?? 'your restaurant');
+    const smsResult = phoneNorm
+      ? await sendOtpSms(phoneNorm, pinToSave, { context: 'staff_pin', ttlMinutes: 60 })
+      : { ok: false as const, error: 'No phone provided' };
     const emailResult = await sendUserPinEmail({
       to: emailNorm,
       userName: data.name,
       role: data.role,
       restaurantName,
       pin: pinToSave,
+      password: plainPassword,
     });
 
-    const row = await getDb().execute({ sql: 'SELECT id,name,initials,email,role,status,start_time FROM users WHERE id=?', args: [id] });
+    const row = await getDb().execute({ sql: 'SELECT id,name,initials,email,phone,role,status,start_time FROM users WHERE id=?', args: [id] });
+    const statusParts: string[] = [];
+    if (smsResult.ok && phoneNorm) {
+      statusParts.push(
+        smsResult.details
+          ? `PIN SMS sent to ${phoneNorm} (delivery id: ${smsResult.details})`
+          : `PIN SMS sent to ${phoneNorm}`,
+      );
+    }
+    else if (phoneNorm) statusParts.push(`PIN SMS failed: ${smsResult.ok ? 'Unknown error' : smsResult.error}`);
+    else statusParts.push('PIN SMS skipped: no phone number');
+    if (emailResult.ok) statusParts.push(`PIN email sent to ${emailNorm}`);
+    else statusParts.push(`PIN email failed (optional): ${emailResult.error}`);
+
     res.status(201).json({
       ...row.rows[0],
       pin_delivery: {
-        sent: emailResult.ok,
-        message: emailResult.ok
-          ? `PIN sent to ${emailNorm}`
-          : `User created, but PIN email failed: ${emailResult.error}`,
+        sent: smsResult.ok || emailResult.ok,
+        sms_sent: phoneNorm ? smsResult.ok : false,
+        email_sent: emailResult.ok,
+        message: statusParts.join(' · '),
       },
     });
   } catch (e) { next(e); }
@@ -163,6 +204,23 @@ router.put('/:id', requireRole('owner','manager'), async (req: AuthRequest, res,
       sets.push('email=?');
       args.push(emailNorm);
     }
+    if (data.phone) {
+      const phoneNorm = normalizePhone(data.phone);
+      if (!isValidPhoneE164(phoneNorm)) {
+        res.status(400).json({ error: 'Phone must be in international format (e.g. +971500000000)' });
+        return;
+      }
+      const phoneExists = await db.execute({
+        sql: 'SELECT id FROM users WHERE phone=? AND id!=?',
+        args: [phoneNorm, (req.params.id as string)],
+      });
+      if (phoneExists.rows.length) {
+        res.status(409).json({ error: 'A user with this phone number already exists' });
+        return;
+      }
+      sets.push('phone=?');
+      args.push(phoneNorm);
+    }
     if (data.role)       { sets.push('role=?');       args.push(data.role); }
     if (data.status)     { sets.push('status=?');     args.push(data.status); }
     if (data.start_time) { sets.push('start_time=?'); args.push(data.start_time); }
@@ -174,7 +232,7 @@ router.put('/:id', requireRole('owner','manager'), async (req: AuthRequest, res,
     args.push((req.params.id as string));
     args.push(rid);
     await db.execute({ sql: `UPDATE users SET ${sets.join(',')} WHERE id=? AND restaurant_id=?`, args });
-    const row = await db.execute({ sql: 'SELECT id,name,initials,email,role,status,start_time FROM users WHERE id=?', args: [(req.params.id as string)] });
+    const row = await db.execute({ sql: 'SELECT id,name,initials,email,phone,role,status,start_time FROM users WHERE id=?', args: [(req.params.id as string)] });
     res.json(row.rows[0]);
   } catch (e) { next(e); }
 });

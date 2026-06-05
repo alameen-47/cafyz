@@ -24,6 +24,7 @@ export function RegisterPanel() {
   const [restaurantName, setRestaurantName] = useState('');
   const [ownerName, setOwnerName]           = useState('');
   const [email, setEmail]                   = useState('');
+  const [phone, setPhone]                   = useState('');
   const [password, setPassword]             = useState('');
   const [confirm, setConfirm]               = useState('');
   const [timezone, setTimezone]             = useState('UTC');
@@ -35,12 +36,13 @@ export function RegisterPanel() {
 
     if (!restaurantName.trim()) { setError('Restaurant name is required.'); return; }
     if (!ownerName.trim())      { setError('Your name is required.'); return; }
+    if (!phone.trim())          { setError('Phone number is required.'); return; }
     if (password.length < 8)   { setError('Password must be at least 8 characters.'); return; }
     if (password !== confirm)   { setError('Passwords do not match.'); return; }
 
     setBusy(true);
     try {
-      const data = await authApi.onboarding({ restaurant_name: restaurantName.trim(), owner_name: ownerName.trim(), email: email.trim(), password, timezone });
+      const data = await authApi.onboarding({ restaurant_name: restaurantName.trim(), owner_name: ownerName.trim(), email: email.trim(), phone: phone.trim(), password, timezone });
       localStorage.setItem('cafyz_token', data.token);
 
       const authUser = {
@@ -131,6 +133,18 @@ export function RegisterPanel() {
             />
           </div>
 
+          <div>
+            <label className="login-label">Phone number</label>
+            <input
+              className="login-input"
+              type="tel"
+              placeholder="+971500000000"
+              value={phone}
+              onChange={e => setPhone(e.target.value)}
+              required
+            />
+          </div>
+
           <div className="form-grid-2">
             <div>
               <label className="login-label">Password</label>
@@ -172,9 +186,9 @@ export function RegisterPanel() {
           {error && <p className="login-error">{error}</p>}
           {existingEmail && (
             <p className="login-register-signin">
-              Account already exists.{' '}
-              <a href={`/login?mode=forgot&email=${encodeURIComponent(existingEmail)}`}>
-                Reset password →
+              Account already exists for {existingEmail}.{' '}
+              <a href="/login">
+                Sign in with OTP →
               </a>
             </p>
           )}

@@ -46,12 +46,12 @@ describe('POST /api/auth/login', () => {
     expect(res.body).toHaveProperty('error');
   });
 
-  it('returns 401 for unknown email', async () => {
+  it('returns 404 for unknown email', async () => {
     const res = await request(app)
       .post('/api/auth/login')
       .send({ email: 'nobody@nowhere.com', password: 'any' });
 
-    expect(res.status).toBe(401);
+    expect(res.status).toBe(404);
   });
 
 });
@@ -60,7 +60,7 @@ describe('POST /api/auth/pin', () => {
   it('returns 200 + token for valid PIN', async () => {
     const res = await request(app)
       .post('/api/auth/pin')
-      .send({ pin: MANAGER_PIN });
+      .send({ email: MANAGER_EMAIL, pin: MANAGER_PIN, device_id: 'device-auth-suite-1' });
 
     expect(res.status).toBe(200);
     expect(res.body).toHaveProperty('token');
@@ -70,7 +70,7 @@ describe('POST /api/auth/pin', () => {
   it('returns 401 for wrong PIN', async () => {
     const res = await request(app)
       .post('/api/auth/pin')
-      .send({ pin: '0000' });
+      .send({ email: MANAGER_EMAIL, pin: '0000', device_id: 'device-auth-suite-1' });
 
     expect(res.status).toBe(401);
   });

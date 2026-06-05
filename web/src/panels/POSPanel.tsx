@@ -213,19 +213,21 @@ export function POSPanel() {
 
   // ── Printer helpers ────────────────────────────────────────────────────────
   async function handleConnectBluetooth() {
-    setPrintBusy(true); setPrintError(''); setShowConnect(false);
+    setPrintBusy(true); setPrintError('');
     try {
       const name = await connectBluetooth();
       setPrinter({ type: 'bluetooth', name });
+      setShowConnect(false);
     } catch (e) { setPrintError((e as Error).message); }
     finally { setPrintBusy(false); }
   }
 
   async function handleConnectUSB() {
-    setPrintBusy(true); setPrintError(''); setShowConnect(false);
+    setPrintBusy(true); setPrintError('');
     try {
       const name = await connectUSB();
       setPrinter({ type: 'usb', name });
+      setShowConnect(false);
     } catch (e) { setPrintError((e as Error).message); }
     finally { setPrintBusy(false); }
   }
@@ -385,55 +387,24 @@ export function POSPanel() {
         {/* ── Printer status bar ─────────────────────────────────────────── */}
         <div className="pos-printer-bar">
           <PrinterHelpBanner />
-          {printer.type !== 'none' ? (
-            <span className="pos-printer-connected">
-              {printer.type === 'bluetooth' ? '🔵' : '🔌'} {printer.name}
-              <button type="button" className="pos-printer-disconnect" onClick={handleDisconnect}>×</button>
-            </span>
-          ) : isIosDevice() ? (
+          <div className="pos-printer-bar-row">
+            {printer.type !== 'none' ? (
+              <span className="pos-printer-connected">
+                {printer.type === 'bluetooth' ? '🔵' : '🔌'} {printer.name}
+                <button type="button" className="pos-printer-disconnect" onClick={handleDisconnect}>×</button>
+              </span>
+            ) : (
+              <span className="pos-printer-idle">No printer connected</span>
+            )}
             <button
               type="button"
-              className="pos-printer-connect-btn pos-printer-ios-print"
-              onClick={() => handlePrint()}
-              disabled={printBusy || cart.length === 0}
-            >
-              {printBusy ? '…' : '🖨 Print receipt (AirPrint / share)'}
-            </button>
-          ) : (
-            <button
-              type="button"
-              className="pos-printer-connect-btn"
-              onClick={() => setShowConnect(c => !c)}
+              className="pos-printer-trigger"
+              onClick={() => setShowConnect(true)}
               disabled={printBusy}
             >
-              {printBusy ? '…' : '🖨 Connect Printer'}
+              {printer.type === 'none' ? 'Setup Printer' : 'Change Printer'}
             </button>
-          )}
-
-          {showConnect && printer.type === 'none' && !isIosDevice() && (
-            <>
-              <div
-                className="pos-printer-menu-backdrop"
-                onClick={() => setShowConnect(false)}
-                aria-hidden
-              />
-              <div className="pos-printer-menu" role="menu">
-                {printerEnv.canUseBluetooth && (
-                  <button type="button" onClick={handleConnectBluetooth}>🔵 Bluetooth</button>
-                )}
-                {printerEnv.usbAvailable && printerEnv.platform !== 'ios' && (
-                  <button type="button" onClick={handleConnectUSB}>🔌 USB</button>
-                )}
-                <button
-                  type="button"
-                  className="pos-printer-menu-browser"
-                  onClick={() => { setShowConnect(false); handlePrint(); }}
-                >
-                  🖥 Print via Browser
-                </button>
-              </div>
-            </>
-          )}
+          </div>
 
           {printError && (
             <p className="pos-printer-error">{printError}</p>
@@ -442,6 +413,81 @@ export function POSPanel() {
             <p className="pos-printer-ok">✓ Sent to printer</p>
           )}
         </div>
+        <Modal
+          open={showConnect}
+          onClose={() => setShowConnect(false)}
+          eyebrow="Printer Setup"
+          title="Connect Receipt Printer"
+          subtitle="Pick a connection type below. We recommend Bluetooth for mobile and USB for desktop counters."
+          size="md"
+          footer={(
+            <>
+              <button type="button" className="roles-cancel-btn" onClick={() => setShowConnect(false)}>
+                Close
+              </button>
+              <button
+                type="button"
+                className="roles-save-btn"
+                onClick={() => { setShowConnect(false); handlePrint(); }}
+                disabled={printBusy || cart.length === 0}
+              >
+                {printBusy ? 'Printing…' : 'Print Test / Browser'}
+              </button>
+            </>
+          )}
+        >
+          <div className="pos-printer-modal">
+            <div className="pos-printer-status-card">
+              <p className="eyebrow">Current Status</p>
+              <p className="pos-printer-status-main">
+                {printer.type === 'none' ? 'Not Connected' : `Connected · ${printer.name}`}
+              </p>
+              {printer.type !== 'none' && (
+                <p className="pos-printer-status-sub">
+                  Active via {printer.type === 'bluetooth' ? 'Bluetooth' : 'USB'}
+                </p>
+              )}
+            </div>
+            <div className="pos-printer-options">
+              {!isIosDevice() && printerEnv.canUseBluetooth && (
+                <button
+                  type="button"
+                  className="pos-printer-option-btn"
+                  onClick={handleConnectBluetooth}
+                  disabled={printBusy}
+                >
+                  <strong>Bluetooth Printer</strong>
+                  <span>Recommended for tablets and Android phones</span>
+                </button>
+              )}
+              {!isIosDevice() && printerEnv.usbAvailable && printerEnv.platform !== 'ios' && (
+                <button
+                  type="button"
+                  className="pos-printer-option-btn"
+                  onClick={handleConnectUSB}
+                  disabled={printBusy}
+                >
+                  <strong>USB Printer</strong>
+                  <span>Best for fixed cashier stations</span>
+                </button>
+              )}
+              <button
+                type="button"
+                className="pos-printer-option-btn"
+                onClick={() => { setShowConnect(false); handlePrint(); }}
+                disabled={printBusy || cart.length === 0}
+              >
+                <strong>{isIosDevice() ? 'AirPrint / Share' : 'Browser Print Dialog'}</strong>
+                <span>Use system print if direct hardware connect is unavailable</span>
+              </button>
+            </div>
+            {printer.type !== 'none' && (
+              <button type="button" className="pos-printer-remove-btn" onClick={handleDisconnect}>
+                Disconnect Current Printer
+              </button>
+            )}
+          </div>
+        </Modal>
 
         <header className="pos-order-head">
           <div>

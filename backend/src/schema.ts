@@ -30,11 +30,13 @@ export async function runMigrations() {
       name          TEXT NOT NULL,
       initials      TEXT NOT NULL,
       email         TEXT NOT NULL,
+      phone         TEXT,
       password_hash TEXT NOT NULL,
       role          TEXT NOT NULL CHECK(role IN ('owner','manager','cashier','waiter','kitchen','founder')),
       status        TEXT NOT NULL DEFAULT 'active' CHECK(status IN ('active','break','off')),
       start_time    TEXT NOT NULL DEFAULT '—',
       pin_hash      TEXT,
+      pin_device_id TEXT,
       created_at    TEXT NOT NULL DEFAULT (datetime('now')),
       UNIQUE(restaurant_id, email)
     );
@@ -46,6 +48,17 @@ export async function runMigrations() {
       expires_at TEXT NOT NULL,
       used_at    TEXT,
       created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+
+    CREATE TABLE IF NOT EXISTS login_otp_codes (
+      id            TEXT PRIMARY KEY,
+      user_id       TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      phone         TEXT NOT NULL,
+      otp_hash      TEXT NOT NULL,
+      expires_at    TEXT NOT NULL,
+      used_at       TEXT,
+      attempt_count INTEGER NOT NULL DEFAULT 0,
+      created_at    TEXT NOT NULL DEFAULT (datetime('now'))
     );
 
     CREATE TABLE IF NOT EXISTS restaurant_tables (
@@ -200,6 +213,7 @@ export async function runMigrations() {
     CREATE INDEX IF NOT EXISTS idx_inquiries_status_created ON inquiries(status, created_at);
     CREATE INDEX IF NOT EXISTS idx_reset_tokens_user        ON password_reset_tokens(user_id, created_at);
     CREATE INDEX IF NOT EXISTS idx_users_restaurant_email   ON users(restaurant_id, email);
+    CREATE INDEX IF NOT EXISTS idx_login_otp_phone_created  ON login_otp_codes(phone, created_at);
     CREATE INDEX IF NOT EXISTS idx_orders_rest_status_time  ON orders(restaurant_id, status, created_at);
     CREATE INDEX IF NOT EXISTS idx_tables_restaurant_status ON restaurant_tables(restaurant_id, status);
     CREATE INDEX IF NOT EXISTS idx_menu_rest_cat_available  ON menu_items(restaurant_id, category, is_available);
@@ -258,6 +272,10 @@ export async function runMigrations() {
   await addCol(`ALTER TABLE restaurants ADD COLUMN tax_rate_pct REAL`, 'tax_rate_pct');
   await addCol(`ALTER TABLE restaurants ADD COLUMN tax_type TEXT NOT NULL DEFAULT 'VAT'`, 'tax_type');
   await addCol(`ALTER TABLE restaurants ADD COLUMN tax_included INTEGER NOT NULL DEFAULT 0`, 'tax_included');
+  await addCol(`ALTER TABLE users ADD COLUMN phone TEXT`, 'phone');
+  await addCol(`ALTER TABLE users ADD COLUMN pin_device_id TEXT`, 'pin_device_id');
+  await db.execute(`CREATE INDEX IF NOT EXISTS idx_users_phone ON users(phone)`);
+  await db.execute(`CREATE UNIQUE INDEX IF NOT EXISTS idx_users_phone_unique ON users(phone) WHERE phone IS NOT NULL`);
   await addCol(`ALTER TABLE restaurants ADD COLUMN receipt_footer TEXT`, 'receipt_footer');
   await addCol(`ALTER TABLE inquiries ADD COLUMN is_retry INTEGER NOT NULL DEFAULT 0`, 'is_retry');
   await addCol(`ALTER TABLE inquiries ADD COLUMN retry_of_id TEXT`, 'retry_of_id');

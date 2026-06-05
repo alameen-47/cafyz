@@ -5,6 +5,7 @@ import { getDb } from '../db.js';
 import { requireAuth, signToken, type AuthRequest } from '../middleware/auth.js';
 import { requireRole } from '../middleware/rbac.js';
 import { uid } from '../utils.js';
+import { isValidPhoneE164, normalizePhone } from '../services/sms.js';
 
 const router = Router();
 
@@ -19,6 +20,7 @@ const OnboardingSchema = z.object({
   restaurant_name: z.string().min(1),
   owner_name:      z.string().min(1),
   email:           z.string().email(),
+  phone:           z.string().min(8),
   password:        z.string().min(8),
   plan:            z.enum(['basic','pro','premium']).optional(),
   timezone:        z.string().optional(),
@@ -53,6 +55,11 @@ router.post('/onboarding', async (req, res, next) => {
     const data = OnboardingSchema.parse(req.body);
     const db = getDb();
     const emailNorm = data.email.trim().toLowerCase();
+    const phoneNorm = normalizePhone(data.phone);
+    if (!isValidPhoneE164(phoneNorm)) {
+      res.status(400).json({ error: 'Phone must be in international format (e.g. +971500000000)' });
+      return;
+    }
 
     const existingAccount = await db.execute({
       sql: `SELECT id FROM users WHERE LOWER(email)=? LIMIT 1`,
@@ -62,6 +69,17 @@ router.post('/onboarding', async (req, res, next) => {
       res.status(409).json({
         error: 'Account already exists for this email. Use forgot password to recover access.',
         code: 'ACCOUNT_EXISTS_USE_FORGOT_PASSWORD',
+      });
+      return;
+    }
+    const existingPhone = await db.execute({
+      sql: `SELECT id FROM users WHERE phone=? LIMIT 1`,
+      args: [phoneNorm],
+    });
+    if (existingPhone.rows.length) {
+      res.status(409).json({
+        error: 'An account already exists for this phone number.',
+        code: 'ACCOUNT_EXISTS_USE_PHONE_LOGIN',
       });
       return;
     }
@@ -77,8 +95,8 @@ router.post('/onboarding', async (req, res, next) => {
     const pwHash = await bcrypt.hash(data.password, 10);
     const initials = data.owner_name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0,2);
     await db.execute({
-      sql: `INSERT INTO users(id,restaurant_id,name,initials,email,password_hash,role,status,start_time) VALUES(?,?,?,?,?,?,?,?,?)`,
-      args: [ownerId, restId, data.owner_name, initials, emailNorm, pwHash, 'owner', 'active', '—'],
+      sql: `INSERT INTO users(id,restaurant_id,name,initials,email,phone,password_hash,role,status,start_time) VALUES(?,?,?,?,?,?,?,?,?,?)`,
+      args: [ownerId, restId, data.owner_name, initials, emailNorm, phoneNorm, pwHash, 'owner', 'active', '—'],
     });
 
     const restaurant = await db.execute({ sql: 'SELECT * FROM restaurants WHERE id=?', args: [restId] });

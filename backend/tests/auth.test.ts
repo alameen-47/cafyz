@@ -21,7 +21,7 @@ describe('POST /api/auth/login', () => {
 
   it('rejects unknown email', async () => {
     const res = await request(app).post('/api/auth/login').send({ email: 'nobody@test.com', password: 'pass' });
-    expect(res.status).toBe(401);
+    expect(res.status).toBe(404);
   });
 
   it('validates email format', async () => {
@@ -32,14 +32,39 @@ describe('POST /api/auth/login', () => {
 
 describe('POST /api/auth/pin', () => {
   it('logs in with correct PIN', async () => {
-    const res = await request(app).post('/api/auth/pin').send({ pin: '1234' });
+    const res = await request(app).post('/api/auth/pin').send({ email: 'manager@test.com', pin: '1234', device_id: 'device-test-1' });
     expect(res.status).toBe(200);
     expect(res.body).toHaveProperty('token');
   });
 
   it('rejects wrong PIN', async () => {
-    const res = await request(app).post('/api/auth/pin').send({ pin: '0000' });
+    const res = await request(app).post('/api/auth/pin').send({ email: 'manager@test.com', pin: '0000', device_id: 'device-test-1' });
     expect(res.status).toBe(401);
+  });
+});
+
+describe('OTP auth flow', () => {
+  it('requests OTP for registered phone', async () => {
+    const res = await request(app).post('/api/auth/request-otp').send({ phone: '+971500000001' });
+    expect(res.status).toBe(200);
+    expect(res.body.ok).toBe(true);
+    expect(typeof res.body.dev_otp).toBe('string');
+    expect(String(res.body.dev_otp)).toMatch(/^\d{6}$/);
+  });
+
+  it('verifies OTP and returns token', async () => {
+    const requestOtp = await request(app).post('/api/auth/request-otp').send({ phone: '+971500000001' });
+    const otp = String(requestOtp.body.dev_otp ?? '');
+    const verify = await request(app).post('/api/auth/verify-otp').send({ phone: '+971500000001', otp });
+    expect(verify.status).toBe(200);
+    expect(verify.body).toHaveProperty('token');
+    expect(verify.body.user.email).toBe('manager@test.com');
+  });
+
+  it('rejects invalid OTP', async () => {
+    await request(app).post('/api/auth/request-otp').send({ phone: '+971500000001' });
+    const verify = await request(app).post('/api/auth/verify-otp').send({ phone: '+971500000001', otp: '000000' });
+    expect(verify.status).toBe(401);
   });
 });
 

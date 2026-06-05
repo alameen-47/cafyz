@@ -7,6 +7,7 @@ import { SplashScreen } from '@capacitor/splash-screen';
 import { AuthProvider } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
 import App from './App';
+import { ToastViewport } from './components/ToastViewport';
 import './styles/global.css';
 import './styles/responsive.css';
 import './styles/modals.css';
@@ -30,6 +31,7 @@ createRoot(document.getElementById('root')!).render(
       <ThemeProvider>
         <AuthProvider>
           <App />
+          <ToastViewport />
         </AuthProvider>
       </ThemeProvider>
     </BrowserRouter>

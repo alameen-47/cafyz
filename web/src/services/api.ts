@@ -1,6 +1,7 @@
 // ─── Cafyz API Client ────────────────────────────────────────────────────────
 // Tenant-scoped HTTP client. JWT is stored in localStorage and attached to
 // every request. On 401 the session is cleared and the user is redirected.
+import { toastBus } from './toastBus';
 
 // In dev, relative URLs go through the Vite proxy (→ localhost:4000).
 // In production, set VITE_API_URL to the backend origin (e.g. https://api.cafyz.io).
@@ -32,13 +33,31 @@ async function request<T = unknown>(
     if (!path.includes('/api/auth/me')) {
       window.location.href = '/login';
     }
-    throw new Error('Session expired — please sign in again.');
+    const sessionMsg = 'Session expired — please sign in again.';
+    toastBus.error(sessionMsg);
+    throw new Error(sessionMsg);
   }
 
   if (res.status === 204) return null as T;
 
   const data = await res.json().catch(() => ({ error: res.statusText }));
-  if (!res.ok) throw new Error(data.error ?? res.statusText);
+  if (!res.ok) {
+    const message = data.error ?? res.statusText;
+    toastBus.error(String(message));
+    throw new Error(message);
+  }
+  const shouldToastSuccess =
+    method !== 'GET'
+    && !path.startsWith('/api/auth/')
+    && !path.includes('/status');
+  if (shouldToastSuccess) {
+    const successMessage = method === 'DELETE'
+      ? 'Removed successfully'
+      : method === 'POST'
+      ? 'Saved successfully'
+      : 'Updated successfully';
+    toastBus.success(successMessage);
+  }
   return data as T;
 }
 
@@ -50,10 +69,14 @@ const del  =               (path: string)                   => request   ('DELET
 
 // ── Auth ──────────────────────────────────────────────────────────────────────
 export const authApi = {
-  login: (email: string, password: string) =>
-    post<LoginResponse>('/api/auth/login', { email, password }),
-  pin: (pin: string) =>
-    post<LoginResponse>('/api/auth/pin', { pin }),
+  login: (email: string, password: string, device_id?: string) =>
+    post<LoginResponse>('/api/auth/login', { email, password, device_id }),
+  requestOtp: (phone: string) =>
+    post<{ ok: boolean; message: string; dev_otp?: string }>('/api/auth/request-otp', { phone }),
+  verifyOtp: (phone: string, otp: string) =>
+    post<LoginResponse>('/api/auth/verify-otp', { phone, otp }),
+  pin: (email: string, pin: string, device_id: string) =>
+    post<LoginResponse>('/api/auth/pin', { email, pin, device_id }),
   forgotPassword: (email: string) =>
     post<{ ok: boolean; message: string }>('/api/auth/forgot-password', { email }),
   resetPassword: (token: string, password: string) =>
@@ -61,7 +84,7 @@ export const authApi = {
   me: () => get<ApiUser>('/api/auth/me'),
   onboarding: (data: {
     restaurant_name: string; owner_name: string;
-    email: string; password: string; plan?: string; timezone?: string;
+    email: string; phone: string; password: string; plan?: string; timezone?: string;
   }) => post<{ token: string; user: ApiUser; restaurant: ApiRestaurant }>('/api/restaurants/onboarding', data),
 };
 
@@ -274,7 +297,7 @@ export interface LoginResponse {
 }
 
 export interface ApiUser {
-  id: string; restaurant_id: string; name: string; initials: string; email: string;
+  id: string; restaurant_id: string; name: string; initials: string; email: string; phone?: string;
   role: 'owner' | 'manager' | 'cashier' | 'waiter' | 'kitchen' | 'founder';
   status: 'active' | 'break' | 'off'; start_time: string; created_at?: string;
 }
@@ -391,7 +414,7 @@ export interface ApiSoldItemsResponse {
 
 // ── Payload Types ─────────────────────────────────────────────────────────────
 export interface CreateUserPayload {
-  name: string; email: string; role: string; password?: string; pin?: string;
+  name: string; email: string; phone: string; role: string; password?: string; pin?: string;
   status?: string; start_time?: string; initials?: string;
 }
 

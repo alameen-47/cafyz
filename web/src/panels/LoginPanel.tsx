@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
-import { authApi } from '../services/api';
+import { toastBus } from '../services/toastBus';
 import './LoginPanel.css';
 
 // Post-login navigation uses a full-page reload instead of React Router navigate()
@@ -11,59 +11,49 @@ function goTo(path: string) {
   window.location.href = path;
 }
 
-export function LoginPanel() {
-  const { login, loginWithPin, error, clearError } = useAuth();
-  const { theme, toggleTheme } = useTheme();
-  const params = new URLSearchParams(window.location.search);
-  const initialMode =
-    params.get('mode') === 'forgot'
-      ? 'forgot'
-      : params.get('mode') === 'reset'
-      ? 'reset'
-      : 'login';
+function getOrCreateDeviceId(): string {
+  const key = 'cafyz_device_id';
+  const existing = localStorage.getItem(key);
+  if (existing) return existing;
+  const generated = typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+    ? crypto.randomUUID()
+    : `cafyz-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+  localStorage.setItem(key, generated);
+  return generated;
+}
 
-  const [mode, setMode] = useState<'login' | 'forgot' | 'reset'>(initialMode);
-  const [email, setEmail] = useState(params.get('email') ?? '');
+export function LoginPanel() {
+  const { login, requestLoginOtp, loginWithOtp, loginWithPin, error, clearError } = useAuth();
+  const { theme, toggleTheme } = useTheme();
+  const [method, setMethod] = useState<'otp' | 'email'>('otp');
+  const [mobileMethod, setMobileMethod] = useState<'email' | 'pin'>('email');
+  const [email, setEmail] = useState('');
+  const [pinEmail, setPinEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
+  const [phone, setPhone] = useState('');
+  const [otp, setOtp] = useState('');
+  const [otpSent, setOtpSent] = useState(false);
   const [pin, setPin] = useState<number[]>([]);
   const [busy, setBusy] = useState(false);
   const [localErr, setLocalErr] = useState('');
   const [localMsg, setLocalMsg] = useState('');
-  const [resetToken] = useState(params.get('token') ?? '');
 
   const displayError = localErr || error;
 
-  function switchMode(next: 'login' | 'forgot' | 'reset') {
-    setMode(next);
+  function switchMethod(next: 'otp' | 'email') {
+    setMethod(next);
     setLocalErr('');
     setLocalMsg('');
     clearError();
   }
 
-  async function handleLogin() {
+  async function handleEmailLogin() {
     if (!email.trim()) {
       setLocalErr('Enter your work email.');
       return;
     }
-    setBusy(true);
-    setLocalErr('');
-    clearError();
-    try {
-      await login(email, password);
-      const stored = JSON.parse(localStorage.getItem('cafyz_user') ?? '{}') as {
-        role?: string;
-      };
-      goTo(stored.role === 'founder' ? '/founder' : '/');
-    } catch (e) {
-      setLocalErr((e as Error).message ?? 'Login failed');
-      setBusy(false);
-    }
-  }
-
-  async function handleForgotPassword() {
-    if (!email.trim()) {
-      setLocalErr('Enter your email to reset your password.');
+    if (!password.trim()) {
+      setLocalErr('Enter your password.');
       return;
     }
     setBusy(true);
@@ -71,26 +61,20 @@ export function LoginPanel() {
     setLocalMsg('');
     clearError();
     try {
-      const data = await authApi.forgotPassword(email);
-      setLocalMsg(data.message);
+      await login(email, password, getOrCreateDeviceId());
+      toastBus.success('Signed in successfully');
+      const stored = JSON.parse(localStorage.getItem('cafyz_user') ?? '{}') as { role?: string };
+      goTo(stored.role === 'founder' ? '/founder' : '/');
     } catch (e) {
-      setLocalErr((e as Error).message ?? 'Could not start password reset');
+      setLocalErr((e as Error).message ?? 'Could not sign in');
     } finally {
       setBusy(false);
     }
   }
 
-  async function handleResetPassword() {
-    if (!resetToken) {
-      setLocalErr('Reset token is missing. Request a new reset link.');
-      return;
-    }
-    if (password.length < 8) {
-      setLocalErr('Password must be at least 8 characters.');
-      return;
-    }
-    if (password !== confirmPassword) {
-      setLocalErr('Passwords do not match.');
+  async function handleSendOtp() {
+    if (!phone.trim()) {
+      setLocalErr('Enter your phone number.');
       return;
     }
     setBusy(true);
@@ -98,14 +82,36 @@ export function LoginPanel() {
     setLocalMsg('');
     clearError();
     try {
-      const data = await authApi.resetPassword(resetToken, password);
-      setLocalMsg(data.message);
-      setPassword('');
-      setConfirmPassword('');
-      setMode('login');
-      window.history.replaceState({}, '', '/login');
+      const data = await requestLoginOtp(phone);
+      setOtpSent(true);
+      setLocalMsg(data.devOtp ? `${data.message} (Dev OTP: ${data.devOtp})` : data.message);
+      toastBus.success('OTP sent. Check your phone.');
     } catch (e) {
-      setLocalErr((e as Error).message ?? 'Could not reset password');
+      setLocalErr((e as Error).message ?? 'Could not send OTP');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleVerifyOtp() {
+    if (!otpSent) {
+      setLocalErr('Request OTP first.');
+      return;
+    }
+    if (!/^\d{6}$/.test(otp.trim())) {
+      setLocalErr('Enter the 6-digit OTP code.');
+      return;
+    }
+    setBusy(true);
+    setLocalErr('');
+    clearError();
+    try {
+      await loginWithOtp(phone, otp.trim());
+      toastBus.success('OTP verified. Welcome back.');
+      const stored = JSON.parse(localStorage.getItem('cafyz_user') ?? '{}') as { role?: string };
+      goTo(stored.role === 'founder' ? '/founder' : '/');
+    } catch (e) {
+      setLocalErr((e as Error).message ?? 'Could not verify OTP');
     } finally {
       setBusy(false);
     }
@@ -113,6 +119,10 @@ export function LoginPanel() {
 
   const handlePin = (key: number | 'back' | null) => {
     if (key === null || busy) return;
+    if (!pinEmail.trim()) {
+      setLocalErr('Enter your work email before using PIN login.');
+      return;
+    }
     if (key === 'back') {
       setPin(p => p.slice(0, -1));
       return;
@@ -123,8 +133,12 @@ export function LoginPanel() {
     if (next.length === 4) {
       setBusy(true);
       setLocalErr('');
-      loginWithPin(next.join(''))
-        .then(() => goTo('/'))
+      loginWithPin(pinEmail.trim(), next.join(''), getOrCreateDeviceId())
+        .then(() => {
+          toastBus.success('PIN login successful');
+          const stored = JSON.parse(localStorage.getItem('cafyz_user') ?? '{}') as { role?: string };
+          goTo(stored.role === 'founder' ? '/founder' : '/');
+        })
         .catch(e => {
           setLocalErr((e as Error).message ?? 'Invalid PIN');
           setPin([]);
@@ -188,70 +202,86 @@ export function LoginPanel() {
 
       {/* ── Desktop right pane ────────────────────────────────────── */}
       <section className="login-right">
-        <p className="eyebrow">
-          {mode === 'login'
-            ? 'Sign In · Restaurant Management'
-            : mode === 'forgot'
-            ? 'Account Recovery'
-            : 'Set New Password'}
-        </p>
-        <h2 className="serif login-title">
-          {mode === 'login'
-            ? 'Welcome back.'
-            : mode === 'forgot'
-            ? 'Forgot password?'
-            : 'Reset password'}
-        </h2>
+        <p className="eyebrow">Sign In · Restaurant Management</p>
+        <h2 className="serif login-title">Welcome back.</h2>
         <p className="login-sub">
-          {mode === 'login'
-            ? 'Enter your work email to continue.'
-            : mode === 'forgot'
-            ? 'Enter your email and we will send a reset link.'
-            : 'Choose a new password for your account.'}
+          Sign in using phone OTP or email and password.
         </p>
 
-        <label className="login-field">
-          <span>Work email</span>
-          <input
-            type="email"
-            value={email}
-            onChange={e => {
-              setEmail(e.target.value);
-              setLocalErr('');
-              clearError();
-            }}
-            onKeyDown={e =>
-              e.key === 'Enter' &&
-              (mode === 'login' ? handleLogin() : handleForgotPassword())
-            }
-            disabled={mode === 'reset'}
-          />
-        </label>
-        <label className="login-field">
-          <span>{mode === 'reset' ? 'New passphrase' : 'Passphrase'}</span>
-          <input
-            type="password"
-            value={password}
-            onChange={e => setPassword(e.target.value)}
-            onKeyDown={e =>
-              e.key === 'Enter' &&
-              (mode === 'reset' ? handleResetPassword() : handleLogin())
-            }
-            placeholder="••••••••••••"
-            disabled={mode === 'forgot'}
-          />
-        </label>
-        {mode === 'reset' && (
-          <label className="login-field">
-            <span>Confirm passphrase</span>
-            <input
-              type="password"
-              value={confirmPassword}
-              onChange={e => setConfirmPassword(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && handleResetPassword()}
-              placeholder="Repeat new passphrase"
-            />
-          </label>
+        <div className="login-method-switch">
+          <button
+            type="button"
+            className="login-link-btn"
+            onClick={() => switchMethod('otp')}
+            disabled={method === 'otp' || busy}
+          >
+            Phone OTP
+          </button>
+          <button
+            type="button"
+            className="login-link-btn"
+            onClick={() => switchMethod('email')}
+            disabled={method === 'email' || busy}
+          >
+            Email Login
+          </button>
+        </div>
+
+        {method === 'otp' ? (
+          <>
+            <label className="login-field">
+              <span>Phone number</span>
+              <input
+                type="tel"
+                value={phone}
+                onChange={e => {
+                  setPhone(e.target.value);
+                  setLocalErr('');
+                  clearError();
+                }}
+                onKeyDown={e => e.key === 'Enter' && (otpSent ? handleVerifyOtp() : handleSendOtp())}
+                placeholder="+971500000000"
+              />
+            </label>
+            <label className="login-field">
+              <span>One-time password (OTP)</span>
+              <input
+                type="text"
+                value={otp}
+                onChange={e => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                onKeyDown={e => e.key === 'Enter' && handleVerifyOtp()}
+                placeholder="6-digit code"
+                disabled={!otpSent}
+              />
+            </label>
+          </>
+        ) : (
+          <>
+            <label className="login-field">
+              <span>Work email</span>
+              <input
+                type="email"
+                value={email}
+                onChange={e => {
+                  setEmail(e.target.value);
+                  setLocalErr('');
+                  clearError();
+                }}
+                onKeyDown={e => e.key === 'Enter' && handleEmailLogin()}
+                placeholder="owner@restaurant.com"
+              />
+            </label>
+            <label className="login-field">
+              <span>Password</span>
+              <input
+                type="password"
+                value={password}
+                onChange={e => setPassword(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && handleEmailLogin()}
+                placeholder="••••••••"
+              />
+            </label>
+          </>
         )}
 
         {displayError && <p className="login-error">{displayError}</p>}
@@ -260,45 +290,23 @@ export function LoginPanel() {
         <button
           type="button"
           className="login-submit"
-          onClick={
-            mode === 'login'
-              ? handleLogin
-              : mode === 'forgot'
-              ? handleForgotPassword
-              : handleResetPassword
-          }
+          onClick={method === 'otp' ? (otpSent ? handleVerifyOtp : handleSendOtp) : handleEmailLogin}
           disabled={busy}
         >
-          {busy
-            ? mode === 'login'
-              ? 'Signing in…'
-              : mode === 'forgot'
-              ? 'Sending link…'
-              : 'Resetting…'
-            : mode === 'login'
-            ? 'Enter Cafyz →'
-            : mode === 'forgot'
-            ? 'Send reset link'
-            : 'Save new password'}
+          {method === 'otp'
+            ? (busy ? (otpSent ? 'Verifying…' : 'Sending OTP…') : otpSent ? 'Verify OTP & Enter Cafyz →' : 'Send OTP')
+            : (busy ? 'Signing in…' : 'Sign in with Email →')}
         </button>
 
         <div className="login-secondary-links">
-          {mode === 'login' && (
+          {method === 'otp' && otpSent && (
             <button
               type="button"
               className="login-link-btn"
-              onClick={() => switchMode('forgot')}
+              onClick={handleSendOtp}
+              disabled={busy}
             >
-              Forgot password?
-            </button>
-          )}
-          {mode !== 'login' && (
-            <button
-              type="button"
-              className="login-link-btn"
-              onClick={() => switchMode('login')}
-            >
-              Back to sign in
+              Resend OTP
             </button>
           )}
         </div>
@@ -315,7 +323,7 @@ export function LoginPanel() {
       {/* ── Mobile PIN pane ────────────────────────────────────────── */}
       <section
         className="login-mobile-only"
-        style={{ display: mode === 'login' ? undefined : 'none' }}
+        style={{ display: undefined }}
       >
         <div className="login-mobile-head">
           <div className="login-logo">C</div>
@@ -325,34 +333,98 @@ export function LoginPanel() {
         <h2 className="serif">
           Good evening, <em>team.</em>
         </h2>
-        <p className="login-pin-label">PIN · 4 digits</p>
-        <div className="login-pin-dots">
-          {[0, 1, 2, 3].map(i => (
-            <div key={i} className={pin.length > i ? 'filled' : ''} />
-          ))}
+        <div className="login-method-switch login-method-switch-mobile">
+          <button
+            type="button"
+            className="login-link-btn"
+            onClick={() => setMobileMethod('email')}
+            disabled={mobileMethod === 'email' || busy}
+          >
+            Email Login
+          </button>
+          <button
+            type="button"
+            className="login-link-btn"
+            onClick={() => setMobileMethod('pin')}
+            disabled={mobileMethod === 'pin' || busy}
+          >
+            PIN Login
+          </button>
         </div>
+
+        {mobileMethod === 'email' ? (
+          <>
+            <label className="login-field" style={{ marginTop: 12 }}>
+              <span>Work email</span>
+              <input
+                type="email"
+                value={email}
+                onChange={e => {
+                  setEmail(e.target.value);
+                  setLocalErr('');
+                  clearError();
+                }}
+                placeholder="owner@restaurant.com"
+              />
+            </label>
+            <label className="login-field">
+              <span>Password</span>
+              <input
+                type="password"
+                value={password}
+                onChange={e => setPassword(e.target.value)}
+                placeholder="••••••••"
+              />
+            </label>
+            <button type="button" className="login-submit" onClick={handleEmailLogin} disabled={busy}>
+              {busy ? 'Signing in…' : 'Sign in with Email →'}
+            </button>
+          </>
+        ) : (
+          <>
+            <label className="login-field" style={{ marginTop: 12 }}>
+              <span>Work email (required for PIN)</span>
+              <input
+                type="email"
+                value={pinEmail}
+                onChange={e => {
+                  setPinEmail(e.target.value);
+                  setLocalErr('');
+                  clearError();
+                }}
+                placeholder="staff@restaurant.com"
+              />
+            </label>
+            <p className="login-pin-label">PIN · 4 digits</p>
+            <div className="login-pin-dots">
+              {[0, 1, 2, 3].map(i => (
+                <div key={i} className={pin.length > i ? 'filled' : ''} />
+              ))}
+            </div>
+            <div className="login-numpad">
+              {[1, 2, 3, 4, 5, 6, 7, 8, 9, null, 0, 'back'].map((k, i) => (
+                <button
+                  key={i}
+                  type="button"
+                  className={k === null ? 'hidden' : ''}
+                  disabled={k === null || busy}
+                  onClick={() =>
+                    handlePin(
+                      k === 'back' ? 'back' : k === null ? null : (k as number),
+                    )
+                  }
+                >
+                  {k === 'back' ? '⌫' : k}
+                </button>
+              ))}
+            </div>
+          </>
+        )}
         {localErr && (
           <p className="login-error" style={{ textAlign: 'center' }}>
             {localErr}
           </p>
         )}
-        <div className="login-numpad">
-          {[1, 2, 3, 4, 5, 6, 7, 8, 9, null, 0, 'back'].map((k, i) => (
-            <button
-              key={i}
-              type="button"
-              className={k === null ? 'hidden' : ''}
-              disabled={k === null || busy}
-              onClick={() =>
-                handlePin(
-                  k === 'back' ? 'back' : k === null ? null : (k as number),
-                )
-              }
-            >
-              {k === 'back' ? '⌫' : k}
-            </button>
-          ))}
-        </div>
       </section>
     </div>
   );

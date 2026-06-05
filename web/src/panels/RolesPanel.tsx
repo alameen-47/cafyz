@@ -24,11 +24,11 @@ const ROLE_COLOR: Record<Role, string> = {
 const STATUS_COLOR = { active: 'var(--success)', break: 'var(--warning)', off: 'var(--text3)' };
 
 type DraftUser = {
-  name: string; email: string; role: Exclude<Role,'owner'|'founder'>;
+  name: string; email: string; phone: string; role: Exclude<Role,'owner'|'founder'>;
   status: 'active' | 'break' | 'off'; start_time: string;
 };
 
-const blank = (): DraftUser => ({ name: '', email: '', role: 'waiter', status: 'active', start_time: '18:00' });
+const blank = (): DraftUser => ({ name: '', email: '', phone: '', role: 'waiter', status: 'active', start_time: '18:00' });
 
 export function RolesPanel() {
   const { user: me } = useAuth();
@@ -59,7 +59,7 @@ export function RolesPanel() {
   // ── Edit ──────────────────────────────────────────────────────────────────
   function startEdit(s: ApiUser) {
     setEditId(s.id);
-    setDraft({ name: s.name, email: s.email, role: s.role as Exclude<Role,'owner'|'founder'>,
+    setDraft({ name: s.name, email: s.email, phone: s.phone ?? '', role: s.role as Exclude<Role,'owner'|'founder'>,
                status: s.status, start_time: s.start_time });
     setAdding(false);
   }
@@ -69,7 +69,7 @@ export function RolesPanel() {
     setBusy(true); setError('');
     try {
       const updated = await usersApi.update(editId, {
-        name: draft.name, email: draft.email, role: draft.role,
+        name: draft.name, email: draft.email, phone: draft.phone || undefined, role: draft.role,
         status: draft.status, start_time: draft.start_time,
       });
       setStaff(prev => prev.map(s => s.id === editId ? updated : s));
@@ -82,11 +82,11 @@ export function RolesPanel() {
   function startAdd() { setDraft(blank()); setAdding(true); setEditId(null); }
 
   async function confirmAdd() {
-    if (!draft.name || !draft.email) return;
+    if (!draft.name || !draft.email || !draft.phone) return;
     setBusy(true); setError(''); setNotice('');
     try {
       const created = await usersApi.create({
-        name: draft.name, email: draft.email, role: draft.role,
+        name: draft.name, email: draft.email, phone: draft.phone, role: draft.role,
         status: draft.status, start_time: draft.start_time,
         password: 'cafyz2026',
       }) as ApiUser & { pin_delivery?: { sent: boolean; message: string } };
@@ -172,12 +172,13 @@ export function RolesPanel() {
           <div className="roles-form-grid">
             <input placeholder="Full name"       value={draft.name}  onChange={e => setDraft(d => ({ ...d, name:  e.target.value }))} className="roles-input" />
             <input placeholder="Work email"      value={draft.email} onChange={e => setDraft(d => ({ ...d, email: e.target.value }))} className="roles-input" />
+            <input placeholder="Phone (+971...)" value={draft.phone} onChange={e => setDraft(d => ({ ...d, phone: e.target.value }))} className="roles-input" />
             <select value={draft.role} onChange={e => setDraft(d => ({ ...d, role: e.target.value as DraftUser['role'] }))} className="roles-select">
               {ROLES.map(r => <option key={r} value={r}>{ROLE_LABELS[r]}</option>)}
             </select>
           </div>
           <div className="roles-form-actions">
-            <button className="roles-save-btn" onClick={confirmAdd} disabled={!draft.name || !draft.email || busy}>
+            <button className="roles-save-btn" onClick={confirmAdd} disabled={!draft.name || !draft.email || !draft.phone || busy}>
               {busy ? 'Saving…' : 'Save'}
             </button>
             <button className="roles-cancel-btn" onClick={() => setAdding(false)}>Cancel</button>
@@ -206,6 +207,7 @@ export function RolesPanel() {
                   <div>
                     <input value={draft.name}  onChange={e => setDraft(d => ({ ...d, name: e.target.value }))}  className="roles-input-sm" />
                     <input value={draft.email} onChange={e => setDraft(d => ({ ...d, email: e.target.value }))} className="roles-input-sm" placeholder="email" />
+                    <input value={draft.phone} onChange={e => setDraft(d => ({ ...d, phone: e.target.value }))} className="roles-input-sm" placeholder="+971500000000" />
                   </div>
                 </div>
                 <select value={draft.role} onChange={e => setDraft(d => ({ ...d, role: e.target.value as DraftUser['role'] }))} className="roles-select-sm">
@@ -231,6 +233,7 @@ export function RolesPanel() {
                   <div>
                     <p className="roles-row-name">{s.name}</p>
                     <p className="roles-row-email">{s.email}</p>
+                    {s.phone && <p className="roles-row-email">{s.phone}</p>}
                   </div>
                 </div>
                 <span className="roles-role-pill" style={{ '--rc': ROLE_COLOR[s.role as Role] } as React.CSSProperties}>
