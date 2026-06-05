@@ -18,6 +18,7 @@ import founderRoutes     from './routes/founder.js';
 import inquiryRoutes     from './routes/inquiries.js';
 import { requirePlan }   from './middleware/planGuard.js';
 import { requireAuth }   from './middleware/auth.js';
+import { requireActiveSubscription } from './middleware/subscriptionGuard.js';
 import { errorHandler, notFound } from './middleware/errorHandler.js';
 
 const app = express();
@@ -81,14 +82,14 @@ app.get('/health', (_req, res) => res.json({ status: 'ok', ts: new Date().toISOS
 
 // ── Routes ──────────────────────────────────────────────────────────────────────
 app.use('/api/auth',         authLimiter, authRoutes);
-app.use('/api/users',        userRoutes);
-app.use('/api/menu',         menuRoutes);
-app.use('/api/orders',       orderRoutes);
-app.use('/api/tables',       tableRoutes);
-app.use('/api/kds',          requireAuth, requirePlan('pro'),     kdsRoutes);
-app.use('/api/reservations', requireAuth, requirePlan('premium'), reservationRoutes);
-app.use('/api/inventory',    requireAuth, requirePlan('pro'),     inventoryRoutes);
-app.use('/api/dashboard',    requireAuth, requirePlan('pro'),     dashboardRoutes);
+app.use('/api/users',        requireAuth, requireActiveSubscription, userRoutes);
+app.use('/api/menu',         requireAuth, requireActiveSubscription, menuRoutes);
+app.use('/api/orders',       requireAuth, requireActiveSubscription, orderRoutes);
+app.use('/api/tables',       requireAuth, requireActiveSubscription, tableRoutes);
+app.use('/api/kds',          requireAuth, requireActiveSubscription, requirePlan('pro'),     kdsRoutes);
+app.use('/api/reservations', requireAuth, requireActiveSubscription, requirePlan('premium'), reservationRoutes);
+app.use('/api/inventory',    requireAuth, requireActiveSubscription, requirePlan('pro'),     inventoryRoutes);
+app.use('/api/dashboard',    requireAuth, requireActiveSubscription, requirePlan('pro'),     dashboardRoutes);
 app.use('/api/restaurants',  restaurantRoutes);
 app.use('/api/licenses',     licenseRoutes);
 app.use('/api/founder',      founderRoutes);

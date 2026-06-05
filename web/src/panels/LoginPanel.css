@@ -596,6 +596,10 @@
 }
 .login-get-account-link:hover { opacity: 0.75; }
 
+.login-get-account-link-alt {
+  color: var(--text1);
+}
+
 [data-theme='light'] .login-get-account-bar {
   background: linear-gradient(135deg, rgba(29,78,216,0.04) 0%, transparent 100%);
   border: 1px solid rgba(29,78,216,0.15);

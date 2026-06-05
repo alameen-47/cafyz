@@ -239,7 +239,7 @@ export const dashboardApi = {
 
 // ── Licenses ──────────────────────────────────────────────────────────────────
 export const licensesApi = {
-  mine:     ()                                                             => get<{ plan: string; license: ApiLicenseKey | null }>('/api/licenses/mine'),
+  mine:     ()                                                             => get<ApiSubscriptionStatus>('/api/licenses/mine'),
   list:     ()                                                             => get<ApiLicenseKey[]>('/api/licenses'),
   generate: (d: { plan: string; note?: string; expires_at?: string; quantity?: number; trial?: boolean; recipient_email?: string }) =>
     post<ApiLicenseKey | ApiLicenseKey[]>('/api/licenses', d),
@@ -432,6 +432,15 @@ export interface CreateKdsTicketPayload {
 export interface ApiLicenseKey {
   id: string; key_code: string; plan: string; restaurant_id?: string; restaurant_name?: string;
   activated_at?: string; expires_at?: string; is_active: number; note?: string; created_at: string;
+}
+
+export interface ApiSubscriptionStatus {
+  plan: string;
+  license: ApiLicenseKey | null;
+  trial_expires_at?: string | null;
+  trial_expired?: boolean;
+  trial_days_left?: number | null;
+  purchase_url?: string;
 }
 
 export interface ApiFounderRestaurant {

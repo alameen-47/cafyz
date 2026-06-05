@@ -9,14 +9,18 @@ afterAll(teardownTestDb);
 const newItem = { name: 'Duck Confit', category: 'mains', price: 38, description: 'Crispy skin · cherry jus', symbol: '◑' };
 
 describe('GET /api/menu', () => {
-  it('returns menu items (no auth required)', async () => {
-    const res = await request(app).get('/api/menu');
+  it('returns menu items for authenticated users', async () => {
+    const res = await request(app)
+      .get('/api/menu')
+      .set('Authorization', `Bearer ${managerToken}`);
     expect(res.status).toBe(200);
     expect(Array.isArray(res.body)).toBe(true);
   });
 
   it('filters by category', async () => {
-    const res = await request(app).get('/api/menu?category=starters');
+    const res = await request(app)
+      .get('/api/menu?category=starters')
+      .set('Authorization', `Bearer ${managerToken}`);
     expect(res.status).toBe(200);
     res.body.forEach((item: { category: string }) => expect(item.category).toBe('starters'));
   });

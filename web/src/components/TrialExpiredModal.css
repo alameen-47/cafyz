@@ -1,0 +1,45 @@
+.trial-lock-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+  background: rgba(5, 4, 12, 0.86);
+  backdrop-filter: blur(6px);
+  display: grid;
+  place-items: center;
+  padding: 20px;
+}
+
+.trial-lock-card {
+  width: min(560px, 100%);
+  border-radius: 16px;
+  border: 1px solid rgba(239, 68, 68, 0.45);
+  background: linear-gradient(180deg, #160f1f 0%, #0b0913 100%);
+  padding: 28px;
+}
+
+.trial-lock-title {
+  margin: 8px 0 10px;
+  font-size: clamp(24px, 4vw, 34px);
+  color: #fff;
+}
+
+.trial-lock-text {
+  font-size: 14px;
+  color: var(--text2);
+  line-height: 1.6;
+  margin-bottom: 18px;
+}
+
+.trial-lock-cta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 46px;
+  border-radius: 10px;
+  background: #f59e0b;
+  color: #130b03;
+  font-size: 14px;
+  font-weight: 800;
+  text-decoration: none;
+}

@@ -241,6 +241,18 @@ export async function runMigrations() {
     );
 
     CREATE INDEX IF NOT EXISTS idx_license_requests_status ON license_purchase_requests(status, created_at);
+
+    CREATE TABLE IF NOT EXISTS trial_reminder_logs (
+      id             TEXT PRIMARY KEY,
+      restaurant_id  TEXT NOT NULL REFERENCES restaurants(id) ON DELETE CASCADE,
+      user_id        TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      reminder_date  TEXT NOT NULL,
+      reminder_slot  TEXT NOT NULL CHECK(reminder_slot IN ('10:00','18:00')),
+      sent_at        TEXT NOT NULL DEFAULT (datetime('now')),
+      UNIQUE(restaurant_id, user_id, reminder_date, reminder_slot)
+    );
+    CREATE INDEX IF NOT EXISTS idx_trial_reminder_logs_rest_date
+      ON trial_reminder_logs(restaurant_id, reminder_date, reminder_slot);
   `);
 
   // Backward-compatible restaurant profile columns for live DBs

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useTheme } from '../context/ThemeContext';
 import { TRIAL_DAYS, appPath } from '../config/site';
 import './GetAccountPanel.css';
@@ -105,7 +105,15 @@ function getDeviceId(): string {
 
 export function GetAccountPanel() {
   const { theme, toggleTheme } = useTheme();
-  const [selectedPlan, setSelectedPlan] = useState<PlanKey>('pro');
+  const intent = useMemo(() => {
+    const params = new URLSearchParams(window.location.search);
+    return params.get('intent') === 'purchase' ? 'purchase' : 'trial';
+  }, []);
+  const urlPlan = useMemo(() => {
+    const p = new URLSearchParams(window.location.search).get('plan');
+    return p === 'basic' || p === 'pro' || p === 'premium' ? p : null;
+  }, []);
+  const [selectedPlan, setSelectedPlan] = useState<PlanKey>((urlPlan as PlanKey | null) ?? (intent === 'trial' ? 'premium' : 'pro'));
   const [form, setForm] = useState({ name: '', restaurant_name: '', email: '', message: '' });
   const [busy,    setBusy]    = useState(false);
   const [error,   setError]   = useState('');
@@ -129,10 +137,14 @@ export function GetAccountPanel() {
 
     setBusy(true); setError('');
     try {
+      const payloadPlan = intent === 'trial' ? 'premium' : selectedPlan;
+      const payloadMessage = intent === 'purchase'
+        ? `${form.message ? `${form.message}\n\n` : ''}[Purchase request from login CTA]`
+        : form.message;
       const res = await fetch(`${BASE}/api/inquiries`, {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ ...form, plan: selectedPlan, device_id: getDeviceId() }),
+        body:    JSON.stringify({ ...form, message: payloadMessage, plan: payloadPlan, device_id: getDeviceId() }),
       });
       if (!res.ok) {
         const d = await res.json().catch(() => ({}));
@@ -209,7 +221,7 @@ export function GetAccountPanel() {
           <SuccessView name={form.name} email={form.email} plan={selectedPlan} />
         ) : (
           <>
-            <p className="eyebrow">Get Started · Choose Your Plan</p>
+            <p className="eyebrow">{intent === 'trial' ? 'Get Started · Premium Trial' : 'Get Started · Purchase Request'}</p>
             <h2 className="serif ga-right-title">New to Cafyz?</h2>
             <p className="ga-trial-banner">
               <strong>{TRIAL_DAYS}-day free trial</strong> on every plan — full access, no payment until your trial ends.
@@ -225,7 +237,7 @@ export function GetAccountPanel() {
                   key={plan.key}
                   plan={plan}
                   selected={selectedPlan === plan.key}
-                  onSelect={() => setSelectedPlan(plan.key)}
+                  onSelect={() => { if (intent === 'purchase') setSelectedPlan(plan.key); }}
                 />
               ))}
             </div>
@@ -300,7 +312,9 @@ export function GetAccountPanel() {
                     </span>
                   ) : (
                     <span className="ga-submit-inner">
-                      Request Access · {PLANS.find(p => p.key === selectedPlan)?.label}
+                      {intent === 'trial'
+                        ? `Start ${TRIAL_DAYS}-Day Premium Trial`
+                        : `Request Purchase · ${PLANS.find(p => p.key === selectedPlan)?.label}`}
                       <span className="ga-submit-arrow">→</span>
                     </span>
                   )}

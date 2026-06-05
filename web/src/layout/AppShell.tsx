@@ -1,8 +1,13 @@
 import { useEffect, useState, type ReactNode } from 'react';
+import { useLocation } from 'react-router-dom';
 import type { Screen } from '@shared/types';
 import { Sidebar } from './Sidebar';
 import { TopBar } from './TopBar';
 import { MOBILE_NAV_MQ } from './layoutBreakpoints';
+import { useAuth } from '../context/AuthContext';
+import { licensesApi } from '../services/api';
+import { TrialExpiredModal } from '../components/TrialExpiredModal';
+import '../components/TrialExpiredModal.css';
 
 const CRUMBS: Partial<Record<Screen, [string, string]>> = {
   manager:   ['Operations', 'Overview'],
@@ -31,10 +36,15 @@ export function AppShell({
   active: Screen;
   children: ReactNode;
 }) {
+  const { pathname } = useLocation();
+  const { user } = useAuth();
   const [navOpen, setNavOpen] = useState(false);
   const [mobileNav, setMobileNav] = useState(() =>
     typeof window !== 'undefined' ? window.matchMedia(MOBILE_NAV_MQ).matches : false,
   );
+  const [trialLock, setTrialLock] = useState<{ expired: boolean; purchaseUrl?: string; expiresAt?: string | null }>({
+    expired: false,
+  });
   const crumb = CRUMBS[active] ?? ['Cafyz', 'Panel'];
   const cover = COVERS[active] ?? 'Service · Dinner';
 
@@ -67,6 +77,34 @@ export function AppShell({
     setNavOpen(false);
   }, [active]);
 
+  useEffect(() => {
+    if (!user || user.role === 'founder') {
+      setTrialLock({ expired: false });
+      return;
+    }
+    let alive = true;
+    const check = async () => {
+      try {
+        const status = await licensesApi.mine();
+        if (!alive) return;
+        setTrialLock({
+          expired: Boolean(status.trial_expired),
+          purchaseUrl: status.purchase_url ?? '/license',
+          expiresAt: status.trial_expires_at ?? null,
+        });
+      } catch {
+        if (!alive) return;
+        setTrialLock({ expired: false });
+      }
+    };
+    check();
+    const t = window.setInterval(check, 60_000);
+    return () => {
+      alive = false;
+      window.clearInterval(t);
+    };
+  }, [user?.id, user?.role]);
+
   return (
     <div
       className={[
@@ -97,6 +135,9 @@ export function AppShell({
         />
         <div className="app-content">{children}</div>
       </div>
+      {trialLock.expired && !pathname.startsWith('/license') && (
+        <TrialExpiredModal purchaseUrl={trialLock.purchaseUrl} expiresAt={trialLock.expiresAt} />
+      )}
     </div>
   );
 }

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { licensesApi, type ApiLicenseKey, type ApiLicensePurchaseRequest } from '../services/api';
+import { licensesApi, type ApiLicenseKey, type ApiLicensePurchaseRequest, type ApiSubscriptionStatus } from '../services/api';
 import { PLAN_LABELS, type Plan } from '../config/planAccess';
 import { useAuth } from '../context/AuthContext';
 import { ALL_PLAN_FEATURES, PLAN_COLOR } from '../config/planAccess';
@@ -8,7 +8,7 @@ import './LicensePanel.css';
 export function LicensePanel() {
   const { user, refreshPlan } = useAuth();
   const [keyInput,   setKeyInput]   = useState('');
-  const [info,       setInfo]       = useState<{ plan: string; license: ApiLicenseKey | null } | null>(null);
+  const [info,       setInfo]       = useState<ApiSubscriptionStatus | null>(null);
   const [loading,    setLoading]    = useState(true);
   const [activating, setActivating] = useState(false);
   const [success,    setSuccess]    = useState('');

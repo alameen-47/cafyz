@@ -6,6 +6,7 @@ import app from './app.js';
 dns.setDefaultResultOrder('ipv4first');
 import { runMigrations } from './schema.js';
 import { ensureFounderAccount } from './services/ensureFounder.js';
+import { startTrialReminderScheduler } from './services/trialReminderScheduler.js';
 
 const PORT = Number(process.env.PORT ?? 4000);
 
@@ -13,6 +14,7 @@ async function start() {
   await runMigrations();
   console.log('✓ Migrations complete');
   await ensureFounderAccount();
+  startTrialReminderScheduler();
 
   const server = app.listen(PORT, () => {
     console.log(`🍽  Cafyz API running on http://localhost:${PORT}`);

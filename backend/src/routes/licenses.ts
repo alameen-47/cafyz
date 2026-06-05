@@ -89,9 +89,18 @@ router.get('/mine', requireAuth, async (req: AuthRequest, res, next) => {
         args: [rid],
       }),
     ]);
+    const license = (licRow.rows[0] ?? null) as Record<string, unknown> | null;
+    const expiresAt = String(license?.expires_at ?? '');
+    const expiryTs = expiresAt ? new Date(expiresAt).getTime() : Number.NaN;
+    const trialExpired = Number.isFinite(expiryTs) ? expiryTs <= Date.now() : false;
+    const daysLeft = Number.isFinite(expiryTs) ? Math.max(0, Math.ceil((expiryTs - Date.now()) / 86_400_000)) : null;
     res.json({
       plan:    restRow.rows[0]?.plan ?? 'basic',
-      license: licRow.rows[0] ?? null,
+      license,
+      trial_expires_at: expiresAt || null,
+      trial_expired: trialExpired,
+      trial_days_left: daysLeft,
+      purchase_url: appPath('/license'),
     });
   } catch (e) { next(e); }
 });

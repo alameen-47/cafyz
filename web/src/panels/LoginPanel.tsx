@@ -314,8 +314,11 @@ export function LoginPanel() {
         {/* ── Get Account link ─────────────────────────────────────── */}
         <div className="login-get-account-bar">
           <span>New to Cafyz?</span>
-          <a href="/get-account" className="login-get-account-link">
-            View plans &amp; request access →
+          <a href="/get-account?intent=trial&plan=premium" className="login-get-account-link">
+            Trial Request →
+          </a>
+          <a href="/get-account?intent=purchase" className="login-get-account-link login-get-account-link-alt">
+            Purchase Plan →
           </a>
         </div>
       </section>
