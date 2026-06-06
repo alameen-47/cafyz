@@ -447,14 +447,24 @@ export function LoginPanel() {
             </button>
           )}
           {authMode === 'signin' && method === 'email' && (
-            <button
-              type="button"
-              className="login-link-btn"
-              onClick={() => switchAuthMode('forgot')}
-              disabled={busy}
-            >
-              Forgot password?
-            </button>
+            <>
+              <button
+                type="button"
+                className="login-link-btn"
+                onClick={() => switchAuthMode('forgot')}
+                disabled={busy}
+              >
+                Forgot password?
+              </button>
+              <button
+                type="button"
+                className="login-link-btn"
+                onClick={() => switchAuthMode('reset')}
+                disabled={busy}
+              >
+                Reset with token
+              </button>
+            </>
           )}
           {authMode !== 'signin' && (
             <button
