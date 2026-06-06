@@ -25,6 +25,13 @@ async function initNativeShell() {
 
 initNativeShell();
 
+// Recover automatically when a new deploy invalidates cached chunks.
+// This avoids the "blank page after latest push" issue from stale preloaded assets.
+window.addEventListener('vite:preloadError', (event) => {
+  event.preventDefault();
+  window.location.reload();
+});
+
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <BrowserRouter>
