@@ -15,6 +15,7 @@ import restaurantRoutes  from './routes/restaurants.js';
 import licenseRoutes     from './routes/licenses.js';
 import founderRoutes     from './routes/founder.js';
 import inquiryRoutes     from './routes/inquiries.js';
+import supportRoutes     from './routes/support.js';
 import { requirePlan }   from './middleware/planGuard.js';
 import { requireAuth }   from './middleware/auth.js';
 import { requireActiveSubscription } from './middleware/subscriptionGuard.js';
@@ -86,6 +87,7 @@ app.use('/api/restaurants',      mutationLimiter, restaurantRoutes);
 app.use('/api/licenses',         mutationLimiter, licenseRoutes);
 app.use('/api/founder',          mutationLimiter, founderRoutes);
 app.use('/api/inquiries',    inquiryLimiter, inquiryRoutes);
+app.use('/api/support',          mutationLimiter, supportRoutes);
 
 // ── Error handling ──────────────────────────────────────────────────────────────
 app.use(notFound);

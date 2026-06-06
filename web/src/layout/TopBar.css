@@ -162,6 +162,23 @@
   font-size: 14px;
 }
 
+.topbar-support {
+  height: 34px;
+  padding: 0 12px;
+  border-radius: var(--radius-pill);
+  border: 0.5px solid var(--gold-line2);
+  background: color-mix(in srgb, var(--gold-bg) 75%, transparent);
+  color: var(--gold);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.4px;
+}
+
+.topbar-support.active {
+  background: var(--gold);
+  color: var(--on-gold);
+}
+
 .topbar-notif-dot {
   position: absolute;
   top: 6px;

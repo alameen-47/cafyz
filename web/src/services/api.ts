@@ -288,6 +288,12 @@ export const founderApi = {
     put<ApiPlanConfig>(`/api/founder/plan-config/${plan}`, d),
 };
 
+// ── AI Support ────────────────────────────────────────────────────────────────
+export const supportApi = {
+  ask: (d: { message: string; screen?: string; history?: { role: 'user' | 'assistant'; text: string }[] }) =>
+    post<ApiSupportResponse>('/api/support/ask', d),
+};
+
 // ── Response / Entity Types ───────────────────────────────────────────────────
 export interface LoginResponse {
   token: string;
@@ -493,4 +499,20 @@ export interface ApiPlanConfig {
   billing_interval_unit?: 'month' | 'year';
   billing_interval_count?: number;
   updated_at: string;
+}
+
+export interface ApiSupportAction {
+  label: string;
+  path: string;
+}
+
+export interface ApiSupportResponse {
+  category: 'printer' | 'billing' | 'login' | 'permissions' | 'orders' | 'menu' | 'reports' | 'general';
+  reply: string;
+  suggestions: string[];
+  quick_actions: ApiSupportAction[];
+  meta: {
+    escalations_email: string;
+    response_mode: string;
+  };
 }

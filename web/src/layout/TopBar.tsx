@@ -7,6 +7,8 @@ interface TopBarProps {
   right?: React.ReactNode;
   onMenuClick?: () => void;
   menuOpen?: boolean;
+  onSupportClick?: () => void;
+  supportOpen?: boolean;
 }
 
 export function TopBar({
@@ -16,6 +18,8 @@ export function TopBar({
   right,
   onMenuClick,
   menuOpen = false,
+  onSupportClick,
+  supportOpen = false,
 }: TopBarProps) {
   return (
     <header className="topbar">
@@ -42,6 +46,15 @@ export function TopBar({
       </div>
       <div className="topbar-actions">
         {right}
+        <button
+          type="button"
+          className={`topbar-support ${supportOpen ? 'active' : ''}`}
+          onClick={onSupportClick}
+          aria-label={supportOpen ? 'Close AI customer support' : 'Open AI customer support'}
+          title="AI Customer Support"
+        >
+          🎧 AI
+        </button>
         <button type="button" className="topbar-bell" aria-label="Notifications">
           🔔
           <span className="topbar-notif-dot" />

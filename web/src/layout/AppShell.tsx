@@ -7,6 +7,7 @@ import { MOBILE_NAV_MQ } from './layoutBreakpoints';
 import { useAuth } from '../context/AuthContext';
 import { licensesApi } from '../services/api';
 import { TrialExpiredModal } from '../components/TrialExpiredModal';
+import { AISupportWidget } from '../components/AISupportWidget';
 import '../components/TrialExpiredModal.css';
 
 const CRUMBS: Partial<Record<Screen, [string, string]>> = {
@@ -45,6 +46,7 @@ export function AppShell({
   const [trialLock, setTrialLock] = useState<{ expired: boolean; purchaseUrl?: string; expiresAt?: string | null }>({
     expired: false,
   });
+  const [supportOpen, setSupportOpen] = useState(false);
   const crumb = CRUMBS[active] ?? ['Cafyz', 'Panel'];
   const cover = COVERS[active] ?? 'Service · Dinner';
 
@@ -132,9 +134,12 @@ export function AppShell({
           cover={cover}
           onMenuClick={() => setNavOpen(o => !o)}
           menuOpen={navOpen}
+          onSupportClick={() => setSupportOpen((v) => !v)}
+          supportOpen={supportOpen}
         />
         <div className="app-content">{children}</div>
       </div>
+      <AISupportWidget open={supportOpen} onClose={() => setSupportOpen(false)} screen={active} />
       {trialLock.expired && !pathname.startsWith('/license') && (
         <TrialExpiredModal purchaseUrl={trialLock.purchaseUrl} expiresAt={trialLock.expiresAt} />
       )}
