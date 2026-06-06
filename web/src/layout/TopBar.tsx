@@ -1,8 +1,8 @@
+import { useEffect, useMemo, useState } from 'react';
 import './TopBar.css';
 
 interface TopBarProps {
   crumb: [string, string];
-  clock?: string;
   cover?: string;
   right?: React.ReactNode;
   onMenuClick?: () => void;
@@ -13,7 +13,6 @@ interface TopBarProps {
 
 export function TopBar({
   crumb,
-  clock = '19:42',
   cover = 'Service · Dinner',
   right,
   onMenuClick,
@@ -21,6 +20,25 @@ export function TopBar({
   onSupportClick,
   supportOpen = false,
 }: TopBarProps) {
+  const [now, setNow] = useState(() => new Date());
+
+  useEffect(() => {
+    const t = window.setInterval(() => setNow(new Date()), 1000);
+    return () => window.clearInterval(t);
+  }, []);
+
+  const liveClock = useMemo(
+    () =>
+      now.toLocaleTimeString('en-GB', {
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: false,
+      }),
+    [now],
+  );
+  const [hh = '00', mm = '00', ss = '00'] = liveClock.split(':');
+
   return (
     <header className="topbar">
       <button
@@ -42,7 +60,13 @@ export function TopBar({
         <span className="topbar-dot" />
         <span>{cover}</span>
         <span className="topbar-sep">·</span>
-        <span className="mono">{clock}</span>
+        <span className="mono topbar-clock">
+          <span>{hh}</span>
+          <span className="topbar-clock-sep">:</span>
+          <span>{mm}</span>
+          <span className="topbar-clock-sep topbar-clock-sep-blink">:</span>
+          <span className="topbar-clock-sec">{ss}</span>
+        </span>
       </div>
       <div className="topbar-actions">
         {right}
