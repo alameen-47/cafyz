@@ -28,16 +28,25 @@ export function TopBar({
   }, []);
 
   const liveClock = useMemo(
-    () =>
-      now.toLocaleTimeString('en-GB', {
+    () => {
+      const fmt = new Intl.DateTimeFormat('en-US', {
         hour: '2-digit',
         minute: '2-digit',
         second: '2-digit',
-        hour12: false,
-      }),
+        hour12: true,
+      });
+      const parts = Object.fromEntries(
+        fmt.formatToParts(now).map((p) => [p.type, p.value]),
+      );
+      return {
+        hh: parts.hour ?? '12',
+        mm: parts.minute ?? '00',
+        ss: parts.second ?? '00',
+        ampm: String(parts.dayPeriod ?? 'AM').toUpperCase(),
+      };
+    },
     [now],
   );
-  const [hh = '00', mm = '00', ss = '00'] = liveClock.split(':');
 
   return (
     <header className="topbar">
@@ -61,11 +70,12 @@ export function TopBar({
         <span>{cover}</span>
         <span className="topbar-sep">·</span>
         <span className="mono topbar-clock">
-          <span>{hh}</span>
+          <span>{liveClock.hh}</span>
           <span className="topbar-clock-sep">:</span>
-          <span>{mm}</span>
+          <span>{liveClock.mm}</span>
           <span className="topbar-clock-sep topbar-clock-sep-blink">:</span>
-          <span className="topbar-clock-sec">{ss}</span>
+          <span className="topbar-clock-sec">{liveClock.ss}</span>
+          <span className="topbar-clock-ampm">{liveClock.ampm}</span>
         </span>
       </div>
       <div className="topbar-actions">

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
+import { authApi } from '../services/api';
 import { toastBus } from '../services/toastBus';
 import './LoginPanel.css';
 
@@ -25,6 +26,10 @@ function getOrCreateDeviceId(): string {
 export function LoginPanel() {
   const { login, requestLoginOtp, loginWithOtp, loginWithPin, error, clearError } = useAuth();
   const { theme, toggleTheme } = useTheme();
+  const query = new URLSearchParams(window.location.search);
+  const [authMode, setAuthMode] = useState<'signin' | 'forgot' | 'reset'>(
+    query.get('mode') === 'reset' ? 'reset' : 'signin',
+  );
   const [method, setMethod] = useState<'otp' | 'email'>('otp');
   const [mobileMethod, setMobileMethod] = useState<'email' | 'pin'>('email');
   const [email, setEmail] = useState('');
@@ -37,11 +42,22 @@ export function LoginPanel() {
   const [busy, setBusy] = useState(false);
   const [localErr, setLocalErr] = useState('');
   const [localMsg, setLocalMsg] = useState('');
+  const [resetToken, setResetToken] = useState(query.get('token') ?? '');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmNewPassword, setConfirmNewPassword] = useState('');
 
   const displayError = localErr || error;
 
   function switchMethod(next: 'otp' | 'email') {
+    setAuthMode('signin');
     setMethod(next);
+    setLocalErr('');
+    setLocalMsg('');
+    clearError();
+  }
+
+  function switchAuthMode(next: 'signin' | 'forgot' | 'reset') {
+    setAuthMode(next);
     setLocalErr('');
     setLocalMsg('');
     clearError();
@@ -112,6 +128,61 @@ export function LoginPanel() {
       goTo(stored.role === 'founder' ? '/founder' : '/');
     } catch (e) {
       setLocalErr((e as Error).message ?? 'Could not verify OTP');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleForgotPassword() {
+    if (!email.trim()) {
+      setLocalErr('Enter your registered email.');
+      return;
+    }
+    setBusy(true);
+    setLocalErr('');
+    setLocalMsg('');
+    clearError();
+    try {
+      const resp = await authApi.forgotPassword(email.trim());
+      setLocalMsg(resp.message);
+      toastBus.success('Password reset link sent (if account exists).');
+    } catch (e) {
+      setLocalErr((e as Error).message ?? 'Could not send reset link');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleResetPassword() {
+    if (!resetToken.trim()) {
+      setLocalErr('Reset token is required.');
+      return;
+    }
+    if (newPassword.length < 8) {
+      setLocalErr('New password must be at least 8 characters.');
+      return;
+    }
+    if (newPassword !== confirmNewPassword) {
+      setLocalErr('Passwords do not match.');
+      return;
+    }
+    setBusy(true);
+    setLocalErr('');
+    setLocalMsg('');
+    clearError();
+    try {
+      const resp = await authApi.resetPassword(resetToken.trim(), newPassword);
+      setLocalMsg(resp.message);
+      toastBus.success('Password reset successful. You can now sign in.');
+      setAuthMode('signin');
+      setMethod('email');
+      setPassword('');
+      setNewPassword('');
+      setConfirmNewPassword('');
+      const cleanUrl = `${window.location.origin}/login`;
+      window.history.replaceState({}, '', cleanUrl);
+    } catch (e) {
+      setLocalErr((e as Error).message ?? 'Could not reset password');
     } finally {
       setBusy(false);
     }
@@ -207,29 +278,81 @@ export function LoginPanel() {
         <p className="eyebrow">Sign In · Restaurant Management</p>
         <h2 className="serif login-title">Welcome back.</h2>
         <p className="login-sub">
-          Sign in using phone OTP or email and password.
+          {authMode === 'signin'
+            ? 'Sign in using phone OTP or email and password.'
+            : authMode === 'forgot'
+            ? 'Enter your registered email to receive a password reset link.'
+            : 'Set your new password using the reset token from your email link.'}
         </p>
 
-        <div className="login-method-switch">
-          <button
-            type="button"
-            className="login-link-btn"
-            onClick={() => switchMethod('otp')}
-            disabled={method === 'otp' || busy}
-          >
-            Phone OTP
-          </button>
-          <button
-            type="button"
-            className="login-link-btn"
-            onClick={() => switchMethod('email')}
-            disabled={method === 'email' || busy}
-          >
-            Email Login
-          </button>
-        </div>
+        {authMode === 'signin' && (
+          <div className="login-method-switch">
+            <button
+              type="button"
+              className="login-link-btn"
+              onClick={() => switchMethod('otp')}
+              disabled={method === 'otp' || busy}
+            >
+              Phone OTP
+            </button>
+            <button
+              type="button"
+              className="login-link-btn"
+              onClick={() => switchMethod('email')}
+              disabled={method === 'email' || busy}
+            >
+              Email Login
+            </button>
+          </div>
+        )}
 
-        {method === 'otp' ? (
+        {authMode === 'forgot' ? (
+          <>
+            <label className="login-field">
+              <span>Registered email</span>
+              <input
+                type="email"
+                value={email}
+                onChange={e => setEmail(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && handleForgotPassword()}
+                placeholder="owner@restaurant.com"
+              />
+            </label>
+          </>
+        ) : authMode === 'reset' ? (
+          <>
+            <label className="login-field">
+              <span>Reset token</span>
+              <input
+                type="text"
+                value={resetToken}
+                onChange={e => setResetToken(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && handleResetPassword()}
+                placeholder="Paste token from reset link"
+              />
+            </label>
+            <label className="login-field">
+              <span>New password</span>
+              <input
+                type="password"
+                value={newPassword}
+                onChange={e => setNewPassword(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && handleResetPassword()}
+                placeholder="Minimum 8 characters"
+              />
+            </label>
+            <label className="login-field">
+              <span>Confirm new password</span>
+              <input
+                type="password"
+                value={confirmNewPassword}
+                onChange={e => setConfirmNewPassword(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && handleResetPassword()}
+                placeholder="Repeat new password"
+              />
+            </label>
+          </>
+        ) : method === 'otp' ? (
           <>
             <label className="login-field">
               <span>Phone number</span>
@@ -292,16 +415,28 @@ export function LoginPanel() {
         <button
           type="button"
           className="login-submit"
-          onClick={method === 'otp' ? (otpSent ? handleVerifyOtp : handleSendOtp) : handleEmailLogin}
+          onClick={
+            authMode === 'forgot'
+              ? handleForgotPassword
+              : authMode === 'reset'
+              ? handleResetPassword
+              : method === 'otp'
+              ? (otpSent ? handleVerifyOtp : handleSendOtp)
+              : handleEmailLogin
+          }
           disabled={busy}
         >
-          {method === 'otp'
+          {authMode === 'forgot'
+            ? (busy ? 'Sending reset link…' : 'Send Reset Link')
+            : authMode === 'reset'
+            ? (busy ? 'Resetting password…' : 'Reset Password →')
+            : method === 'otp'
             ? (busy ? (otpSent ? 'Verifying…' : 'Sending OTP…') : otpSent ? 'Verify OTP & Enter Cafyz →' : 'Send OTP')
             : (busy ? 'Signing in…' : 'Sign in with Email →')}
         </button>
 
         <div className="login-secondary-links">
-          {method === 'otp' && otpSent && (
+          {authMode === 'signin' && method === 'otp' && otpSent && (
             <button
               type="button"
               className="login-link-btn"
@@ -309,6 +444,26 @@ export function LoginPanel() {
               disabled={busy}
             >
               Resend OTP
+            </button>
+          )}
+          {authMode === 'signin' && method === 'email' && (
+            <button
+              type="button"
+              className="login-link-btn"
+              onClick={() => switchAuthMode('forgot')}
+              disabled={busy}
+            >
+              Forgot password?
+            </button>
+          )}
+          {authMode !== 'signin' && (
+            <button
+              type="button"
+              className="login-link-btn"
+              onClick={() => switchAuthMode('signin')}
+              disabled={busy}
+            >
+              Back to sign in
             </button>
           )}
         </div>
@@ -386,6 +541,41 @@ export function LoginPanel() {
             <button type="button" className="login-submit" onClick={handleEmailLogin} disabled={busy}>
               {busy ? 'Signing in…' : 'Sign in with Email →'}
             </button>
+            <div className="login-mobile-reset-links">
+              <button type="button" className="login-link-btn" onClick={() => switchAuthMode('forgot')} disabled={busy}>
+                Forgot password?
+              </button>
+              <button type="button" className="login-link-btn" onClick={() => switchAuthMode('reset')} disabled={busy}>
+                Have reset token?
+              </button>
+            </div>
+            {authMode === 'forgot' && (
+              <div className="login-mobile-reset-card">
+                <p className="eyebrow">Password Reset</p>
+                <button type="button" className="login-submit" onClick={handleForgotPassword} disabled={busy || !email.trim()}>
+                  {busy ? 'Sending reset link…' : 'Send Reset Link'}
+                </button>
+              </div>
+            )}
+            {authMode === 'reset' && (
+              <div className="login-mobile-reset-card">
+                <label className="login-field">
+                  <span>Reset token</span>
+                  <input type="text" value={resetToken} onChange={e => setResetToken(e.target.value)} placeholder="Paste token" />
+                </label>
+                <label className="login-field">
+                  <span>New password</span>
+                  <input type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)} placeholder="Minimum 8 chars" />
+                </label>
+                <label className="login-field">
+                  <span>Confirm password</span>
+                  <input type="password" value={confirmNewPassword} onChange={e => setConfirmNewPassword(e.target.value)} placeholder="Repeat password" />
+                </label>
+                <button type="button" className="login-submit" onClick={handleResetPassword} disabled={busy}>
+                  {busy ? 'Resetting…' : 'Reset Password'}
+                </button>
+              </div>
+            )}
           </>
         ) : (
           <>
