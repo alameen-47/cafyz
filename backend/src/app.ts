@@ -18,6 +18,7 @@ import inquiryRoutes     from './routes/inquiries.js';
 import { requirePlan }   from './middleware/planGuard.js';
 import { requireAuth }   from './middleware/auth.js';
 import { requireActiveSubscription } from './middleware/subscriptionGuard.js';
+import { requireSectionAccess } from './middleware/sectionAccess.js';
 import {
   authIdentityLimiter,
   authIpLimiter,
@@ -73,14 +74,14 @@ app.use('/api/auth/pin',        authIpLimiter, authIdentityLimiter);
 app.use('/api/auth/request-otp', authIpLimiter, authIdentityLimiter, otpLimiter);
 app.use('/api/auth/verify-otp',  authIpLimiter, authIdentityLimiter, otpLimiter);
 app.use('/api/auth',             authRoutes);
-app.use('/api/users',            mutationLimiter, requireAuth, requireActiveSubscription, userRoutes);
-app.use('/api/menu',             mutationLimiter, requireAuth, requireActiveSubscription, menuRoutes);
-app.use('/api/orders',           mutationLimiter, requireAuth, requireActiveSubscription, orderRoutes);
-app.use('/api/tables',           mutationLimiter, requireAuth, requireActiveSubscription, tableRoutes);
-app.use('/api/kds',              mutationLimiter, requireAuth, requireActiveSubscription, requirePlan('pro'),     kdsRoutes);
-app.use('/api/reservations',     mutationLimiter, requireAuth, requireActiveSubscription, requirePlan('premium'), reservationRoutes);
-app.use('/api/inventory',        mutationLimiter, requireAuth, requireActiveSubscription, requirePlan('pro'),     inventoryRoutes);
-app.use('/api/dashboard',        requireAuth, requireActiveSubscription, requirePlan('pro'), dashboardRoutes);
+app.use('/api/users',            mutationLimiter, requireAuth, requireActiveSubscription, requireSectionAccess('roles'), userRoutes);
+app.use('/api/menu',             mutationLimiter, requireAuth, requireActiveSubscription, requireSectionAccess('menu'), menuRoutes);
+app.use('/api/orders',           mutationLimiter, requireAuth, requireActiveSubscription, requireSectionAccess('pos'), orderRoutes);
+app.use('/api/tables',           mutationLimiter, requireAuth, requireActiveSubscription, requireSectionAccess('tableSetup'), tableRoutes);
+app.use('/api/kds',              mutationLimiter, requireAuth, requireActiveSubscription, requireSectionAccess('kds'), requirePlan('pro'),     kdsRoutes);
+app.use('/api/reservations',     mutationLimiter, requireAuth, requireActiveSubscription, requireSectionAccess('manager'), requirePlan('premium'), reservationRoutes);
+app.use('/api/inventory',        mutationLimiter, requireAuth, requireActiveSubscription, requireSectionAccess('inventory'), requirePlan('pro'),     inventoryRoutes);
+app.use('/api/dashboard',        requireAuth, requireActiveSubscription, requireSectionAccess('reports'), requirePlan('pro'), dashboardRoutes);
 app.use('/api/restaurants',      mutationLimiter, restaurantRoutes);
 app.use('/api/licenses',         mutationLimiter, licenseRoutes);
 app.use('/api/founder',          mutationLimiter, founderRoutes);

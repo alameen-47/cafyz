@@ -14,11 +14,30 @@ export function ToastViewport() {
     });
   }, []);
 
+  function dismiss(id: string) {
+    setToasts((prev) => prev.filter((t) => t.id !== id));
+  }
+
+  function iconForTone(tone: ToastMessage['tone']) {
+    if (tone === 'success') return '✓';
+    if (tone === 'error') return '!';
+    return 'i';
+  }
+
   return (
     <div className="toast-viewport" aria-live="polite" aria-atomic="true">
       {toasts.map((toast) => (
         <div key={toast.id} className={`toast-msg toast-${toast.tone}`}>
-          {toast.text}
+          <span className="toast-icon" aria-hidden>{iconForTone(toast.tone)}</span>
+          <div className="toast-body">
+            <p className="toast-title">
+              {toast.tone === 'success' ? 'Success' : toast.tone === 'error' ? 'Attention' : 'Info'}
+            </p>
+            <p className="toast-text">{toast.text}</p>
+          </div>
+          <button type="button" className="toast-close" onClick={() => dismiss(toast.id)} aria-label="Dismiss notification">
+            ✕
+          </button>
         </div>
       ))}
     </div>

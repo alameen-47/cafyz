@@ -3,6 +3,7 @@ import type { Screen } from '@shared/types';
 import { authApi, restaurantApi, type ApiUser } from '../services/api';
 import { syncRestaurantLogoCache } from '../services/restaurantLogoStorage';
 import { getAllowedScreens, type Plan } from '../config/planAccess';
+import { effectiveScreenAccess, serializeScreenAccess, type ScreenAccessMap } from '../config/screenAccess';
 
 // ── Role & Plan types ─────────────────────────────────────────────────────────
 export type Role = 'owner' | 'manager' | 'cashier' | 'waiter' | 'kitchen' | 'founder';
@@ -17,6 +18,7 @@ export interface AuthUser {
   restaurant_id: string;
   restaurant_name: string;
   plan: Plan;
+  screenAccess: ScreenAccessMap;
   allowedScreens: Screen[];
 }
 
@@ -80,6 +82,7 @@ const KEY_USER  = 'cafyz_user';
 function buildAuthUser(u: ApiUser, restaurantName: string, plan: string): AuthUser {
   const safePlan = (['basic','pro','premium'].includes(plan) ? plan : 'basic') as Plan;
   const role = u.role as Role;
+  const screenAccess = effectiveScreenAccess(role, u.access_json);
   return {
     id:              u.id,
     name:            u.name,
@@ -90,7 +93,8 @@ function buildAuthUser(u: ApiUser, restaurantName: string, plan: string): AuthUs
     restaurant_id:   u.restaurant_id,
     restaurant_name: restaurantName,
     plan:            safePlan,
-    allowedScreens:  getAllowedScreens(safePlan, role),
+    screenAccess,
+    allowedScreens:  getAllowedScreens(safePlan, role).filter((s) => (screenAccess[s] ?? 'none') !== 'none'),
   };
 }
 
@@ -124,6 +128,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             email: parsed.email,
             phone: parsed.phone,
             role: parsed.role as ApiUser['role'],
+            access_json: parsed.screenAccess ? serializeScreenAccess(parsed.screenAccess) : undefined,
             status: 'active',
             restaurant_id: parsed.restaurant_id,
             start_time: '—',

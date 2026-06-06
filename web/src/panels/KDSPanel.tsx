@@ -3,6 +3,7 @@ import { kdsApi, restaurantApi, type ApiKdsTicket, type ApiKdsTicketItem, type A
 import { connectBluetooth, connectUSB, disconnectPrinter, printKitchenTicket, printerStatus } from '../services/PrintService';
 import { PrinterHelpBanner } from '../components/PrinterHelpBanner';
 import { syncRestaurantLogoCache } from '../services/restaurantLogoStorage';
+import { toastBus } from '../services/toastBus';
 import './KDSPanel.css';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -188,8 +189,11 @@ export function KDSPanel() {
     try {
       const name = await connectBluetooth();
       setPrinter({ type: 'bluetooth', name });
+      toastBus.success(`Kitchen printer connected: ${name}`);
     } catch (e) {
-      setError((e as Error).message);
+      const msg = (e as Error).message;
+      setError(msg);
+      toastBus.error(`Bluetooth connection failed: ${msg}`);
     } finally {
       setPrintBusy(false);
     }
@@ -200,8 +204,11 @@ export function KDSPanel() {
     try {
       const name = await connectUSB();
       setPrinter({ type: 'usb', name });
+      toastBus.success(`Kitchen printer connected: ${name}`);
     } catch (e) {
-      setError((e as Error).message);
+      const msg = (e as Error).message;
+      setError(msg);
+      toastBus.error(`USB connection failed: ${msg}`);
     } finally {
       setPrintBusy(false);
     }
@@ -210,6 +217,38 @@ export function KDSPanel() {
   function disconnectKdsPrinter() {
     disconnectPrinter();
     setPrinter({ type: 'none', name: '' });
+    toastBus.info('Kitchen printer disconnected.');
+  }
+
+  async function testKitchenPrint() {
+    setPrintBusy(true);
+    setError('');
+    try {
+      const method = await printKitchenTicket({
+        restaurantName: restaurant?.name ?? 'Restaurant',
+        ticketId: `test-${Date.now()}`,
+        tableName: 'TEST',
+        serverName: 'Cafyz',
+        covers: 2,
+        station: station === 'All' ? 'EXPEDITE' : station.toUpperCase(),
+        items: [
+          { name: 'Printer test soup', qty: 1, mods: ['No salt'] },
+          { name: 'Printer test steak', qty: 2, mods: ['Medium'], alert: true },
+        ],
+        note: 'KDS test print from Kitchen Panel',
+      }, restaurant?.id);
+      toastBus.success(
+        method === 'dialog'
+          ? 'Kitchen test opened in print preview.'
+          : `Kitchen test sent via ${method}.`,
+      );
+    } catch (e) {
+      const msg = (e as Error).message;
+      setError(msg);
+      toastBus.error(`Kitchen print test failed: ${msg}`);
+    } finally {
+      setPrintBusy(false);
+    }
   }
 
   const load = useCallback(() => {
@@ -290,6 +329,9 @@ export function KDSPanel() {
             <button type="button" onClick={connectKdsUsb} disabled={printBusy}>🔌 Connect USB</button>
           </>
         )}
+        <button type="button" onClick={testKitchenPrint} disabled={printBusy}>
+          {printBusy ? 'Testing…' : '🖨 Test Kitchen Print'}
+        </button>
         {STATIONS.map(s => (
           <button
             key={s}

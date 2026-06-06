@@ -8,6 +8,12 @@ import { uid } from '../utils.js';
 import { sendMailReliable, smtpFrom } from '../services/email.js';
 import { appPath } from '../config/site.js';
 import { isValidPhoneE164, normalizePhone, sendOtpSms } from '../services/sms.js';
+import {
+  defaultAccessForRole,
+  parseAccessJson,
+  sanitizeAccessMap,
+  serializeAccessMap,
+} from '../services/sectionAccess.js';
 
 const router = Router();
 router.use(requireAuth);
@@ -65,14 +71,37 @@ const UserSchema = z.object({
   status:     z.enum(['active','break','off']).optional(),
   start_time: z.string().optional(),
   pin:        z.string().length(4).optional(),
+  access_json: z.union([
+    z.string(),
+    z.record(z.string(), z.enum(['none', 'view', 'edit'])),
+  ]).optional(),
 });
+
+function resolveAccessJson(
+  role: string,
+  raw?: string | Record<string, 'none' | 'view' | 'edit'>,
+  fallbackRaw?: unknown,
+) {
+  if (typeof raw === 'string') {
+    const parsed = parseAccessJson(raw);
+    return serializeAccessMap({ ...defaultAccessForRole(role), ...parsed });
+  }
+  if (raw && typeof raw === 'object') {
+    return serializeAccessMap({ ...defaultAccessForRole(role), ...sanitizeAccessMap(raw) });
+  }
+  const fallbackParsed = parseAccessJson(fallbackRaw);
+  return serializeAccessMap({
+    ...defaultAccessForRole(role),
+    ...fallbackParsed,
+  });
+}
 
 // GET /api/users
 router.get('/', requireRole('owner','manager'), async (req: AuthRequest, res, next) => {
   try {
     const rid = req.user!.restaurant_id;
     const rows = await getDb().execute({
-      sql: 'SELECT id,name,initials,email,phone,role,status,start_time,created_at FROM users WHERE restaurant_id=? ORDER BY name',
+      sql: 'SELECT id,restaurant_id,name,initials,email,phone,role,access_json,status,start_time,created_at FROM users WHERE restaurant_id=? ORDER BY name',
       args: [rid],
     });
     res.json(rows.rows);
@@ -84,7 +113,7 @@ router.get('/:id', requireRole('owner','manager'), async (req: AuthRequest, res,
   try {
     const rid = req.user!.restaurant_id;
     const row = await getDb().execute({
-      sql: 'SELECT id,name,initials,email,phone,role,status,start_time,created_at FROM users WHERE id=? AND restaurant_id=?',
+      sql: 'SELECT id,restaurant_id,name,initials,email,phone,role,access_json,status,start_time,created_at FROM users WHERE id=? AND restaurant_id=?',
       args: [(req.params.id as string), rid],
     });
     if (!row.rows.length) { res.status(404).json({ error: 'User not found' }); return; }
@@ -103,6 +132,7 @@ router.post('/', requireRole('owner','manager'), async (req: AuthRequest, res, n
     const generatedPin = generatePin();
     const pinToSave = data.pin ?? generatedPin;
     const ph = await bcrypt.hash(pinToSave, 10);
+    const accessJson = resolveAccessJson(data.role, data.access_json);
     const initials = data.initials ?? data.name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0,2);
     const emailNorm = data.email.trim().toLowerCase();
     const phoneNorm = data.phone ? normalizePhone(data.phone) : null;
@@ -130,8 +160,8 @@ router.post('/', requireRole('owner','manager'), async (req: AuthRequest, res, n
     }
 
     await getDb().execute({
-      sql: `INSERT INTO users(id,restaurant_id,name,initials,email,phone,password_hash,role,status,start_time,pin_hash) VALUES(?,?,?,?,?,?,?,?,?,?,?)`,
-      args: [id, rid, data.name, initials, emailNorm, phoneNorm, pw, data.role, data.status??'active', data.start_time??'—', ph],
+      sql: `INSERT INTO users(id,restaurant_id,name,initials,email,phone,password_hash,role,access_json,status,start_time,pin_hash) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)`,
+      args: [id, rid, data.name, initials, emailNorm, phoneNorm, pw, data.role, accessJson, data.status??'active', data.start_time??'—', ph],
     });
     const restRow = await getDb().execute({ sql: 'SELECT name FROM restaurants WHERE id=?', args: [rid] });
     const restaurantName = String(restRow.rows[0]?.name ?? 'your restaurant');
@@ -147,7 +177,7 @@ router.post('/', requireRole('owner','manager'), async (req: AuthRequest, res, n
       password: plainPassword,
     });
 
-    const row = await getDb().execute({ sql: 'SELECT id,name,initials,email,phone,role,status,start_time FROM users WHERE id=?', args: [id] });
+    const row = await getDb().execute({ sql: 'SELECT id,restaurant_id,name,initials,email,phone,role,access_json,status,start_time FROM users WHERE id=?', args: [id] });
     const statusParts: string[] = [];
     if (smsResult.ok && phoneNorm) {
       statusParts.push(
@@ -222,6 +252,14 @@ router.put('/:id', requireRole('owner','manager'), async (req: AuthRequest, res,
       args.push(phoneNorm);
     }
     if (data.role)       { sets.push('role=?');       args.push(data.role); }
+    if (data.access_json !== undefined) {
+      const nextRole = data.role ?? String(target.role);
+      sets.push('access_json=?');
+      args.push(resolveAccessJson(nextRole, data.access_json, target.access_json));
+    } else if (data.role) {
+      sets.push('access_json=?');
+      args.push(resolveAccessJson(data.role, undefined, target.access_json));
+    }
     if (data.status)     { sets.push('status=?');     args.push(data.status); }
     if (data.start_time) { sets.push('start_time=?'); args.push(data.start_time); }
     if (data.initials)   { sets.push('initials=?');   args.push(data.initials); }
@@ -232,7 +270,7 @@ router.put('/:id', requireRole('owner','manager'), async (req: AuthRequest, res,
     args.push((req.params.id as string));
     args.push(rid);
     await db.execute({ sql: `UPDATE users SET ${sets.join(',')} WHERE id=? AND restaurant_id=?`, args });
-    const row = await db.execute({ sql: 'SELECT id,name,initials,email,phone,role,status,start_time FROM users WHERE id=?', args: [(req.params.id as string)] });
+    const row = await db.execute({ sql: 'SELECT id,restaurant_id,name,initials,email,phone,role,access_json,status,start_time FROM users WHERE id=?', args: [(req.params.id as string)] });
     res.json(row.rows[0]);
   } catch (e) { next(e); }
 });

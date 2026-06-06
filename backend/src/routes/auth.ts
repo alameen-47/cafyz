@@ -94,7 +94,7 @@ router.post('/login', async (req, res, next) => {
       restaurant_id: user.restaurant_id,
       restaurant_name: user.restaurant_name,
       restaurant_plan: user.restaurant_plan,
-      user: { id: user.id, name: user.name, initials: user.initials, email: user.email, phone: user.phone, role: user.role, status: user.status },
+      user: { id: user.id, name: user.name, initials: user.initials, email: user.email, phone: user.phone, role: user.role, access_json: user.access_json, status: user.status, restaurant_id: user.restaurant_id },
     });
   } catch (e) { next(e); }
 });
@@ -227,7 +227,7 @@ router.post('/verify-otp', async (req, res, next) => {
       restaurant_name: user.restaurant_name,
       restaurant_plan: user.restaurant_plan,
       user: {
-        id: user.id, name: user.name, initials: user.initials, email: user.email, role: user.role, status: user.status, phone: user.phone,
+        id: user.id, name: user.name, initials: user.initials, email: user.email, role: user.role, access_json: user.access_json, status: user.status, phone: user.phone, restaurant_id: user.restaurant_id,
       },
     });
   } catch (e) { next(e); }
@@ -284,7 +284,7 @@ router.post('/pin', async (req, res, next) => {
       restaurant_id: u.restaurant_id,
       restaurant_name: u.restaurant_name,
       restaurant_plan: u.restaurant_plan ?? 'basic',
-      user: { id: u.id, name: u.name, initials: u.initials, email: u.email, phone: u.phone, role: u.role, status: u.status },
+      user: { id: u.id, name: u.name, initials: u.initials, email: u.email, phone: u.phone, role: u.role, access_json: u.access_json, status: u.status, restaurant_id: u.restaurant_id },
     });
   } catch (e) { next(e); }
 });
@@ -379,7 +379,7 @@ router.post('/reset-password', async (req, res, next) => {
 // GET /api/auth/me
 router.get('/me', requireAuth, async (req: AuthRequest, res, next) => {
   try {
-    const row = await getDb().execute({ sql: 'SELECT id,name,initials,email,phone,role,status FROM users WHERE id=?', args: [req.user!.id] });
+    const row = await getDb().execute({ sql: 'SELECT id,restaurant_id,name,initials,email,phone,role,access_json,status FROM users WHERE id=?', args: [req.user!.id] });
     if (!row.rows.length) { res.status(404).json({ error: 'User not found' }); return; }
     res.json(row.rows[0]);
   } catch (e) { next(e); }

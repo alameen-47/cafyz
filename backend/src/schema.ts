@@ -33,6 +33,7 @@ export async function runMigrations() {
       phone         TEXT,
       password_hash TEXT NOT NULL,
       role          TEXT NOT NULL CHECK(role IN ('owner','manager','cashier','waiter','kitchen','founder')),
+      access_json   TEXT NOT NULL DEFAULT '{}',
       status        TEXT NOT NULL DEFAULT 'active' CHECK(status IN ('active','break','off')),
       start_time    TEXT NOT NULL DEFAULT '—',
       pin_hash      TEXT,
@@ -285,6 +286,7 @@ export async function runMigrations() {
   await addCol(`ALTER TABLE restaurants ADD COLUMN tax_type TEXT NOT NULL DEFAULT 'VAT'`, 'tax_type');
   await addCol(`ALTER TABLE restaurants ADD COLUMN tax_included INTEGER NOT NULL DEFAULT 0`, 'tax_included');
   await addCol(`ALTER TABLE users ADD COLUMN phone TEXT`, 'phone');
+  await addCol(`ALTER TABLE users ADD COLUMN access_json TEXT NOT NULL DEFAULT '{}'`, 'access_json');
   await addCol(`ALTER TABLE users ADD COLUMN pin_device_id TEXT`, 'pin_device_id');
   await db.execute(`CREATE INDEX IF NOT EXISTS idx_users_phone ON users(phone)`);
   await db.execute(`CREATE UNIQUE INDEX IF NOT EXISTS idx_users_phone_unique ON users(phone) WHERE phone IS NOT NULL`);

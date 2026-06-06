@@ -299,6 +299,7 @@ export interface LoginResponse {
 export interface ApiUser {
   id: string; restaurant_id: string; name: string; initials: string; email: string; phone?: string;
   role: 'owner' | 'manager' | 'cashier' | 'waiter' | 'kitchen' | 'founder';
+  access_json?: string;
   status: 'active' | 'break' | 'off'; start_time: string; created_at?: string;
 }
 
@@ -415,6 +416,7 @@ export interface ApiSoldItemsResponse {
 // ── Payload Types ─────────────────────────────────────────────────────────────
 export interface CreateUserPayload {
   name: string; email: string; phone: string; role: string; password?: string; pin?: string;
+  access_json?: string | Record<string, 'none' | 'view' | 'edit'>;
   status?: string; start_time?: string; initials?: string;
 }
 

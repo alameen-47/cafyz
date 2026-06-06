@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { menuApi, menuCategoriesApi, ordersApi, restaurantApi, tablesApi, type ApiMenuCategory, type ApiMenuItem, type ApiRestaurant, type ApiTable } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import {
-  connectBluetooth, connectUSB, disconnectPrinter, printerStatus, print as printReceipt,
+  connectBluetooth, connectUSB, disconnectPrinter, printerStatus, print as printReceipt, printKitchenTicket, printTest,
   type ReceiptData,
 } from '../services/PrintService';
 import { PrinterHelpBanner } from '../components/PrinterHelpBanner';
@@ -11,6 +11,7 @@ import { getRestaurantLogo, syncRestaurantLogoCache } from '../services/restaura
 import { buildMenuCategoryTabs, defaultCategorySlug } from '../utils/menuCategories';
 import { MenuItemImage } from '../components/MenuItemImage';
 import { Modal } from '../components/Modal';
+import { toastBus } from '../services/toastBus';
 import './POSPanel.css';
 
 type CartItem     = { menuItem: ApiMenuItem; qty: number; mods: string[] };
@@ -218,7 +219,12 @@ export function POSPanel() {
       const name = await connectBluetooth();
       setPrinter({ type: 'bluetooth', name });
       setShowConnect(false);
-    } catch (e) { setPrintError((e as Error).message); }
+      toastBus.success(`Printer connected: ${name}`);
+    } catch (e) {
+      const msg = (e as Error).message;
+      setPrintError(msg);
+      toastBus.error(`Bluetooth connection failed: ${msg}`);
+    }
     finally { setPrintBusy(false); }
   }
 
@@ -228,13 +234,19 @@ export function POSPanel() {
       const name = await connectUSB();
       setPrinter({ type: 'usb', name });
       setShowConnect(false);
-    } catch (e) { setPrintError((e as Error).message); }
+      toastBus.success(`Printer connected: ${name}`);
+    } catch (e) {
+      const msg = (e as Error).message;
+      setPrintError(msg);
+      toastBus.error(`USB connection failed: ${msg}`);
+    }
     finally { setPrintBusy(false); }
   }
 
   function handleDisconnect() {
     disconnectPrinter();
     setPrinter({ type: 'none', name: '' });
+    toastBus.info('Printer disconnected.');
   }
 
   function buildReceiptData(payMethod?: string): ReceiptData {
@@ -294,11 +306,111 @@ export function POSPanel() {
         user?.restaurant_id ?? restaurant?.id,
       );
       setPrintOk(true);
+      toastBus.success(
+        method === 'dialog'
+          ? 'Receipt opened in print preview.'
+          : `Receipt printed via ${method}.`,
+      );
       if (method !== 'dialog') {
         setTimeout(() => setPrintOk(false), 3000);
       }
-    } catch (e) { setPrintError((e as Error).message); }
+    } catch (e) {
+      const msg = (e as Error).message;
+      setPrintError(msg);
+      toastBus.error(`Receipt print failed: ${msg}`);
+    }
     finally { setPrintBusy(false); }
+  }
+
+  async function checkKitchenPrinter() {
+    setPrintBusy(true);
+    setPrintError('');
+    try {
+      const method = await printKitchenTicket({
+        restaurantName: restaurant?.name || user?.restaurant_name || 'Restaurant',
+        ticketId: `kds-check-${Date.now()}`,
+        tableName: tableObj?.name || 'POS-TEST',
+        serverName: user?.name || 'Cafyz',
+        covers: 2,
+        station: 'EXPEDITE',
+        items: [
+          { name: 'Kitchen Printer Check', qty: 1, mods: ['From POS'] },
+          { name: 'Line Test Item', qty: 1, alert: true },
+        ],
+        note: 'Kitchen connection test from POS',
+      }, user?.restaurant_id ?? restaurant?.id);
+      toastBus.success(
+        method === 'dialog'
+          ? 'Kitchen printer check opened in print preview.'
+          : `Kitchen printer check sent via ${method}.`,
+      );
+    } catch (e) {
+      const msg = (e as Error).message;
+      setPrintError(msg);
+      toastBus.error(`Kitchen printer check failed: ${msg}`);
+      throw e;
+    } finally {
+      setPrintBusy(false);
+    }
+  }
+
+  async function checkCashierPrinter() {
+    setPrintBusy(true);
+    setPrintError('');
+    try {
+      const method = await printTest({
+        restaurantName: restaurant?.name || user?.restaurant_name || 'Restaurant',
+        restaurantId: user?.restaurant_id ?? restaurant?.id,
+        logoUrl: getRestaurantLogo(user?.restaurant_id ?? restaurant?.id, restaurant?.logo_url),
+        addressLine: [restaurant?.address_line1, restaurant?.city, restaurant?.country].filter(Boolean).join(', ') || undefined,
+        phone: restaurant?.contact_phone || undefined,
+      });
+      toastBus.success(
+        method === 'dialog'
+          ? 'Cashier printer check opened in print preview.'
+          : `Cashier printer check sent via ${method}.`,
+      );
+    } catch (e) {
+      const msg = (e as Error).message;
+      setPrintError(msg);
+      toastBus.error(`Cashier printer check failed: ${msg}`);
+      throw e;
+    } finally {
+      setPrintBusy(false);
+    }
+  }
+
+  async function checkBothPrinters() {
+    setPrintBusy(true);
+    setPrintError('');
+    try {
+      const kitchenMethod = await printKitchenTicket({
+        restaurantName: restaurant?.name || user?.restaurant_name || 'Restaurant',
+        ticketId: `both-check-${Date.now()}`,
+        tableName: tableObj?.name || 'POS-TEST',
+        serverName: user?.name || 'Cafyz',
+        covers: 2,
+        station: 'EXPEDITE',
+        items: [{ name: 'Dual test · kitchen', qty: 1 }],
+      }, user?.restaurant_id ?? restaurant?.id);
+
+      const cashierMethod = await printTest({
+        restaurantName: restaurant?.name || user?.restaurant_name || 'Restaurant',
+        restaurantId: user?.restaurant_id ?? restaurant?.id,
+        logoUrl: getRestaurantLogo(user?.restaurant_id ?? restaurant?.id, restaurant?.logo_url),
+      });
+
+      toastBus.success(
+        `Both checks complete · Kitchen: ${kitchenMethod} · Cashier: ${cashierMethod}`,
+        4200,
+      );
+    } catch (e) {
+      const msg = (e as Error).message;
+      setPrintError(msg);
+      toastBus.error(`Dual printer check failed: ${msg}`);
+    } finally {
+      setPrintBusy(false);
+    }
   }
 
   // ── Comp ───────────────────────────────────────────────────────────────────
@@ -412,6 +524,17 @@ export function POSPanel() {
           {printOk && (
             <p className="pos-printer-ok">✓ Sent to printer</p>
           )}
+          <div className="pos-printer-checks">
+            <button type="button" className="pos-printer-check-btn" onClick={checkKitchenPrinter} disabled={printBusy}>
+              {printBusy ? '…' : 'Kitchen Printer Check'}
+            </button>
+            <button type="button" className="pos-printer-check-btn" onClick={checkCashierPrinter} disabled={printBusy}>
+              {printBusy ? '…' : 'Cashier Printer Check'}
+            </button>
+            <button type="button" className="pos-printer-check-btn both" onClick={checkBothPrinters} disabled={printBusy}>
+              {printBusy ? '…' : 'One Click Check Both'}
+            </button>
+          </div>
         </div>
         <Modal
           open={showConnect}

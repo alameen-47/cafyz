@@ -1,6 +1,13 @@
 import { useState, useEffect } from 'react';
+import type { Screen } from '@shared/types';
 import { usersApi, type ApiUser } from '../services/api';
 import { useAuth, ROLE_LABELS, type Role } from '../context/AuthContext';
+import {
+  ACCESS_MANAGED_SCREENS,
+  effectiveScreenAccess,
+  type AccessLevel,
+  type ScreenAccessMap,
+} from '../config/screenAccess';
 import './RolesPanel.css';
 
 const ROLES: Exclude<Role, 'owner' | 'founder'>[] = ['manager', 'cashier', 'waiter', 'kitchen'];
@@ -22,6 +29,26 @@ const ROLE_COLOR: Record<Role, string> = {
 };
 
 const STATUS_COLOR = { active: 'var(--success)', break: 'var(--warning)', off: 'var(--text3)' };
+const ACCESS_LEVELS: AccessLevel[] = ['none', 'view', 'edit'];
+const ACCESS_LABELS: Record<AccessLevel, string> = { none: 'No Access', view: 'View', edit: 'Edit' };
+const ACCESS_SCREEN_LABELS: Record<Screen, string> = {
+  login: 'Login',
+  manager: 'Overview',
+  pos: 'Point of Sale',
+  kds: 'Kitchen',
+  waiter: 'Floor Plan',
+  tableSetup: 'Table Setup',
+  menu: 'Menu',
+  inventory: 'Inventory',
+  staff: 'Staff',
+  reports: 'Reports',
+  roles: 'Role Management',
+  license: 'License',
+  founder: 'Founder',
+  mobileOrders: 'Mobile Orders',
+  mobileTableDetail: 'Mobile Table Detail',
+  mobileAddItem: 'Mobile Add Item',
+};
 
 type DraftUser = {
   name: string; email: string; phone: string; role: Exclude<Role,'owner'|'founder'>;
@@ -44,6 +71,8 @@ export function RolesPanel() {
   const [error,         setError]        = useState('');
   const [notice,        setNotice]       = useState('');
   const [loading,       setLoading]      = useState(true);
+  const [accessEditId,  setAccessEditId] = useState<string | null>(null);
+  const [accessDraft,   setAccessDraft]  = useState<ScreenAccessMap>({});
 
   useEffect(() => {
     usersApi.list()
@@ -55,6 +84,8 @@ export function RolesPanel() {
   const visible = filterRole === 'all'
     ? staff
     : staff.filter(s => s.role === filterRole);
+
+  const accessTarget = accessEditId ? staff.find(s => s.id === accessEditId) ?? null : null;
 
   // ── Edit ──────────────────────────────────────────────────────────────────
   function startEdit(s: ApiUser) {
@@ -76,6 +107,46 @@ export function RolesPanel() {
       setEditId(null);
     } catch (e) { setError((e as Error).message); }
     finally { setBusy(false); }
+  }
+
+  function accessSummary(s: ApiUser) {
+    const access = effectiveScreenAccess(s.role, s.access_json);
+    let edit = 0;
+    let view = 0;
+    for (const screen of ACCESS_MANAGED_SCREENS) {
+      const level = access[screen] ?? 'none';
+      if (level === 'edit') edit += 1;
+      else if (level === 'view') view += 1;
+    }
+    return { edit, view };
+  }
+
+  function startAccessEdit(s: ApiUser) {
+    setAccessEditId(s.id);
+    setAccessDraft(effectiveScreenAccess(s.role, s.access_json));
+    setEditId(null);
+    setAdding(false);
+    setNotice('');
+    setError('');
+  }
+
+  async function saveAccess() {
+    if (!accessEditId || !accessTarget) return;
+    setBusy(true);
+    setError('');
+    setNotice('');
+    try {
+      const updated = await usersApi.update(accessEditId, {
+        access_json: accessDraft,
+      });
+      setStaff(prev => prev.map(s => (s.id === accessEditId ? updated : s)));
+      setNotice(`Access rules updated for ${updated.name}.`);
+      setAccessEditId(null);
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
   }
 
   // ── Add ───────────────────────────────────────────────────────────────────
@@ -226,6 +297,10 @@ export function RolesPanel() {
               </>
             ) : (
               <>
+                {(() => {
+                  const summary = accessSummary(s);
+                  return (
+                    <>
                 <div className="roles-row-member">
                   <div className="roles-avatar" style={{ background: `${ROLE_COLOR[s.role as Role]}18`, color: ROLE_COLOR[s.role as Role] }}>
                     {s.initials}
@@ -248,9 +323,12 @@ export function RolesPanel() {
                   <span className="roles-status-dot" style={{ background: STATUS_COLOR[s.status] }} />
                   {s.status.charAt(0).toUpperCase() + s.status.slice(1)}
                 </button>
-                <span className="mono roles-start">{s.start_time}</span>
+                <span className="mono roles-start" title={`Edit: ${summary.edit} · View: ${summary.view}`}>
+                  {s.start_time} · E{summary.edit}/V{summary.view}
+                </span>
                 {canEdit && (
                   <div className="roles-row-actions">
+                    <button className="roles-edit-btn" onClick={() => startAccessEdit(s)}>Access</button>
                     <button className="roles-edit-btn" onClick={() => startEdit(s)}>Edit</button>
                     {confirmDelete === s.id ? (
                       <>
@@ -264,6 +342,9 @@ export function RolesPanel() {
                     )}
                   </div>
                 )}
+                    </>
+                  );
+                })()}
               </>
             )}
           </div>
@@ -273,6 +354,53 @@ export function RolesPanel() {
           <p className="roles-empty">No staff members with this role.</p>
         )}
       </div>
+
+      {canEdit && accessTarget && (
+        <div className="roles-access-editor">
+          <div className="roles-access-head">
+            <div>
+              <p className="eyebrow">Section Access · {accessTarget.name}</p>
+              <h3 className="serif roles-access-title">
+                Configure access by section ({ROLE_LABELS[accessTarget.role as Role]})
+              </h3>
+              <p className="roles-access-sub">
+                Choose `View` for read-only and `Edit` for full actions.
+              </p>
+            </div>
+            <div className="roles-form-actions">
+              <button className="roles-save-btn" onClick={saveAccess} disabled={busy}>
+                {busy ? 'Saving…' : 'Save Access'}
+              </button>
+              <button className="roles-cancel-btn" onClick={() => setAccessEditId(null)}>
+                Cancel
+              </button>
+            </div>
+          </div>
+          <div className="roles-access-grid">
+            {ACCESS_MANAGED_SCREENS.map((screen) => (
+              <label key={screen} className="roles-access-row">
+                <span className="roles-access-label">{ACCESS_SCREEN_LABELS[screen]}</span>
+                <select
+                  className="roles-select"
+                  value={accessDraft[screen] ?? 'none'}
+                  onChange={(e) =>
+                    setAccessDraft(prev => ({
+                      ...prev,
+                      [screen]: e.target.value as AccessLevel,
+                    }))
+                  }
+                >
+                  {ACCESS_LEVELS.map((level) => (
+                    <option key={level} value={level}>
+                      {ACCESS_LABELS[level]}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
