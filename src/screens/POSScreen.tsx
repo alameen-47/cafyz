@@ -19,6 +19,7 @@ import type { Screen } from '../types';
 interface POSScreenProps {
   onNavigate: (screen: Screen) => void;
   sidebarActive?: Screen;
+  restaurantName?: string;
 }
 
 const DISHES = [
@@ -54,7 +55,11 @@ const INITIAL_ORDER: OrderItem[] = [
   { id: 1, qty: 1, mods: [] },
 ];
 
-export function POSScreen({ onNavigate, sidebarActive = 'pos' }: POSScreenProps) {
+export function POSScreen({
+  onNavigate,
+  sidebarActive = 'pos',
+  restaurantName = 'Cafyz',
+}: POSScreenProps) {
   const { width } = useWindowDimensions();
   const isTablet = width >= 768;
   const [cat, setCat] = useState('mains');
@@ -312,7 +317,10 @@ export function POSScreen({ onNavigate, sidebarActive = 'pos' }: POSScreenProps)
       <View style={styles.root}>
         <Sidebar active={sidebarActive} onNavigate={onNavigate} />
         <View style={{ flex: 1, flexDirection: 'column' }}>
-          <TopBar crumb={['Service', 'Point of Sale']} clock="19:42" cover="Dinner Service · Cover 84" />
+          <TopBar
+            crumb={['Service', 'Point of Sale']}
+            restaurantName={restaurantName}
+          />
           <View style={styles.mainContent}>
             {productGrid}
             {orderSummary}
@@ -325,7 +333,7 @@ export function POSScreen({ onNavigate, sidebarActive = 'pos' }: POSScreenProps)
   return (
     <View style={styles.root}>
       <View style={{ flex: 1, flexDirection: 'column' }}>
-        <TopBar crumb={['Service', 'POS']} clock="19:42" cover="Dinner · Cover 84" />
+        <TopBar crumb={['Service', 'POS']} restaurantName={restaurantName} />
         <View style={styles.mainContent}>
           {productGrid}
         </View>

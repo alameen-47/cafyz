@@ -1,7 +1,6 @@
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
-import rateLimit from 'express-rate-limit';
 
 import authRoutes        from './routes/auth.js';
 import userRoutes        from './routes/users.js';
@@ -19,31 +18,19 @@ import inquiryRoutes     from './routes/inquiries.js';
 import { requirePlan }   from './middleware/planGuard.js';
 import { requireAuth }   from './middleware/auth.js';
 import { requireActiveSubscription } from './middleware/subscriptionGuard.js';
+import {
+  authIdentityLimiter,
+  authIpLimiter,
+  globalLimiter,
+  inquiryLimiter,
+  mutationLimiter,
+  otpLimiter,
+} from './middleware/rateLimits.js';
 import { errorHandler, notFound } from './middleware/errorHandler.js';
 
 const app = express();
 app.set('trust proxy', 1);
-const isTestEnv = process.env.NODE_ENV === 'test';
-
-const globalLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: isTestEnv ? 100000 : 500,
-  standardHeaders: true,
-});
-
-const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: isTestEnv ? 100000 : 25,
-  standardHeaders: true,
-  message: { error: 'Too many authentication attempts. Try again shortly.' },
-});
-
-const inquiryLimiter = rateLimit({
-  windowMs: 60 * 60 * 1000,
-  max: isTestEnv ? 100000 : 20,
-  standardHeaders: true,
-  message: { error: 'Too many requests. Please try again later.' },
-});
+app.disable('x-powered-by');
 
 // ── Security ───────────────────────────────────────────────────────────────────
 app.use(helmet());
@@ -81,18 +68,22 @@ app.use(express.urlencoded({ extended: true }));
 app.get('/health', (_req, res) => res.json({ status: 'ok', ts: new Date().toISOString() }));
 
 // ── Routes ──────────────────────────────────────────────────────────────────────
-app.use('/api/auth',         authLimiter, authRoutes);
-app.use('/api/users',        requireAuth, requireActiveSubscription, userRoutes);
-app.use('/api/menu',         requireAuth, requireActiveSubscription, menuRoutes);
-app.use('/api/orders',       requireAuth, requireActiveSubscription, orderRoutes);
-app.use('/api/tables',       requireAuth, requireActiveSubscription, tableRoutes);
-app.use('/api/kds',          requireAuth, requireActiveSubscription, requirePlan('pro'),     kdsRoutes);
-app.use('/api/reservations', requireAuth, requireActiveSubscription, requirePlan('premium'), reservationRoutes);
-app.use('/api/inventory',    requireAuth, requireActiveSubscription, requirePlan('pro'),     inventoryRoutes);
-app.use('/api/dashboard',    requireAuth, requireActiveSubscription, requirePlan('pro'),     dashboardRoutes);
-app.use('/api/restaurants',  restaurantRoutes);
-app.use('/api/licenses',     licenseRoutes);
-app.use('/api/founder',      founderRoutes);
+app.use('/api/auth/login',      authIpLimiter, authIdentityLimiter);
+app.use('/api/auth/pin',        authIpLimiter, authIdentityLimiter);
+app.use('/api/auth/request-otp', authIpLimiter, authIdentityLimiter, otpLimiter);
+app.use('/api/auth/verify-otp',  authIpLimiter, authIdentityLimiter, otpLimiter);
+app.use('/api/auth',             authRoutes);
+app.use('/api/users',            mutationLimiter, requireAuth, requireActiveSubscription, userRoutes);
+app.use('/api/menu',             mutationLimiter, requireAuth, requireActiveSubscription, menuRoutes);
+app.use('/api/orders',           mutationLimiter, requireAuth, requireActiveSubscription, orderRoutes);
+app.use('/api/tables',           mutationLimiter, requireAuth, requireActiveSubscription, tableRoutes);
+app.use('/api/kds',              mutationLimiter, requireAuth, requireActiveSubscription, requirePlan('pro'),     kdsRoutes);
+app.use('/api/reservations',     mutationLimiter, requireAuth, requireActiveSubscription, requirePlan('premium'), reservationRoutes);
+app.use('/api/inventory',        mutationLimiter, requireAuth, requireActiveSubscription, requirePlan('pro'),     inventoryRoutes);
+app.use('/api/dashboard',        requireAuth, requireActiveSubscription, requirePlan('pro'), dashboardRoutes);
+app.use('/api/restaurants',      mutationLimiter, restaurantRoutes);
+app.use('/api/licenses',         mutationLimiter, licenseRoutes);
+app.use('/api/founder',          mutationLimiter, founderRoutes);
 app.use('/api/inquiries',    inquiryLimiter, inquiryRoutes);
 
 // ── Error handling ──────────────────────────────────────────────────────────────

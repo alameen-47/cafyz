@@ -16,6 +16,7 @@ import type { Screen } from '../types';
 interface ManagerScreenProps {
   onNavigate: (screen: Screen) => void;
   sidebarActive?: Screen;
+  restaurantName?: string;
 }
 
 const MANAGER_SECTIONS = new Set<Screen>(['manager', 'inventory', 'staff', 'reports']);
@@ -36,6 +37,7 @@ function crumbForSection(section: Screen): [string, string] {
 export function ManagerScreen({
   onNavigate,
   sidebarActive = 'manager',
+  restaurantName = 'Cafyz',
 }: ManagerScreenProps) {
   const { width } = useWindowDimensions();
   const isTablet = width >= 768;
@@ -95,8 +97,7 @@ export function ManagerScreen({
         <View style={styles.main}>
           <TopBar
             crumb={crumbForSection(section)}
-            clock="19:42"
-            cover="Saint · Paris 6e"
+            restaurantName={restaurantName}
           />
           {webContent}
         </View>
@@ -108,8 +109,7 @@ export function ManagerScreen({
     <View style={styles.root}>
       <TopBar
         crumb={crumbForSection(section)}
-        clock="19:42"
-        cover="Saint · Paris 6e"
+        restaurantName={restaurantName}
       />
       {webContent}
       <TabBar active="manager" onNavigate={onNavigate} />

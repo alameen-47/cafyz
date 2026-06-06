@@ -1,15 +1,44 @@
-import React from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Colors, Radius, Typography } from '../theme';
 
 interface TopBarProps {
   crumb: [string, string];
+  restaurantName?: string;
   clock?: string;
   cover?: string;
   rightContent?: React.ReactNode;
 }
 
-export function TopBar({ crumb, clock = '19:42', cover = 'Service · Dinner', rightContent }: TopBarProps) {
+export function TopBar({
+  crumb,
+  restaurantName,
+  clock,
+  cover,
+  rightContent,
+}: TopBarProps) {
+  const [now, setNow] = useState(() => new Date());
+
+  useEffect(() => {
+    const timer = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const liveClock = useMemo(
+    () =>
+      now.toLocaleTimeString([], {
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: false,
+      }),
+    [now],
+  );
+
+  const displayRestaurantName =
+    restaurantName?.trim() || cover?.trim() || 'Cafyz';
+  const displayClock = clock?.trim() || liveClock;
+
   return (
     <View style={styles.bar}>
       {/* Breadcrumb */}
@@ -22,9 +51,9 @@ export function TopBar({ crumb, clock = '19:42', cover = 'Service · Dinner', ri
       {/* Center pill */}
       <View style={styles.centerPill}>
         <View style={styles.statusDot} />
-        <Text style={styles.coverText}>{cover}</Text>
+        <Text style={styles.coverText}>{displayRestaurantName}</Text>
         <Text style={styles.sep}>·</Text>
-        <Text style={styles.clockText}>{clock}</Text>
+        <Text style={styles.clockText}>{displayClock}</Text>
       </View>
 
       {/* Right actions */}

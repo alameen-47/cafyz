@@ -19,6 +19,11 @@ async function start() {
   const server = app.listen(PORT, () => {
     console.log(`🍽  Cafyz API running on http://localhost:${PORT}`);
   });
+  // Slowloris / connection abuse hardening.
+  server.requestTimeout = Number(process.env.SERVER_REQUEST_TIMEOUT_MS ?? 30_000);
+  server.headersTimeout = Number(process.env.SERVER_HEADERS_TIMEOUT_MS ?? 15_000);
+  server.keepAliveTimeout = Number(process.env.SERVER_KEEP_ALIVE_TIMEOUT_MS ?? 5_000);
+  server.maxRequestsPerSocket = Number(process.env.SERVER_MAX_REQUESTS_PER_SOCKET ?? 100);
 
   // Graceful shutdown
   const shutdown = () => {
