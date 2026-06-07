@@ -26,36 +26,78 @@ const OnboardingSchema = z.object({
   timezone:        z.string().optional(),
 });
 
+const trimString = (v: unknown): string =>
+  typeof v === 'string' ? v.trim() : String(v ?? '').trim();
+
+const optionalText = (max: number) =>
+  z.preprocess((v) => {
+    if (v === undefined || v === null) return undefined;
+    const t = trimString(v);
+    return t;
+  }, z.string().max(max).optional());
+
+const optionalEmail = z.preprocess((v) => {
+  if (v === undefined || v === null) return undefined;
+  const t = trimString(v);
+  return t === '' ? '' : t.toLowerCase();
+}, z.string().email().or(z.literal('')).optional());
+
+const optionalUrl = z.preprocess((v) => {
+  if (v === undefined || v === null) return undefined;
+  const t = trimString(v);
+  if (!t) return '';
+  if (/^https?:\/\//i.test(t)) return t;
+  if (/^[a-z0-9.-]+\.[a-z]{2,}(\/.*)?$/i.test(t)) return `https://${t}`;
+  return t;
+}, z.string().url().or(z.literal('')).optional());
+
+const optionalPercent = z.preprocess((v) => {
+  if (v === undefined || v === null || v === '') return null;
+  if (typeof v === 'number') return v;
+  if (typeof v === 'string') {
+    const t = v.trim();
+    if (!t) return null;
+    const parsed = Number(t);
+    return Number.isFinite(parsed) ? parsed : v;
+  }
+  return v;
+}, z.number().min(0).max(100).nullable().optional());
+
 const UpdateRestaurantSchema = z.object({
-  name:          z.string().min(1).optional(),
-  timezone:      z.string().optional(),
+  name:          z.preprocess((v) => trimString(v), z.string().min(1)).optional(),
+  timezone:      optionalText(80),
   logo_url:      LogoUrlSchema.optional(),
-  contact_phone: z.string().max(40).optional(),
-  contact_email: z.string().email().or(z.literal('')).optional(),
-  address_line1: z.string().max(160).optional(),
-  address_line2: z.string().max(160).optional(),
-  city:          z.string().max(80).optional(),
-  country:       z.string().max(80).optional(),
-  postal_code:   z.string().max(24).optional(),
-  tax_id:        z.string().max(80).optional(),
-  website_url:   z.string().url().or(z.literal('')).optional(),
+  contact_phone: optionalText(40),
+  contact_email: optionalEmail,
+  address_line1: optionalText(160),
+  address_line2: optionalText(160),
+  city:          optionalText(80),
+  country:       optionalText(80),
+  postal_code:   optionalText(24),
+  tax_id:        optionalText(80),
+  website_url:   optionalUrl,
   currency_code: z.enum(['USD', 'EUR', 'GBP', 'AED', 'SAR', 'INR', 'PKR', 'BDT', 'NGN', 'ZAR']).optional(),
   language_code: z.enum(['en', 'ar', 'fr', 'es', 'de', 'hi', 'ur']).optional(),
   date_format:   z.enum(['DD/MM/YYYY', 'MM/DD/YYYY', 'YYYY-MM-DD']).optional(),
-  service_charge_pct: z.number().min(0).max(100).nullable().optional(),
-  tax_rate_pct:       z.number().min(0).max(100).nullable().optional(),
-  tax_type:           z.string().min(1).max(40).optional(),
-  tax_included:       z.boolean().optional(),
-  receipt_footer:     z.string().max(180).optional(),
+  service_charge_pct: optionalPercent,
+  tax_rate_pct:       optionalPercent,
+  tax_type:           optionalText(40),
+  tax_included: z.preprocess((v) => {
+    if (typeof v === 'boolean') return v;
+    if (v === 1 || v === '1' || v === 'true') return true;
+    if (v === 0 || v === '0' || v === 'false') return false;
+    return v;
+  }, z.boolean().optional()),
+  receipt_footer:     optionalText(180),
   kitchen_printer: z.object({
     role: z.literal('kitchen').optional(),
     channel: z.enum(['bluetooth', 'usb']),
-    name: z.string().min(1).max(140),
+    name: z.preprocess((v) => trimString(v), z.string().min(1).max(140)),
   }).nullable().optional(),
   cashier_printer: z.object({
     role: z.literal('cashier').optional(),
     channel: z.enum(['bluetooth', 'usb']),
-    name: z.string().min(1).max(140),
+    name: z.preprocess((v) => trimString(v), z.string().min(1).max(140)),
   }).nullable().optional(),
 });
 
