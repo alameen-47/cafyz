@@ -24,6 +24,7 @@ export function LoginScreen({ onNavigate }: LoginScreenProps) {
   const isTablet = width >= 768;
   const [email, setEmail] = useState('mireille@saint.paris');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [pin, setPin] = useState<number[]>([]);
 
   const handlePinKey = (key: number | '⌫' | null) => {
@@ -40,7 +41,7 @@ export function LoginScreen({ onNavigate }: LoginScreenProps) {
   };
 
   if (isTablet) {
-    return <DesktopLogin email={email} setEmail={setEmail} password={password} setPassword={setPassword} onNavigate={onNavigate} />;
+    return <DesktopLogin email={email} setEmail={setEmail} password={password} setPassword={setPassword} showPassword={showPassword} setShowPassword={setShowPassword} onNavigate={onNavigate} />;
   }
 
   return (
@@ -118,12 +119,14 @@ export function LoginScreen({ onNavigate }: LoginScreenProps) {
 }
 
 function DesktopLogin({
-  email, setEmail, password, setPassword, onNavigate,
+  email, setEmail, password, setPassword, showPassword, setShowPassword, onNavigate,
 }: {
   email: string;
   setEmail: (v: string) => void;
   password: string;
   setPassword: (v: string) => void;
+  showPassword: boolean;
+  setShowPassword: (v: boolean) => void;
   onNavigate: (s: Screen) => void;
 }) {
   return (
@@ -207,14 +210,23 @@ function DesktopLogin({
             <Text style={dl.fieldLabel}>Passphrase</Text>
             <Text style={dl.forgotLink}>Forgot</Text>
           </View>
-          <TextInput
-            style={dl.input}
-            value={password}
-            onChangeText={setPassword}
-            secureTextEntry
-            placeholder="••••••••••••"
-            placeholderTextColor={Colors.text2}
-          />
+          <View style={dl.passwordWrap}>
+            <TextInput
+              style={[dl.input, dl.inputPassword]}
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry={!showPassword}
+              placeholder="••••••••••••"
+              placeholderTextColor={Colors.text2}
+            />
+            <TouchableOpacity
+              style={dl.passwordEye}
+              onPress={() => setShowPassword(!showPassword)}
+              activeOpacity={0.8}
+            >
+              <Text style={dl.passwordEyeText}>{showPassword ? '🙈' : '👁'}</Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
         <TouchableOpacity
@@ -616,6 +628,27 @@ const dl = StyleSheet.create({
     paddingHorizontal: 16,
     color: Colors.text0,
     fontFamily: Typography.sans,
+    fontSize: 14,
+  },
+  passwordWrap: {
+    position: 'relative',
+  },
+  inputPassword: {
+    paddingRight: 44,
+  },
+  passwordEye: {
+    position: 'absolute',
+    right: 8,
+    top: 7,
+    width: 30,
+    height: 30,
+    borderRadius: 999,
+    borderWidth: 0.5,
+    borderColor: Colors.line2,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  passwordEyeText: {
     fontSize: 14,
   },
   signInBtn: {

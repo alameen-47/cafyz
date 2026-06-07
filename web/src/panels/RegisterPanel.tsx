@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { authApi } from '../services/api';
+import { PasswordVisibilityIcon } from '../components/PasswordVisibilityIcon';
 import './LoginPanel.css';
 
 const TIMEZONES = [
@@ -27,6 +28,8 @@ export function RegisterPanel() {
   const [phone, setPhone]                   = useState('');
   const [password, setPassword]             = useState('');
   const [confirm, setConfirm]               = useState('');
+  const [showPassword, setShowPassword]     = useState(false);
+  const [showConfirm, setShowConfirm]       = useState(false);
   const [timezone, setTimezone]             = useState('UTC');
 
   async function handleSubmit(e: React.FormEvent) {
@@ -150,25 +153,45 @@ export function RegisterPanel() {
           <div className="form-grid-2">
             <div>
               <label className="login-label">Password</label>
-              <input
-                className="login-input"
-                type="password"
-                placeholder="Min 8 chars"
-                value={password}
-                onChange={e => setPassword(e.target.value)}
-                required
-              />
+              <div className="login-password-wrap">
+                <input
+                  className="login-input"
+                  type={showPassword ? 'text' : 'password'}
+                  placeholder="Min 8 chars"
+                  value={password}
+                  onChange={e => setPassword(e.target.value)}
+                  required
+                />
+                <button
+                  type="button"
+                  className="login-password-toggle"
+                  onClick={() => setShowPassword(v => !v)}
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                >
+                  <PasswordVisibilityIcon visible={showPassword} />
+                </button>
+              </div>
             </div>
             <div>
               <label className="login-label">Confirm</label>
-              <input
-                className="login-input"
-                type="password"
-                placeholder="Repeat"
-                value={confirm}
-                onChange={e => setConfirm(e.target.value)}
-                required
-              />
+              <div className="login-password-wrap">
+                <input
+                  className="login-input"
+                  type={showConfirm ? 'text' : 'password'}
+                  placeholder="Repeat"
+                  value={confirm}
+                  onChange={e => setConfirm(e.target.value)}
+                  required
+                />
+                <button
+                  type="button"
+                  className="login-password-toggle"
+                  onClick={() => setShowConfirm(v => !v)}
+                  aria-label={showConfirm ? 'Hide password' : 'Show password'}
+                >
+                  <PasswordVisibilityIcon visible={showConfirm} />
+                </button>
+              </div>
             </div>
           </div>
 

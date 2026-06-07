@@ -3,6 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { authApi } from '../services/api';
 import { toastBus } from '../services/toastBus';
+import { PasswordVisibilityIcon } from '../components/PasswordVisibilityIcon';
 import './LoginPanel.css';
 
 // Post-login navigation uses a full-page reload instead of React Router navigate()
@@ -45,6 +46,9 @@ export function LoginPanel() {
   const [resetToken, setResetToken] = useState(query.get('token') ?? '');
   const [newPassword, setNewPassword] = useState('');
   const [confirmNewPassword, setConfirmNewPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmNewPassword, setShowConfirmNewPassword] = useState(false);
 
   const displayError = localErr || error;
 
@@ -333,23 +337,43 @@ export function LoginPanel() {
             </label>
             <label className="login-field">
               <span>New password</span>
-              <input
-                type="password"
-                value={newPassword}
-                onChange={e => setNewPassword(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && handleResetPassword()}
-                placeholder="Minimum 8 characters"
-              />
+              <div className="login-password-wrap">
+                <input
+                  type={showNewPassword ? 'text' : 'password'}
+                  value={newPassword}
+                  onChange={e => setNewPassword(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && handleResetPassword()}
+                  placeholder="Minimum 8 characters"
+                />
+                <button
+                  type="button"
+                  className="login-password-toggle"
+                  onClick={() => setShowNewPassword(v => !v)}
+                  aria-label={showNewPassword ? 'Hide password' : 'Show password'}
+                >
+                  <PasswordVisibilityIcon visible={showNewPassword} />
+                </button>
+              </div>
             </label>
             <label className="login-field">
               <span>Confirm new password</span>
-              <input
-                type="password"
-                value={confirmNewPassword}
-                onChange={e => setConfirmNewPassword(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && handleResetPassword()}
-                placeholder="Repeat new password"
-              />
+              <div className="login-password-wrap">
+                <input
+                  type={showConfirmNewPassword ? 'text' : 'password'}
+                  value={confirmNewPassword}
+                  onChange={e => setConfirmNewPassword(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && handleResetPassword()}
+                  placeholder="Repeat new password"
+                />
+                <button
+                  type="button"
+                  className="login-password-toggle"
+                  onClick={() => setShowConfirmNewPassword(v => !v)}
+                  aria-label={showConfirmNewPassword ? 'Hide password' : 'Show password'}
+                >
+                  <PasswordVisibilityIcon visible={showConfirmNewPassword} />
+                </button>
+              </div>
             </label>
           </>
         ) : method === 'otp' ? (
@@ -398,13 +422,23 @@ export function LoginPanel() {
             </label>
             <label className="login-field">
               <span>Password</span>
-              <input
-                type="password"
-                value={password}
-                onChange={e => setPassword(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && handleEmailLogin()}
-                placeholder="••••••••"
-              />
+              <div className="login-password-wrap">
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  value={password}
+                  onChange={e => setPassword(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && handleEmailLogin()}
+                  placeholder="••••••••"
+                />
+                <button
+                  type="button"
+                  className="login-password-toggle"
+                  onClick={() => setShowPassword(v => !v)}
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                >
+                  <PasswordVisibilityIcon visible={showPassword} />
+                </button>
+              </div>
             </label>
           </>
         )}
@@ -541,12 +575,22 @@ export function LoginPanel() {
             </label>
             <label className="login-field">
               <span>Password</span>
-              <input
-                type="password"
-                value={password}
-                onChange={e => setPassword(e.target.value)}
-                placeholder="••••••••"
-              />
+              <div className="login-password-wrap">
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  value={password}
+                  onChange={e => setPassword(e.target.value)}
+                  placeholder="••••••••"
+                />
+                <button
+                  type="button"
+                  className="login-password-toggle"
+                  onClick={() => setShowPassword(v => !v)}
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                >
+                  <PasswordVisibilityIcon visible={showPassword} />
+                </button>
+              </div>
             </label>
             <button type="button" className="login-submit" onClick={handleEmailLogin} disabled={busy}>
               {busy ? 'Signing in…' : 'Sign in with Email →'}
@@ -575,11 +619,31 @@ export function LoginPanel() {
                 </label>
                 <label className="login-field">
                   <span>New password</span>
-                  <input type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)} placeholder="Minimum 8 chars" />
+                  <div className="login-password-wrap">
+                    <input type={showNewPassword ? 'text' : 'password'} value={newPassword} onChange={e => setNewPassword(e.target.value)} placeholder="Minimum 8 chars" />
+                    <button
+                      type="button"
+                      className="login-password-toggle"
+                      onClick={() => setShowNewPassword(v => !v)}
+                      aria-label={showNewPassword ? 'Hide password' : 'Show password'}
+                    >
+                      <PasswordVisibilityIcon visible={showNewPassword} />
+                    </button>
+                  </div>
                 </label>
                 <label className="login-field">
                   <span>Confirm password</span>
-                  <input type="password" value={confirmNewPassword} onChange={e => setConfirmNewPassword(e.target.value)} placeholder="Repeat password" />
+                  <div className="login-password-wrap">
+                    <input type={showConfirmNewPassword ? 'text' : 'password'} value={confirmNewPassword} onChange={e => setConfirmNewPassword(e.target.value)} placeholder="Repeat password" />
+                    <button
+                      type="button"
+                      className="login-password-toggle"
+                      onClick={() => setShowConfirmNewPassword(v => !v)}
+                      aria-label={showConfirmNewPassword ? 'Hide password' : 'Show password'}
+                    >
+                      <PasswordVisibilityIcon visible={showConfirmNewPassword} />
+                    </button>
+                  </div>
                 </label>
                 <button type="button" className="login-submit" onClick={handleResetPassword} disabled={busy}>
                   {busy ? 'Resetting…' : 'Reset Password'}
