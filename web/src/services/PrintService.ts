@@ -75,6 +75,7 @@ class EscPosBuilder {
 
 export interface ReceiptData {
   restaurantName: string;
+  currencySymbol?: string;
   logoUrl?:       string;
   addressLine?:   string;
   phone?:         string;
@@ -114,7 +115,8 @@ export interface KitchenTicketData {
 export function buildReceipt(data: ReceiptData, width = 32, logoBytes?: Uint8Array): Uint8Array {
   const b = new EscPosBuilder();
   const W = width;
-  const fmt = (n: number) => `$${n.toFixed(2)}`;
+  const symbol = data.currencySymbol || '$';
+  const fmt = (n: number) => `${symbol}${n.toFixed(2)}`;
   const date = data.dateStr ?? new Date().toLocaleString('en-GB', {
     day: '2-digit', month: 'short', year: 'numeric',
     hour: '2-digit', minute: '2-digit',
@@ -181,7 +183,8 @@ export function buildReceipt(data: ReceiptData, width = 32, logoBytes?: Uint8Arr
 
 // Build styled HTML receipt for the browser print dialog
 export function buildReceiptHTML(data: ReceiptData): string {
-  const fmt = (n: number) => `$${n.toFixed(2)}`;
+  const symbol = data.currencySymbol || '$';
+  const fmt = (n: number) => `${symbol}${n.toFixed(2)}`;
   const date = data.dateStr ?? new Date().toLocaleString('en-GB', {
     day: '2-digit', month: 'short', year: 'numeric',
     hour: '2-digit', minute: '2-digit',
@@ -823,6 +826,7 @@ function printKitchenDialog(data: KitchenTicketData): Promise<void> {
 
 export interface RestaurantPrintMeta {
   restaurantName: string;
+  currencySymbol?: string;
   logoUrl?:       string;
   addressLine?:   string;
   phone?:         string;
@@ -892,7 +896,8 @@ function reportHeader(meta: RestaurantPrintMeta, title: string, periodLabel: str
 }
 
 export function buildSalesReportHTML(data: SalesReportData): string {
-  const fmt = (n: number) => `$${n.toFixed(2)}`;
+  const symbol = data.currencySymbol || '$';
+  const fmt = (n: number) => `${symbol}${n.toFixed(2)}`;
   const metrics = data.metrics.map(m => `
     <div class="metric"><div class="metric-label">${m.label}</div><div class="metric-val">${m.value}</div></div>`).join('');
   const rows = data.rows.map(r => `
@@ -916,7 +921,8 @@ export function buildSalesReportHTML(data: SalesReportData): string {
 }
 
 export function buildMonthlyReportHTML(data: MonthlyReportData): string {
-  const fmt = (n: number) => `$${n.toFixed(2)}`;
+  const symbol = data.currencySymbol || '$';
+  const fmt = (n: number) => `${symbol}${n.toFixed(2)}`;
   const rows = data.days.map(d => `
     <tr><td>${d.day}</td><td class="num">${d.orders}</td><td class="num">${fmt(d.revenue)}</td></tr>`).join('');
 
@@ -939,6 +945,7 @@ export function buildMonthlyReportHTML(data: MonthlyReportData): string {
 
 export function buildDemoSalesReport(meta: RestaurantPrintMeta): SalesReportData {
   const today = new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+  const symbol = meta.currencySymbol || '$';
   return {
     ...meta,
     title: 'Daily Sales Report',
@@ -946,7 +953,7 @@ export function buildDemoSalesReport(meta: RestaurantPrintMeta): SalesReportData
     demo: true,
     metrics: [
       { label: 'Covers served', value: '86' },
-      { label: 'Avg check', value: '$33.03' },
+      { label: 'Avg check', value: `${symbol}33.03` },
       { label: 'Tables turned', value: '24' },
     ],
     rows: [
@@ -997,15 +1004,12 @@ export async function printMonthlyReport(data: MonthlyReportData, restaurantId?:
 
 // ── Thermal ESC/POS report layout (58 mm / 32 chars) ───────────────────────────
 
-function fmtReportMoney(n: number): string {
-  return `$${n.toFixed(2)}`;
-}
-
 function truncReportLine(str: string, max: number): string {
   return str.length > max ? `${str.slice(0, max - 1)}…` : str;
 }
 
 export function buildSalesReportEscPos(data: SalesReportData, width = 32, logoBytes?: Uint8Array): Uint8Array {
+  const fmt = (n: number) => `${data.currencySymbol || '$'}${n.toFixed(2)}`;
   const b = new EscPosBuilder();
   const W = width;
 
@@ -1035,11 +1039,11 @@ export function buildSalesReportEscPos(data: SalesReportData, width = 32, logoBy
   b.boldOn().text('Breakdown').boldOff().nl();
   for (const r of data.rows) {
     b.text(truncReportLine(r.label, W)).nl();
-    b.row(`  ${r.orders ?? '—'} orders`, fmtReportMoney(r.revenue), W);
+    b.row(`  ${r.orders ?? '—'} orders`, fmt(r.revenue), W);
   }
 
   b.divider(W);
-  b.boldOn().row('GROSS REVENUE', fmtReportMoney(data.totalRevenue), W).boldOff().nl();
+  b.boldOn().row('GROSS REVENUE', fmt(data.totalRevenue), W).boldOff().nl();
   b.text(`Total orders: ${data.totalOrders}`).nl();
   b.nl().alignCenter().text('Cafyz Reports').nl(2);
   b.feed(4).cut();
@@ -1047,6 +1051,7 @@ export function buildSalesReportEscPos(data: SalesReportData, width = 32, logoBy
 }
 
 export function buildMonthlyReportEscPos(data: MonthlyReportData, width = 32, logoBytes?: Uint8Array): Uint8Array {
+  const fmt = (n: number) => `${data.currencySymbol || '$'}${n.toFixed(2)}`;
   const b = new EscPosBuilder();
   const W = width;
 
@@ -1066,19 +1071,19 @@ export function buildMonthlyReportEscPos(data: MonthlyReportData, width = 32, lo
 
   b.alignLeft();
   b.boldOn().text('Month totals').boldOff().nl();
-  b.text(`Revenue: ${fmtReportMoney(data.totalRevenue)}`).nl();
+  b.text(`Revenue: ${fmt(data.totalRevenue)}`).nl();
   b.text(`Orders:  ${data.totalOrders}`).nl();
-  b.text(`Avg/day: ${fmtReportMoney(data.avgPerDay)}`).nl();
+  b.text(`Avg/day: ${fmt(data.avgPerDay)}`).nl();
   b.divider(W);
 
   b.boldOn().text('Daily breakdown').boldOff().nl();
   for (const d of data.days) {
     b.text(truncReportLine(d.day, W)).nl();
-    b.row(`  ${d.orders} orders`, fmtReportMoney(d.revenue), W);
+    b.row(`  ${d.orders} orders`, fmt(d.revenue), W);
   }
 
   b.divider(W);
-  b.boldOn().row('MONTH TOTAL', fmtReportMoney(data.totalRevenue), W).boldOff().nl();
+  b.boldOn().row('MONTH TOTAL', fmt(data.totalRevenue), W).boldOff().nl();
   b.nl().alignCenter().text('Cafyz Reports').nl(2);
   b.feed(4).cut();
   return b.build();

@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import {
-  tablesApi, ordersApi, menuApi,
+  tablesApi, ordersApi, menuApi, restaurantApi,
   type ApiTable, type ApiOrder, type ApiMenuItem, type ApiOrderItem,
 } from '../services/api';
 import { pathForScreen } from '../routes';
 import { MenuItemImage } from '../components/MenuItemImage';
+import { formatMoney } from '../utils/currency';
 import './MobilePanels.css';
 
 export function MobileTablePanel({ addItemMode }: { addItemMode?: boolean }) {
@@ -20,6 +21,7 @@ export function MobileTablePanel({ addItemMode }: { addItemMode?: boolean }) {
   const [loading,  setLoading]  = useState(true);
   const [busy,     setBusy]     = useState(false);
   const [error,    setError]    = useState('');
+  const [currencyCode, setCurrencyCode] = useState('USD');
 
   // ── Load table + active order ───────────────────────────────────────────────
   useEffect(() => {
@@ -27,12 +29,14 @@ export function MobileTablePanel({ addItemMode }: { addItemMode?: boolean }) {
 
     const load = async () => {
       try {
-        const [tables, orders] = await Promise.all([
+        const [tables, orders, restaurant] = await Promise.all([
           tablesApi.list(),
           ordersApi.list({ status: 'open' }),
+          restaurantApi.me(),
         ]);
         const tbl = tables.find(t => t.id === tableId) ?? null;
         setTable(tbl);
+        setCurrencyCode(restaurant.currency_code ?? 'USD');
 
         const activeOrder = orders.find(
           o => o.table_id === tableId && (o.status === 'open' || o.status === 'sent'),
@@ -158,7 +162,7 @@ export function MobileTablePanel({ addItemMode }: { addItemMode?: boolean }) {
             >
               <MenuItemImage imageUrl={d.image_url} name={d.name} variant="mobile" />
               <p>{d.name}</p>
-              <p className="mono">${d.price.toFixed(2)}</p>
+              <p className="mono">{formatMoney(d.price, currencyCode)}</p>
             </button>
           ))}
           {menu.length === 0 && (
@@ -174,7 +178,7 @@ export function MobileTablePanel({ addItemMode }: { addItemMode?: boolean }) {
             <li key={item.id} className="mobile-line">
               <span>{item.qty}× {item.name ?? item.menu_item_id}</span>
               {item.price ? (
-                <span className="mono">${(item.price * item.qty).toFixed(2)}</span>
+                <span className="mono">{formatMoney((item.price ?? 0) * item.qty, currencyCode)}</span>
               ) : null}
             </li>
           ))}
@@ -188,7 +192,7 @@ export function MobileTablePanel({ addItemMode }: { addItemMode?: boolean }) {
           {total > 0 && (
             <li className="mobile-line" style={{ borderTop: '0.5px solid var(--gold-line)', marginTop: 8, paddingTop: 8, fontWeight: 600 }}>
               <span>Total</span>
-              <span className="mono serif">${total.toFixed(2)}</span>
+              <span className="mono serif">{formatMoney(total, currencyCode)}</span>
             </li>
           )}
         </ul>

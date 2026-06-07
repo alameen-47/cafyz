@@ -250,6 +250,10 @@
   justify-content: flex-end;
 }
 
+.menu-order-controls-inline {
+  margin-left: auto;
+}
+
 .menu-order-controls select,
 .menu-order-controls input {
   min-height: 34px;
@@ -331,6 +335,10 @@
   overflow: auto;
 }
 
+.menu-order-cart-inline {
+  margin: -8px 0 16px;
+}
+
 .menu-order-cart-row {
   display: flex;
   justify-content: space-between;
@@ -401,6 +409,16 @@
   justify-content: space-between;
   align-items: flex-start;
   margin-bottom: 4px;
+  position: relative;
+}
+
+.menu-item.order-selectable {
+  cursor: pointer;
+}
+
+.menu-item.order-selected {
+  border-color: var(--gold-line2) !important;
+  box-shadow: 0 0 0 2px var(--gold-bg), 0 8px 20px rgba(29, 78, 216, 0.12) !important;
 }
 
 .menu-item-sym {

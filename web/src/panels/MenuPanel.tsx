@@ -10,6 +10,7 @@ import {
 } from '../utils/menuCategories';
 import { MENU_IMAGE_ACCEPT, validateMenuImageFile } from '../utils/menuImage';
 import { toastBus } from '../services/toastBus';
+import { formatMoney } from '../utils/currency';
 import './MenuPanel.css';
 
 type Draft = {
@@ -409,7 +410,6 @@ export function MenuPanel() {
     .filter(i => !search.trim() ||
       i.name.toLowerCase().includes(search.toLowerCase()) ||
       i.description?.toLowerCase().includes(search.toLowerCase()));
-  const orderVisible = visible.filter((i) => i.is_available === 1);
   const orderTableObj = tables.find((t) => t.id === orderTable);
   const orderSubtotal = orderCart.reduce((sum, row) => sum + (row.menuItem.price * row.qty), 0);
   const orderQtyMap = Object.fromEntries(orderCart.map((row) => [row.menuItem.id, row.qty]));
@@ -716,82 +716,6 @@ export function MenuPanel() {
         />
       )}
 
-      {canTakeOrderFromMenu && (
-        <section className="menu-order-builder card">
-          <div className="menu-order-head">
-            <div>
-              <p className="eyebrow">Quick Order</p>
-              <h3 className="serif">Take customer order from Menu</h3>
-            </div>
-            <div className="menu-order-controls">
-              <select value={orderTable} onChange={(e) => setOrderTable(e.target.value)}>
-                <option value="">Select table…</option>
-                {tables.map((t) => (
-                  <option key={t.id} value={t.id}>
-                    {t.name} · {t.status}
-                  </option>
-                ))}
-              </select>
-              <input
-                value={orderNote}
-                onChange={(e) => setOrderNote(e.target.value)}
-                placeholder="Optional note for kitchen"
-              />
-              <button type="button" className="btn-gold" onClick={sendOrderFromMenu} disabled={orderBusy || orderCart.length === 0}>
-                {orderBusy ? 'Sending…' : 'Send to Kitchen'}
-              </button>
-            </div>
-          </div>
-
-          {orderError && <p className="menu-order-error">{orderError}</p>}
-
-          <div className="menu-order-layout">
-            <div className="menu-order-items">
-              {orderVisible.map((item) => (
-                <button
-                  key={`order-${item.id}`}
-                  type="button"
-                  className={`menu-order-item-btn ${orderQtyMap[item.id] ? 'selected' : ''}`}
-                  onClick={() => addOrderItem(item)}
-                >
-                  <div className="menu-order-item-media">
-                    <MenuItemImage imageUrl={item.image_url} name={item.name} variant="menu-card" />
-                    {orderQtyMap[item.id] ? (
-                      <span className="menu-order-item-qty mono">× {orderQtyMap[item.id]}</span>
-                    ) : null}
-                  </div>
-                  <div className="menu-order-item-info">
-                    <span className="menu-order-item-name">{item.name}</span>
-                    <span className="mono menu-order-item-price">${item.price.toFixed(2)}</span>
-                  </div>
-                </button>
-              ))}
-            </div>
-            <div className="menu-order-cart">
-              <p className="eyebrow">Selected Items</p>
-              {orderCart.length === 0 ? (
-                <p className="menu-order-empty">No items selected yet.</p>
-              ) : (
-                orderCart.map((row) => (
-                  <div key={`cart-${row.menuItem.id}`} className="menu-order-cart-row">
-                    <span>{row.menuItem.name}</span>
-                    <div className="menu-order-cart-actions">
-                      <button type="button" onClick={() => changeOrderQty(row.menuItem.id, -1)}>−</button>
-                      <span className="mono">{row.qty}</span>
-                      <button type="button" onClick={() => changeOrderQty(row.menuItem.id, 1)}>+</button>
-                    </div>
-                  </div>
-                ))
-              )}
-              <div className="menu-order-total">
-                <span>Total</span>
-                <span className="mono">${orderSubtotal.toFixed(2)}</span>
-              </div>
-            </div>
-          </div>
-        </section>
-      )}
-
       <div className="menu-toolbar">
         {catCounts.map(c => (
           <button key={c.id} type="button"
@@ -812,16 +736,76 @@ export function MenuPanel() {
             </button>
           )}
         </div>
+        {canTakeOrderFromMenu && (
+          <div className="menu-order-controls menu-order-controls-inline">
+            <select value={orderTable} onChange={(e) => setOrderTable(e.target.value)}>
+              <option value="">Select table…</option>
+              {tables.map((t) => (
+                <option key={t.id} value={t.id}>
+                  {t.name} · {t.status}
+                </option>
+              ))}
+            </select>
+            <input
+              value={orderNote}
+              onChange={(e) => setOrderNote(e.target.value)}
+              placeholder="Optional note for kitchen"
+            />
+            <button type="button" className="btn-gold" onClick={sendOrderFromMenu} disabled={orderBusy || orderCart.length === 0}>
+              {orderBusy ? 'Sending…' : 'Send to Kitchen'}
+            </button>
+          </div>
+        )}
       </div>
+      {canTakeOrderFromMenu && (
+        <div className="menu-order-cart menu-order-cart-inline">
+          <p className="eyebrow">Selected Items (click item cards below to add)</p>
+          {orderError && <p className="menu-order-error">{orderError}</p>}
+          {orderCart.length === 0 ? (
+            <p className="menu-order-empty">No items selected yet.</p>
+          ) : (
+            orderCart.map((row) => (
+              <div key={`cart-${row.menuItem.id}`} className="menu-order-cart-row">
+                <span>{row.menuItem.name}</span>
+                <div className="menu-order-cart-actions">
+                  <button type="button" onClick={() => changeOrderQty(row.menuItem.id, -1)}>−</button>
+                  <span className="mono">{row.qty}</span>
+                  <button type="button" onClick={() => changeOrderQty(row.menuItem.id, 1)}>+</button>
+                </div>
+              </div>
+            ))
+          )}
+          <div className="menu-order-total">
+            <span>Total</span>
+            <span className="mono">{formatMoney(orderSubtotal)}</span>
+          </div>
+        </div>
+      )}
 
       <div className="menu-grid">
         {visible.map(item => (
           <div
             key={item.id}
-            className={`menu-item card${item.is_available !== 1 ? ' unavailable' : ''}${editId === item.id ? ' editing' : ''}`}
+            className={`menu-item card${item.is_available !== 1 ? ' unavailable' : ''}${editId === item.id ? ' editing' : ''}${canTakeOrderFromMenu && item.is_available === 1 ? ' order-selectable' : ''}${orderQtyMap[item.id] ? ' order-selected' : ''}`}
+            role={canTakeOrderFromMenu && item.is_available === 1 ? 'button' : undefined}
+            tabIndex={canTakeOrderFromMenu && item.is_available === 1 ? 0 : -1}
+            onClick={() => {
+              if (canTakeOrderFromMenu && item.is_available === 1) addOrderItem(item);
+            }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                if (canTakeOrderFromMenu && item.is_available === 1) {
+                  e.preventDefault();
+                  addOrderItem(item);
+                }
+              }
+            }}
           >
             <div className="menu-item-top">
               <MenuItemImage imageUrl={item.image_url} name={item.name} variant="menu-card" />
+              {orderQtyMap[item.id] ? (
+                <span className="menu-order-item-qty mono">× {orderQtyMap[item.id]}</span>
+              ) : null}
               <div className="menu-item-badges">
                 {item.is_popular === 1 && <span className="menu-badge popular">★ Popular</span>}
                 <span className={`menu-badge ${item.is_available === 1 ? 'avail' : 'off'}`}>
@@ -832,7 +816,7 @@ export function MenuPanel() {
 
             <p className="menu-item-cat eyebrow">{labels[item.category] ?? item.category}</p>
             <p className="menu-item-name">{item.name}</p>
-            <p className="mono menu-item-price">${item.price.toFixed(2)}</p>
+            <p className="mono menu-item-price">{formatMoney(item.price)}</p>
             {item.description && (
               <p className="menu-item-desc">{item.description}</p>
             )}
@@ -845,14 +829,14 @@ export function MenuPanel() {
               <div className="menu-item-actions">
                 <button
                   className="menu-act-edit"
-                  onClick={() => editId === item.id ? closeForm() : startEdit(item)}
+                  onClick={(e) => { e.stopPropagation(); editId === item.id ? closeForm() : startEdit(item); }}
                   title="Edit this item"
                 >
                   {editId === item.id ? '✕ Cancel' : '✏ Edit'}
                 </button>
                 <button
                   className="menu-act-toggle"
-                  onClick={() => toggleAvailable(item)}
+                  onClick={(e) => { e.stopPropagation(); toggleAvailable(item); }}
                   title={item.is_available === 1 ? 'Mark unavailable' : 'Mark available'}
                 >
                   {item.is_available === 1 ? '86 it' : 'Restore'}
@@ -860,13 +844,13 @@ export function MenuPanel() {
                 {confirmDelete === item.id ? (
                   <div className="menu-act-confirm">
                     <span>Delete?</span>
-                    <button className="menu-act-confirm-yes" onClick={() => deleteItem(item.id)} disabled={busy}>
+                    <button className="menu-act-confirm-yes" onClick={(e) => { e.stopPropagation(); deleteItem(item.id); }} disabled={busy}>
                       {busy ? '…' : 'Yes'}
                     </button>
-                    <button className="menu-act-confirm-no" onClick={() => setConfirmDelete(null)}>No</button>
+                    <button className="menu-act-confirm-no" onClick={(e) => { e.stopPropagation(); setConfirmDelete(null); }}>No</button>
                   </div>
                 ) : (
-                  <button className="menu-act-delete" onClick={() => setConfirmDelete(item.id)}>Delete</button>
+                  <button className="menu-act-delete" onClick={(e) => { e.stopPropagation(); setConfirmDelete(item.id); }}>Delete</button>
                 )}
               </div>
             )}

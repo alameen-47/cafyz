@@ -22,6 +22,7 @@ import {
   printSalesReport, printMonthlyReport, buildDemoSalesReport, buildDemoMonthlyReport,
   type RestaurantPrintMeta, type SalesReportData,
 } from '../services/PrintService';
+import { formatMoney, getCurrencySymbol } from '../utils/currency';
 import './ManagerPanel.css';
 
 type Section = 'overview' | 'profile' | 'inventory' | 'tables' | 'reservations' | 'staff' | 'reports' | 'roles';
@@ -738,6 +739,7 @@ function StaffTab({ onNav }: { onNav: (s: Section) => void }) {
 function restaurantPrintMeta(r: ApiRestaurant): RestaurantPrintMeta {
   return {
     restaurantName: r.name ?? 'Restaurant',
+    currencySymbol: getCurrencySymbol(r.currency_code),
     logoUrl: getRestaurantLogo(r.id, r.logo_url),
     addressLine: [r.address_line1, r.city, r.country].filter(Boolean).join(', ') || undefined,
     phone: r.contact_phone || undefined,
@@ -1082,7 +1084,7 @@ function Reports() {
                   Revenue · {report?.periodLabel ?? REPORT_PERIOD_LABELS[period]}
                 </p>
                 <p className="serif" style={{ fontSize: 28, color: 'var(--gold)' }}>
-                  ${totalRevenue.toFixed(2)}
+                  {formatMoney(totalRevenue, restaurant?.currency_code)}
                 </p>
               </div>
               <div style={{ textAlign: 'right' }}>
@@ -1090,7 +1092,7 @@ function Reports() {
                   {report?.totalOrders ?? 0} orders · {revenueRows.length} days
                 </p>
                 <p style={{ fontSize: 13, color: 'var(--text1)', marginTop: 4 }}>
-                  avg ${revenueRows.length ? (totalRevenue / revenueRows.length).toFixed(0) : 0}/day
+                  avg {formatMoney(revenueRows.length ? (totalRevenue / revenueRows.length) : 0, restaurant?.currency_code)}/day
                 </p>
               </div>
             </div>
@@ -1129,7 +1131,7 @@ function Reports() {
                   <span className="mgr-report-label mono" style={{ fontSize: 12 }}>{r.day}</span>
                   <span className="mgr-report-val">{r.order_count}</span>
                   <span className="serif mgr-report-val" style={{ color: 'var(--gold)' }}>
-                    ${(r.revenue ?? 0).toFixed(2)}
+                    {formatMoney(r.revenue ?? 0, restaurant?.currency_code)}
                   </span>
                 </div>
               ))}
@@ -1159,7 +1161,9 @@ function Reports() {
                       {day.items.slice(0, 4).map(i => `${i.item_name} (${i.qty_sold})`).join(' · ')}
                     </span>
                     <span style={{ fontSize: 12, color: 'var(--text1)', textAlign: 'right' }}>{day.totalQty}</span>
-                    <span className="serif" style={{ fontSize: 12, color: 'var(--gold)', textAlign: 'right' }}>${day.totalRevenue.toFixed(2)}</span>
+                    <span className="serif" style={{ fontSize: 12, color: 'var(--gold)', textAlign: 'right' }}>
+                      {formatMoney(day.totalRevenue, restaurant?.currency_code)}
+                    </span>
                   </div>
                 ))}
               </>

@@ -13,6 +13,7 @@ import { buildMenuCategoryTabs, defaultCategorySlug } from '../utils/menuCategor
 import { MenuItemImage } from '../components/MenuItemImage';
 import { Modal } from '../components/Modal';
 import { toastBus } from '../services/toastBus';
+import { formatMoney, getCurrencySymbol } from '../utils/currency';
 import './POSPanel.css';
 
 type CartItem     = { menuItem: ApiMenuItem; qty: number; mods: string[] };
@@ -183,6 +184,7 @@ export function POSPanel() {
     : taxableAmount * (taxRate / 100);
   const preTaxTotal = taxableAmount - tax;
   const total = taxIncluded ? taxableAmount : taxableAmount + tax;
+  const currencyCode = restaurant?.currency_code;
 
   const isPaid   = payState === 'card' || payState === 'cash' || payState === 'comped';
   const statusLabel = payState === 'card'  ? 'Paid · Card'
@@ -322,6 +324,7 @@ export function POSPanel() {
       .filter(Boolean).join(', ');
     return {
       restaurantName: restaurant?.name || user?.restaurant_name || 'Restaurant',
+      currencySymbol: getCurrencySymbol(currencyCode),
       logoUrl:        getRestaurantLogo(user?.restaurant_id ?? restaurant?.id, restaurant?.logo_url),
       addressLine:    address || undefined,
       phone:          restaurant?.contact_phone || undefined,
@@ -537,7 +540,7 @@ export function POSPanel() {
               </div>
               <div className="pos-dish-info">
                 <p className="pos-dish-name">{d.name}</p>
-                <p className="pos-dish-price mono">${d.price.toFixed(2)}</p>
+                <p className="pos-dish-price mono">{formatMoney(d.price, currencyCode)}</p>
                 <p className="pos-dish-sub">{d.description}</p>
               </div>
             </div>
@@ -771,7 +774,7 @@ export function POSPanel() {
               <div className="pos-item-body">
                 <div className="pos-item-row">
                   <span>{c.menuItem.name}</span>
-                  <span className="mono">${(c.menuItem.price * c.qty).toFixed(2)}</span>
+                  <span className="mono">{formatMoney(c.menuItem.price * c.qty, currencyCode)}</span>
                 </div>
                 {c.mods.map(m => <p key={m} className="pos-mod">· {m}</p>)}
               </div>
@@ -793,19 +796,19 @@ export function POSPanel() {
 
         {/* Totals */}
         <footer className="pos-totals">
-          <div className="pos-total-row"><span>Subtotal</span><span className="mono">${subtotal.toFixed(2)}</span></div>
-          <div className="pos-total-row"><span>Service · {serviceRate.toFixed(2)}%</span><span className="mono">${service.toFixed(2)}</span></div>
+          <div className="pos-total-row"><span>Subtotal</span><span className="mono">{formatMoney(subtotal, currencyCode)}</span></div>
+          <div className="pos-total-row"><span>Service · {serviceRate.toFixed(2)}%</span><span className="mono">{formatMoney(service, currencyCode)}</span></div>
           {taxIncluded && (
             <div className="pos-total-row">
               <span>Amount before {taxType}</span>
-              <span className="mono">${preTaxTotal.toFixed(2)}</span>
+              <span className="mono">{formatMoney(preTaxTotal, currencyCode)}</span>
             </div>
           )}
           <div className="pos-total-row">
             <span>{taxType} · {taxRate.toFixed(2)}%{taxIncluded ? ' (included)' : ''}</span>
-            <span className="mono">${tax.toFixed(2)}</span>
+            <span className="mono">{formatMoney(tax, currencyCode)}</span>
           </div>
-          <div className="pos-total-final"><span>Total Due</span><span className="serif">${total.toFixed(2)}</span></div>
+          <div className="pos-total-final"><span>Total Due</span><span className="serif">{formatMoney(total, currencyCode)}</span></div>
 
           {/* New Check button — shown after payment is finalised */}
           {isPaid ? (
@@ -831,7 +834,7 @@ export function POSPanel() {
                 disabled={cart.length === 0 || busy || payState !== 'sent'}
                 onClick={() => handleCharge('card')}
               >
-                {busy ? '…' : payState === 'sent' ? `💳 Charge · $${total.toFixed(2)}` : 'Select Pending Table'}
+                {busy ? '…' : payState === 'sent' ? `💳 Charge · ${getCurrencySymbol(currencyCode)}${total.toFixed(2)}` : 'Select Pending Table'}
               </button>
 
               <div className="pos-alt-pay">

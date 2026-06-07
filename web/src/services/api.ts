@@ -2,6 +2,7 @@
 // Tenant-scoped HTTP client. JWT is stored in localStorage and attached to
 // every request. On 401 the session is cleared and the user is redirected.
 import { toastBus } from './toastBus';
+import { setActiveCurrencyCode } from '../utils/currency';
 
 // In dev, relative URLs go through the Vite proxy (→ localhost:4000).
 // In production, set VITE_API_URL to the backend origin (e.g. https://api.cafyz.io).
@@ -57,6 +58,10 @@ async function request<T = unknown>(
       ? 'Saved successfully'
       : 'Updated successfully';
     toastBus.success(successMessage);
+  }
+  if (path.startsWith('/api/restaurants/me') && data && typeof data === 'object') {
+    const maybeCode = (data as { currency_code?: unknown }).currency_code;
+    if (typeof maybeCode === 'string') setActiveCurrencyCode(maybeCode);
   }
   return data as T;
 }

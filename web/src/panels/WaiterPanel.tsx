@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { tablesApi, ordersApi, type ApiTable, type ApiOrder } from '../services/api';
+import { tablesApi, ordersApi, restaurantApi, type ApiTable, type ApiOrder } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import type { TableStatus } from '@shared/types';
+import { formatMoney } from '../utils/currency';
 import './WaiterPanel.css';
 
 const STATUS_CLASS: Record<TableStatus, string> = {
@@ -22,10 +23,12 @@ export function WaiterPanel() {
   const [error,      setError]      = useState('');
   const [loading,    setLoading]    = useState(true);
   const [orderLoading, setOrderLoading] = useState(false);
+  const [currencyCode, setCurrencyCode] = useState<string>('USD');
 
   // ── Initial load ────────────────────────────────────────────────────────────
   useEffect(() => {
     loadFloor();
+    restaurantApi.me().then((r) => setCurrencyCode(r.currency_code ?? 'USD')).catch(() => {});
   }, []);
 
   function loadFloor() {
@@ -197,7 +200,7 @@ export function WaiterPanel() {
                   <span>{item.qty}×</span>
                   {item.name ?? item.menu_item_id}
                   {item.price ? (
-                    <span className="mono">${(item.price * item.qty).toFixed(2)}</span>
+                    <span className="mono">{formatMoney((item.price ?? 0) * item.qty, currencyCode)}</span>
                   ) : null}
                 </li>
               ))}
@@ -211,7 +214,7 @@ export function WaiterPanel() {
           )}
 
           <footer>
-            {total > 0 && <p className="waiter-total serif">${total.toFixed(2)}</p>}
+            {total > 0 && <p className="waiter-total serif">{formatMoney(total, currencyCode)}</p>}
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
               {/* Reserved → seat guests */}
               {selectedTable.status === 'reserved' && (
