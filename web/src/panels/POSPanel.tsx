@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { menuApi, menuCategoriesApi, ordersApi, restaurantApi, tablesApi, type ApiMenuCategory, type ApiMenuItem, type ApiRestaurant, type ApiTable } from '../services/api';
+import { menuApi, menuCategoriesApi, ordersApi, restaurantApi, tablesApi, type ApiMenuCategory, type ApiMenuItem, type ApiOrder, type ApiRestaurant, type ApiTable } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import {
   connectBluetooth, connectUSB, disconnectPrinter, printerChannels, printerStatus, print as printReceipt, printKitchenTicket, printTest,
@@ -38,6 +38,7 @@ export function POSPanel() {
   const [busy,          setBusy]          = useState(false);
   const [error,         setError]         = useState('');
   const [loading,       setLoading]       = useState(true);
+  const [tableOrderLoading, setTableOrderLoading] = useState(false);
   const [restaurant,    setRestaurant]    = useState<ApiRestaurant | null>(null);
   const [profileOpen,   setProfileOpen]   = useState(false);
   const [profileBusy,   setProfileBusy]   = useState(false);
@@ -206,12 +207,58 @@ export function POSPanel() {
   }
 
   // When table selection changes, reset the order state (keep cart)
-  function handleTableChange(tableId: string) {
+  async function handleTableChange(tableId: string) {
     setSelectedTable(tableId);
     setActiveOrderId(null);
     setPayState('open');
     setSplitMode(false);
     setError('');
+    if (!tableId) {
+      setCart([]);
+      setNote('');
+      return;
+    }
+    setTableOrderLoading(true);
+    try {
+      const orders = await ordersApi.list({ table_id: tableId });
+      const pending = orders.find((o) => o.status === 'sent') ?? orders.find((o) => o.status === 'open');
+      if (!pending) {
+        setCart([]);
+        setNote('');
+        return;
+      }
+      const full = await ordersApi.get(pending.id);
+      const nextCart: CartItem[] = (full.items ?? []).map((it) => {
+        const fromMenu = menu.find((m) => m.id === it.menu_item_id);
+        const fallback: ApiMenuItem = fromMenu ?? {
+          id: it.menu_item_id,
+          restaurant_id: user?.restaurant_id ?? '',
+          name: it.name ?? 'Item',
+          category: 'mains',
+          price: Number(it.price ?? 0),
+          description: '',
+          symbol: '○',
+          is_popular: 0,
+          is_available: 1,
+        };
+        let mods: string[] = [];
+        if (typeof it.mods === 'string') {
+          try { mods = JSON.parse(it.mods || '[]'); } catch { mods = []; }
+        } else {
+          mods = (it.mods as string[] | undefined) ?? [];
+        }
+        return { menuItem: fallback, qty: it.qty, mods };
+      });
+      setCart(nextCart);
+      setActiveOrderId(full.id);
+      setNote(full.note ?? '');
+      // Lock edits for loaded pending checks and allow cashier charge by table.
+      setPayState('sent');
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setTableOrderLoading(false);
+    }
   }
 
   // ── Ensure order exists and items are added ────────────────────────────────
@@ -716,7 +763,7 @@ export function POSPanel() {
             </button>
             <select
               value={selectedTable}
-              onChange={e => handleTableChange(e.target.value)}
+              onChange={e => { void handleTableChange(e.target.value); }}
               disabled={isPaid}
               style={{
                 background: 'transparent', color: 'var(--text1)',
@@ -736,6 +783,9 @@ export function POSPanel() {
                 {new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}
               </span>
             </p>
+            {tableOrderLoading && (
+              <p style={{ fontSize: 11, color: 'var(--text3)', marginTop: 4 }}>Loading pending order for table…</p>
+            )}
           </div>
           <span className={`badge ${statusClass}`}>{statusLabel}</span>
         </header>

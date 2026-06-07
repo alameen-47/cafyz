@@ -224,6 +224,124 @@
   gap: 16px;
 }
 
+.menu-order-builder {
+  margin: 12px 0 14px;
+  padding: 14px;
+  border: 0.5px solid var(--line2);
+}
+
+.menu-order-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  align-items: flex-start;
+  margin-bottom: 10px;
+}
+
+.menu-order-head h3 {
+  margin: 3px 0 0;
+  font-size: 18px;
+}
+
+.menu-order-controls {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.menu-order-controls select,
+.menu-order-controls input {
+  min-height: 34px;
+  border-radius: var(--radius-sm);
+  border: 0.5px solid var(--line2);
+  background: var(--bg2);
+  color: var(--text1);
+  padding: 0 10px;
+}
+
+.menu-order-layout {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr;
+  gap: 10px;
+}
+
+.menu-order-items {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  gap: 8px;
+  max-height: 280px;
+  overflow: auto;
+}
+
+.menu-order-item-btn {
+  border: 0.5px solid var(--line2);
+  border-radius: var(--radius-sm);
+  background: var(--bg2);
+  color: var(--text1);
+  padding: 10px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.menu-order-cart {
+  border: 0.5px solid var(--line2);
+  border-radius: var(--radius-sm);
+  padding: 10px;
+  max-height: 280px;
+  overflow: auto;
+}
+
+.menu-order-cart-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 0;
+  border-bottom: 0.5px solid var(--line);
+}
+
+.menu-order-cart-actions {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.menu-order-cart-actions button {
+  border: 0.5px solid var(--line2);
+  border-radius: 6px;
+  width: 24px;
+  height: 24px;
+  background: transparent;
+  color: var(--text1);
+}
+
+.menu-order-total {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 8px;
+  font-weight: 700;
+}
+
+.menu-order-error {
+  color: var(--danger);
+  font-size: 12px;
+  margin: 0 0 8px;
+}
+
+.menu-order-empty {
+  font-size: 12px;
+  color: var(--text3);
+  margin: 4px 0;
+}
+
+@media (max-width: 980px) {
+  .menu-order-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
 .menu-item {
   padding: 16px;
   display: flex;

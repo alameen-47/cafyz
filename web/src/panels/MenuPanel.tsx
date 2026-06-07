@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, type Dispatch, type SetStateAction } from 'react';
-import { menuApi, menuCategoriesApi, type ApiMenuItem, type ApiMenuCategory } from '../services/api';
+import { menuApi, menuCategoriesApi, ordersApi, tablesApi, type ApiMenuItem, type ApiMenuCategory, type ApiTable } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { MenuItemImage } from '../components/MenuItemImage';
 import {
@@ -9,12 +9,15 @@ import {
   slugifyCategoryLabel,
 } from '../utils/menuCategories';
 import { MENU_IMAGE_ACCEPT, validateMenuImageFile } from '../utils/menuImage';
+import { toastBus } from '../services/toastBus';
 import './MenuPanel.css';
 
 type Draft = {
   name: string; category: string; price: string; description: string;
   image_url: string; is_popular: boolean; is_available: boolean;
 };
+
+type OrderCartItem = { menuItem: ApiMenuItem; qty: number };
 
 const blankItem = (categorySlug: string): Draft => ({
   name: '', category: categorySlug, price: '', description: '',
@@ -351,6 +354,8 @@ export function MenuPanel() {
   const { user }  = useAuth();
   const canEdit   = user?.role === 'owner' || user?.role === 'manager' || user?.role === 'cashier';
   const canDeleteCategories = user?.role === 'owner' || user?.role === 'manager';
+  const canTakeOrderFromMenu =
+    user?.role === 'owner' || user?.role === 'manager' || user?.role === 'cashier' || user?.role === 'waiter';
 
   const [items,      setItems]      = useState<ApiMenuItem[]>([]);
   const [categories, setCategories] = useState<ApiMenuCategory[]>([]);
@@ -359,6 +364,12 @@ export function MenuPanel() {
   const [loading,    setLoading]    = useState(true);
   const [busy,       setBusy]       = useState(false);
   const [error,      setError]      = useState('');
+  const [tables,     setTables]     = useState<ApiTable[]>([]);
+  const [orderTable, setOrderTable] = useState('');
+  const [orderCart,  setOrderCart]  = useState<OrderCartItem[]>([]);
+  const [orderNote,  setOrderNote]  = useState('');
+  const [orderBusy,  setOrderBusy]  = useState(false);
+  const [orderError, setOrderError] = useState('');
 
   const [formMode,      setFormMode]      = useState<'add' | 'edit' | null>(null);
   const [editId,        setEditId]        = useState<string | null>(null);
@@ -377,10 +388,11 @@ export function MenuPanel() {
   const [imageUploadError, setImageUploadError] = useState('');
 
   useEffect(() => {
-    Promise.all([menuApi.list(), menuCategoriesApi.list()])
-      .then(([menuItems, cats]) => {
+    Promise.all([menuApi.list(), menuCategoriesApi.list(), tablesApi.list()])
+      .then(([menuItems, cats, tableRows]) => {
         setItems(menuItems);
         setCategories(cats);
+        setTables(tableRows);
         const defaultSlug = defaultCategorySlug(cats);
         setDraft(d => ({ ...d, category: d.category || defaultSlug }));
       })
@@ -397,6 +409,65 @@ export function MenuPanel() {
     .filter(i => !search.trim() ||
       i.name.toLowerCase().includes(search.toLowerCase()) ||
       i.description?.toLowerCase().includes(search.toLowerCase()));
+  const orderVisible = visible.filter((i) => i.is_available === 1);
+  const orderTableObj = tables.find((t) => t.id === orderTable);
+  const orderSubtotal = orderCart.reduce((sum, row) => sum + (row.menuItem.price * row.qty), 0);
+
+  function addOrderItem(item: ApiMenuItem) {
+    setOrderCart((prev) => {
+      const idx = prev.findIndex((x) => x.menuItem.id === item.id);
+      if (idx === -1) return [...prev, { menuItem: item, qty: 1 }];
+      const next = [...prev];
+      next[idx] = { ...next[idx], qty: next[idx].qty + 1 };
+      return next;
+    });
+  }
+
+  function changeOrderQty(menuItemId: string, delta: number) {
+    setOrderCart((prev) =>
+      prev
+        .map((x) => x.menuItem.id === menuItemId ? { ...x, qty: x.qty + delta } : x)
+        .filter((x) => x.qty > 0),
+    );
+  }
+
+  async function sendOrderFromMenu() {
+    if (!orderTable) {
+      setOrderError('Please select a table first.');
+      return;
+    }
+    if (orderCart.length === 0) {
+      setOrderError('Please add at least one item.');
+      return;
+    }
+    setOrderBusy(true);
+    setOrderError('');
+    try {
+      const order = await ordersApi.create({
+        table_id: orderTable,
+        covers: orderTableObj?.covers || 2,
+        note: orderNote.trim() || undefined,
+      });
+      for (const row of orderCart) {
+        await ordersApi.addItem(order.id, {
+          menu_item_id: row.menuItem.id,
+          qty: row.qty,
+          mods: [],
+        });
+      }
+      await ordersApi.updateStatus(order.id, 'sent');
+      await tablesApi.updateStatus(orderTable, { status: 'occupied', course: 'Order sent from Menu' });
+      toastBus.success(`Order sent to kitchen for ${orderTableObj?.name ?? 'selected table'}.`);
+      setOrderCart([]);
+      setOrderNote('');
+    } catch (e) {
+      const msg = (e as Error).message;
+      setOrderError(msg);
+      toastBus.error(`Could not send order: ${msg}`);
+    } finally {
+      setOrderBusy(false);
+    }
+  }
 
   function startAdd() {
     setCategoryPanelOpen(false);
@@ -639,6 +710,74 @@ export function MenuPanel() {
           onClose={closeForm}
           onSave={formMode === 'edit' ? saveEdit : saveAdd}
         />
+      )}
+
+      {canTakeOrderFromMenu && (
+        <section className="menu-order-builder card">
+          <div className="menu-order-head">
+            <div>
+              <p className="eyebrow">Quick Order</p>
+              <h3 className="serif">Take customer order from Menu</h3>
+            </div>
+            <div className="menu-order-controls">
+              <select value={orderTable} onChange={(e) => setOrderTable(e.target.value)}>
+                <option value="">Select table…</option>
+                {tables.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.name} · {t.status}
+                  </option>
+                ))}
+              </select>
+              <input
+                value={orderNote}
+                onChange={(e) => setOrderNote(e.target.value)}
+                placeholder="Optional note for kitchen"
+              />
+              <button type="button" className="btn-gold" onClick={sendOrderFromMenu} disabled={orderBusy || orderCart.length === 0}>
+                {orderBusy ? 'Sending…' : 'Send to Kitchen'}
+              </button>
+            </div>
+          </div>
+
+          {orderError && <p className="menu-order-error">{orderError}</p>}
+
+          <div className="menu-order-layout">
+            <div className="menu-order-items">
+              {orderVisible.map((item) => (
+                <button
+                  key={`order-${item.id}`}
+                  type="button"
+                  className="menu-order-item-btn"
+                  onClick={() => addOrderItem(item)}
+                >
+                  <span>{item.name}</span>
+                  <span className="mono">${item.price.toFixed(2)}</span>
+                </button>
+              ))}
+            </div>
+            <div className="menu-order-cart">
+              <p className="eyebrow">Selected Items</p>
+              {orderCart.length === 0 ? (
+                <p className="menu-order-empty">No items selected yet.</p>
+              ) : (
+                orderCart.map((row) => (
+                  <div key={`cart-${row.menuItem.id}`} className="menu-order-cart-row">
+                    <span>{row.menuItem.name}</span>
+                    <div className="menu-order-cart-actions">
+                      <button type="button" onClick={() => changeOrderQty(row.menuItem.id, -1)}>−</button>
+                      <span className="mono">{row.qty}</span>
+                      <button type="button" onClick={() => changeOrderQty(row.menuItem.id, 1)}>+</button>
+                    </div>
+                  </div>
+                ))
+              )}
+              <div className="menu-order-total">
+                <span>Total</span>
+                <span className="mono">${orderSubtotal.toFixed(2)}</span>
+              </div>
+            </div>
+          </div>
+        </section>
       )}
 
       <div className="menu-toolbar">
