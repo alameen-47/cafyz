@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { menuApi, menuCategoriesApi, ordersApi, restaurantApi, tablesApi, type ApiMenuCategory, type ApiMenuItem, type ApiOrder, type ApiRestaurant, type ApiTable } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import {
@@ -33,8 +33,7 @@ export function POSPanel() {
   const [activeOrderId, setActiveOrderId] = useState<string | null>(null);
   const [payState,      setPayState]      = useState<PaymentState>('open');
   const [note,          setNote]          = useState('');
-  const [noteOpen,      setNoteOpen]      = useState(false);
-  const [splitMode,     setSplitMode]     = useState(false);
+  const [pendingOrders, setPendingOrders] = useState<ApiOrder[]>([]);
   const [busy,          setBusy]          = useState(false);
   const [error,         setError]         = useState('');
   const [loading,       setLoading]       = useState(true);
@@ -46,7 +45,6 @@ export function POSPanel() {
     name: '', contact_phone: '', contact_email: '',
     address_line1: '', address_line2: '', city: '', country: '', postal_code: '', tax_id: '',
   });
-  const noteRef = useRef<HTMLInputElement>(null);
 
   // ── Printer state ──────────────────────────────────────────────────────────
   const [printer,      setPrinter]      = useState<{ type: 'none' | 'bluetooth' | 'usb'; name: string }>({ type: 'none', name: '' });
@@ -109,6 +107,27 @@ export function POSPanel() {
       .finally(() => setLoading(false));
   }, []);
 
+  // Billing queue: list sent orders so cashier can pick pending tables.
+  useEffect(() => {
+    let alive = true;
+    const loadPending = async () => {
+      try {
+        const rows = await ordersApi.list({ status: 'sent' });
+        if (!alive) return;
+        setPendingOrders(rows);
+      } catch {
+        if (!alive) return;
+        setPendingOrders([]);
+      }
+    };
+    loadPending();
+    const t = window.setInterval(loadPending, 6000);
+    return () => {
+      alive = false;
+      window.clearInterval(t);
+    };
+  }, []);
+
   // Cross-device sync from backend printer registry.
   useEffect(() => {
     let alive = true;
@@ -129,11 +148,6 @@ export function POSPanel() {
     };
   }, []);
 
-  // Focus note input when it opens
-  useEffect(() => {
-    if (noteOpen) noteRef.current?.focus();
-  }, [noteOpen]);
-
   // ── Derived ────────────────────────────────────────────────────────────────
   const categorised = buildMenuCategoryTabs(categories, menu);
 
@@ -143,7 +157,6 @@ export function POSPanel() {
       m.name.toLowerCase().includes(search.trim().toLowerCase()) ||
       m.description?.toLowerCase().includes(search.trim().toLowerCase()));
 
-  const cartMap = Object.fromEntries(cart.map(c => [c.menuItem.id, c.qty]));
   const tableObj = tables.find(t => t.id === selectedTable);
   const printerEnv = getPrinterEnvironment();
 
@@ -166,31 +179,8 @@ export function POSPanel() {
     : payState === 'cash'  ? 'Paid · Cash'
     : payState === 'sent'  ? 'Sent to Kitchen'
     : payState === 'comped'? 'Comped'
-    : splitMode            ? 'Split'
     : 'Open';
   const statusClass = isPaid || payState === 'sent' ? 'badge-paid' : 'badge-pending';
-
-  // ── Cart helpers ───────────────────────────────────────────────────────────
-  function addItem(item: ApiMenuItem) {
-    if (isPaid || payState === 'sent') return; // lock cart once order is sent
-    setCart(prev => {
-      const i = prev.findIndex(c => c.menuItem.id === item.id);
-      if (i >= 0) {
-        const next = [...prev];
-        next[i] = { ...next[i], qty: next[i].qty + 1 };
-        return next;
-      }
-      return [...prev, { menuItem: item, qty: 1, mods: [] }];
-    });
-  }
-
-  function changeQty(id: string, delta: number) {
-    if (isPaid || payState === 'sent') return;
-    setCart(prev =>
-      prev.map(c => c.menuItem.id === id ? { ...c, qty: c.qty + delta } : c)
-          .filter(c => c.qty > 0)
-    );
-  }
 
   // ── Reset check ────────────────────────────────────────────────────────────
   function resetCheck() {
@@ -198,9 +188,7 @@ export function POSPanel() {
     setSelectedTable('');
     setActiveOrderId(null);
     setPayState('open');
-    setSplitMode(false);
     setNote('');
-    setNoteOpen(false);
     setError('');
     setPrintOk(false);
     setPrintError('');
@@ -211,7 +199,6 @@ export function POSPanel() {
     setSelectedTable(tableId);
     setActiveOrderId(null);
     setPayState('open');
-    setSplitMode(false);
     setError('');
     if (!tableId) {
       setCart([]);
@@ -221,10 +208,11 @@ export function POSPanel() {
     setTableOrderLoading(true);
     try {
       const orders = await ordersApi.list({ table_id: tableId });
-      const pending = orders.find((o) => o.status === 'sent') ?? orders.find((o) => o.status === 'open');
+      const pending = orders.find((o) => o.status === 'sent');
       if (!pending) {
         setCart([]);
         setNote('');
+        setError('No pending kitchen-sent bill for this table.');
         return;
       }
       const full = await ordersApi.get(pending.id);
@@ -252,8 +240,8 @@ export function POSPanel() {
       setCart(nextCart);
       setActiveOrderId(full.id);
       setNote(full.note ?? '');
-      // Lock edits for loaded pending checks and allow cashier charge by table.
       setPayState('sent');
+      setError('');
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -261,50 +249,15 @@ export function POSPanel() {
     }
   }
 
-  // ── Ensure order exists and items are added ────────────────────────────────
-  async function ensureOrder(): Promise<string> {
-    if (activeOrderId) return activeOrderId;
-    const order = await ordersApi.create({
-      table_id: selectedTable || undefined,
-      covers:   tableObj?.covers || 2,
-      note:     note || undefined,
-    });
-    setActiveOrderId(order.id);
-    for (const c of cart) {
-      await ordersApi.addItem(order.id, {
-        menu_item_id: c.menuItem.id,
-        qty:          c.qty,
-        mods:         c.mods,
-      });
-    }
-    return order.id;
-  }
-
-  // ── Send to kitchen ────────────────────────────────────────────────────────
-  async function handleSend() {
-    if (cart.length === 0 || isPaid || payState === 'sent') return;
-    setBusy(true); setError('');
-    try {
-      const orderId = await ensureOrder();
-      await ordersApi.updateStatus(orderId, 'sent');          // triggers KDS ticket creation in backend
-      if (selectedTable) {
-        await tablesApi.updateStatus(selectedTable, { status: 'occupied', course: 'Order sent' });
-      }
-      setPayState('sent');
-    } catch (e) { setError((e as Error).message); }
-    finally { setBusy(false); }
-  }
-
   // ── Charge (card / cash) ───────────────────────────────────────────────────
   async function handleCharge(method: 'card' | 'cash') {
-    if (cart.length === 0 || isPaid) return;
+    if (!activeOrderId || cart.length === 0 || isPaid || payState !== 'sent') {
+      setError('Select a pending table bill first.');
+      return;
+    }
     setBusy(true); setError('');
     try {
-      // If already sent, activeOrderId is set — just mark paid.
-      // If not sent yet, create order + items first.
-      const orderId = await ensureOrder();
-      // If the order was only 'sent' so far, mark it paid now
-      await ordersApi.updateStatus(orderId, 'paid');
+      await ordersApi.updateStatus(activeOrderId, 'paid');
       if (selectedTable) {
         await tablesApi.updateStatus(selectedTable, { status: 'empty', course: '', covers: 0 });
       }
@@ -527,32 +480,16 @@ export function POSPanel() {
     }
   }
 
-  // ── Comp ───────────────────────────────────────────────────────────────────
-  async function handleComp() {
-    if (cart.length === 0 || isPaid) return;
-    setBusy(true); setError('');
-    try {
-      const orderId = await ensureOrder();
-      await ordersApi.updateStatus(orderId, 'comped');
-      if (selectedTable) {
-        await tablesApi.updateStatus(selectedTable, { status: 'empty', course: '', covers: 0 });
-      }
-      setPayState('comped');
-      setActiveOrderId(null);
-    } catch (e) { setError((e as Error).message); }
-    finally { setBusy(false); }
-  }
-
   if (loading) return (
     <div className="pos-layout">
-      <p style={{ color: 'var(--text2)', padding: 32 }}>Loading menu…</p>
+      <p style={{ color: 'var(--text2)', padding: 32 }}>Loading billing…</p>
     </div>
   );
 
   return (
     <div className="pos-layout">
 
-      {/* ── Menu grid ──────────────────────────────────────────────────── */}
+      {/* ── Billing lookup panel ──────────────────────────────────────── */}
       <section className="pos-grid">
         <div className="pos-toolbar">
           {categorised.map(c => (
@@ -582,27 +519,41 @@ export function POSPanel() {
 
         <div className="pos-dishes">
           {visible.map(d => (
-            <button key={d.id} type="button"
-              className={`pos-dish card ${cartMap[d.id] ? 'selected' : ''} ${isPaid || payState === 'sent' ? 'disabled' : ''}`}
-              onClick={() => addItem(d)}
-              disabled={isPaid || payState === 'sent'}
-            >
+            <div key={d.id} className="pos-dish card disabled">
               <div className="pos-dish-plate">
                 <MenuItemImage imageUrl={d.image_url} name={d.name} variant="pos-plate" />
                 {d.is_popular === 1 && <span className="pos-popular">★ Popular</span>}
-                {cartMap[d.id] && <span className="pos-dish-qty mono">× {cartMap[d.id]}</span>}
               </div>
               <div className="pos-dish-info">
                 <p className="pos-dish-name">{d.name}</p>
                 <p className="pos-dish-price mono">${d.price.toFixed(2)}</p>
                 <p className="pos-dish-sub">{d.description}</p>
               </div>
-            </button>
+            </div>
           ))}
           {visible.length === 0 && (
             <p style={{ color: 'var(--text3)', padding: 24, gridColumn: '1/-1' }}>
               {search ? `No results for "${search}"` : 'No items in this category.'}
             </p>
+          )}
+        </div>
+        <div style={{ padding: 10, borderTop: '0.5px solid var(--line)', marginTop: 10 }}>
+          <p className="eyebrow">Pending Table Bills</p>
+          {pendingOrders.length === 0 ? (
+            <p style={{ margin: 0, color: 'var(--text3)', fontSize: 12 }}>No pending table bills.</p>
+          ) : (
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 6 }}>
+              {pendingOrders.map((o) => (
+                <button
+                  key={o.id}
+                  type="button"
+                  className="pos-pill"
+                  onClick={() => { if (o.table_id) void handleTableChange(o.table_id); }}
+                >
+                  {o.table_name || 'No table'}
+                </button>
+              ))}
+            </div>
           )}
         </div>
       </section>
@@ -790,33 +741,10 @@ export function POSPanel() {
           <span className={`badge ${statusClass}`}>{statusLabel}</span>
         </header>
 
-        {/* Note display */}
-        {note && !noteOpen && (
-          <p className="pos-note" onClick={() => setNoteOpen(true)} style={{ cursor: 'pointer' }}>
+        {note && (
+          <p className="pos-note">
             📝 {note}
           </p>
-        )}
-
-        {/* Inline note editor */}
-        {noteOpen && (
-          <div className="pos-note-editor">
-            <input
-              ref={noteRef}
-              className="roles-input"
-              placeholder="Special instructions, allergies…"
-              value={note}
-              onChange={e => setNote(e.target.value)}
-              onKeyDown={e => {
-                if (e.key === 'Enter' || e.key === 'Escape') setNoteOpen(false);
-              }}
-              style={{ flex: 1, fontSize: 13 }}
-            />
-            <button
-              type="button"
-              className="roles-save-btn sm"
-              onClick={() => setNoteOpen(false)}
-            >✓</button>
-          </div>
         )}
 
         {error && <p style={{ color: 'var(--danger)', fontSize: 12, margin: '4px 0' }}>{error}</p>}
@@ -832,18 +760,12 @@ export function POSPanel() {
                   <span className="mono">${(c.menuItem.price * c.qty).toFixed(2)}</span>
                 </div>
                 {c.mods.map(m => <p key={m} className="pos-mod">· {m}</p>)}
-                {!isPaid && payState !== 'sent' && (
-                  <div className="pos-qty-btns">
-                    <button type="button" onClick={() => changeQty(c.menuItem.id, -1)}>−</button>
-                    <button type="button" onClick={() => changeQty(c.menuItem.id, +1)}>+</button>
-                  </div>
-                )}
               </div>
             </li>
           ))}
           {cart.length === 0 && (
             <p style={{ color: 'var(--text3)', fontSize: 13, padding: '12px 0' }}>
-              Add items from the menu.
+              Select a pending table to auto-load the bill.
             </p>
           )}
         </ul>
@@ -853,29 +775,6 @@ export function POSPanel() {
           <p style={{ fontSize: 12, color: 'var(--success, #4ade80)', padding: '6px 0', borderTop: '0.5px solid var(--line)' }}>
             ✓ Sent to kitchen — awaiting payment
           </p>
-        )}
-
-        {/* Extras: note / split / print */}
-        {!isPaid && payState !== 'sent' && (
-          <div className="pos-extras">
-            <button type="button" className="btn-outline"
-              onClick={() => setNoteOpen(o => !o)}>
-              {note ? '✏ Edit note' : '+ Note'}
-            </button>
-            <button type="button"
-              className={`btn-outline ${splitMode ? 'active' : ''}`}
-              onClick={() => setSplitMode(s => !s)}>
-              {splitMode ? 'Split · 2' : 'Split'}
-            </button>
-            <button type="button"
-              className="btn-outline"
-              disabled={cart.length === 0 || printBusy}
-              onClick={() => handlePrint()}
-              title={printer.type !== 'none' ? `Print via ${printer.name}` : 'Print via browser dialog'}
-            >
-              {printBusy ? '…' : '🖨'}
-            </button>
-          </div>
         )}
 
         {/* Totals */}
@@ -915,27 +814,17 @@ export function POSPanel() {
             <>
               <button type="button"
                 className={`pos-charge ${payState === 'sent' ? 'sent' : ''}`}
-                disabled={cart.length === 0 || busy}
+                disabled={cart.length === 0 || busy || payState !== 'sent'}
                 onClick={() => handleCharge('card')}
               >
-                {busy ? '…' : `💳 Charge · $${total.toFixed(2)}`}
+                {busy ? '…' : payState === 'sent' ? `💳 Charge · $${total.toFixed(2)}` : 'Select Pending Table'}
               </button>
 
               <div className="pos-alt-pay">
                 <button type="button"
-                  disabled={cart.length === 0 || busy}
+                  disabled={cart.length === 0 || busy || payState !== 'sent'}
                   onClick={() => handleCharge('cash')}>
                   💵 Cash
-                </button>
-                <button type="button"
-                  disabled={cart.length === 0 || busy || payState === 'sent'}
-                  onClick={handleSend}>
-                  🧾 {payState === 'sent' ? 'Sent ✓' : 'Send'}
-                </button>
-                <button type="button"
-                  disabled={cart.length === 0 || busy}
-                  onClick={handleComp}>
-                  🎁 Comp
                 </button>
               </div>
             </>
