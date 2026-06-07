@@ -194,12 +194,12 @@ export function LoginPanel() {
 
   const handlePin = (key: number | 'back' | null) => {
     if (key === null || busy) return;
-    if (!pinEmail.trim()) {
-      setLocalErr('Enter your work email before using PIN login.');
-      return;
-    }
     if (key === 'back') {
       setPin(p => p.slice(0, -1));
+      return;
+    }
+    if (!pinEmail.trim()) {
+      setLocalErr('Enter your work email before using PIN login.');
       return;
     }
     if (pin.length >= 4) return;
@@ -669,7 +669,9 @@ export function LoginPanel() {
             <p className="login-pin-label">PIN · 4 digits</p>
             <div className="login-pin-dots">
               {[0, 1, 2, 3].map(i => (
-                <div key={i} className={pin.length > i ? 'filled' : ''} />
+                <div key={i} className={`login-pin-box ${pin.length > i ? 'filled' : ''}`}>
+                  {pin[i] ?? ''}
+                </div>
               ))}
             </div>
             <div className="login-numpad">
