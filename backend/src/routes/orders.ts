@@ -201,6 +201,37 @@ router.patch('/:id/status', requireRole('owner', 'manager', 'cashier', 'waiter')
             ],
           });
         }
+
+        // Enqueue cloud print job for kitchen auto-printer consumers.
+        const payload = {
+          ticketId,
+          tableName,
+          serverName,
+          covers: Number(order.covers) || 1,
+          items: itemRows.rows.map((row) => {
+            const it = row as Record<string, unknown>;
+            let mods: string[] = [];
+            try {
+              const parsed = JSON.parse(String(it.mods ?? '[]'));
+              if (Array.isArray(parsed)) mods = parsed.map((m) => String(m));
+            } catch {
+              mods = [];
+            }
+            return {
+              name: String(it.name),
+              qty: Number(it.qty) || 1,
+              mods,
+              alert: false,
+            };
+          }),
+          note: order.note ? String(order.note) : undefined,
+        };
+
+        await db.execute({
+          sql: `INSERT INTO kitchen_print_jobs(id,restaurant_id,ticket_id,payload_json,status)
+                VALUES(?,?,?,?, 'pending')`,
+          args: [uid(), rid, ticketId, JSON.stringify(payload)],
+        });
       }
     }
 

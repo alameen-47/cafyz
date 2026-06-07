@@ -8,6 +8,17 @@ import { uid } from '../utils.js';
 const router = Router();
 router.use(requireAuth);
 
+type PrintJobPayload = {
+  ticketId: string;
+  tableName: string;
+  serverName?: string;
+  covers?: number;
+  station?: string;
+  items: { name: string; qty: number; mods?: string[]; alert?: boolean }[];
+  note?: string;
+  createdAt?: string;
+};
+
 // GET /api/kds/tickets?status=new&station=GRILL
 router.get('/tickets', requireRole('owner', 'manager', 'cashier', 'waiter', 'kitchen'), async (req: AuthRequest, res, next) => {
   try {
@@ -126,6 +137,97 @@ router.delete('/tickets/:id', requireRole('owner', 'manager'), async (req: AuthR
     if (!ex.rows.length) { res.status(404).json({ error: 'Ticket not found' }); return; }
     await db.execute({ sql: 'DELETE FROM kds_tickets WHERE id=?', args: [(req.params.id as string)] });
     res.status(204).end();
+  } catch (e) { next(e); }
+});
+
+// POST /api/kds/print-jobs/claim
+router.post('/print-jobs/claim', requireRole('owner', 'manager', 'kitchen'), async (req: AuthRequest, res, next) => {
+  try {
+    const rid = req.user!.restaurant_id;
+    const deviceId = z.object({ device_id: z.string().optional() }).parse(req.body ?? {}).device_id ?? null;
+    const db = getDb();
+    const row = await db.execute({
+      sql: `UPDATE kitchen_print_jobs
+            SET status='printing',
+                claimed_by=?,
+                claimed_at=datetime('now'),
+                attempt_count=attempt_count+1,
+                updated_at=datetime('now')
+            WHERE id = (
+              SELECT id FROM kitchen_print_jobs
+              WHERE restaurant_id=? AND status='pending'
+              ORDER BY created_at ASC
+              LIMIT 1
+            )
+            RETURNING *`,
+      args: [deviceId, rid],
+    });
+    if (!row.rows.length) {
+      res.json({ job: null });
+      return;
+    }
+    const job = row.rows[0] as Record<string, unknown>;
+    let payload: PrintJobPayload | null = null;
+    try {
+      payload = JSON.parse(String(job.payload_json ?? '{}')) as PrintJobPayload;
+    } catch {
+      payload = null;
+    }
+    res.json({ job: { ...job, payload } });
+  } catch (e) { next(e); }
+});
+
+// PATCH /api/kds/print-jobs/:id
+router.patch('/print-jobs/:id', requireRole('owner', 'manager', 'kitchen'), async (req: AuthRequest, res, next) => {
+  try {
+    const rid = req.user!.restaurant_id;
+    const id = req.params.id as string;
+    const data = z.object({
+      status: z.enum(['printed', 'failed']),
+      error: z.string().optional(),
+    }).parse(req.body);
+    const db = getDb();
+    const ex = await db.execute({
+      sql: 'SELECT * FROM kitchen_print_jobs WHERE id=? AND restaurant_id=?',
+      args: [id, rid],
+    });
+    if (!ex.rows.length) {
+      res.status(404).json({ error: 'Print job not found' });
+      return;
+    }
+
+    if (data.status === 'printed') {
+      await db.execute({
+        sql: `UPDATE kitchen_print_jobs
+              SET status='printed',
+                  printed_at=datetime('now'),
+                  claimed_by=NULL,
+                  claimed_at=NULL,
+                  last_error=NULL,
+                  updated_at=datetime('now')
+              WHERE id=? AND restaurant_id=?`,
+        args: [id, rid],
+      });
+    } else {
+      const cur = ex.rows[0] as Record<string, unknown>;
+      const attempts = Number(cur.attempt_count ?? 0);
+      const nextStatus = attempts >= 5 ? 'failed' : 'pending';
+      await db.execute({
+        sql: `UPDATE kitchen_print_jobs
+              SET status=?,
+                  claimed_by=NULL,
+                  claimed_at=NULL,
+                  last_error=?,
+                  updated_at=datetime('now')
+              WHERE id=? AND restaurant_id=?`,
+        args: [nextStatus, data.error ?? 'Print failed', id, rid],
+      });
+    }
+    const out = await db.execute({
+      sql: 'SELECT * FROM kitchen_print_jobs WHERE id=? AND restaurant_id=?',
+      args: [id, rid],
+    });
+    res.json(out.rows[0]);
   } catch (e) { next(e); }
 });
 

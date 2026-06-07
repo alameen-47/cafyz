@@ -190,6 +190,10 @@ export const kdsApi = {
   fire:      (id: string)                                                     => patch<{ id: string; status: string }>(`/api/kds/tickets/${id}/fire`),
   ready:     (id: string)                                                     => patch<{ id: string; status: string }>(`/api/kds/tickets/${id}/ready`),
   delivered: (id: string)                                                     => patch<{ id: string; status: string }>(`/api/kds/tickets/${id}/delivered`),
+  claimPrintJob: (device_id?: string)                                         =>
+    post<{ job: ApiKitchenPrintJob | null }>('/api/kds/print-jobs/claim', { device_id }),
+  completePrintJob: (id: string, status: 'printed' | 'failed', error?: string) =>
+    patch<{ id: string; status: string }>(`/api/kds/print-jobs/${id}`, { status, error }),
   delete:    (id: string)                                                     => del(`/api/kds/tickets/${id}`),
 };
 
@@ -372,6 +376,24 @@ export interface ApiKdsTicket {
 export interface ApiKdsTicketItem {
   id: string; ticket_id: string; name: string; qty: number;
   station: string; mods: string; alert: number; is_done: number;
+}
+
+export interface ApiKitchenPrintJob {
+  id: string;
+  restaurant_id: string;
+  ticket_id: string;
+  status: 'pending' | 'printing' | 'printed' | 'failed';
+  attempt_count: number;
+  payload: {
+    ticketId: string;
+    tableName: string;
+    serverName?: string;
+    covers?: number;
+    station?: string;
+    items: { name: string; qty: number; mods?: string[]; alert?: boolean }[];
+    note?: string;
+    createdAt?: string;
+  } | null;
 }
 
 export interface ApiReservation {

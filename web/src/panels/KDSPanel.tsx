@@ -125,18 +125,10 @@ export function KDSPanel() {
   const [printer, setPrinter] = useState<{ type: 'none' | 'bluetooth' | 'usb'; name: string }>({ type: 'none', name: '' });
   const [assignedKitchen, setAssignedKitchen] = useState<AssignedPrinter | null>(null);
   const [printBusy, setPrintBusy] = useState(false);
-  const printedRef = useRef<Set<string>>(new Set());
+  const queueBusyRef = useRef(false);
 
   useEffect(() => {
     setPrinter(printerStatus());
-    try {
-      const raw = sessionStorage.getItem('cafyz_kds_printed_ids');
-      if (!raw) return;
-      const ids = JSON.parse(raw);
-      if (Array.isArray(ids)) printedRef.current = new Set(ids.slice(-400));
-    } catch {
-      // ignore parse errors
-    }
   }, []);
 
   useEffect(() => {
@@ -170,45 +162,47 @@ export function KDSPanel() {
     };
   }, []);
 
-  const persistPrinted = () => {
-    try {
-      sessionStorage.setItem('cafyz_kds_printed_ids', JSON.stringify(Array.from(printedRef.current).slice(-400)));
-    } catch {
-      // ignore storage failures
-    }
-  };
-
-  const tryAutoPrint = async (list: ApiKdsTicket[]) => {
+  const consumeCloudPrintQueue = useCallback(async () => {
     if (!autoPrint) return;
     if (printerStatus().type === 'none') return;
-    const fresh = list
-      .filter(t => t.status === 'new')
-      .filter(t => !printedRef.current.has(t.id))
-      .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
-    for (const t of fresh) {
+    if (queueBusyRef.current) return;
+    queueBusyRef.current = true;
+    try {
+      const claimed = await kdsApi.claimPrintJob(`${navigator.userAgent.slice(0, 80)}:${Date.now()}`);
+      const job = claimed.job;
+      if (!job) return;
+      if (!job.payload) {
+        await kdsApi.completePrintJob(job.id, 'failed', 'Invalid print payload');
+        return;
+      }
+      if (!job.payload.items || !Array.isArray(job.payload.items) || job.payload.items.length === 0) {
+        await kdsApi.completePrintJob(job.id, 'failed', 'Invalid print payload: empty items');
+        return;
+      }
       try {
         await printKitchenTicket({
           restaurantName: restaurant?.name ?? 'Restaurant',
-          ticketId: t.id,
-          tableName: t.table_name,
-          serverName: t.server_name,
-          covers: t.covers,
-          station: t.station ?? undefined,
-          createdAt: t.created_at,
-          items: (t.items ?? []).map(i => ({
-            name: i.name,
-            qty: i.qty,
-            mods: typeof i.mods === 'string' ? JSON.parse(i.mods || '[]') : (i.mods ?? []),
-            alert: Boolean(i.alert),
-          })),
+          ticketId: job.payload.ticketId,
+          tableName: job.payload.tableName,
+          serverName: job.payload.serverName,
+          covers: job.payload.covers,
+          station: job.payload.station,
+          createdAt: job.payload.createdAt,
+          items: job.payload.items,
+          note: job.payload.note,
         }, restaurant?.id, { allowDialog: false });
-        printedRef.current.add(t.id);
+        await kdsApi.completePrintJob(job.id, 'printed');
       } catch (e) {
-        setError((e as Error).message || 'Auto-print failed');
+        const msg = (e as Error).message || 'Cloud print failed';
+        await kdsApi.completePrintJob(job.id, 'failed', msg);
+        setError(msg);
       }
+    } catch {
+      // keep UI responsive on transient queue errors
+    } finally {
+      queueBusyRef.current = false;
     }
-    persistPrinted();
-  };
+  }, [autoPrint, restaurant?.id, restaurant?.name]);
 
   async function connectKdsBluetooth() {
     setPrintBusy(true); setError('');
@@ -289,13 +283,10 @@ export function KDSPanel() {
 
   const load = useCallback(() => {
     kdsApi.list({ status: undefined })
-      .then(async (rows) => {
-        setTickets(rows);
-        await tryAutoPrint(rows);
-      })
+      .then((rows) => { setTickets(rows); })
       .catch(e => setError(e.message))
       .finally(() => setLoading(false));
-  }, [autoPrint, restaurant?.id, restaurant?.name]);
+  }, []);
 
   useEffect(() => { load(); }, [load]);
 
@@ -304,6 +295,11 @@ export function KDSPanel() {
     const t = setInterval(load, 5000);
     return () => clearInterval(t);
   }, [load]);
+
+  useEffect(() => {
+    const t = setInterval(() => { void consumeCloudPrintQueue(); }, 1200);
+    return () => clearInterval(t);
+  }, [consumeCloudPrintQueue]);
 
   const stationFilter = station === 'All' ? '' : station.toUpperCase();
 
