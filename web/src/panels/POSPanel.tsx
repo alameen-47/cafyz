@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { menuApi, menuCategoriesApi, ordersApi, restaurantApi, tablesApi, type ApiMenuCategory, type ApiMenuItem, type ApiOrder, type ApiRestaurant, type ApiTable } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import {
@@ -107,26 +107,36 @@ export function POSPanel() {
       .finally(() => setLoading(false));
   }, []);
 
-  // Billing queue: list sent orders so cashier can pick pending tables.
+  const refreshBillingQueues = useCallback(async () => {
+    try {
+      const [rows, tableRows] = await Promise.all([
+        ordersApi.list({ status: 'sent' }),
+        tablesApi.list(),
+      ]);
+      setPendingOrders(rows);
+      setTables(tableRows);
+    } catch {
+      setPendingOrders([]);
+    }
+  }, []);
+
+  // Billing queue: list sent orders + table status for cashier.
   useEffect(() => {
     let alive = true;
-    const loadPending = async () => {
-      try {
-        const rows = await ordersApi.list({ status: 'sent' });
-        if (!alive) return;
-        setPendingOrders(rows);
-      } catch {
-        if (!alive) return;
-        setPendingOrders([]);
-      }
+    const load = async () => {
+      if (!alive) return;
+      await refreshBillingQueues();
     };
-    loadPending();
-    const t = window.setInterval(loadPending, 6000);
+    load();
+    const t = window.setInterval(load, 5000);
+    const onOrderSent = () => { void refreshBillingQueues(); };
+    window.addEventListener('CAFYZ_ORDER_SENT', onOrderSent as EventListener);
     return () => {
       alive = false;
       window.clearInterval(t);
+      window.removeEventListener('CAFYZ_ORDER_SENT', onOrderSent as EventListener);
     };
-  }, []);
+  }, [refreshBillingQueues]);
 
   // Cross-device sync from backend printer registry.
   useEffect(() => {
@@ -263,6 +273,7 @@ export function POSPanel() {
       }
       setPayState(method);
       setActiveOrderId(null);
+      await refreshBillingQueues();
     } catch (e) { setError((e as Error).message); }
     finally { setBusy(false); }
   }
@@ -556,6 +567,9 @@ export function POSPanel() {
             </div>
           )}
         </div>
+        <p style={{ margin: '8px 0 0', fontSize: 12, color: 'var(--text3)' }}>
+          Billing-only mode: orders are created and sent from Menu/Waiter panels.
+        </p>
       </section>
 
       {/* ── Order sidebar ──────────────────────────────────────────────── */}

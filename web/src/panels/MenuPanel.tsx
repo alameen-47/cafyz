@@ -412,6 +412,7 @@ export function MenuPanel() {
   const orderVisible = visible.filter((i) => i.is_available === 1);
   const orderTableObj = tables.find((t) => t.id === orderTable);
   const orderSubtotal = orderCart.reduce((sum, row) => sum + (row.menuItem.price * row.qty), 0);
+  const orderQtyMap = Object.fromEntries(orderCart.map((row) => [row.menuItem.id, row.qty]));
 
   function addOrderItem(item: ApiMenuItem) {
     setOrderCart((prev) => {
@@ -457,6 +458,9 @@ export function MenuPanel() {
       }
       await ordersApi.updateStatus(order.id, 'sent');
       await tablesApi.updateStatus(orderTable, { status: 'occupied', course: 'Order sent from Menu' });
+      window.dispatchEvent(new CustomEvent('CAFYZ_ORDER_SENT', {
+        detail: { tableId: orderTable, orderId: order.id },
+      }));
       toastBus.success(`Order sent to kitchen for ${orderTableObj?.name ?? 'selected table'}.`);
       setOrderCart([]);
       setOrderNote('');
@@ -747,11 +751,19 @@ export function MenuPanel() {
                 <button
                   key={`order-${item.id}`}
                   type="button"
-                  className="menu-order-item-btn"
+                  className={`menu-order-item-btn ${orderQtyMap[item.id] ? 'selected' : ''}`}
                   onClick={() => addOrderItem(item)}
                 >
-                  <span>{item.name}</span>
-                  <span className="mono">${item.price.toFixed(2)}</span>
+                  <div className="menu-order-item-media">
+                    <MenuItemImage imageUrl={item.image_url} name={item.name} variant="menu-card" />
+                    {orderQtyMap[item.id] ? (
+                      <span className="menu-order-item-qty mono">× {orderQtyMap[item.id]}</span>
+                    ) : null}
+                  </div>
+                  <div className="menu-order-item-info">
+                    <span className="menu-order-item-name">{item.name}</span>
+                    <span className="mono menu-order-item-price">${item.price.toFixed(2)}</span>
+                  </div>
                 </button>
               ))}
             </div>
