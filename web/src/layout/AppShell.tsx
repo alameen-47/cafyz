@@ -6,6 +6,7 @@ import { TopBar, type TopBarNotification } from './TopBar';
 import { MOBILE_NAV_MQ } from './layoutBreakpoints';
 import { useAuth } from '../context/AuthContext';
 import {
+  authApi,
   dashboardApi,
   founderApi,
   inventoryApi,
@@ -13,11 +14,15 @@ import {
   licensesApi,
   menuApi,
   ordersApi,
+  restaurantApi,
   tablesApi,
   usersApi,
 } from '../services/api';
 import { TrialExpiredModal } from '../components/TrialExpiredModal';
 import { AISupportWidget } from '../components/AISupportWidget';
+import { Modal } from '../components/Modal';
+import { toastBus } from '../services/toastBus';
+import { applyLanguageToDocument, getActiveLanguageCode, setActiveLanguageCode } from '../utils/language';
 import '../components/TrialExpiredModal.css';
 
 const CRUMBS: Partial<Record<Screen, [string, string]>> = {
@@ -58,6 +63,12 @@ export function AppShell({
     expired: false,
   });
   const [supportOpen, setSupportOpen] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
+  const [profileBusy, setProfileBusy] = useState(false);
+  const [profileData, setProfileData] = useState({ name: '', email: '', phone: '' });
+  const [pwdData, setPwdData] = useState({ current: '', next: '' });
+  const [pinData, setPinData] = useState({ current: '', next: '' });
+  const [activeLanguage, setActiveLanguage] = useState(() => getActiveLanguageCode('en'));
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [notifications, setNotifications] = useState<TopBarNotification[]>([]);
   const [readIds, setReadIds] = useState<string[]>([]);
@@ -105,6 +116,54 @@ export function AppShell({
   useEffect(() => {
     setNotificationsOpen(false);
   }, [active, pathname]);
+
+  useEffect(() => {
+    if (!user) return;
+    let alive = true;
+    const syncLang = () => {
+      restaurantApi.me().then((r) => {
+        if (!alive) return;
+        const lang = String(r.language_code ?? 'en').toLowerCase();
+        setActiveLanguageCode(lang);
+        setActiveLanguage(lang);
+      }).catch(() => {});
+    };
+    syncLang();
+    const t = window.setInterval(syncLang, 60_000);
+    return () => {
+      alive = false;
+      window.clearInterval(t);
+    };
+  }, [user?.id]);
+
+  useEffect(() => {
+    const run = () => applyLanguageToDocument(
+      activeLanguage,
+      document.querySelector('.app-shell') as HTMLElement | null,
+    );
+    run();
+    const t = window.setTimeout(run, 50);
+    return () => window.clearTimeout(t);
+  }, [active, pathname, notificationsOpen, supportOpen, profileOpen, user?.id, activeLanguage]);
+
+  useEffect(() => {
+    if (!profileOpen) return;
+    authApi.me().then((u) => {
+      setProfileData({
+        name: String(u.name ?? ''),
+        email: String(u.email ?? ''),
+        phone: String(u.phone ?? ''),
+      });
+    }).catch(() => {});
+  }, [profileOpen]);
+
+  useEffect(() => {
+    const t = window.setInterval(() => {
+      const next = getActiveLanguageCode('en');
+      setActiveLanguage((prev) => (prev === next ? prev : next));
+    }, 2000);
+    return () => window.clearInterval(t);
+  }, []);
 
   useEffect(() => {
     if (!user) {
@@ -378,6 +437,50 @@ export function AppShell({
     setReadIds((prev) => Array.from(new Set([...prev, ...notifications.map((n) => n.id)])));
   };
 
+  const saveProfile = async () => {
+    setProfileBusy(true);
+    try {
+      await authApi.updateProfile({
+        name: profileData.name.trim(),
+        email: profileData.email.trim().toLowerCase(),
+        phone: profileData.phone.trim(),
+      });
+      toastBus.success('Profile updated.');
+    } catch (e) {
+      toastBus.error((e as Error).message);
+    } finally {
+      setProfileBusy(false);
+    }
+  };
+
+  const savePassword = async () => {
+    if (!pwdData.current || !pwdData.next) return;
+    setProfileBusy(true);
+    try {
+      await authApi.changePassword(pwdData.current, pwdData.next);
+      setPwdData({ current: '', next: '' });
+      toastBus.success('Password changed successfully.');
+    } catch (e) {
+      toastBus.error((e as Error).message);
+    } finally {
+      setProfileBusy(false);
+    }
+  };
+
+  const savePin = async () => {
+    if (!pinData.current || !pinData.next) return;
+    setProfileBusy(true);
+    try {
+      await authApi.changePin(pinData.current, pinData.next);
+      setPinData({ current: '', next: '' });
+      toastBus.success('PIN changed successfully.');
+    } catch (e) {
+      toastBus.error((e as Error).message);
+    } finally {
+      setProfileBusy(false);
+    }
+  };
+
   return (
     <div
       className={[
@@ -407,6 +510,8 @@ export function AppShell({
           menuOpen={navOpen}
           onSupportClick={() => setSupportOpen((v) => !v)}
           supportOpen={supportOpen}
+          onProfileClick={() => setProfileOpen((v) => !v)}
+          profileOpen={profileOpen}
           notifications={notifications}
           notificationsOpen={notificationsOpen}
           unreadCount={unreadCount}
@@ -418,6 +523,94 @@ export function AppShell({
         <div className="app-content">{children}</div>
       </div>
       <AISupportWidget open={supportOpen} onClose={() => setSupportOpen(false)} screen={active} />
+      <Modal
+        open={profileOpen}
+        onClose={() => setProfileOpen(false)}
+        title="My Profile"
+        subtitle="Manage your profile details, password and 4-digit PIN."
+        size="md"
+      >
+        <div className="form-grid">
+          <label className="form-field">
+            <span>Name</span>
+            <input
+              value={profileData.name}
+              onChange={(e) => setProfileData((s) => ({ ...s, name: e.target.value }))}
+              placeholder="Your full name"
+            />
+          </label>
+          <label className="form-field">
+            <span>Email</span>
+            <input
+              type="email"
+              value={profileData.email}
+              onChange={(e) => setProfileData((s) => ({ ...s, email: e.target.value }))}
+              placeholder="name@restaurant.com"
+            />
+          </label>
+          <label className="form-field">
+            <span>Phone</span>
+            <input
+              value={profileData.phone}
+              onChange={(e) => setProfileData((s) => ({ ...s, phone: e.target.value }))}
+              placeholder="+971500000000"
+            />
+          </label>
+          <button type="button" className="btn btn-primary" onClick={saveProfile} disabled={profileBusy}>
+            Save Profile
+          </button>
+        </div>
+        <hr style={{ borderColor: 'var(--line)' }} />
+        <div className="form-grid">
+          <label className="form-field">
+            <span>Current Password</span>
+            <input
+              type="password"
+              value={pwdData.current}
+              onChange={(e) => setPwdData((s) => ({ ...s, current: e.target.value }))}
+              placeholder="Current password"
+            />
+          </label>
+          <label className="form-field">
+            <span>New Password</span>
+            <input
+              type="password"
+              value={pwdData.next}
+              onChange={(e) => setPwdData((s) => ({ ...s, next: e.target.value }))}
+              placeholder="Minimum 8 characters"
+            />
+          </label>
+          <button type="button" className="btn btn-soft" onClick={savePassword} disabled={profileBusy}>
+            Change Password
+          </button>
+        </div>
+        <hr style={{ borderColor: 'var(--line)' }} />
+        <div className="form-grid">
+          <label className="form-field">
+            <span>Current PIN</span>
+            <input
+              inputMode="numeric"
+              maxLength={4}
+              value={pinData.current}
+              onChange={(e) => setPinData((s) => ({ ...s, current: e.target.value.replace(/\D/g, '').slice(0, 4) }))}
+              placeholder="Current 4-digit PIN"
+            />
+          </label>
+          <label className="form-field">
+            <span>New PIN</span>
+            <input
+              inputMode="numeric"
+              maxLength={4}
+              value={pinData.next}
+              onChange={(e) => setPinData((s) => ({ ...s, next: e.target.value.replace(/\D/g, '').slice(0, 4) }))}
+              placeholder="New 4-digit PIN"
+            />
+          </label>
+          <button type="button" className="btn btn-soft" onClick={savePin} disabled={profileBusy}>
+            Change PIN
+          </button>
+        </div>
+      </Modal>
       {trialLock.expired && !pathname.startsWith('/license') && (
         <TrialExpiredModal purchaseUrl={trialLock.purchaseUrl} expiresAt={trialLock.expiresAt} />
       )}

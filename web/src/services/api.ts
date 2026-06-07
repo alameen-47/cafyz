@@ -3,6 +3,7 @@
 // every request. On 401 the session is cleared and the user is redirected.
 import { toastBus } from './toastBus';
 import { setActiveCurrencyCode } from '../utils/currency';
+import { setActiveLanguageCode } from '../utils/language';
 
 // In dev, relative URLs go through the Vite proxy (→ localhost:4000).
 // In production, set VITE_API_URL to the backend origin (e.g. https://api.cafyz.io).
@@ -62,6 +63,8 @@ async function request<T = unknown>(
   if (path.startsWith('/api/restaurants/me') && data && typeof data === 'object') {
     const maybeCode = (data as { currency_code?: unknown }).currency_code;
     if (typeof maybeCode === 'string') setActiveCurrencyCode(maybeCode);
+    const maybeLang = (data as { language_code?: unknown }).language_code;
+    if (typeof maybeLang === 'string') setActiveLanguageCode(maybeLang);
   }
   return data as T;
 }
@@ -87,6 +90,12 @@ export const authApi = {
   resetPassword: (token: string, password: string) =>
     post<{ ok: boolean; message: string }>('/api/auth/reset-password', { token, password }),
   me: () => get<ApiUser>('/api/auth/me'),
+  updateProfile: (d: { name?: string; phone?: string; email?: string }) =>
+    put<ApiUser>('/api/auth/profile', d),
+  changePassword: (current_password: string, new_password: string) =>
+    post<{ ok: boolean; message: string }>('/api/auth/change-password', { current_password, new_password }),
+  changePin: (current_pin: string, new_pin: string) =>
+    post<{ ok: boolean; message: string }>('/api/auth/change-pin', { current_pin, new_pin }),
   onboarding: (data: {
     restaurant_name: string; owner_name: string;
     email: string; phone: string; password: string; plan?: string; timezone?: string;

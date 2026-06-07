@@ -18,6 +18,8 @@ interface TopBarProps {
   menuOpen?: boolean;
   onSupportClick?: () => void;
   supportOpen?: boolean;
+  onProfileClick?: () => void;
+  profileOpen?: boolean;
   notifications?: TopBarNotification[];
   notificationsOpen?: boolean;
   unreadCount?: number;
@@ -35,6 +37,8 @@ export function TopBar({
   menuOpen = false,
   onSupportClick,
   supportOpen = false,
+  onProfileClick,
+  profileOpen = false,
   notifications = [],
   notificationsOpen = false,
   unreadCount = 0,
@@ -130,6 +134,15 @@ export function TopBar({
           title="AI Customer Support"
         >
           🎧 AI
+        </button>
+        <button
+          type="button"
+          className={`topbar-support ${profileOpen ? 'active' : ''}`}
+          onClick={onProfileClick}
+          aria-label={profileOpen ? 'Close profile settings' : 'Open profile settings'}
+          title="My Profile"
+        >
+          👤
         </button>
         <div className="topbar-notif-wrap" ref={notifRef}>
           <button

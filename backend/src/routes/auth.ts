@@ -28,6 +28,19 @@ const ResetPasswordSchema = z.object({
   token: z.string().min(24),
   password: z.string().min(8),
 });
+const ProfileUpdateSchema = z.object({
+  name: z.string().min(2).max(80).optional(),
+  phone: z.string().min(8).max(40).optional(),
+  email: z.string().email().optional(),
+});
+const ChangePasswordSchema = z.object({
+  current_password: z.string().min(1),
+  new_password: z.string().min(8),
+});
+const ChangePinSchema = z.object({
+  current_pin: z.string().length(4),
+  new_pin: z.string().length(4),
+});
 
 const GENERIC_RESET_MSG = 'If that account exists, a password-reset link has been sent.';
 const RESET_TOKEN_TTL_MINUTES = 30;
@@ -382,6 +395,139 @@ router.get('/me', requireAuth, async (req: AuthRequest, res, next) => {
     const row = await getDb().execute({ sql: 'SELECT id,restaurant_id,name,initials,email,phone,role,access_json,status FROM users WHERE id=?', args: [req.user!.id] });
     if (!row.rows.length) { res.status(404).json({ error: 'User not found' }); return; }
     res.json(row.rows[0]);
+  } catch (e) { next(e); }
+});
+
+// PUT /api/auth/profile
+router.put('/profile', requireAuth, async (req: AuthRequest, res, next) => {
+  try {
+    const data = ProfileUpdateSchema.parse(req.body);
+    const db = getDb();
+    const me = await db.execute({
+      sql: 'SELECT * FROM users WHERE id=?',
+      args: [req.user!.id],
+    });
+    if (!me.rows.length) {
+      res.status(404).json({ error: 'User not found' });
+      return;
+    }
+    const current = me.rows[0] as Record<string, unknown>;
+
+    const sets: string[] = [];
+    const args: any[] = [];
+
+    if (data.name !== undefined) {
+      sets.push('name=?');
+      args.push(data.name.trim());
+      sets.push('initials=?');
+      args.push(data.name.trim().split(' ').map((w) => w[0]).join('').toUpperCase().slice(0, 2));
+    }
+    if (data.phone !== undefined) {
+      const phoneNorm = normalizePhone(data.phone);
+      if (!isValidPhoneE164(phoneNorm)) {
+        res.status(400).json({ error: 'Phone must be in international format (e.g. +971500000000)' });
+        return;
+      }
+      const exists = await db.execute({
+        sql: 'SELECT id FROM users WHERE phone=? AND id!=?',
+        args: [phoneNorm, req.user!.id],
+      });
+      if (exists.rows.length) {
+        res.status(409).json({ error: 'Phone number already used by another account' });
+        return;
+      }
+      sets.push('phone=?');
+      args.push(phoneNorm);
+    }
+    if (data.email !== undefined) {
+      const emailNorm = data.email.trim().toLowerCase();
+      const exists = await db.execute({
+        sql: 'SELECT id FROM users WHERE restaurant_id=? AND LOWER(email)=? AND id!=?',
+        args: [String(current.restaurant_id), emailNorm, req.user!.id],
+      });
+      if (exists.rows.length) {
+        res.status(409).json({ error: 'Email already exists in this restaurant' });
+        return;
+      }
+      sets.push('email=?');
+      args.push(emailNorm);
+    }
+
+    if (!sets.length) {
+      res.status(400).json({ error: 'Nothing to update' });
+      return;
+    }
+
+    args.push(req.user!.id);
+    await db.execute({
+      sql: `UPDATE users SET ${sets.join(',')} WHERE id=?`,
+      args,
+    });
+    const out = await db.execute({
+      sql: 'SELECT id,restaurant_id,name,initials,email,phone,role,access_json,status FROM users WHERE id=?',
+      args: [req.user!.id],
+    });
+    res.json(out.rows[0]);
+  } catch (e) { next(e); }
+});
+
+// POST /api/auth/change-password
+router.post('/change-password', requireAuth, async (req: AuthRequest, res, next) => {
+  try {
+    const data = ChangePasswordSchema.parse(req.body);
+    const db = getDb();
+    const row = await db.execute({
+      sql: 'SELECT password_hash FROM users WHERE id=?',
+      args: [req.user!.id],
+    });
+    if (!row.rows.length) {
+      res.status(404).json({ error: 'User not found' });
+      return;
+    }
+    const currentHash = String((row.rows[0] as Record<string, unknown>).password_hash ?? '');
+    const ok = await bcrypt.compare(data.current_password, currentHash);
+    if (!ok) {
+      res.status(401).json({ error: 'Current password is incorrect' });
+      return;
+    }
+    const nextHash = await bcrypt.hash(data.new_password, 10);
+    await db.execute({
+      sql: 'UPDATE users SET password_hash=? WHERE id=?',
+      args: [nextHash, req.user!.id],
+    });
+    res.json({ ok: true, message: 'Password updated successfully' });
+  } catch (e) { next(e); }
+});
+
+// POST /api/auth/change-pin
+router.post('/change-pin', requireAuth, async (req: AuthRequest, res, next) => {
+  try {
+    const data = ChangePinSchema.parse(req.body);
+    const db = getDb();
+    const row = await db.execute({
+      sql: 'SELECT pin_hash FROM users WHERE id=?',
+      args: [req.user!.id],
+    });
+    if (!row.rows.length) {
+      res.status(404).json({ error: 'User not found' });
+      return;
+    }
+    const currentHash = String((row.rows[0] as Record<string, unknown>).pin_hash ?? '');
+    if (!currentHash) {
+      res.status(400).json({ error: 'PIN is not set for this account' });
+      return;
+    }
+    const ok = await bcrypt.compare(data.current_pin, currentHash);
+    if (!ok) {
+      res.status(401).json({ error: 'Current PIN is incorrect' });
+      return;
+    }
+    const nextHash = await bcrypt.hash(data.new_pin, 10);
+    await db.execute({
+      sql: 'UPDATE users SET pin_hash=? WHERE id=?',
+      args: [nextHash, req.user!.id],
+    });
+    res.json({ ok: true, message: 'PIN updated successfully' });
   } catch (e) { next(e); }
 });
 
