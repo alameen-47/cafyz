@@ -1,5 +1,14 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import './TopBar.css';
+
+export interface TopBarNotification {
+  id: string;
+  title: string;
+  message: string;
+  tone?: 'info' | 'warning' | 'success' | 'danger';
+  href?: string;
+  ts?: number;
+}
 
 interface TopBarProps {
   crumb: [string, string];
@@ -9,6 +18,13 @@ interface TopBarProps {
   menuOpen?: boolean;
   onSupportClick?: () => void;
   supportOpen?: boolean;
+  notifications?: TopBarNotification[];
+  notificationsOpen?: boolean;
+  unreadCount?: number;
+  onToggleNotifications?: () => void;
+  onCloseNotifications?: () => void;
+  onOpenNotification?: (notification: TopBarNotification) => void;
+  onMarkAllNotificationsRead?: () => void;
 }
 
 export function TopBar({
@@ -19,6 +35,13 @@ export function TopBar({
   menuOpen = false,
   onSupportClick,
   supportOpen = false,
+  notifications = [],
+  notificationsOpen = false,
+  unreadCount = 0,
+  onToggleNotifications,
+  onCloseNotifications,
+  onOpenNotification,
+  onMarkAllNotificationsRead,
 }: TopBarProps) {
   const [now, setNow] = useState(() => new Date());
 
@@ -47,6 +70,25 @@ export function TopBar({
     },
     [now],
   );
+  const notifRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!notificationsOpen) return;
+    const onPointer = (e: MouseEvent) => {
+      const node = notifRef.current;
+      if (!node || node.contains(e.target as Node)) return;
+      onCloseNotifications?.();
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onCloseNotifications?.();
+    };
+    window.addEventListener('mousedown', onPointer);
+    window.addEventListener('keydown', onKey);
+    return () => {
+      window.removeEventListener('mousedown', onPointer);
+      window.removeEventListener('keydown', onKey);
+    };
+  }, [notificationsOpen, onCloseNotifications]);
 
   return (
     <header className="topbar">
@@ -89,10 +131,49 @@ export function TopBar({
         >
           🎧 AI
         </button>
-        <button type="button" className="topbar-bell" aria-label="Notifications">
-          🔔
-          <span className="topbar-notif-dot" />
-        </button>
+        <div className="topbar-notif-wrap" ref={notifRef}>
+          <button
+            type="button"
+            className={`topbar-bell ${notificationsOpen ? 'active' : ''}`}
+            aria-label="Notifications"
+            aria-expanded={notificationsOpen}
+            onClick={onToggleNotifications}
+          >
+            🔔
+            {unreadCount > 0 && (
+              <span className="topbar-notif-dot">
+                {unreadCount > 9 ? '9+' : unreadCount}
+              </span>
+            )}
+          </button>
+          {notificationsOpen && (
+            <div className="topbar-notif-panel" role="dialog" aria-label="Notifications">
+              <div className="topbar-notif-head">
+                <p>Notifications</p>
+                <button type="button" onClick={onMarkAllNotificationsRead}>
+                  Mark all read
+                </button>
+              </div>
+              <div className="topbar-notif-list">
+                {notifications.length === 0 ? (
+                  <p className="topbar-notif-empty">No new notifications for this panel.</p>
+                ) : (
+                  notifications.map((n) => (
+                    <button
+                      key={n.id}
+                      type="button"
+                      className={`topbar-notif-item tone-${n.tone ?? 'info'}`}
+                      onClick={() => onOpenNotification?.(n)}
+                    >
+                      <span className="topbar-notif-item-title">{n.title}</span>
+                      <span className="topbar-notif-item-msg">{n.message}</span>
+                    </button>
+                  ))
+                )}
+              </div>
+            </div>
+          )}
+        </div>
       </div>
     </header>
   );

@@ -187,6 +187,10 @@
   flex-shrink: 0;
 }
 
+.topbar-notif-wrap {
+  position: relative;
+}
+
 .topbar-bell {
   position: relative;
   width: 36px;
@@ -194,6 +198,10 @@
   border-radius: var(--radius-md);
   border: 0.5px solid var(--line2);
   font-size: 14px;
+}
+
+.topbar-bell.active {
+  border-color: var(--gold-line2);
 }
 
 .topbar-support {
@@ -215,10 +223,106 @@
 
 .topbar-notif-dot {
   position: absolute;
-  top: 6px;
-  right: 6px;
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
+  top: -4px;
+  right: -4px;
+  min-width: 18px;
+  height: 18px;
+  border-radius: 999px;
   background: var(--danger);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 18px;
+  padding: 0 4px;
+  text-align: center;
+}
+
+.topbar-notif-panel {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 8px);
+  width: min(420px, 95vw);
+  max-height: min(70vh, 520px);
+  border-radius: var(--radius-lg);
+  border: 0.5px solid var(--gold-line2);
+  background: var(--bg1);
+  box-shadow: 0 16px 38px rgba(0, 0, 0, 0.28);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  z-index: 90;
+}
+
+.topbar-notif-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 14px;
+  border-bottom: 0.5px solid var(--gold-line);
+}
+
+.topbar-notif-head p {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+}
+
+.topbar-notif-head button {
+  border: none;
+  background: transparent;
+  color: var(--gold);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.topbar-notif-list {
+  overflow: auto;
+}
+
+.topbar-notif-empty {
+  margin: 0;
+  padding: 16px;
+  font-size: 12px;
+  color: var(--text2);
+}
+
+.topbar-notif-item {
+  width: 100%;
+  border: none;
+  border-bottom: 0.5px solid var(--line);
+  background: transparent;
+  text-align: left;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.topbar-notif-item:hover {
+  background: var(--hover);
+}
+
+.topbar-notif-item-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text0);
+}
+
+.topbar-notif-item-msg {
+  font-size: 11px;
+  color: var(--text2);
+  line-height: 1.35;
+}
+
+.topbar-notif-item.tone-warning .topbar-notif-item-title { color: var(--warning); }
+.topbar-notif-item.tone-danger .topbar-notif-item-title { color: var(--danger); }
+.topbar-notif-item.tone-success .topbar-notif-item-title { color: var(--success); }
+
+@media (max-width: 1024px) {
+  .topbar-notif-panel {
+    right: -8px;
+    width: min(380px, calc(100vw - 20px));
+  }
 }

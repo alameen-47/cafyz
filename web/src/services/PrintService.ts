@@ -14,6 +14,7 @@ import {
 } from './nativePrinter';
 
 export { getPrinterEnvironment, formatPrinterConnectError } from './printerEnvironment';
+export type PrintChannel = 'auto' | 'bluetooth' | 'usb' | 'dialog';
 
 // ── ESC/POS Builder ───────────────────────────────────────────────────────────
 
@@ -469,6 +470,13 @@ export function printerStatus(): { type: 'none' | 'bluetooth' | 'usb'; name: str
   return { type: 'none', name: '' };
 }
 
+export function printerChannels(): { bluetooth: boolean; usb: boolean } {
+  return {
+    bluetooth: isBluetoothConnected(),
+    usb: Boolean(usbDevice),
+  };
+}
+
 // ── ESC/POS raster logo (via shared dithered thermal pipeline) ─────────────────
 
 async function requireLogoEscPos(logoUrl: string): Promise<Uint8Array> {
@@ -661,9 +669,34 @@ export async function print(
   escposData?: Uint8Array,
   width = 32,
   restaurantId?: string,
+  options?: { channel?: PrintChannel },
 ): Promise<'bluetooth' | 'usb' | 'dialog'> {
   const logoUrl = resolveLogoUrl(receiptData.logoUrl, restaurantId);
   const data: ReceiptData = logoUrl ? { ...receiptData, logoUrl } : receiptData;
+  const requested = options?.channel ?? 'auto';
+
+  if (requested === 'bluetooth') {
+    if (!isBluetoothConnected()) {
+      throw new Error('Bluetooth printer is not connected.');
+    }
+    const bytes = await buildHardwareReceiptBytes(data, width, escposData);
+    await printBluetooth(bytes);
+    return 'bluetooth';
+  }
+
+  if (requested === 'usb') {
+    if (!usbDevice) {
+      throw new Error('USB printer is not connected.');
+    }
+    const bytes = await buildHardwareReceiptBytes(data, width, escposData);
+    await printUSB(bytes);
+    return 'usb';
+  }
+
+  if (requested === 'dialog') {
+    await printDialog(data);
+    return 'dialog';
+  }
 
   if (isBluetoothConnected() || usbDevice) {
     const bytes = await buildHardwareReceiptBytes(data, width, escposData);
@@ -691,7 +724,7 @@ export async function printTest(opts: {
   logoUrl?: string;
   addressLine?: string;
   phone?: string;
-}): Promise<'bluetooth' | 'usb' | 'dialog'> {
+}, printOptions?: { channel?: PrintChannel }): Promise<'bluetooth' | 'usb' | 'dialog'> {
   const logoUrl = resolveLogoUrl(opts.logoUrl, opts.restaurantId);
   const sample: ReceiptData = {
     restaurantName: opts.restaurantName || 'Cafyz',
@@ -712,17 +745,35 @@ export async function printTest(opts: {
     payMethod: 'TEST',
     note: 'This is a printer test — connection and logo OK.',
   };
-  return print(sample, undefined, 32, opts.restaurantId);
+  return print(sample, undefined, 32, opts.restaurantId, printOptions);
 }
 
 export async function printKitchenTicket(
   data: KitchenTicketData,
   restaurantId?: string,
-  opts?: { allowDialog?: boolean },
+  opts?: { allowDialog?: boolean; channel?: PrintChannel },
 ): Promise<'bluetooth' | 'usb' | 'dialog'> {
   const logoUrl = resolveLogoUrl(data.logoUrl, restaurantId);
   const ticket: KitchenTicketData = logoUrl ? { ...data, logoUrl } : data;
   const allowDialog = opts?.allowDialog ?? true;
+  const requested = opts?.channel ?? 'auto';
+
+  if (requested === 'bluetooth') {
+    if (!isBluetoothConnected()) throw new Error('Bluetooth printer is not connected for kitchen printing.');
+    const bytes = await buildHardwareKitchenBytes(ticket);
+    await printBluetooth(bytes);
+    return 'bluetooth';
+  }
+  if (requested === 'usb') {
+    if (!usbDevice) throw new Error('USB printer is not connected for kitchen printing.');
+    const bytes = await buildHardwareKitchenBytes(ticket);
+    await printUSB(bytes);
+    return 'usb';
+  }
+  if (requested === 'dialog') {
+    await printKitchenDialog(ticket);
+    return 'dialog';
+  }
 
   if (isBluetoothConnected() || usbDevice) {
     const bytes = await buildHardwareKitchenBytes(ticket);

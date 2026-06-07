@@ -2,8 +2,9 @@ import { useState, useEffect, useRef } from 'react';
 import { menuApi, menuCategoriesApi, ordersApi, restaurantApi, tablesApi, type ApiMenuCategory, type ApiMenuItem, type ApiRestaurant, type ApiTable } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import {
-  connectBluetooth, connectUSB, disconnectPrinter, printerStatus, print as printReceipt, printKitchenTicket, printTest,
+  connectBluetooth, connectUSB, disconnectPrinter, printerChannels, printerStatus, print as printReceipt, printKitchenTicket, printTest,
   type ReceiptData,
+  type PrintChannel,
 } from '../services/PrintService';
 import { PrinterHelpBanner } from '../components/PrinterHelpBanner';
 import { getPrinterEnvironment, isIosDevice } from '../services/printerEnvironment';
@@ -16,6 +17,8 @@ import './POSPanel.css';
 
 type CartItem     = { menuItem: ApiMenuItem; qty: number; mods: string[] };
 type PaymentState = 'open' | 'sent' | 'card' | 'cash' | 'comped';
+type PrinterRole = 'kitchen' | 'cashier';
+type AssignedPrinter = { role: PrinterRole; channel: Extract<PrintChannel, 'bluetooth' | 'usb'>; name: string };
 
 export function POSPanel() {
   const { user } = useAuth();
@@ -50,9 +53,60 @@ export function POSPanel() {
   const [printError,   setPrintError]   = useState('');
   const [printOk,      setPrintOk]      = useState(false);
   const [showConnect,  setShowConnect]  = useState(false);
+  const [connectTarget, setConnectTarget] = useState<PrinterRole>('cashier');
+  const [kitchenPrinter, setKitchenPrinter] = useState<AssignedPrinter | null>(null);
+  const [cashierPrinter, setCashierPrinter] = useState<AssignedPrinter | null>(null);
 
   // Sync printer status on mount (in case a previous session still has a device)
-  useEffect(() => { setPrinter(printerStatus()); }, []);
+  useEffect(() => {
+    setPrinter(printerStatus());
+    try {
+      const rawKitchen = localStorage.getItem('cafyz_pos_printer_kitchen');
+      const rawCashier = localStorage.getItem('cafyz_pos_printer_cashier');
+      if (rawKitchen) {
+        const p = JSON.parse(rawKitchen) as AssignedPrinter;
+        if (p?.role === 'kitchen') setKitchenPrinter(p);
+      }
+      if (rawCashier) {
+        const p = JSON.parse(rawCashier) as AssignedPrinter;
+        if (p?.role === 'cashier') setCashierPrinter(p);
+      }
+    } catch {
+      // ignore storage parsing issues
+    }
+  }, []);
+
+  function persistAssignedPrinter(printerRole: PrinterRole, printerConfig: AssignedPrinter | null) {
+    const key = printerRole === 'kitchen' ? 'cafyz_pos_printer_kitchen' : 'cafyz_pos_printer_cashier';
+    if (!printerConfig) {
+      localStorage.removeItem(key);
+      return;
+    }
+    localStorage.setItem(key, JSON.stringify(printerConfig));
+  }
+
+  function assignPrinter(role: PrinterRole, channel: Extract<PrintChannel, 'bluetooth' | 'usb'>, name: string) {
+    const other = role === 'kitchen' ? cashierPrinter : kitchenPrinter;
+    if (other && other.channel === channel) {
+      throw new Error(`"${other.name}" is already assigned to ${other.role}. Use a different connection type for ${role}.`);
+    }
+    const assigned: AssignedPrinter = { role, channel, name };
+    if (role === 'kitchen') {
+      setKitchenPrinter(assigned);
+      persistAssignedPrinter('kitchen', assigned);
+    } else {
+      setCashierPrinter(assigned);
+      persistAssignedPrinter('cashier', assigned);
+    }
+  }
+
+  function printerBadgeText(target: PrinterRole) {
+    const assigned = target === 'kitchen' ? kitchenPrinter : cashierPrinter;
+    if (!assigned) return 'Not configured';
+    const channelLive = printerChannels();
+    const isConnected = assigned.channel === 'bluetooth' ? channelLive.bluetooth : channelLive.usb;
+    return `${isConnected ? 'Connected' : 'Configured'} · ${assigned.name} (${assigned.channel.toUpperCase()})`;
+  }
 
   useEffect(() => {
     Promise.all([menuApi.list(), menuCategoriesApi.list(), tablesApi.list(), restaurantApi.me()])
@@ -218,8 +272,9 @@ export function POSPanel() {
     try {
       const name = await connectBluetooth();
       setPrinter({ type: 'bluetooth', name });
+      assignPrinter(connectTarget, 'bluetooth', name);
       setShowConnect(false);
-      toastBus.success(`Printer connected: ${name}`);
+      toastBus.success(`${connectTarget === 'kitchen' ? 'Kitchen' : 'Cashier'} printer connected: ${name}`);
     } catch (e) {
       const msg = (e as Error).message;
       setPrintError(msg);
@@ -233,8 +288,9 @@ export function POSPanel() {
     try {
       const name = await connectUSB();
       setPrinter({ type: 'usb', name });
+      assignPrinter(connectTarget, 'usb', name);
       setShowConnect(false);
-      toastBus.success(`Printer connected: ${name}`);
+      toastBus.success(`${connectTarget === 'kitchen' ? 'Kitchen' : 'Cashier'} printer connected: ${name}`);
     } catch (e) {
       const msg = (e as Error).message;
       setPrintError(msg);
@@ -299,11 +355,13 @@ export function POSPanel() {
     if (cart.length === 0) return;
     setPrintBusy(true); setPrintError(''); setPrintOk(false);
     try {
+      const cashierChannel = cashierPrinter?.channel;
       const method = await printReceipt(
         buildReceiptData(payMethod),
         undefined,
         32,
         user?.restaurant_id ?? restaurant?.id,
+        cashierChannel ? { channel: cashierChannel } : undefined,
       );
       setPrintOk(true);
       toastBus.success(
@@ -326,6 +384,7 @@ export function POSPanel() {
     setPrintBusy(true);
     setPrintError('');
     try {
+      if (!kitchenPrinter) throw new Error('Kitchen printer is not configured. Connect it first.');
       const method = await printKitchenTicket({
         restaurantName: restaurant?.name || user?.restaurant_name || 'Restaurant',
         ticketId: `kds-check-${Date.now()}`,
@@ -338,7 +397,7 @@ export function POSPanel() {
           { name: 'Line Test Item', qty: 1, alert: true },
         ],
         note: 'Kitchen connection test from POS',
-      }, user?.restaurant_id ?? restaurant?.id);
+      }, user?.restaurant_id ?? restaurant?.id, { channel: kitchenPrinter.channel });
       toastBus.success(
         method === 'dialog'
           ? 'Kitchen printer check opened in print preview.'
@@ -358,13 +417,14 @@ export function POSPanel() {
     setPrintBusy(true);
     setPrintError('');
     try {
+      if (!cashierPrinter) throw new Error('Cashier printer is not configured. Connect it first.');
       const method = await printTest({
         restaurantName: restaurant?.name || user?.restaurant_name || 'Restaurant',
         restaurantId: user?.restaurant_id ?? restaurant?.id,
         logoUrl: getRestaurantLogo(user?.restaurant_id ?? restaurant?.id, restaurant?.logo_url),
         addressLine: [restaurant?.address_line1, restaurant?.city, restaurant?.country].filter(Boolean).join(', ') || undefined,
         phone: restaurant?.contact_phone || undefined,
-      });
+      }, { channel: cashierPrinter.channel });
       toastBus.success(
         method === 'dialog'
           ? 'Cashier printer check opened in print preview.'
@@ -384,6 +444,12 @@ export function POSPanel() {
     setPrintBusy(true);
     setPrintError('');
     try {
+      if (!kitchenPrinter || !cashierPrinter) {
+        throw new Error('Configure both Kitchen and Cashier printers first.');
+      }
+      if (kitchenPrinter.channel === cashierPrinter.channel) {
+        throw new Error('Kitchen and Cashier printers must use different connection channels.');
+      }
       const kitchenMethod = await printKitchenTicket({
         restaurantName: restaurant?.name || user?.restaurant_name || 'Restaurant',
         ticketId: `both-check-${Date.now()}`,
@@ -392,13 +458,13 @@ export function POSPanel() {
         covers: 2,
         station: 'EXPEDITE',
         items: [{ name: 'Dual test · kitchen', qty: 1 }],
-      }, user?.restaurant_id ?? restaurant?.id);
+      }, user?.restaurant_id ?? restaurant?.id, { channel: kitchenPrinter.channel });
 
       const cashierMethod = await printTest({
         restaurantName: restaurant?.name || user?.restaurant_name || 'Restaurant',
         restaurantId: user?.restaurant_id ?? restaurant?.id,
         logoUrl: getRestaurantLogo(user?.restaurant_id ?? restaurant?.id, restaurant?.logo_url),
-      });
+      }, { channel: cashierPrinter.channel });
 
       toastBus.success(
         `Both checks complete · Kitchen: ${kitchenMethod} · Cashier: ${cashierMethod}`,
@@ -511,10 +577,39 @@ export function POSPanel() {
             <button
               type="button"
               className="pos-printer-trigger"
-              onClick={() => setShowConnect(true)}
+              onClick={() => {
+                setConnectTarget('cashier');
+                setShowConnect(true);
+              }}
               disabled={printBusy}
             >
-              {printer.type === 'none' ? 'Setup Printer' : 'Change Printer'}
+              Setup Cashier
+            </button>
+          </div>
+          <div className="pos-printer-assignment-grid">
+            <button
+              type="button"
+              className="pos-printer-assignment"
+              onClick={() => {
+                setConnectTarget('kitchen');
+                setShowConnect(true);
+              }}
+              disabled={printBusy}
+            >
+              <span className="pos-printer-assignment-title">Kitchen Printer</span>
+              <span className="pos-printer-assignment-meta">{printerBadgeText('kitchen')}</span>
+            </button>
+            <button
+              type="button"
+              className="pos-printer-assignment"
+              onClick={() => {
+                setConnectTarget('cashier');
+                setShowConnect(true);
+              }}
+              disabled={printBusy}
+            >
+              <span className="pos-printer-assignment-title">Cashier Printer</span>
+              <span className="pos-printer-assignment-meta">{printerBadgeText('cashier')}</span>
             </button>
           </div>
 
@@ -540,8 +635,8 @@ export function POSPanel() {
           open={showConnect}
           onClose={() => setShowConnect(false)}
           eyebrow="Printer Setup"
-          title="Connect Receipt Printer"
-          subtitle="Pick a connection type below. We recommend Bluetooth for mobile and USB for desktop counters."
+          title={`Connect ${connectTarget === 'kitchen' ? 'Kitchen' : 'Cashier'} Printer`}
+          subtitle="Each role must be configured separately. Use different channels for Kitchen and Cashier."
           size="md"
           footer={(
             <>

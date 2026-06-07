@@ -608,6 +608,37 @@
   gap: 8px;
 }
 
+.pos-printer-assignment-grid {
+  margin-top: 8px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.pos-printer-assignment {
+  border-radius: var(--radius-md);
+  border: 0.5px solid var(--line2);
+  background: var(--bg2);
+  text-align: left;
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.pos-printer-assignment-title {
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--text1);
+  letter-spacing: 0.2px;
+}
+
+.pos-printer-assignment-meta {
+  font-size: 10px;
+  color: var(--text2);
+  line-height: 1.35;
+}
+
 .pos-printer-check-btn {
   height: 32px;
   border-radius: var(--radius-md);
@@ -629,6 +660,12 @@
   border-color: var(--gold-line2);
   background: color-mix(in srgb, var(--gold-bg) 62%, var(--bg2));
   color: var(--gold);
+}
+
+@media (max-width: 640px) {
+  .pos-printer-assignment-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 .pos-printer-modal {
