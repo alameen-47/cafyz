@@ -60,32 +60,9 @@ export function POSPanel() {
   // Sync printer status on mount (in case a previous session still has a device)
   useEffect(() => {
     setPrinter(printerStatus());
-    try {
-      const rawKitchen = localStorage.getItem('cafyz_pos_printer_kitchen');
-      const rawCashier = localStorage.getItem('cafyz_pos_printer_cashier');
-      if (rawKitchen) {
-        const p = JSON.parse(rawKitchen) as AssignedPrinter;
-        if (p?.role === 'kitchen') setKitchenPrinter(p);
-      }
-      if (rawCashier) {
-        const p = JSON.parse(rawCashier) as AssignedPrinter;
-        if (p?.role === 'cashier') setCashierPrinter(p);
-      }
-    } catch {
-      // ignore storage parsing issues
-    }
   }, []);
 
-  function persistAssignedPrinter(printerRole: PrinterRole, printerConfig: AssignedPrinter | null) {
-    const key = printerRole === 'kitchen' ? 'cafyz_pos_printer_kitchen' : 'cafyz_pos_printer_cashier';
-    if (!printerConfig) {
-      localStorage.removeItem(key);
-      return;
-    }
-    localStorage.setItem(key, JSON.stringify(printerConfig));
-  }
-
-  function assignPrinter(role: PrinterRole, channel: Extract<PrintChannel, 'bluetooth' | 'usb'>, name: string) {
+  async function assignPrinter(role: PrinterRole, channel: Extract<PrintChannel, 'bluetooth' | 'usb'>, name: string) {
     const other = role === 'kitchen' ? cashierPrinter : kitchenPrinter;
     if (other && other.channel === channel) {
       throw new Error(`"${other.name}" is already assigned to ${other.role}. Use a different connection type for ${role}.`);
@@ -93,10 +70,12 @@ export function POSPanel() {
     const assigned: AssignedPrinter = { role, channel, name };
     if (role === 'kitchen') {
       setKitchenPrinter(assigned);
-      persistAssignedPrinter('kitchen', assigned);
+      const updated = await restaurantApi.update({ kitchen_printer: assigned });
+      setRestaurant(updated);
     } else {
       setCashierPrinter(assigned);
-      persistAssignedPrinter('cashier', assigned);
+      const updated = await restaurantApi.update({ cashier_printer: assigned });
+      setRestaurant(updated);
     }
   }
 
@@ -116,6 +95,8 @@ export function POSPanel() {
         setCat(defaultCategorySlug(cats));
         setTables(t);
         setRestaurant(r);
+        setKitchenPrinter(r.kitchen_printer ?? null);
+        setCashierPrinter(r.cashier_printer ?? null);
         syncRestaurantLogoCache(r);
         setProfileDraft({
           name: r.name ?? '', contact_phone: r.contact_phone ?? '', contact_email: r.contact_email ?? '',
@@ -125,6 +106,26 @@ export function POSPanel() {
       })
       .catch(e => setError(e.message))
       .finally(() => setLoading(false));
+  }, []);
+
+  // Cross-device sync from backend printer registry.
+  useEffect(() => {
+    let alive = true;
+    const sync = async () => {
+      try {
+        const r = await restaurantApi.me();
+        if (!alive) return;
+        setKitchenPrinter(r.kitchen_printer ?? null);
+        setCashierPrinter(r.cashier_printer ?? null);
+      } catch {
+        // keep existing state during transient sync errors
+      }
+    };
+    const t = window.setInterval(sync, 6000);
+    return () => {
+      alive = false;
+      window.clearInterval(t);
+    };
   }, []);
 
   // Focus note input when it opens
@@ -272,7 +273,7 @@ export function POSPanel() {
     try {
       const name = await connectBluetooth();
       setPrinter({ type: 'bluetooth', name });
-      assignPrinter(connectTarget, 'bluetooth', name);
+      await assignPrinter(connectTarget, 'bluetooth', name);
       setShowConnect(false);
       toastBus.success(`${connectTarget === 'kitchen' ? 'Kitchen' : 'Cashier'} printer connected: ${name}`);
     } catch (e) {
@@ -288,7 +289,7 @@ export function POSPanel() {
     try {
       const name = await connectUSB();
       setPrinter({ type: 'usb', name });
-      assignPrinter(connectTarget, 'usb', name);
+      await assignPrinter(connectTarget, 'usb', name);
       setShowConnect(false);
       toastBus.success(`${connectTarget === 'kitchen' ? 'Kitchen' : 'Cashier'} printer connected: ${name}`);
     } catch (e) {

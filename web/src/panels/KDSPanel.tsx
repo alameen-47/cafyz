@@ -6,6 +6,8 @@ import { syncRestaurantLogoCache } from '../services/restaurantLogoStorage';
 import { toastBus } from '../services/toastBus';
 import './KDSPanel.css';
 
+type AssignedPrinter = { role: 'kitchen' | 'cashier'; channel: 'bluetooth' | 'usb'; name: string };
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function elapsedMin(createdAt: string): number {
   return Math.max(0, (Date.now() - new Date(createdAt).getTime()) / 60000);
@@ -121,6 +123,7 @@ export function KDSPanel() {
   const [error,   setError]   = useState('');
   const [autoPrint, setAutoPrint] = useState(() => localStorage.getItem('cafyz_kds_auto_print') !== '0');
   const [printer, setPrinter] = useState<{ type: 'none' | 'bluetooth' | 'usb'; name: string }>({ type: 'none', name: '' });
+  const [assignedKitchen, setAssignedKitchen] = useState<AssignedPrinter | null>(null);
   const [printBusy, setPrintBusy] = useState(false);
   const printedRef = useRef<Set<string>>(new Set());
 
@@ -141,7 +144,30 @@ export function KDSPanel() {
   }, [autoPrint]);
 
   useEffect(() => {
-    restaurantApi.me().then(r => { setRestaurant(r); syncRestaurantLogoCache(r); }).catch(() => {});
+    restaurantApi.me().then(r => {
+      setRestaurant(r);
+      setAssignedKitchen(r.kitchen_printer ?? null);
+      syncRestaurantLogoCache(r);
+    }).catch(() => {});
+  }, []);
+
+  // Cross-device sync from backend printer registry.
+  useEffect(() => {
+    let alive = true;
+    const sync = async () => {
+      try {
+        const r = await restaurantApi.me();
+        if (!alive) return;
+        setAssignedKitchen(r.kitchen_printer ?? null);
+      } catch {
+        // keep current state on transient sync failures
+      }
+    };
+    const t = window.setInterval(sync, 6000);
+    return () => {
+      alive = false;
+      window.clearInterval(t);
+    };
   }, []);
 
   const persistPrinted = () => {
@@ -189,6 +215,11 @@ export function KDSPanel() {
     try {
       const name = await connectBluetooth();
       setPrinter({ type: 'bluetooth', name });
+      const updated = await restaurantApi.update({
+        kitchen_printer: { role: 'kitchen', channel: 'bluetooth', name },
+      });
+      setRestaurant(updated);
+      setAssignedKitchen(updated.kitchen_printer ?? null);
       toastBus.success(`Kitchen printer connected: ${name}`);
     } catch (e) {
       const msg = (e as Error).message;
@@ -204,6 +235,11 @@ export function KDSPanel() {
     try {
       const name = await connectUSB();
       setPrinter({ type: 'usb', name });
+      const updated = await restaurantApi.update({
+        kitchen_printer: { role: 'kitchen', channel: 'usb', name },
+      });
+      setRestaurant(updated);
+      setAssignedKitchen(updated.kitchen_printer ?? null);
       toastBus.success(`Kitchen printer connected: ${name}`);
     } catch (e) {
       const msg = (e as Error).message;
@@ -332,6 +368,11 @@ export function KDSPanel() {
         <button type="button" onClick={testKitchenPrint} disabled={printBusy}>
           {printBusy ? 'Testing…' : '🖨 Test Kitchen Print'}
         </button>
+        {assignedKitchen && (
+          <span style={{ fontSize: 12, color: 'var(--text2)' }}>
+            Shared with POS: {assignedKitchen.name} ({assignedKitchen.channel.toUpperCase()})
+          </span>
+        )}
         {STATIONS.map(s => (
           <button
             key={s}

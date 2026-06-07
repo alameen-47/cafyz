@@ -285,6 +285,8 @@ export async function runMigrations() {
   await addCol(`ALTER TABLE restaurants ADD COLUMN tax_rate_pct REAL`, 'tax_rate_pct');
   await addCol(`ALTER TABLE restaurants ADD COLUMN tax_type TEXT NOT NULL DEFAULT 'VAT'`, 'tax_type');
   await addCol(`ALTER TABLE restaurants ADD COLUMN tax_included INTEGER NOT NULL DEFAULT 0`, 'tax_included');
+  await addCol(`ALTER TABLE restaurants ADD COLUMN kitchen_printer_json TEXT`, 'kitchen_printer_json');
+  await addCol(`ALTER TABLE restaurants ADD COLUMN cashier_printer_json TEXT`, 'cashier_printer_json');
   await addCol(`ALTER TABLE users ADD COLUMN phone TEXT`, 'phone');
   await addCol(`ALTER TABLE users ADD COLUMN access_json TEXT NOT NULL DEFAULT '{}'`, 'access_json');
   await addCol(`ALTER TABLE users ADD COLUMN pin_device_id TEXT`, 'pin_device_id');

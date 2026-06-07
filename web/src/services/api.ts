@@ -101,6 +101,8 @@ export const restaurantApi = {
     service_charge_pct?: number | null; tax_rate_pct?: number | null;
     tax_type?: string; tax_included?: boolean;
     receipt_footer?: string;
+    kitchen_printer?: { role?: 'kitchen'; channel: 'bluetooth' | 'usb'; name: string } | null;
+    cashier_printer?: { role?: 'cashier'; channel: 'bluetooth' | 'usb'; name: string } | null;
   }) => put<ApiRestaurant>('/api/restaurants/me', d),
   branches: ()                                             => get<ApiRestaurant[]>('/api/restaurants/branches'),
 };
@@ -319,6 +321,8 @@ export interface ApiRestaurant {
   service_charge_pct?: number | null; tax_rate_pct?: number | null;
   tax_type?: string; tax_included?: number | boolean;
   receipt_footer?: string;
+  kitchen_printer?: { role: 'kitchen'; channel: 'bluetooth' | 'usb'; name: string } | null;
+  cashier_printer?: { role: 'cashier'; channel: 'bluetooth' | 'usb'; name: string } | null;
 }
 
 export interface ApiMenuItem {

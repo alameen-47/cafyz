@@ -47,7 +47,36 @@ const UpdateRestaurantSchema = z.object({
   tax_type:           z.string().min(1).max(40).optional(),
   tax_included:       z.boolean().optional(),
   receipt_footer:     z.string().max(180).optional(),
+  kitchen_printer: z.object({
+    role: z.literal('kitchen').optional(),
+    channel: z.enum(['bluetooth', 'usb']),
+    name: z.string().min(1).max(140),
+  }).nullable().optional(),
+  cashier_printer: z.object({
+    role: z.literal('cashier').optional(),
+    channel: z.enum(['bluetooth', 'usb']),
+    name: z.string().min(1).max(140),
+  }).nullable().optional(),
 });
+
+function parsePrinter(raw: unknown, role: 'kitchen' | 'cashier') {
+  if (!raw) return null;
+  try {
+    const parsed = JSON.parse(String(raw)) as { channel?: string; name?: string; role?: string };
+    if ((parsed.channel !== 'bluetooth' && parsed.channel !== 'usb') || !parsed.name) return null;
+    return { role, channel: parsed.channel, name: parsed.name };
+  } catch {
+    return null;
+  }
+}
+
+function normalizeRestaurantRow(row: Record<string, unknown>) {
+  return {
+    ...row,
+    kitchen_printer: parsePrinter(row.kitchen_printer_json, 'kitchen'),
+    cashier_printer: parsePrinter(row.cashier_printer_json, 'cashier'),
+  };
+}
 
 // POST /api/restaurants/onboarding — public, creates restaurant + owner user
 router.post('/onboarding', async (req, res, next) => {
@@ -118,12 +147,12 @@ router.get('/me', requireAuth, async (req: AuthRequest, res, next) => {
     const rid = req.user!.restaurant_id;
     const row = await getDb().execute({ sql: 'SELECT * FROM restaurants WHERE id=?', args: [rid] });
     if (!row.rows.length) { res.status(404).json({ error: 'Restaurant not found' }); return; }
-    res.json(row.rows[0]);
+    res.json(normalizeRestaurantRow(row.rows[0] as Record<string, unknown>));
   } catch (e) { next(e); }
 });
 
 // PUT /api/restaurants/me — requireAuth, updates name/timezone
-router.put('/me', requireAuth, requireRole('owner', 'manager', 'cashier'), async (req: AuthRequest, res, next) => {
+router.put('/me', requireAuth, requireRole('owner', 'manager', 'cashier', 'kitchen', 'waiter'), async (req: AuthRequest, res, next) => {
   try {
     const rid = req.user!.restaurant_id;
     const data = UpdateRestaurantSchema.parse(req.body);
@@ -149,11 +178,13 @@ router.put('/me', requireAuth, requireRole('owner', 'manager', 'cashier'), async
     if (data.tax_type           !== undefined) { sets.push('tax_type=?');           args.push(data.tax_type); }
     if (data.tax_included       !== undefined) { sets.push('tax_included=?');       args.push(data.tax_included ? 1 : 0); }
     if (data.receipt_footer     !== undefined) { sets.push('receipt_footer=?');     args.push(data.receipt_footer || null); }
+    if (data.kitchen_printer    !== undefined) { sets.push('kitchen_printer_json=?'); args.push(data.kitchen_printer ? JSON.stringify({ ...data.kitchen_printer, role: 'kitchen' }) : null); }
+    if (data.cashier_printer    !== undefined) { sets.push('cashier_printer_json=?'); args.push(data.cashier_printer ? JSON.stringify({ ...data.cashier_printer, role: 'cashier' }) : null); }
     if (!sets.length) { res.status(400).json({ error: 'Nothing to update' }); return; }
     args.push(rid);
     await getDb().execute({ sql: `UPDATE restaurants SET ${sets.join(',')} WHERE id=?`, args });
     const row = await getDb().execute({ sql: 'SELECT * FROM restaurants WHERE id=?', args: [rid] });
-    res.json(row.rows[0]);
+    res.json(normalizeRestaurantRow(row.rows[0] as Record<string, unknown>));
   } catch (e) { next(e); }
 });
 
