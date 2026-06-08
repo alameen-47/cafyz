@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { menuApi, menuCategoriesApi, ordersApi, restaurantApi, tablesApi, type ApiMenuCategory, type ApiMenuItem, type ApiOrder, type ApiRestaurant, type ApiTable } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import {
@@ -56,6 +56,7 @@ export function POSPanel() {
   const [connectTarget, setConnectTarget] = useState<PrinterRole>('cashier');
   const [kitchenPrinter, setKitchenPrinter] = useState<AssignedPrinter | null>(null);
   const [cashierPrinter, setCashierPrinter] = useState<AssignedPrinter | null>(null);
+  const lastConnectToastKeyRef = useRef('');
 
   // Sync printer status on mount (in case a previous session still has a device)
   useEffect(() => {
@@ -288,7 +289,11 @@ export function POSPanel() {
       setPrinter({ type: 'bluetooth', name });
       await assignPrinter(connectTarget, 'bluetooth', name);
       setShowConnect(false);
-      toastBus.success(`${connectTarget === 'kitchen' ? 'Kitchen' : 'Cashier'} printer connected: ${name}`);
+      const toastKey = `${connectTarget}:bluetooth:${name.toLowerCase()}`;
+      if (lastConnectToastKeyRef.current !== toastKey) {
+        lastConnectToastKeyRef.current = toastKey;
+        toastBus.success(`${connectTarget === 'kitchen' ? 'Kitchen' : 'Cashier'} printer connected: ${name}`);
+      }
     } catch (e) {
       const msg = (e as Error).message;
       setPrintError(msg);
@@ -304,7 +309,11 @@ export function POSPanel() {
       setPrinter({ type: 'usb', name });
       await assignPrinter(connectTarget, 'usb', name);
       setShowConnect(false);
-      toastBus.success(`${connectTarget === 'kitchen' ? 'Kitchen' : 'Cashier'} printer connected: ${name}`);
+      const toastKey = `${connectTarget}:usb:${name.toLowerCase()}`;
+      if (lastConnectToastKeyRef.current !== toastKey) {
+        lastConnectToastKeyRef.current = toastKey;
+        toastBus.success(`${connectTarget === 'kitchen' ? 'Kitchen' : 'Cashier'} printer connected: ${name}`);
+      }
     } catch (e) {
       const msg = (e as Error).message;
       setPrintError(msg);

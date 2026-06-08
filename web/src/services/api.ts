@@ -19,6 +19,15 @@ async function request<T = unknown>(
   path: string,
   body?: unknown,
 ): Promise<T> {
+  const bodyObj = body && typeof body === 'object'
+    ? (body as Record<string, unknown>)
+    : null;
+  const isPrinterAssignmentSync =
+    method === 'PUT'
+    && path.startsWith('/api/restaurants/me')
+    && !!bodyObj
+    && ('kitchen_printer' in bodyObj || 'cashier_printer' in bodyObj);
+
   const token = localStorage.getItem('cafyz_token');
   const res = await fetch(`${BASE}${path}`, {
     method,
@@ -52,6 +61,7 @@ async function request<T = unknown>(
     const message = data.error ?? res.statusText;
     const shouldToastError =
       method !== 'GET'
+      && !isPrinterAssignmentSync
       && !path.startsWith('/api/kds/print-jobs/claim')
       && !path.startsWith('/api/kds/print-jobs/');
     if (shouldToastError) toastBus.error(String(message));
@@ -59,6 +69,7 @@ async function request<T = unknown>(
   }
   const shouldToastSuccess =
     method !== 'GET'
+    && !isPrinterAssignmentSync
     && !path.startsWith('/api/auth/')
     && !path.includes('/status')
     // Background KDS print queue calls are polled frequently.

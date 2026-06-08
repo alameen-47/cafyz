@@ -10,16 +10,25 @@ export interface ToastMessage {
 type Listener = (msg: ToastMessage) => void;
 
 const listeners = new Set<Listener>();
+const recentToastTimes = new Map<string, number>();
+const DEDUPE_WINDOW_MS = 5000;
 
 function emit(msg: ToastMessage) {
   for (const listener of listeners) listener(msg);
 }
 
 function push(tone: ToastTone, text: string, durationMs = 3200) {
+  const normalized = text.trim().replace(/\s+/g, ' ');
+  const key = `${tone}:${normalized.toLowerCase()}`;
+  const now = Date.now();
+  const last = recentToastTimes.get(key) ?? 0;
+  if (now - last < DEDUPE_WINDOW_MS) return;
+  recentToastTimes.set(key, now);
+
   emit({
-    id: `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+    id: `${now}-${Math.random().toString(36).slice(2, 9)}`,
     tone,
-    text,
+    text: normalized,
     durationMs,
   });
 }

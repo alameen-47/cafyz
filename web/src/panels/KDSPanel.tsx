@@ -127,6 +127,7 @@ export function KDSPanel() {
   const [printBusy, setPrintBusy] = useState(false);
   const queueBusyRef = useRef(false);
   const queueWarnedRef = useRef(false);
+  const lastConnectToastKeyRef = useRef('');
 
   useEffect(() => {
     setPrinter(printerStatus());
@@ -227,7 +228,11 @@ export function KDSPanel() {
       });
       setRestaurant(updated);
       setAssignedKitchen(updated.kitchen_printer ?? null);
-      toastBus.success(`Kitchen printer connected: ${name}`);
+      const toastKey = `kitchen:bluetooth:${name.toLowerCase()}`;
+      if (lastConnectToastKeyRef.current !== toastKey) {
+        lastConnectToastKeyRef.current = toastKey;
+        toastBus.success(`Kitchen printer connected: ${name}`);
+      }
     } catch (e) {
       const msg = (e as Error).message;
       setError(msg);
@@ -247,7 +252,11 @@ export function KDSPanel() {
       });
       setRestaurant(updated);
       setAssignedKitchen(updated.kitchen_printer ?? null);
-      toastBus.success(`Kitchen printer connected: ${name}`);
+      const toastKey = `kitchen:usb:${name.toLowerCase()}`;
+      if (lastConnectToastKeyRef.current !== toastKey) {
+        lastConnectToastKeyRef.current = toastKey;
+        toastBus.success(`Kitchen printer connected: ${name}`);
+      }
     } catch (e) {
       const msg = (e as Error).message;
       setError(msg);
