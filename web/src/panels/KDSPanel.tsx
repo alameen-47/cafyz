@@ -170,7 +170,6 @@ export function KDSPanel() {
         queueWarnedRef.current = true;
         const msg = 'Kitchen printer is assigned but not connected on this device. Reconnect Bluetooth/USB in KDS.';
         setError(msg);
-        toastBus.error(msg);
       }
       return;
     }

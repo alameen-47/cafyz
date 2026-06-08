@@ -12,6 +12,7 @@ const ENV_BASE = String(ENV.VITE_API_URL ?? '').trim();
 const IS_DEV = Boolean(ENV.DEV);
 const DEFAULT_RENDER_BASE = String(ENV.VITE_NATIVE_API_URL ?? 'https://cafyz.onrender.com').trim();
 const BASE = ENV_BASE || (IS_DEV ? '' : DEFAULT_RENDER_BASE);
+let sessionToastShown = false;
 
 async function request<T = unknown>(
   method: string,
@@ -34,10 +35,14 @@ async function request<T = unknown>(
     // Only hard-redirect on interactive requests (not background polling /me validation)
     if (!path.includes('/api/auth/me')) {
       window.location.href = '/login';
+      if (!sessionToastShown) {
+        sessionToastShown = true;
+        const sessionMsg = 'Session expired — please sign in again.';
+        toastBus.error(sessionMsg);
+      }
+      throw new Error('Session expired — please sign in again.');
     }
-    const sessionMsg = 'Session expired — please sign in again.';
-    toastBus.error(sessionMsg);
-    throw new Error(sessionMsg);
+    throw new Error('Session expired — please sign in again.');
   }
 
   if (res.status === 204) return null as T;
@@ -45,13 +50,21 @@ async function request<T = unknown>(
   const data = await res.json().catch(() => ({ error: res.statusText }));
   if (!res.ok) {
     const message = data.error ?? res.statusText;
-    toastBus.error(String(message));
+    const shouldToastError =
+      method !== 'GET'
+      && !path.startsWith('/api/kds/print-jobs/claim')
+      && !path.startsWith('/api/kds/print-jobs/');
+    if (shouldToastError) toastBus.error(String(message));
     throw new Error(message);
   }
   const shouldToastSuccess =
     method !== 'GET'
     && !path.startsWith('/api/auth/')
-    && !path.includes('/status');
+    && !path.includes('/status')
+    // Background KDS print queue calls are polled frequently.
+    // Never show automatic success toasts for these non-interactive operations.
+    && !path.startsWith('/api/kds/print-jobs/claim')
+    && !path.startsWith('/api/kds/print-jobs/');
   if (shouldToastSuccess) {
     const successMessage = method === 'DELETE'
       ? 'Removed successfully'
