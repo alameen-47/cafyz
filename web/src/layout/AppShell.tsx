@@ -21,9 +21,11 @@ import {
 import { TrialExpiredModal } from '../components/TrialExpiredModal';
 import { AISupportWidget } from '../components/AISupportWidget';
 import { Modal } from '../components/Modal';
+import { PasswordVisibilityIcon } from '../components/PasswordVisibilityIcon';
 import { toastBus } from '../services/toastBus';
 import { applyLanguageToDocument, getActiveLanguageCode, setActiveLanguageCode } from '../utils/language';
 import '../components/TrialExpiredModal.css';
+import './ProfileModal.css';
 
 const CRUMBS: Partial<Record<Screen, [string, string]>> = {
   manager:   ['Operations', 'Overview'],
@@ -68,6 +70,10 @@ export function AppShell({
   const [profileData, setProfileData] = useState({ name: '', email: '', phone: '' });
   const [pwdData, setPwdData] = useState({ current: '', next: '' });
   const [pinData, setPinData] = useState({ current: '', next: '' });
+  const [showPwdCurrent, setShowPwdCurrent] = useState(false);
+  const [showPwdNext, setShowPwdNext] = useState(false);
+  const [showPinCurrent, setShowPinCurrent] = useState(false);
+  const [showPinNext, setShowPinNext] = useState(false);
   const [activeLanguage, setActiveLanguage] = useState(() => getActiveLanguageCode('en'));
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [notifications, setNotifications] = useState<TopBarNotification[]>([]);
@@ -481,6 +487,14 @@ export function AppShell({
     }
   };
 
+  const profileInitials = (profileData.name || user?.name || 'U')
+    .split(' ')
+    .filter(Boolean)
+    .map((w) => w[0])
+    .join('')
+    .toUpperCase()
+    .slice(0, 2);
+
   return (
     <div
       className={[
@@ -527,88 +541,173 @@ export function AppShell({
         open={profileOpen}
         onClose={() => setProfileOpen(false)}
         title="My Profile"
-        subtitle="Manage your profile details, password and 4-digit PIN."
-        size="md"
+        subtitle="Manage account identity and security from one place."
+        size="lg"
       >
-        <div className="form-grid">
-          <label className="form-field">
-            <span>Name</span>
-            <input
-              value={profileData.name}
-              onChange={(e) => setProfileData((s) => ({ ...s, name: e.target.value }))}
-              placeholder="Your full name"
-            />
-          </label>
-          <label className="form-field">
-            <span>Email</span>
-            <input
-              type="email"
-              value={profileData.email}
-              onChange={(e) => setProfileData((s) => ({ ...s, email: e.target.value }))}
-              placeholder="name@restaurant.com"
-            />
-          </label>
-          <label className="form-field">
-            <span>Phone</span>
-            <input
-              value={profileData.phone}
-              onChange={(e) => setProfileData((s) => ({ ...s, phone: e.target.value }))}
-              placeholder="+971500000000"
-            />
-          </label>
-          <button type="button" className="btn btn-primary" onClick={saveProfile} disabled={profileBusy}>
-            Save Profile
-          </button>
-        </div>
-        <hr style={{ borderColor: 'var(--line)' }} />
-        <div className="form-grid">
-          <label className="form-field">
-            <span>Current Password</span>
-            <input
-              type="password"
-              value={pwdData.current}
-              onChange={(e) => setPwdData((s) => ({ ...s, current: e.target.value }))}
-              placeholder="Current password"
-            />
-          </label>
-          <label className="form-field">
-            <span>New Password</span>
-            <input
-              type="password"
-              value={pwdData.next}
-              onChange={(e) => setPwdData((s) => ({ ...s, next: e.target.value }))}
-              placeholder="Minimum 8 characters"
-            />
-          </label>
-          <button type="button" className="btn btn-soft" onClick={savePassword} disabled={profileBusy}>
-            Change Password
-          </button>
-        </div>
-        <hr style={{ borderColor: 'var(--line)' }} />
-        <div className="form-grid">
-          <label className="form-field">
-            <span>Current PIN</span>
-            <input
-              inputMode="numeric"
-              maxLength={4}
-              value={pinData.current}
-              onChange={(e) => setPinData((s) => ({ ...s, current: e.target.value.replace(/\D/g, '').slice(0, 4) }))}
-              placeholder="Current 4-digit PIN"
-            />
-          </label>
-          <label className="form-field">
-            <span>New PIN</span>
-            <input
-              inputMode="numeric"
-              maxLength={4}
-              value={pinData.next}
-              onChange={(e) => setPinData((s) => ({ ...s, next: e.target.value.replace(/\D/g, '').slice(0, 4) }))}
-              placeholder="New 4-digit PIN"
-            />
-          </label>
-          <button type="button" className="btn btn-soft" onClick={savePin} disabled={profileBusy}>
-            Change PIN
-          </button>
+        <div className="profile-modal">
+          <section className="profile-hero card">
+            <div className="profile-avatar mono">{profileInitials || 'U'}</div>
+            <div className="profile-hero-copy">
+              <p className="profile-eyebrow">Account Identity</p>
+              <h3>{profileData.name || user?.name || 'Team Member'}</h3>
+              <p>{profileData.email || user?.email}</p>
+            </div>
+            <span className={`profile-role-badge role-${user?.role ?? 'staff'}`}>
+              {(user?.role ?? 'staff').toUpperCase()}
+            </span>
+          </section>
+
+          <div className="profile-grid">
+            <section className="profile-card card">
+              <div className="profile-card-head">
+                <h4>Profile Details</h4>
+                <p>Update personal details used across the platform.</p>
+              </div>
+              <label className="profile-field">
+                <span>Full Name</span>
+                <input
+                  value={profileData.name}
+                  onChange={(e) => setProfileData((s) => ({ ...s, name: e.target.value }))}
+                  placeholder="Your full name"
+                />
+              </label>
+              <label className="profile-field">
+                <span>Work Email</span>
+                <input
+                  type="email"
+                  value={profileData.email}
+                  onChange={(e) => setProfileData((s) => ({ ...s, email: e.target.value }))}
+                  placeholder="name@restaurant.com"
+                />
+              </label>
+              <label className="profile-field">
+                <span>Phone Number</span>
+                <input
+                  value={profileData.phone}
+                  onChange={(e) => setProfileData((s) => ({ ...s, phone: e.target.value }))}
+                  placeholder="+971500000000"
+                />
+              </label>
+              <button
+                type="button"
+                className="btn btn-primary profile-action"
+                onClick={saveProfile}
+                disabled={profileBusy || !profileData.name.trim() || !profileData.email.trim()}
+              >
+                {profileBusy ? 'Saving…' : 'Save Profile'}
+              </button>
+            </section>
+
+            <section className="profile-card card">
+              <div className="profile-card-head">
+                <h4>Password Security</h4>
+                <p>Use a strong password with at least 8 characters.</p>
+              </div>
+              <label className="profile-field">
+                <span>Current Password</span>
+                <div className="profile-secret-wrap">
+                  <input
+                    type={showPwdCurrent ? 'text' : 'password'}
+                    value={pwdData.current}
+                    onChange={(e) => setPwdData((s) => ({ ...s, current: e.target.value }))}
+                    placeholder="Current password"
+                  />
+                  <button
+                    type="button"
+                    className="profile-secret-toggle"
+                    onClick={() => setShowPwdCurrent((v) => !v)}
+                    aria-label={showPwdCurrent ? 'Hide current password' : 'Show current password'}
+                  >
+                    <PasswordVisibilityIcon visible={showPwdCurrent} />
+                  </button>
+                </div>
+              </label>
+              <label className="profile-field">
+                <span>New Password</span>
+                <div className="profile-secret-wrap">
+                  <input
+                    type={showPwdNext ? 'text' : 'password'}
+                    value={pwdData.next}
+                    onChange={(e) => setPwdData((s) => ({ ...s, next: e.target.value }))}
+                    placeholder="Minimum 8 characters"
+                  />
+                  <button
+                    type="button"
+                    className="profile-secret-toggle"
+                    onClick={() => setShowPwdNext((v) => !v)}
+                    aria-label={showPwdNext ? 'Hide new password' : 'Show new password'}
+                  >
+                    <PasswordVisibilityIcon visible={showPwdNext} />
+                  </button>
+                </div>
+              </label>
+              <button
+                type="button"
+                className="btn btn-soft profile-action"
+                onClick={savePassword}
+                disabled={profileBusy || !pwdData.current || pwdData.next.length < 8}
+              >
+                {profileBusy ? 'Saving…' : 'Change Password'}
+              </button>
+            </section>
+
+            <section className="profile-card card">
+              <div className="profile-card-head">
+                <h4>PIN Security</h4>
+                <p>Keep your 4-digit staff PIN secure for fast login.</p>
+              </div>
+              <label className="profile-field">
+                <span>Current PIN</span>
+                <div className="profile-secret-wrap">
+                  <input
+                    type={showPinCurrent ? 'text' : 'password'}
+                    inputMode="numeric"
+                    maxLength={4}
+                    value={pinData.current}
+                    onChange={(e) => setPinData((s) => ({ ...s, current: e.target.value.replace(/\D/g, '').slice(0, 4) }))}
+                    placeholder="Current 4-digit PIN"
+                  />
+                  <button
+                    type="button"
+                    className="profile-secret-toggle"
+                    onClick={() => setShowPinCurrent((v) => !v)}
+                    aria-label={showPinCurrent ? 'Hide current PIN' : 'Show current PIN'}
+                  >
+                    <PasswordVisibilityIcon visible={showPinCurrent} />
+                  </button>
+                </div>
+              </label>
+              <label className="profile-field">
+                <span>New PIN</span>
+                <div className="profile-secret-wrap">
+                  <input
+                    type={showPinNext ? 'text' : 'password'}
+                    inputMode="numeric"
+                    maxLength={4}
+                    value={pinData.next}
+                    onChange={(e) => setPinData((s) => ({ ...s, next: e.target.value.replace(/\D/g, '').slice(0, 4) }))}
+                    placeholder="New 4-digit PIN"
+                  />
+                  <button
+                    type="button"
+                    className="profile-secret-toggle"
+                    onClick={() => setShowPinNext((v) => !v)}
+                    aria-label={showPinNext ? 'Hide new PIN' : 'Show new PIN'}
+                  >
+                    <PasswordVisibilityIcon visible={showPinNext} />
+                  </button>
+                </div>
+              </label>
+              <button
+                type="button"
+                className="btn btn-soft profile-action"
+                onClick={savePin}
+                disabled={profileBusy || pinData.current.length !== 4 || pinData.next.length !== 4}
+              >
+                {profileBusy ? 'Saving…' : 'Change PIN'}
+              </button>
+            </section>
+          </div>
         </div>
       </Modal>
       {trialLock.expired && !pathname.startsWith('/license') && (
