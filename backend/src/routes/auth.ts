@@ -60,7 +60,7 @@ router.post('/login', async (req, res, next) => {
   try {
     const { email, password, device_id } = LoginSchema.parse(req.body);
     const emailNorm = email.trim().toLowerCase();
-    const passNorm = password.trim();
+    const passNorm = password;
     const db = getDb();
     const row = await db.execute({
       sql: `SELECT u.*, r.name as restaurant_name, r.plan as restaurant_plan

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { authApi } from '../services/api';
@@ -28,6 +28,8 @@ export function LoginPanel() {
   const { login, requestLoginOtp, loginWithOtp, loginWithPin, error, clearError } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const query = new URLSearchParams(window.location.search);
+  const initialToken = (query.get('token') ?? '').trim();
+  const tokenFromLinkInit = initialToken.length > 0;
   const [authMode, setAuthMode] = useState<'signin' | 'forgot' | 'reset'>(
     query.get('mode') === 'reset' ? 'reset' : 'signin',
   );
@@ -43,7 +45,8 @@ export function LoginPanel() {
   const [busy, setBusy] = useState(false);
   const [localErr, setLocalErr] = useState('');
   const [localMsg, setLocalMsg] = useState('');
-  const [resetToken, setResetToken] = useState(query.get('token') ?? '');
+  const [resetToken, setResetToken] = useState(initialToken);
+  const [tokenFromLink] = useState(tokenFromLinkInit);
   const [newPassword, setNewPassword] = useState('');
   const [confirmNewPassword, setConfirmNewPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -51,6 +54,13 @@ export function LoginPanel() {
   const [showConfirmNewPassword, setShowConfirmNewPassword] = useState(false);
 
   const displayError = localErr || error;
+
+  useEffect(() => {
+    // Security UX: consume reset token from URL, then remove it from address bar.
+    if (!tokenFromLinkInit) return;
+    const nextUrl = `${window.location.origin}/login?mode=reset`;
+    window.history.replaceState({}, '', nextUrl);
+  }, [tokenFromLinkInit]);
 
   function switchMethod(next: 'otp' | 'email') {
     setAuthMode('signin');
@@ -159,7 +169,7 @@ export function LoginPanel() {
 
   async function handleResetPassword() {
     if (!resetToken.trim()) {
-      setLocalErr('Reset token is required.');
+      setLocalErr('Please open the secure reset link from your email.');
       return;
     }
     if (newPassword.length < 8) {
@@ -181,6 +191,7 @@ export function LoginPanel() {
       setAuthMode('signin');
       setMethod('email');
       setPassword('');
+      setResetToken('');
       setNewPassword('');
       setConfirmNewPassword('');
       const cleanUrl = `${window.location.origin}/login`;
@@ -286,7 +297,7 @@ export function LoginPanel() {
             ? 'Sign in using phone OTP or email and password.'
             : authMode === 'forgot'
             ? 'Enter your registered email to receive a password reset link.'
-            : 'Set your new password using the reset token from your email link.'}
+            : 'Set your new password using the secure reset link sent to your email.'}
         </p>
 
         {authMode === 'signin' && (
@@ -325,16 +336,11 @@ export function LoginPanel() {
           </>
         ) : authMode === 'reset' ? (
           <>
-            <label className="login-field">
-              <span>Reset token</span>
-              <input
-                type="text"
-                value={resetToken}
-                onChange={e => setResetToken(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && handleResetPassword()}
-                placeholder="Paste token from reset link"
-              />
-            </label>
+            {!tokenFromLink && (
+              <p className="login-error">
+                This reset page must be opened from the secure email link.
+              </p>
+            )}
             <label className="login-field">
               <span>New password</span>
               <div className="login-password-wrap">
@@ -490,14 +496,6 @@ export function LoginPanel() {
               >
                 Forgot password?
               </button>
-              <button
-                type="button"
-                className="login-link-btn"
-                onClick={() => switchAuthMode('reset')}
-                disabled={busy}
-              >
-                Reset with token
-              </button>
             </>
           )}
           {authMode !== 'signin' && (
@@ -599,9 +597,6 @@ export function LoginPanel() {
               <button type="button" className="login-link-btn" onClick={() => switchAuthMode('forgot')} disabled={busy}>
                 Forgot password?
               </button>
-              <button type="button" className="login-link-btn" onClick={() => switchAuthMode('reset')} disabled={busy}>
-                Have reset token?
-              </button>
             </div>
             {authMode === 'forgot' && (
               <div className="login-mobile-reset-card">
@@ -613,10 +608,11 @@ export function LoginPanel() {
             )}
             {authMode === 'reset' && (
               <div className="login-mobile-reset-card">
-                <label className="login-field">
-                  <span>Reset token</span>
-                  <input type="text" value={resetToken} onChange={e => setResetToken(e.target.value)} placeholder="Paste token" />
-                </label>
+                {!tokenFromLink && (
+                  <p className="login-error">
+                    Open the secure reset link from your email to continue.
+                  </p>
+                )}
                 <label className="login-field">
                   <span>New password</span>
                   <div className="login-password-wrap">

@@ -141,7 +141,8 @@ router.delete('/tickets/:id', requireRole('owner', 'manager'), async (req: AuthR
 });
 
 // POST /api/kds/print-jobs/claim
-router.post('/print-jobs/claim', requireRole('owner', 'manager', 'kitchen'), async (req: AuthRequest, res, next) => {
+// Allow any operational role that can access KDS section to consume jobs.
+router.post('/print-jobs/claim', requireRole('owner', 'manager', 'cashier', 'waiter', 'kitchen'), async (req: AuthRequest, res, next) => {
   try {
     const rid = req.user!.restaurant_id;
     const deviceId = z.object({ device_id: z.string().optional() }).parse(req.body ?? {}).device_id ?? null;
@@ -178,7 +179,7 @@ router.post('/print-jobs/claim', requireRole('owner', 'manager', 'kitchen'), asy
 });
 
 // PATCH /api/kds/print-jobs/:id
-router.patch('/print-jobs/:id', requireRole('owner', 'manager', 'kitchen'), async (req: AuthRequest, res, next) => {
+router.patch('/print-jobs/:id', requireRole('owner', 'manager', 'cashier', 'waiter', 'kitchen'), async (req: AuthRequest, res, next) => {
   try {
     const rid = req.user!.restaurant_id;
     const id = req.params.id as string;

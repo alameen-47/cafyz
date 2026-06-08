@@ -126,6 +126,7 @@ export function KDSPanel() {
   const [assignedKitchen, setAssignedKitchen] = useState<AssignedPrinter | null>(null);
   const [printBusy, setPrintBusy] = useState(false);
   const queueBusyRef = useRef(false);
+  const queueWarnedRef = useRef(false);
 
   useEffect(() => {
     setPrinter(printerStatus());
@@ -164,7 +165,16 @@ export function KDSPanel() {
 
   const consumeCloudPrintQueue = useCallback(async () => {
     if (!autoPrint) return;
-    if (printerStatus().type === 'none') return;
+    if (printerStatus().type === 'none') {
+      if (assignedKitchen && !queueWarnedRef.current) {
+        queueWarnedRef.current = true;
+        const msg = 'Kitchen printer is assigned but not connected on this device. Reconnect Bluetooth/USB in KDS.';
+        setError(msg);
+        toastBus.error(msg);
+      }
+      return;
+    }
+    if (queueWarnedRef.current) queueWarnedRef.current = false;
     if (queueBusyRef.current) return;
     queueBusyRef.current = true;
     try {
@@ -197,12 +207,16 @@ export function KDSPanel() {
         await kdsApi.completePrintJob(job.id, 'failed', msg);
         setError(msg);
       }
-    } catch {
-      // keep UI responsive on transient queue errors
+    } catch (e) {
+      const msg = (e as Error).message || 'Cloud print queue error';
+      if (!queueWarnedRef.current) {
+        queueWarnedRef.current = true;
+        setError(msg);
+      }
     } finally {
       queueBusyRef.current = false;
     }
-  }, [autoPrint, restaurant?.id, restaurant?.name]);
+  }, [assignedKitchen, autoPrint, restaurant?.id, restaurant?.name]);
 
   async function connectKdsBluetooth() {
     setPrintBusy(true); setError('');
