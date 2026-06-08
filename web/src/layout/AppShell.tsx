@@ -24,6 +24,7 @@ import { Modal } from '../components/Modal';
 import { PasswordVisibilityIcon } from '../components/PasswordVisibilityIcon';
 import { toastBus } from '../services/toastBus';
 import { applyLanguageToDocument, getActiveLanguageCode, setActiveLanguageCode } from '../utils/language';
+import { printKitchenTicket, printerStatus } from '../services/PrintService';
 import '../components/TrialExpiredModal.css';
 import './ProfileModal.css';
 
@@ -225,6 +226,88 @@ export function AppShell({
       window.clearInterval(t);
     };
   }, [user?.id, user?.role]);
+
+  useEffect(() => {
+    if (!user || user.role === 'founder') return;
+    if (!user.allowedScreens.includes('kds')) return;
+
+    let alive = true;
+    let assignedKitchen: { channel: 'bluetooth' | 'usb'; name: string } | null = null;
+    let restaurantName = user.restaurant_name || 'Restaurant';
+    let restaurantId = user.restaurant_id;
+
+    const syncRestaurantPrinter = async () => {
+      try {
+        const r = await restaurantApi.me();
+        if (!alive) return;
+        restaurantName = r.name || restaurantName;
+        restaurantId = r.id || restaurantId;
+        assignedKitchen = r.kitchen_printer ? { channel: r.kitchen_printer.channel, name: r.kitchen_printer.name } : null;
+      } catch {
+        // keep last-known config on transient failures
+      }
+    };
+
+    const consumeOne = async () => {
+      if (!alive) return;
+      if (localStorage.getItem('cafyz_kds_auto_print') === '0') return;
+      if (!assignedKitchen) return;
+      if (printerStatus().type === 'none') return;
+      try {
+        const claimed = await kdsApi.claimPrintJobWait(
+          `appshell:${navigator.userAgent.slice(0, 40)}:${Date.now()}`,
+          15000,
+        );
+        const job = claimed.job;
+        if (!job) return;
+        if (!job.payload || !Array.isArray(job.payload.items) || job.payload.items.length === 0) {
+          await kdsApi.completePrintJob(job.id, 'failed', 'Invalid print payload');
+          return;
+        }
+        try {
+          await printKitchenTicket({
+            restaurantName,
+            ticketId: job.payload.ticketId,
+            tableName: job.payload.tableName,
+            serverName: job.payload.serverName,
+            covers: job.payload.covers,
+            station: job.payload.station,
+            createdAt: job.payload.createdAt,
+            items: job.payload.items,
+            note: job.payload.note,
+          }, restaurantId, {
+            allowDialog: false,
+            channel: assignedKitchen.channel,
+          });
+          await kdsApi.completePrintJob(job.id, 'printed');
+        } catch (e) {
+          await kdsApi.completePrintJob(job.id, 'failed', (e as Error).message || 'Cloud print failed');
+        }
+      } catch {
+        // silent background retry loop
+      }
+    };
+
+    const runCloudQueue = async () => {
+      const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+      while (alive) {
+        await consumeOne();
+        await sleep(300);
+      }
+    };
+
+    void syncRestaurantPrinter();
+    void runCloudQueue();
+    const syncTimer = window.setInterval(() => { void syncRestaurantPrinter(); }, 6000);
+    const onOrderSent = () => { void consumeOne(); };
+    window.addEventListener('CAFYZ_ORDER_SENT', onOrderSent as EventListener);
+
+    return () => {
+      alive = false;
+      window.clearInterval(syncTimer);
+      window.removeEventListener('CAFYZ_ORDER_SENT', onOrderSent as EventListener);
+    };
+  }, [user]);
 
   useEffect(() => {
     if (!user) {

@@ -225,6 +225,8 @@ export const kdsApi = {
   delivered: (id: string)                                                     => patch<{ id: string; status: string }>(`/api/kds/tickets/${id}/delivered`),
   claimPrintJob: (device_id?: string)                                         =>
     post<{ job: ApiKitchenPrintJob | null }>('/api/kds/print-jobs/claim', { device_id }),
+  claimPrintJobWait: (device_id?: string, wait_ms = 15000)                    =>
+    post<{ job: ApiKitchenPrintJob | null }>('/api/kds/print-jobs/claim-wait', { device_id, wait_ms }),
   completePrintJob: (id: string, status: 'printed' | 'failed', error?: string) =>
     patch<{ id: string; status: string }>(`/api/kds/print-jobs/${id}`, { status, error }),
   delete:    (id: string)                                                     => del(`/api/kds/tickets/${id}`),

@@ -183,7 +183,10 @@ export function KDSPanel() {
     if (queueBusyRef.current) return;
     queueBusyRef.current = true;
     try {
-      const claimed = await kdsApi.claimPrintJob(`${navigator.userAgent.slice(0, 80)}:${Date.now()}`);
+      const claimed = await kdsApi.claimPrintJobWait(
+        `${navigator.userAgent.slice(0, 80)}:${Date.now()}`,
+        15000,
+      );
       const job = claimed.job;
       if (!job) return;
       if (!job.payload) {
@@ -324,8 +327,16 @@ export function KDSPanel() {
   }, [load]);
 
   useEffect(() => {
-    const t = setInterval(() => { void consumeCloudPrintQueue(); }, 1200);
-    return () => clearInterval(t);
+    let alive = true;
+    const run = async () => {
+      const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+      while (alive) {
+        await consumeCloudPrintQueue();
+        await sleep(300);
+      }
+    };
+    void run();
+    return () => { alive = false; };
   }, [consumeCloudPrintQueue]);
 
   const stationFilter = station === 'All' ? '' : station.toUpperCase();

@@ -19,6 +19,35 @@ type PrintJobPayload = {
   createdAt?: string;
 };
 
+async function claimNextPrintJob(rid: string, deviceId: string | null) {
+  const db = getDb();
+  const row = await db.execute({
+    sql: `UPDATE kitchen_print_jobs
+          SET status='printing',
+              claimed_by=?,
+              claimed_at=datetime('now'),
+              attempt_count=attempt_count+1,
+              updated_at=datetime('now')
+          WHERE id = (
+            SELECT id FROM kitchen_print_jobs
+            WHERE restaurant_id=? AND status='pending'
+            ORDER BY created_at ASC
+            LIMIT 1
+          )
+          RETURNING *`,
+    args: [deviceId, rid],
+  });
+  if (!row.rows.length) return null;
+  const job = row.rows[0] as Record<string, unknown>;
+  let payload: PrintJobPayload | null = null;
+  try {
+    payload = JSON.parse(String(job.payload_json ?? '{}')) as PrintJobPayload;
+  } catch {
+    payload = null;
+  }
+  return { ...job, payload };
+}
+
 // GET /api/kds/tickets?status=new&station=GRILL
 router.get('/tickets', requireRole('owner', 'manager', 'cashier', 'waiter', 'kitchen'), async (req: AuthRequest, res, next) => {
   try {
@@ -146,35 +175,40 @@ router.post('/print-jobs/claim', requireRole('owner', 'manager', 'cashier', 'wai
   try {
     const rid = req.user!.restaurant_id;
     const deviceId = z.object({ device_id: z.string().optional() }).parse(req.body ?? {}).device_id ?? null;
-    const db = getDb();
-    const row = await db.execute({
-      sql: `UPDATE kitchen_print_jobs
-            SET status='printing',
-                claimed_by=?,
-                claimed_at=datetime('now'),
-                attempt_count=attempt_count+1,
-                updated_at=datetime('now')
-            WHERE id = (
-              SELECT id FROM kitchen_print_jobs
-              WHERE restaurant_id=? AND status='pending'
-              ORDER BY created_at ASC
-              LIMIT 1
-            )
-            RETURNING *`,
-      args: [deviceId, rid],
-    });
-    if (!row.rows.length) {
+    const job = await claimNextPrintJob(rid, deviceId);
+    if (!job) {
       res.json({ job: null });
       return;
     }
-    const job = row.rows[0] as Record<string, unknown>;
-    let payload: PrintJobPayload | null = null;
-    try {
-      payload = JSON.parse(String(job.payload_json ?? '{}')) as PrintJobPayload;
-    } catch {
-      payload = null;
+    res.json({ job });
+  } catch (e) { next(e); }
+});
+
+// POST /api/kds/print-jobs/claim-wait
+// Cloud-optimized long-poll claim endpoint: waits briefly for next pending job.
+router.post('/print-jobs/claim-wait', requireRole('owner', 'manager', 'cashier', 'waiter', 'kitchen'), async (req: AuthRequest, res, next) => {
+  try {
+    const rid = req.user!.restaurant_id;
+    const data = z.object({
+      device_id: z.string().optional(),
+      wait_ms: z.number().int().min(0).max(30000).optional(),
+    }).parse(req.body ?? {});
+    const deviceId = data.device_id ?? null;
+    const waitMs = data.wait_ms ?? 15000;
+    const startedAt = Date.now();
+    const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+    while (Date.now() - startedAt <= waitMs) {
+      const job = await claimNextPrintJob(rid, deviceId);
+      if (job) {
+        res.json({ job });
+        return;
+      }
+      // Short server-side wait keeps clients near real-time without hammering.
+      await sleep(250);
     }
-    res.json({ job: { ...job, payload } });
+
+    res.json({ job: null });
   } catch (e) { next(e); }
 });
 
