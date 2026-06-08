@@ -114,6 +114,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [error,   setError]   = useState('');
 
+  async function syncSessionFromServer(current: AuthUser | null) {
+    const token = localStorage.getItem(KEY_TOKEN);
+    if (!token || !current) return;
+    const me = await authApi.me();
+    const rest = await restaurantApi.me();
+    syncRestaurantLogoCache(rest);
+    const updated = buildAuthUser(
+      me,
+      rest.name || current.restaurant_name || '',
+      rest.plan ?? current.plan ?? 'basic',
+    );
+    localStorage.setItem(KEY_USER, JSON.stringify(updated));
+    setUser(updated);
+  }
+
   useEffect(() => {
     const stored = localStorage.getItem(KEY_USER);
     const token  = localStorage.getItem(KEY_TOKEN);
@@ -137,14 +152,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           parsed.plan ?? 'basic',
         ));
         setLoading(false);
-        authApi.me().catch(() => {
+        void syncSessionFromServer(parsed).catch(() => {
           localStorage.removeItem(KEY_TOKEN);
           localStorage.removeItem(KEY_USER);
           setUser(null);
         });
-        restaurantApi.me()
-          .then(rest => syncRestaurantLogoCache(rest))
-          .catch(() => {});
       } catch {
         localStorage.removeItem(KEY_USER);
         localStorage.removeItem(KEY_TOKEN);
@@ -154,6 +166,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setLoading(false);
     }
   }, []);
+
+  useEffect(() => {
+    if (!user) return;
+    let alive = true;
+    const sync = async () => {
+      try {
+        if (!alive) return;
+        await syncSessionFromServer(user);
+      } catch {
+        // non-fatal: current session remains usable until token expires
+      }
+    };
+    const t = window.setInterval(() => { void sync(); }, 15000);
+    const onFocus = () => { void sync(); };
+    window.addEventListener('focus', onFocus);
+    document.addEventListener('visibilitychange', onFocus);
+    return () => {
+      alive = false;
+      window.clearInterval(t);
+      window.removeEventListener('focus', onFocus);
+      document.removeEventListener('visibilitychange', onFocus);
+    };
+  }, [user]);
 
   async function requestLoginOtp(phone: string) {
     setError('');

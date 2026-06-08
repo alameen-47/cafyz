@@ -84,7 +84,7 @@ app.use('/api/reservations',     mutationLimiter, requireAuth, requireActiveSubs
 app.use('/api/inventory',        mutationLimiter, requireAuth, requireActiveSubscription, requireSectionAccess('inventory'), requirePlan('pro'),     inventoryRoutes);
 app.use('/api/dashboard',        requireAuth, requireActiveSubscription, requireSectionAccess('reports'), requirePlan('pro'), dashboardRoutes);
 app.use('/api/restaurants',      mutationLimiter, restaurantRoutes);
-app.use('/api/licenses',         mutationLimiter, licenseRoutes);
+app.use('/api/licenses',         mutationLimiter, requireAuth, requireSectionAccess('license'), licenseRoutes);
 app.use('/api/founder',          mutationLimiter, founderRoutes);
 app.use('/api/inquiries',    inquiryLimiter, inquiryRoutes);
 app.use('/api/support',          mutationLimiter, supportRoutes);

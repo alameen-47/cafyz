@@ -59,7 +59,7 @@ const blank = (): DraftUser => ({ name: '', email: '', phone: '', role: 'waiter'
 
 export function RolesPanel() {
   const { user: me } = useAuth();
-  const canEdit = me?.role === 'owner' || me?.role === 'manager' || me?.role === 'cashier';
+  const canEdit = me?.role === 'owner' || me?.role === 'manager';
 
   const [staff,         setStaff]        = useState<ApiUser[]>([]);
   const [filterRole,    setFilterRole]   = useState<Role | 'all'>('all');

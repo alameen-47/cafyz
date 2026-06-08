@@ -110,7 +110,7 @@ export default function App() {
         <Route path="/reports"   element={<RequireScreen screen="reports"><ManagerPanel section="reports" /></RequireScreen>} />
         <Route path="/profile"   element={<RequireScreen screen="manager"><ManagerPanel section="profile" /></RequireScreen>} />
         <Route path="/roles"     element={<RequireScreen screen="roles"><RolesPanel /></RequireScreen>} />
-        <Route path="/license"   element={<LicensePanel />} />
+        <Route path="/license"   element={<RequireScreen screen="license"><LicensePanel /></RequireScreen>} />
       </Route>
 
       <Route path="/mobile/orders"   element={<RequireAuth><MobileOrdersPanel /></RequireAuth>} />
