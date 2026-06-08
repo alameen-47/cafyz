@@ -332,6 +332,9 @@ let btDevice: any = null;  // BluetoothDevice
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 let usbDevice: any = null; // USBDevice
 let usbOutEndpointNumber: number | null = null;
+const btDisconnectBound = new WeakSet<object>();
+const BT_PREF_ID_KEY = 'cafyz_bt_preferred_device_id';
+const BT_PREF_NAME_KEY = 'cafyz_bt_preferred_device_name';
 
 async function writeChunked(
   char: { writeValue: (data: Uint8Array) => Promise<void> },
@@ -368,49 +371,97 @@ export async function connectBluetooth(): Promise<string> {
     throw new Error(formatPrinterConnectError(new Error('unsupported'), env));
   }
   try {
-  const device = await (navigator as any).bluetooth.requestDevice({
-    acceptAllDevices: true,
-    optionalServices: BT_SERVICES,
-  });
+    const device = await (navigator as any).bluetooth.requestDevice({
+      acceptAllDevices: true,
+      optionalServices: BT_SERVICES,
+    });
+    const writable = await connectBluetoothDevice(device);
+    if (!writable) {
+      throw new Error('No writable characteristic found. Make sure the printer is in BT pairing mode.');
+    }
+    btChar = writable;
+    btDevice = device;
+    rememberBluetoothDevice(device);
+    attachBluetoothDisconnectListener(device);
+    return device.name || 'Bluetooth Printer';
+  } catch (err) {
+    throw new Error(formatPrinterConnectError(err, env));
+  }
+}
 
-  const server = await device.gatt!.connect();
-
-  // Iterate all services to find a writable characteristic
+async function connectBluetoothDevice(device: any): Promise<any | null> {
+  const server = await device.gatt?.connect();
+  if (!server) return null;
   const services = await server.getPrimaryServices();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let writable: any = null; // BluetoothRemoteGATTCharacteristic
-
   for (const svc of services) {
-    if (writable) break;
     try {
       const chars = await svc.getCharacteristics();
       for (const c of chars) {
         if (c.properties.write || c.properties.writeWithoutResponse) {
-          writable = c;
-          break;
+          return c;
         }
       }
     } catch {
-      // Some services may not be readable — skip
+      // Skip unreadable service.
     }
   }
+  return null;
+}
 
-  if (!writable) {
-    throw new Error('No writable characteristic found. Make sure the printer is in BT pairing mode.');
-  }
-
-  btChar   = writable;
-  btDevice = device;
-
-  // Cleanup on disconnect
+function attachBluetoothDisconnectListener(device: any): void {
+  if (btDisconnectBound.has(device)) return;
   device.addEventListener('gattserverdisconnected', () => {
-    btChar   = null;
+    btChar = null;
     btDevice = null;
   });
+  btDisconnectBound.add(device);
+}
 
-  return device.name || 'Bluetooth Printer';
-  } catch (err) {
-    throw new Error(formatPrinterConnectError(err, env));
+function rememberBluetoothDevice(device: any): void {
+  if (!device?.id) return;
+  try {
+    localStorage.setItem(BT_PREF_ID_KEY, String(device.id));
+    localStorage.setItem(BT_PREF_NAME_KEY, String(device.name || 'Bluetooth Printer'));
+  } catch {
+    // Ignore storage failures.
+  }
+}
+
+export async function autoReconnectBluetooth(): Promise<{ connected: boolean; name?: string }> {
+  if (canUseNativeBle()) {
+    const native = nativePrinterStatus();
+    return native.type === 'bluetooth'
+      ? { connected: true, name: native.name || 'Bluetooth Printer' }
+      : { connected: false };
+  }
+  const env = getPrinterEnvironment();
+  if (!env.isSecureContext || !('bluetooth' in navigator)) return { connected: false };
+  const getDevices = (navigator as any).bluetooth?.getDevices;
+  if (typeof getDevices !== 'function') return { connected: false };
+  try {
+    const devices = await getDevices.call((navigator as any).bluetooth);
+    if (!Array.isArray(devices) || devices.length === 0) return { connected: false };
+    const preferredId = localStorage.getItem(BT_PREF_ID_KEY);
+    const ordered = preferredId
+      ? [...devices].sort((a: any, b: any) => (a.id === preferredId ? -1 : b.id === preferredId ? 1 : 0))
+      : devices;
+
+    for (const device of ordered) {
+      try {
+        const writable = await connectBluetoothDevice(device);
+        if (!writable) continue;
+        btChar = writable;
+        btDevice = device;
+        rememberBluetoothDevice(device);
+        attachBluetoothDisconnectListener(device);
+        return { connected: true, name: device.name || localStorage.getItem(BT_PREF_NAME_KEY) || 'Bluetooth Printer' };
+      } catch {
+        // Try next granted/paired device.
+      }
+    }
+    return { connected: false };
+  } catch {
+    return { connected: false };
   }
 }
 

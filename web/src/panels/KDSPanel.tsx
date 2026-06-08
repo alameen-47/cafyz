@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { kdsApi, restaurantApi, type ApiKdsTicket, type ApiKdsTicketItem, type ApiRestaurant } from '../services/api';
-import { connectBluetooth, connectUSB, disconnectPrinter, printKitchenTicket, printerStatus } from '../services/PrintService';
+import { autoReconnectBluetooth, connectBluetooth, connectUSB, disconnectPrinter, printKitchenTicket, printerStatus } from '../services/PrintService';
 import { PrinterHelpBanner } from '../components/PrinterHelpBanner';
 import { syncRestaurantLogoCache } from '../services/restaurantLogoStorage';
 import { toastBus } from '../services/toastBus';
@@ -131,6 +131,10 @@ export function KDSPanel() {
 
   useEffect(() => {
     setPrinter(printerStatus());
+    void autoReconnectBluetooth().then((result) => {
+      if (!result.connected) return;
+      setPrinter({ type: 'bluetooth', name: result.name || 'Bluetooth Printer' });
+    });
   }, []);
 
   useEffect(() => {

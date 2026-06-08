@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { menuApi, menuCategoriesApi, ordersApi, restaurantApi, tablesApi, type ApiMenuCategory, type ApiMenuItem, type ApiOrder, type ApiRestaurant, type ApiTable } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import {
-  connectBluetooth, connectUSB, disconnectPrinter, printerChannels, printerStatus, print as printReceipt, printKitchenTicket, printTest,
+  autoReconnectBluetooth, connectBluetooth, connectUSB, disconnectPrinter, printerChannels, printerStatus, print as printReceipt, printKitchenTicket, printTest,
   type ReceiptData,
   type PrintChannel,
 } from '../services/PrintService';
@@ -61,6 +61,10 @@ export function POSPanel() {
   // Sync printer status on mount (in case a previous session still has a device)
   useEffect(() => {
     setPrinter(printerStatus());
+    void autoReconnectBluetooth().then((result) => {
+      if (!result.connected) return;
+      setPrinter({ type: 'bluetooth', name: result.name || 'Bluetooth Printer' });
+    });
   }, []);
 
   async function assignPrinter(role: PrinterRole, channel: Extract<PrintChannel, 'bluetooth' | 'usb'>, name: string) {
