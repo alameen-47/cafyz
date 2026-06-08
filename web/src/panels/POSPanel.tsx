@@ -7,6 +7,7 @@ import {
   type PrintChannel,
 } from '../services/PrintService';
 import { PrinterHelpBanner } from '../components/PrinterHelpBanner';
+import { BluetoothIcon } from '../components/BluetoothIcon';
 import { getPrinterEnvironment, isIosDevice } from '../services/printerEnvironment';
 import { getRestaurantLogo, syncRestaurantLogoCache } from '../services/restaurantLogoStorage';
 import { buildMenuCategoryTabs, defaultCategorySlug } from '../utils/menuCategories';
@@ -52,7 +53,6 @@ export function POSPanel() {
   const [printBusy,    setPrintBusy]    = useState(false);
   const [printError,   setPrintError]   = useState('');
   const [printOk,      setPrintOk]      = useState(false);
-  const [showConnect,  setShowConnect]  = useState(false);
   const [connectTarget, setConnectTarget] = useState<PrinterRole>('cashier');
   const [kitchenPrinter, setKitchenPrinter] = useState<AssignedPrinter | null>(null);
   const [cashierPrinter, setCashierPrinter] = useState<AssignedPrinter | null>(null);
@@ -292,7 +292,6 @@ export function POSPanel() {
       const name = await connectBluetooth();
       setPrinter({ type: 'bluetooth', name });
       await assignPrinter(connectTarget, 'bluetooth', name);
-      setShowConnect(false);
       const toastKey = `${connectTarget}:bluetooth:${name.toLowerCase()}`;
       if (lastConnectToastKeyRef.current !== toastKey) {
         lastConnectToastKeyRef.current = toastKey;
@@ -312,7 +311,6 @@ export function POSPanel() {
       const name = await connectUSB();
       setPrinter({ type: 'usb', name });
       await assignPrinter(connectTarget, 'usb', name);
-      setShowConnect(false);
       const toastKey = `${connectTarget}:usb:${name.toLowerCase()}`;
       if (lastConnectToastKeyRef.current !== toastKey) {
         lastConnectToastKeyRef.current = toastKey;
@@ -597,32 +595,21 @@ export function POSPanel() {
           <div className="pos-printer-bar-row">
             {printer.type !== 'none' ? (
               <span className="pos-printer-connected">
-                {printer.type === 'bluetooth' ? '🔵' : '🔌'} {printer.name}
+                {printer.type === 'bluetooth' ? <BluetoothIcon /> : '🔌'} {printer.name}
                 <button type="button" className="pos-printer-disconnect" onClick={handleDisconnect}>×</button>
               </span>
             ) : (
               <span className="pos-printer-idle">No printer connected</span>
             )}
-            <button
-              type="button"
-              className="pos-printer-trigger"
-              onClick={() => {
-                setConnectTarget('cashier');
-                setShowConnect(true);
-              }}
-              disabled={printBusy}
-            >
-              Setup Cashier
+            <button type="button" className="pos-printer-trigger" onClick={handleDisconnect} disabled={printBusy || printer.type === 'none'}>
+              Disconnect Active
             </button>
           </div>
           <div className="pos-printer-assignment-grid">
             <button
               type="button"
               className="pos-printer-assignment"
-              onClick={() => {
-                setConnectTarget('kitchen');
-                setShowConnect(true);
-              }}
+              onClick={() => setConnectTarget('kitchen')}
               disabled={printBusy}
             >
               <span className="pos-printer-assignment-title">Kitchen Printer</span>
@@ -631,10 +618,7 @@ export function POSPanel() {
             <button
               type="button"
               className="pos-printer-assignment"
-              onClick={() => {
-                setConnectTarget('cashier');
-                setShowConnect(true);
-              }}
+              onClick={() => setConnectTarget('cashier')}
               disabled={printBusy}
             >
               <span className="pos-printer-assignment-title">Cashier Printer</span>
@@ -648,6 +632,39 @@ export function POSPanel() {
           {printOk && (
             <p className="pos-printer-ok">✓ Sent to printer</p>
           )}
+          <div className="pos-printer-config-inline">
+            <p className="eyebrow">Bluetooth / USB Configuration</p>
+            <div className="pos-printer-role-toggle">
+              <button
+                type="button"
+                className={`pos-printer-role-btn ${connectTarget === 'kitchen' ? 'active' : ''}`}
+                onClick={() => setConnectTarget('kitchen')}
+                disabled={printBusy}
+              >
+                Kitchen
+              </button>
+              <button
+                type="button"
+                className={`pos-printer-role-btn ${connectTarget === 'cashier' ? 'active' : ''}`}
+                onClick={() => setConnectTarget('cashier')}
+                disabled={printBusy}
+              >
+                Cashier
+              </button>
+            </div>
+            <div className="pos-printer-inline-actions">
+              {!isIosDevice() && printerEnv.canUseBluetooth && (
+                <button type="button" className="pos-printer-check-btn" onClick={handleConnectBluetooth} disabled={printBusy}>
+                  {printBusy ? '…' : <><BluetoothIcon /> Connect {connectTarget} Bluetooth</>}
+                </button>
+              )}
+              {!isIosDevice() && printerEnv.usbAvailable && printerEnv.platform !== 'ios' && (
+                <button type="button" className="pos-printer-check-btn" onClick={handleConnectUSB} disabled={printBusy}>
+                  {printBusy ? '…' : `Connect ${connectTarget} USB`}
+                </button>
+              )}
+            </div>
+          </div>
           <div className="pos-printer-checks">
             <button type="button" className="pos-printer-check-btn" onClick={checkKitchenPrinter} disabled={printBusy}>
               {printBusy ? '…' : 'Kitchen Printer Check'}
@@ -660,81 +677,6 @@ export function POSPanel() {
             </button>
           </div>
         </div>
-        <Modal
-          open={showConnect}
-          onClose={() => setShowConnect(false)}
-          eyebrow="Printer Setup"
-          title={`Connect ${connectTarget === 'kitchen' ? 'Kitchen' : 'Cashier'} Printer`}
-          subtitle="Each role must be configured separately. Use different channels for Kitchen and Cashier."
-          size="md"
-          footer={(
-            <>
-              <button type="button" className="roles-cancel-btn" onClick={() => setShowConnect(false)}>
-                Close
-              </button>
-              <button
-                type="button"
-                className="roles-save-btn"
-                onClick={() => { setShowConnect(false); handlePrint(); }}
-                disabled={printBusy || cart.length === 0}
-              >
-                {printBusy ? 'Printing…' : 'Print Test / Browser'}
-              </button>
-            </>
-          )}
-        >
-          <div className="pos-printer-modal">
-            <div className="pos-printer-status-card">
-              <p className="eyebrow">Current Status</p>
-              <p className="pos-printer-status-main">
-                {printer.type === 'none' ? 'Not Connected' : `Connected · ${printer.name}`}
-              </p>
-              {printer.type !== 'none' && (
-                <p className="pos-printer-status-sub">
-                  Active via {printer.type === 'bluetooth' ? 'Bluetooth' : 'USB'}
-                </p>
-              )}
-            </div>
-            <div className="pos-printer-options">
-              {!isIosDevice() && printerEnv.canUseBluetooth && (
-                <button
-                  type="button"
-                  className="pos-printer-option-btn"
-                  onClick={handleConnectBluetooth}
-                  disabled={printBusy}
-                >
-                  <strong>Bluetooth Printer</strong>
-                  <span>Recommended for tablets and Android phones</span>
-                </button>
-              )}
-              {!isIosDevice() && printerEnv.usbAvailable && printerEnv.platform !== 'ios' && (
-                <button
-                  type="button"
-                  className="pos-printer-option-btn"
-                  onClick={handleConnectUSB}
-                  disabled={printBusy}
-                >
-                  <strong>USB Printer</strong>
-                  <span>Best for fixed cashier stations</span>
-                </button>
-              )}
-              <button
-                type="button"
-                className="pos-printer-option-btn"
-                onClick={() => { setShowConnect(false); handlePrint(); }}
-                disabled={printBusy || cart.length === 0}
-              >
-                <strong>{isIosDevice() ? 'AirPrint / Share' : 'Browser Print Dialog'}</strong>
-                <span>Use system print if direct hardware connect is unavailable</span>
-              </button>
-            </div>
-            {printer.type !== 'none' && (
-              <button type="button" className="pos-printer-remove-btn" onClick={handleDisconnect}>
-                Disconnect Current Printer
-              </button>
-            )}
-          </div>
-        </Modal>
 
         <header className="pos-order-head">
           <div>

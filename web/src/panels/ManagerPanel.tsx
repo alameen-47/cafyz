@@ -23,6 +23,7 @@ import {
   type RestaurantPrintMeta, type SalesReportData,
 } from '../services/PrintService';
 import { formatMoney, getCurrencySymbol } from '../utils/currency';
+import { BluetoothIcon } from '../components/BluetoothIcon';
 import './ManagerPanel.css';
 
 type Section = 'overview' | 'profile' | 'inventory' | 'tables' | 'reservations' | 'staff' | 'reports' | 'roles';
@@ -1032,7 +1033,7 @@ function Reports() {
             {printer.type !== 'none' ? (
               <>
                 <span style={{ fontSize: 13 }}>
-                  {printer.type === 'bluetooth' ? '🔵' : '🔌'} {printer.name}
+                  {printer.type === 'bluetooth' ? <BluetoothIcon /> : '🔌'} {printer.name}
                 </span>
                 <button type="button" className="btn-outline" onClick={disconnectReportPrinter} disabled={printBusy}>
                   Disconnect
@@ -1041,7 +1042,7 @@ function Reports() {
             ) : (
               <>
                 <button type="button" className="btn-outline" onClick={connectReportBT} disabled={printBusy}>
-                  🔵 Bluetooth
+                  <BluetoothIcon /> Bluetooth
                 </button>
                 <button type="button" className="btn-outline" onClick={connectReportUSB} disabled={printBusy}>
                   🔌 USB
@@ -1513,14 +1514,14 @@ function ProfileTab() {
           {printer.type !== 'none' ? (
             <>
               <span style={{ fontSize: 13, color: 'var(--ok, #2ECC8A)' }}>
-                {printer.type === 'bluetooth' ? '🔵' : '🔌'} {printer.name}
+                {printer.type === 'bluetooth' ? <BluetoothIcon /> : '🔌'} {printer.name}
               </span>
               <button className="roles-btn" onClick={disconnect} disabled={printBusy}>Disconnect</button>
             </>
           ) : (
             <>
               <button className="roles-btn" onClick={connectBT} disabled={printBusy}>
-                {printBusy ? '…' : '🔵 Connect Bluetooth'}
+                {printBusy ? '…' : <><BluetoothIcon /> Connect Bluetooth</>}
               </button>
               <button className="roles-btn" onClick={connectUsbPrinter} disabled={printBusy}>
                 🔌 Connect USB

@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { kdsApi, restaurantApi, type ApiKdsTicket, type ApiKdsTicketItem, type ApiRestaurant } from '../services/api';
 import { autoReconnectBluetooth, connectBluetooth, connectUSB, disconnectPrinter, printKitchenTicket, printerStatus } from '../services/PrintService';
 import { PrinterHelpBanner } from '../components/PrinterHelpBanner';
+import { BluetoothIcon } from '../components/BluetoothIcon';
 import { syncRestaurantLogoCache } from '../services/restaurantLogoStorage';
 import { toastBus } from '../services/toastBus';
 import './KDSPanel.css';
@@ -379,11 +380,11 @@ export function KDSPanel() {
         </label>
         {printer.type !== 'none' ? (
           <button type="button" onClick={disconnectKdsPrinter}>
-            {printer.type === 'bluetooth' ? '🔵' : '🔌'} {printer.name} · Disconnect
+            {printer.type === 'bluetooth' ? <BluetoothIcon /> : '🔌'} {printer.name} · Disconnect
           </button>
         ) : (
           <>
-            <button type="button" onClick={connectKdsBluetooth} disabled={printBusy}>🔵 Connect Bluetooth</button>
+            <button type="button" onClick={connectKdsBluetooth} disabled={printBusy}><BluetoothIcon /> Connect Bluetooth</button>
             <button type="button" onClick={connectKdsUsb} disabled={printBusy}>🔌 Connect USB</button>
           </>
         )}
