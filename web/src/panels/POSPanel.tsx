@@ -53,6 +53,7 @@ export function POSPanel() {
   const [printBusy,    setPrintBusy]    = useState(false);
   const [printError,   setPrintError]   = useState('');
   const [printOk,      setPrintOk]      = useState(false);
+  const [printerSetupOpen, setPrinterSetupOpen] = useState(false);
   const [connectTarget, setConnectTarget] = useState<PrinterRole>('cashier');
   const [kitchenPrinter, setKitchenPrinter] = useState<AssignedPrinter | null>(null);
   const [cashierPrinter, setCashierPrinter] = useState<AssignedPrinter | null>(null);
@@ -605,76 +606,89 @@ export function POSPanel() {
               Disconnect Active
             </button>
           </div>
-          <div className="pos-printer-assignment-grid">
-            <button
-              type="button"
-              className="pos-printer-assignment"
-              onClick={() => setConnectTarget('kitchen')}
-              disabled={printBusy}
-            >
-              <span className="pos-printer-assignment-title">Kitchen Printer</span>
-              <span className="pos-printer-assignment-meta">{printerBadgeText('kitchen')}</span>
-            </button>
-            <button
-              type="button"
-              className="pos-printer-assignment"
-              onClick={() => setConnectTarget('cashier')}
-              disabled={printBusy}
-            >
-              <span className="pos-printer-assignment-title">Cashier Printer</span>
-              <span className="pos-printer-assignment-meta">{printerBadgeText('cashier')}</span>
-            </button>
-          </div>
+          <button
+            type="button"
+            className={`pos-printer-dropdown-toggle ${printerSetupOpen ? 'open' : ''}`}
+            onClick={() => setPrinterSetupOpen((v) => !v)}
+            aria-expanded={printerSetupOpen}
+            aria-controls="pos-printer-setup-dropdown"
+          >
+            <span>Printer Configuration Setup</span>
+            <span className="mono">{printerSetupOpen ? '▲' : '▼'}</span>
+          </button>
 
-          {printError && (
-            <p className="pos-printer-error">{printError}</p>
-          )}
-          {printOk && (
-            <p className="pos-printer-ok">✓ Sent to printer</p>
-          )}
-          <div className="pos-printer-config-inline">
-            <p className="eyebrow">Bluetooth / USB Configuration</p>
-            <div className="pos-printer-role-toggle">
+          <div id="pos-printer-setup-dropdown" className={`pos-printer-dropdown ${printerSetupOpen ? 'open' : ''}`}>
+            <div className="pos-printer-assignment-grid">
               <button
                 type="button"
-                className={`pos-printer-role-btn ${connectTarget === 'kitchen' ? 'active' : ''}`}
+                className="pos-printer-assignment"
                 onClick={() => setConnectTarget('kitchen')}
                 disabled={printBusy}
               >
-                Kitchen
+                <span className="pos-printer-assignment-title">Kitchen Printer</span>
+                <span className="pos-printer-assignment-meta">{printerBadgeText('kitchen')}</span>
               </button>
               <button
                 type="button"
-                className={`pos-printer-role-btn ${connectTarget === 'cashier' ? 'active' : ''}`}
+                className="pos-printer-assignment"
                 onClick={() => setConnectTarget('cashier')}
                 disabled={printBusy}
               >
-                Cashier
+                <span className="pos-printer-assignment-title">Cashier Printer</span>
+                <span className="pos-printer-assignment-meta">{printerBadgeText('cashier')}</span>
               </button>
             </div>
-            <div className="pos-printer-inline-actions">
-              {!isIosDevice() && printerEnv.canUseBluetooth && (
-                <button type="button" className="pos-printer-check-btn" onClick={handleConnectBluetooth} disabled={printBusy}>
-                  {printBusy ? '…' : <><BluetoothIcon /> Connect {connectTarget} Bluetooth</>}
+
+            {printError && (
+              <p className="pos-printer-error">{printError}</p>
+            )}
+            {printOk && (
+              <p className="pos-printer-ok">✓ Sent to printer</p>
+            )}
+            <div className="pos-printer-config-inline">
+              <p className="eyebrow">Bluetooth / USB Configuration</p>
+              <div className="pos-printer-role-toggle">
+                <button
+                  type="button"
+                  className={`pos-printer-role-btn ${connectTarget === 'kitchen' ? 'active' : ''}`}
+                  onClick={() => setConnectTarget('kitchen')}
+                  disabled={printBusy}
+                >
+                  Kitchen
                 </button>
-              )}
-              {!isIosDevice() && printerEnv.usbAvailable && printerEnv.platform !== 'ios' && (
-                <button type="button" className="pos-printer-check-btn" onClick={handleConnectUSB} disabled={printBusy}>
-                  {printBusy ? '…' : `Connect ${connectTarget} USB`}
+                <button
+                  type="button"
+                  className={`pos-printer-role-btn ${connectTarget === 'cashier' ? 'active' : ''}`}
+                  onClick={() => setConnectTarget('cashier')}
+                  disabled={printBusy}
+                >
+                  Cashier
                 </button>
-              )}
+              </div>
+              <div className="pos-printer-inline-actions">
+                {!isIosDevice() && printerEnv.canUseBluetooth && (
+                  <button type="button" className="pos-printer-check-btn" onClick={handleConnectBluetooth} disabled={printBusy}>
+                    {printBusy ? '…' : <><BluetoothIcon /> Connect {connectTarget} Bluetooth</>}
+                  </button>
+                )}
+                {!isIosDevice() && printerEnv.usbAvailable && printerEnv.platform !== 'ios' && (
+                  <button type="button" className="pos-printer-check-btn" onClick={handleConnectUSB} disabled={printBusy}>
+                    {printBusy ? '…' : `Connect ${connectTarget} USB`}
+                  </button>
+                )}
+              </div>
             </div>
-          </div>
-          <div className="pos-printer-checks">
-            <button type="button" className="pos-printer-check-btn" onClick={checkKitchenPrinter} disabled={printBusy}>
-              {printBusy ? '…' : 'Kitchen Printer Check'}
-            </button>
-            <button type="button" className="pos-printer-check-btn" onClick={checkCashierPrinter} disabled={printBusy}>
-              {printBusy ? '…' : 'Cashier Printer Check'}
-            </button>
-            <button type="button" className="pos-printer-check-btn both" onClick={checkBothPrinters} disabled={printBusy}>
-              {printBusy ? '…' : 'One Click Check Both'}
-            </button>
+            <div className="pos-printer-checks">
+              <button type="button" className="pos-printer-check-btn" onClick={checkKitchenPrinter} disabled={printBusy}>
+                {printBusy ? '…' : 'Kitchen Printer Check'}
+              </button>
+              <button type="button" className="pos-printer-check-btn" onClick={checkCashierPrinter} disabled={printBusy}>
+                {printBusy ? '…' : 'Cashier Printer Check'}
+              </button>
+              <button type="button" className="pos-printer-check-btn both" onClick={checkBothPrinters} disabled={printBusy}>
+                {printBusy ? '…' : 'One Click Check Both'}
+              </button>
+            </div>
           </div>
         </div>
 

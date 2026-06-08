@@ -556,6 +556,35 @@
 }
 .pos-printer-disconnect:hover { color: var(--danger); }
 
+.pos-printer-dropdown-toggle {
+  height: 34px;
+  border-radius: var(--radius-md);
+  border: 0.5px solid var(--gold-line2);
+  background: color-mix(in srgb, var(--gold-bg) 46%, var(--bg2));
+  color: var(--text1);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.2px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 10px;
+}
+
+.pos-printer-dropdown-toggle.open {
+  border-color: var(--gold);
+}
+
+.pos-printer-dropdown {
+  display: none;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.pos-printer-dropdown.open {
+  display: flex;
+}
+
 .pos-printer-menu {
   position: absolute;
   top: calc(100% + 4px);
@@ -847,6 +876,10 @@
 [data-theme='light'] .pos-printer-check-btn {
   background: #ffffff;
   border: 1px solid rgba(29, 78, 216, 0.22);
+}
+[data-theme='light'] .pos-printer-dropdown-toggle {
+  background: #f7f2ff;
+  border: 1px solid rgba(29, 78, 216, 0.3);
 }
 [data-theme='light'] .pos-printer-check-btn.both {
   background: #f7f2ff;
