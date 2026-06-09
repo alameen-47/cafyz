@@ -278,29 +278,36 @@
 }
 
 .roles-save-btn {
-  height: 36px;
-  padding: 0 18px;
+  height: 38px;
+  padding: 0 20px;
   background: var(--gold);
   color: var(--on-gold);
+  border: none;
+  border-radius: var(--radius-md);
+  font-size: 13px;
+  font-weight: 700;
+  box-shadow: 0 4px 12px rgba(29, 78, 216, 0.3);
+  transition: transform 0.1s, box-shadow 0.15s;
+}
+.roles-save-btn:hover:not(:disabled) { transform: translateY(-1px); }
+
+.roles-save-btn.sm { height: 30px; padding: 0 14px; font-size: 12px; }
+.roles-save-btn:disabled { opacity: 0.45; cursor: not-allowed; box-shadow: none; }
+
+.roles-cancel-btn {
+  height: 38px;
+  padding: 0 18px;
+  border: 0.5px solid var(--line2);
+  background: var(--gold-bg);
+  color: var(--text1);
   border-radius: var(--radius-md);
   font-size: 13px;
   font-weight: 600;
-}
-
-.roles-save-btn.sm { height: 30px; padding: 0 14px; font-size: 12px; }
-.roles-save-btn:disabled { opacity: 0.45; cursor: not-allowed; }
-
-.roles-cancel-btn {
-  height: 36px;
-  padding: 0 16px;
-  border: 0.5px solid var(--line2);
-  color: var(--text2);
-  border-radius: var(--radius-md);
-  font-size: 13px;
+  transition: background 0.15s, border-color 0.15s, transform 0.1s;
 }
 
 .roles-cancel-btn.sm { height: 30px; padding: 0 10px; font-size: 12px; }
-.roles-cancel-btn:hover { border-color: var(--gold-line2); color: var(--text1); }
+.roles-cancel-btn:hover { border-color: var(--gold-line2); color: var(--text0); transform: translateY(-1px); }
 
 .roles-input-sm {
   display: block;

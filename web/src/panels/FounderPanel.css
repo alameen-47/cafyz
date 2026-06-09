@@ -117,13 +117,16 @@
 .fdr-table-row.revoked  { opacity: 0.45; }
 .fdr-revoke-btn {
   font-size: 11px;
-  padding: 3px 8px;
-  border-radius: 4px;
-  border: 1px solid var(--danger);
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 6px;
+  border: 1px solid rgba(232, 69, 69, 0.5);
   color: var(--danger);
-  background: transparent;
+  background: rgba(232, 69, 69, 0.12);
   cursor: pointer;
+  transition: background 0.15s, transform 0.1s;
 }
+.fdr-revoke-btn:hover { background: rgba(232, 69, 69, 0.2); transform: translateY(-1px); }
 .fdr-revoke-btn:hover { background: var(--danger); color: #fff; }
 
 /* ── Generate form ── */

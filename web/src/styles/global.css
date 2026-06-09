@@ -293,20 +293,25 @@ a {
   height: 40px;
   padding: 0 16px;
   border-radius: var(--radius-md);
-  border: 0.5px solid var(--line2);
-  color: var(--text1);
+  border: 0.5px solid var(--gold-line2);
+  background: var(--gold-bg);
+  color: var(--gold);
   font-size: 11px;
-  font-weight: 600;
+  font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 1px;
-  transition: border-color 0.15s, color 0.15s, background 0.15s;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+  transition: border-color 0.15s, color 0.15s, background 0.15s, transform 0.1s;
 }
 
 .btn-outline:hover {
-  border-color: var(--gold-line2);
+  border-color: var(--gold);
   color: var(--gold);
   background: var(--gold-bg);
+  transform: translateY(-1px);
 }
+.btn-outline:active { transform: translateY(0); }
+.btn-outline:disabled { opacity: 0.5; cursor: not-allowed; box-shadow: none; }
 
 /* ── Theme toggle button (in sidebar) ────────────────────────────────────── */
 .theme-toggle {
@@ -394,8 +399,10 @@ a {
 
 /* Btn-outline — visible border */
 [data-theme='light'] .btn-outline {
-  border: 1px solid rgba(0, 0, 0, 0.18);
-  color: var(--text1);
+  border: 1px solid var(--gold-line2);
+  background: var(--gold-bg);
+  color: var(--gold);
+  box-shadow: 0 2px 8px rgba(29, 78, 216, 0.12);
 }
 
 /* Badge "off" fix — uses white bg which disappears in light mode */

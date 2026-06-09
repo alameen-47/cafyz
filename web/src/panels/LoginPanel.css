@@ -227,10 +227,12 @@
   gap: 12px;
   padding: 10px 14px;
   border-radius: var(--radius-md);
-  border: 0.5px solid var(--line2);
+  border: 0.5px solid var(--gold-line2);
+  background: var(--gold-bg);
   text-align: left;
-  transition: border-color 0.15s, background 0.15s;
+  transition: border-color 0.15s, background 0.15s, transform 0.1s;
 }
+.login-role-btn:hover { border-color: var(--gold); transform: translateY(-1px); }
 
 .login-role-btn:hover {
   border-color: var(--rc, var(--gold));
