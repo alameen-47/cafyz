@@ -9,6 +9,7 @@ import {
   slugifyCategoryLabel,
 } from '../utils/menuCategories';
 import { MENU_IMAGE_ACCEPT, validateMenuImageFile } from '../utils/menuImage';
+import { printerStatus, printKitchenTicket } from '../services/PrintService';
 import { toastBus } from '../services/toastBus';
 import { formatMoney } from '../utils/currency';
 import './MenuPanel.css';
@@ -443,24 +444,47 @@ export function MenuPanel() {
     }
     setOrderBusy(true);
     setOrderError('');
+    // If this device has the kitchen printer paired locally, print directly —
+    // no cloud round trip, fires in well under a second, works even if the
+    // server is cold or offline.
+    const printLocally = printerStatus().type !== 'none';
     try {
-      const order = await ordersApi.create({
+      // Single batched request: creates the order, all items, the KDS ticket
+      // (and the cloud print job only when NOT printing locally) in one
+      // transaction — so it fires fast instead of N+3 sequential calls.
+      const order = await ordersApi.quickSend({
         table_id: orderTable,
         covers: orderTableObj?.covers || 2,
         note: orderNote.trim() || undefined,
-      });
-      for (const row of orderCart) {
-        await ordersApi.addItem(order.id, {
+        enqueue_print: !printLocally,
+        items: orderCart.map((row) => ({
           menu_item_id: row.menuItem.id,
           qty: row.qty,
           mods: [],
-        });
-      }
-      await ordersApi.updateStatus(order.id, 'sent');
-      await tablesApi.updateStatus(orderTable, { status: 'occupied', course: 'Order sent from Menu' });
+        })),
+      });
       window.dispatchEvent(new CustomEvent('CAFYZ_ORDER_SENT', {
         detail: { tableId: orderTable, orderId: order.id },
       }));
+
+      if (printLocally) {
+        try {
+          await printKitchenTicket({
+            restaurantName: user?.restaurant_name ?? 'Restaurant',
+            ticketId: order.ticket_id,
+            tableName: orderTableObj?.name ?? 'Table',
+            serverName: user?.name,
+            covers: orderTableObj?.covers || 2,
+            items: orderCart.map((row) => ({ name: row.menuItem.name, qty: row.qty })),
+            note: orderNote.trim() || undefined,
+          }, user?.restaurant_id, { allowDialog: false });
+        } catch {
+          // Local printer hiccup → fall back to the cloud queue so it still prints.
+          await ordersApi.enqueuePrint(order.id).catch(() => {});
+          toastBus.info('Local printer busy — sent to kitchen print queue instead.');
+        }
+      }
+
       toastBus.success(`Order sent to kitchen for ${orderTableObj?.name ?? 'selected table'}.`);
       setOrderCart([]);
       setOrderNote('');

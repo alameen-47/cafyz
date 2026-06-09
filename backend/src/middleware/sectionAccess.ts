@@ -7,6 +7,12 @@ import {
   parseAccessJson,
   type ScreenId,
 } from '../services/sectionAccess.js';
+import { cacheGet, cacheSet } from '../cache.js';
+
+// Cache user role + access_json for 30 s — role changes are rare and propagate quickly enough.
+const ACCESS_TTL = 30_000;
+
+type AccessEntry = { role: string; accessJson: unknown };
 
 export function requireSectionAccess(screen: ScreenId) {
   return async (req: AuthRequest, res: Response, next: NextFunction) => {
@@ -20,17 +26,23 @@ export function requireSectionAccess(screen: ScreenId) {
     }
 
     try {
-      const row = await getDb().execute({
-        sql: 'SELECT role, access_json FROM users WHERE id=? AND restaurant_id=? LIMIT 1',
-        args: [req.user.id, req.user.restaurant_id],
-      });
-      if (!row.rows.length) {
-        res.status(404).json({ error: 'User not found' });
-        return;
+      const cacheKey = `access:${req.user.id}`;
+      let entry = cacheGet<AccessEntry>(cacheKey);
+
+      if (!entry) {
+        const row = await getDb().execute({
+          sql: 'SELECT role, access_json FROM users WHERE id=? AND restaurant_id=? LIMIT 1',
+          args: [req.user.id, req.user.restaurant_id],
+        });
+        if (!row.rows.length) {
+          res.status(404).json({ error: 'User not found' });
+          return;
+        }
+        entry = { role: String(row.rows[0].role ?? req.user.role), accessJson: row.rows[0].access_json };
+        cacheSet(cacheKey, entry, ACCESS_TTL);
       }
-      const role = String(row.rows[0].role ?? req.user.role);
-      const access = parseAccessJson(row.rows[0].access_json);
-      const effective = mergeRoleAccess(role, access);
+
+      const effective = mergeRoleAccess(entry.role, parseAccessJson(entry.accessJson));
       const ok = hasScreenAccess(req.method, effective, screen);
       if (!ok) {
         res.status(403).json({

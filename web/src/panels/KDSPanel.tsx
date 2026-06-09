@@ -381,50 +381,73 @@ export function KDSPanel() {
 
   return (
     <div className="kds-root">
-      {error && <p style={{ color: 'var(--danger)', padding: '4px 16px', fontSize: 12 }}>{error}</p>}
+      {error && <p className="kds-error">{error}</p>}
       <PrinterHelpBanner />
 
-      <div className="kds-stations">
-        <label style={{ marginRight: 10, display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--text2)' }}>
-          <input type="checkbox" checked={autoPrint} onChange={e => setAutoPrint(e.target.checked)} />
-          Auto-print new tickets
-        </label>
-        {printer.type !== 'none' ? (
-          <button type="button" onClick={disconnectKdsPrinter}>
-            {printer.type === 'bluetooth' ? <BluetoothIcon /> : '🔌'} {printer.name} · Disconnect
-          </button>
-        ) : (
-          <>
-            <button type="button" onClick={connectKdsBluetooth} disabled={printBusy}><BluetoothIcon /> Connect Bluetooth</button>
-            <button type="button" onClick={connectKdsUsb} disabled={printBusy}>🔌 Connect USB</button>
-          </>
-        )}
-        <button type="button" onClick={testKitchenPrint} disabled={printBusy}>
-          {printBusy ? 'Testing…' : '🖨 Test Kitchen Print'}
-        </button>
-        {assignedKitchen && (
-          <span style={{ fontSize: 12, color: 'var(--text2)' }}>
-            Shared with POS: {assignedKitchen.name} ({assignedKitchen.channel.toUpperCase()})
-          </span>
-        )}
-        {STATIONS.map(s => (
-          <button
-            key={s}
-            type="button"
-            className={station === s ? 'active' : ''}
-            onClick={() => setStation(s)}
-          >
-            {s}
-          </button>
-        ))}
+      {/* ── Toolbar ── */}
+      <div className="kds-toolbar">
+        {/* Printer controls row */}
+        <div className="kds-printer-row">
+          <label className="kds-autoprint-label">
+            <input type="checkbox" checked={autoPrint} onChange={e => setAutoPrint(e.target.checked)} />
+            Auto-print
+          </label>
+
+          <div className="kds-printer-btns">
+            {printer.type !== 'none' ? (
+              <button type="button" className="kds-btn-printer connected" onClick={disconnectKdsPrinter}>
+                {printer.type === 'bluetooth' ? <BluetoothIcon /> : '🔌'}
+                <span>{printer.name}</span>
+                <span className="kds-disconnect">· Disconnect</span>
+              </button>
+            ) : (
+              <>
+                <button type="button" className="kds-btn-printer" onClick={connectKdsBluetooth} disabled={printBusy}>
+                  <BluetoothIcon /> Bluetooth
+                </button>
+                <button type="button" className="kds-btn-printer" onClick={connectKdsUsb} disabled={printBusy}>
+                  🔌 USB
+                </button>
+              </>
+            )}
+            <button type="button" className="kds-btn-printer" onClick={testKitchenPrint} disabled={printBusy}>
+              {printBusy ? '…' : '🖨 Test'}
+            </button>
+          </div>
+
+          {assignedKitchen && (
+            <span className="kds-shared-label">
+              Shared: {assignedKitchen.name} ({assignedKitchen.channel.toUpperCase()})
+            </span>
+          )}
+        </div>
+
+        {/* Station filter row */}
+        <div className="kds-station-row">
+          {STATIONS.map(s => (
+            <button
+              key={s}
+              type="button"
+              className={`kds-station-btn${station === s ? ' active' : ''}`}
+              onClick={() => setStation(s)}
+            >
+              {s}
+            </button>
+          ))}
+        </div>
       </div>
 
+      {/* ── Kanban columns ── */}
       <div className="kds-columns">
-        <section>
-          <h3 className="eyebrow">New · {newTickets.length}</h3>
+        <section className="kds-col">
+          <div className="kds-col-header new">
+            <span className="kds-col-dot" />
+            <span className="kds-col-title">New</span>
+            <span className="kds-col-count">{newTickets.length}</span>
+          </div>
           <div className="kds-stack">
             {newTickets.length === 0
-              ? <p style={{ color: 'var(--text3)', fontSize: 13, padding: 8 }}>No new tickets</p>
+              ? <p className="kds-empty">No new tickets</p>
               : newTickets.map(t => (
                   <KDSCard key={t.id} ticket={t} busy={busy}
                     onFire={handleFire} onReady={handleReady} onDelivered={handleDelivered} />
@@ -433,11 +456,15 @@ export function KDSPanel() {
           </div>
         </section>
 
-        <section>
-          <h3 className="eyebrow">In prep · {prepTickets.length}</h3>
+        <section className="kds-col">
+          <div className="kds-col-header prep">
+            <span className="kds-col-dot" />
+            <span className="kds-col-title">In Prep</span>
+            <span className="kds-col-count">{prepTickets.length}</span>
+          </div>
           <div className="kds-stack">
             {prepTickets.length === 0
-              ? <p style={{ color: 'var(--text3)', fontSize: 13, padding: 8 }}>No tickets in prep</p>
+              ? <p className="kds-empty">No tickets in prep</p>
               : prepTickets.map(t => (
                   <KDSCard key={t.id} ticket={t} busy={busy}
                     onFire={handleFire} onReady={handleReady} onDelivered={handleDelivered} />
@@ -446,11 +473,15 @@ export function KDSPanel() {
           </div>
         </section>
 
-        <section>
-          <h3 className="eyebrow">Ready · {readyTickets.length}</h3>
+        <section className="kds-col">
+          <div className="kds-col-header ready">
+            <span className="kds-col-dot" />
+            <span className="kds-col-title">Ready · Pass</span>
+            <span className="kds-col-count">{readyTickets.length}</span>
+          </div>
           <div className="kds-stack">
             {readyTickets.length === 0
-              ? <p style={{ color: 'var(--text3)', fontSize: 13, padding: 8 }}>No tickets ready</p>
+              ? <p className="kds-empty">No tickets ready</p>
               : readyTickets.map(t => (
                   <KDSCard key={t.id} ticket={t} busy={busy}
                     onFire={handleFire} onReady={handleReady} onDelivered={handleDelivered} />

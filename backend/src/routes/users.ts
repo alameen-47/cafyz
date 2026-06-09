@@ -267,10 +267,18 @@ router.put('/:id', requireRole('owner','manager'), async (req: AuthRequest, res,
     if (data.pin)        { sets.push('pin_hash=?');   args.push(await bcrypt.hash(data.pin, 10)); }
 
     if (!sets.length) { res.status(400).json({ error: 'No fields to update' }); return; }
-    args.push((req.params.id as string));
+    const userId = req.params.id as string;
+    args.push(userId);
     args.push(rid);
     await db.execute({ sql: `UPDATE users SET ${sets.join(',')} WHERE id=? AND restaurant_id=?`, args });
-    const row = await db.execute({ sql: 'SELECT id,restaurant_id,name,initials,email,phone,role,access_json,status,start_time FROM users WHERE id=?', args: [(req.params.id as string)] });
+
+    // Invalidate section-access cache so role/permission changes take effect immediately.
+    if (data.role || data.access_json !== undefined) {
+      const { cacheDel } = await import('../cache.js');
+      cacheDel(`access:${userId}`);
+    }
+
+    const row = await db.execute({ sql: 'SELECT id,restaurant_id,name,initials,email,phone,role,access_json,status,start_time FROM users WHERE id=?', args: [userId] });
     res.json(row.rows[0]);
   } catch (e) { next(e); }
 });

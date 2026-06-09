@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { z } from 'zod';
+import type { InValue } from '@libsql/client';
 import { getDb } from '../db.js';
 import { requireAuth, type AuthRequest } from '../middleware/auth.js';
 import { requireRole } from '../middleware/rbac.js';
@@ -53,20 +54,49 @@ router.get('/tickets', requireRole('owner', 'manager', 'cashier', 'waiter', 'kit
   try {
     const rid = req.user!.restaurant_id;
     const { status, station } = req.query;
-    let sql = 'SELECT * FROM kds_tickets WHERE restaurant_id=?';
-    const args: any[] = [rid];
-    if (status)  { sql += ' AND status=?';  args.push(String(status)); }
-    if (station) { sql += ' AND station=?'; args.push(String(station)); }
-    sql += ' ORDER BY created_at ASC';
-    const tickets = await getDb().execute({ sql, args });
 
-    // Attach items
-    const result = await Promise.all(tickets.rows.map(async (t) => {
-      const tMap = t as Record<string,unknown>;
-      const items = await getDb().execute({ sql: 'SELECT * FROM kds_ticket_items WHERE ticket_id=?', args: [tMap.id as string] });
-      return { ...tMap, items: items.rows };
-    }));
-    res.json(result);
+    // Single JOIN replaces the previous N+1 pattern (1 query per ticket for items).
+    let sql = `
+      SELECT t.id, t.restaurant_id, t.order_id, t.table_name, t.server_name,
+             t.covers, t.vip, t.station, t.status, t.created_at, t.updated_at,
+             i.id      AS i_id,
+             i.name    AS i_name,
+             i.qty     AS i_qty,
+             i.station AS i_station,
+             i.mods    AS i_mods,
+             i.alert   AS i_alert
+      FROM kds_tickets t
+      LEFT JOIN kds_ticket_items i ON i.ticket_id = t.id
+      WHERE t.restaurant_id = ?`;
+    const args: InValue[] = [rid];
+    if (status)  { sql += ' AND t.status=?';  args.push(String(status)); }
+    if (station) { sql += ' AND t.station=?'; args.push(String(station)); }
+    sql += ' ORDER BY t.created_at ASC';
+
+    const rows = await getDb().execute({ sql, args });
+
+    // Group item columns back onto their parent ticket.
+    const ticketMap = new Map<string, Record<string, unknown> & { items: Record<string, unknown>[] }>();
+    for (const row of rows.rows) {
+      const r = row as Record<string, unknown>;
+      const tid = String(r.id);
+      if (!ticketMap.has(tid)) {
+        ticketMap.set(tid, {
+          id: r.id, restaurant_id: r.restaurant_id, order_id: r.order_id,
+          table_name: r.table_name, server_name: r.server_name,
+          covers: r.covers, vip: r.vip, station: r.station,
+          status: r.status, created_at: r.created_at, updated_at: r.updated_at,
+          items: [],
+        });
+      }
+      if (r.i_id != null) {
+        ticketMap.get(tid)!.items.push({
+          id: r.i_id, name: r.i_name, qty: r.i_qty,
+          station: r.i_station, mods: r.i_mods, alert: r.i_alert,
+        });
+      }
+    }
+    res.json([...ticketMap.values()]);
   } catch (e) { next(e); }
 });
 
@@ -75,9 +105,12 @@ router.get('/tickets/:id', requireRole('owner', 'manager', 'cashier', 'waiter', 
   try {
     const rid = req.user!.restaurant_id;
     const db = getDb();
-    const ticket = await db.execute({ sql: 'SELECT * FROM kds_tickets WHERE id=? AND restaurant_id=?', args: [(req.params.id as string), rid] });
+    const id = req.params.id as string;
+    const [ticket, items] = await Promise.all([
+      db.execute({ sql: 'SELECT * FROM kds_tickets WHERE id=? AND restaurant_id=?', args: [id, rid] }),
+      db.execute({ sql: 'SELECT * FROM kds_ticket_items WHERE ticket_id=?', args: [id] }),
+    ]);
     if (!ticket.rows.length) { res.status(404).json({ error: 'Ticket not found' }); return; }
-    const items = await db.execute({ sql: 'SELECT * FROM kds_ticket_items WHERE ticket_id=?', args: [(req.params.id as string)] });
     res.json({ ...ticket.rows[0], items: items.rows });
   } catch (e) { next(e); }
 });
@@ -104,19 +137,24 @@ router.post('/tickets', requireRole('owner', 'manager', 'cashier', 'waiter'), as
 
     const db = getDb();
     const id = uid();
-    await db.execute({
-      sql: `INSERT INTO kds_tickets(id,restaurant_id,order_id,table_name,server_name,covers,vip,station,status)
-            VALUES(?,?,?,?,?,?,?,?,'new')`,
-      args: [id, rid, data.order_id, data.table_name, data.server_name, data.covers, data.vip?1:0, data.station??null],
-    });
-    for (const item of data.items) {
-      await db.execute({
-        sql: `INSERT INTO kds_ticket_items(id,ticket_id,name,qty,station,mods,alert) VALUES(?,?,?,?,?,?,?)`,
-        args: [uid(), id, item.name, item.qty, item.station, JSON.stringify(item.mods), item.alert?1:0],
-      });
-    }
-    const ticket = await db.execute({ sql: 'SELECT * FROM kds_tickets WHERE id=?', args: [id] });
-    const items  = await db.execute({ sql: 'SELECT * FROM kds_ticket_items WHERE ticket_id=?', args: [id] });
+
+    // Batch all inserts + the two reads into one HTTP round trip via db.batch().
+    const itemStmts = data.items.map(item => ({
+      sql: `INSERT INTO kds_ticket_items(id,ticket_id,name,qty,station,mods,alert) VALUES(?,?,?,?,?,?,?)`,
+      args: [uid(), id, item.name, item.qty, item.station, JSON.stringify(item.mods), item.alert?1:0] as InValue[],
+    }));
+    const batchResults = await db.batch([
+      {
+        sql: `INSERT INTO kds_tickets(id,restaurant_id,order_id,table_name,server_name,covers,vip,station,status)
+              VALUES(?,?,?,?,?,?,?,?,'new')`,
+        args: [id, rid, data.order_id, data.table_name, data.server_name, data.covers, data.vip?1:0, data.station??null] as InValue[],
+      },
+      ...itemStmts,
+      { sql: 'SELECT * FROM kds_tickets WHERE id=?', args: [id] as InValue[] },
+      { sql: 'SELECT * FROM kds_ticket_items WHERE ticket_id=?', args: [id] as InValue[] },
+    ]);
+    const ticket = batchResults[1 + data.items.length];
+    const items  = batchResults[2 + data.items.length];
     res.status(201).json({ ...ticket.rows[0], items: items.rows });
   } catch (e) { next(e); }
 });
@@ -125,11 +163,13 @@ router.post('/tickets', requireRole('owner', 'manager', 'cashier', 'waiter'), as
 router.patch('/tickets/:id/fire', requireRole('owner', 'manager', 'kitchen'), async (req: AuthRequest, res, next) => {
   try {
     const rid = req.user!.restaurant_id;
-    const db = getDb();
-    const ex = await db.execute({ sql: "SELECT id,status FROM kds_tickets WHERE id=? AND restaurant_id=?", args: [(req.params.id as string), rid] });
-    if (!ex.rows.length) { res.status(404).json({ error: 'Ticket not found' }); return; }
-    await db.execute({ sql: "UPDATE kds_tickets SET status='prep',updated_at=datetime('now') WHERE id=?", args: [(req.params.id as string)] });
-    res.json({ id: (req.params.id as string), status: 'prep' });
+    const id = req.params.id as string;
+    const result = await getDb().execute({
+      sql: "UPDATE kds_tickets SET status='prep',updated_at=datetime('now') WHERE id=? AND restaurant_id=?",
+      args: [id, rid],
+    });
+    if (!result.rowsAffected) { res.status(404).json({ error: 'Ticket not found' }); return; }
+    res.json({ id, status: 'prep' });
   } catch (e) { next(e); }
 });
 
@@ -137,11 +177,13 @@ router.patch('/tickets/:id/fire', requireRole('owner', 'manager', 'kitchen'), as
 router.patch('/tickets/:id/ready', requireRole('owner', 'manager', 'kitchen'), async (req: AuthRequest, res, next) => {
   try {
     const rid = req.user!.restaurant_id;
-    const db = getDb();
-    const ex = await db.execute({ sql: "SELECT id FROM kds_tickets WHERE id=? AND restaurant_id=?", args: [(req.params.id as string), rid] });
-    if (!ex.rows.length) { res.status(404).json({ error: 'Ticket not found' }); return; }
-    await db.execute({ sql: "UPDATE kds_tickets SET status='ready',updated_at=datetime('now') WHERE id=?", args: [(req.params.id as string)] });
-    res.json({ id: (req.params.id as string), status: 'ready' });
+    const id = req.params.id as string;
+    const result = await getDb().execute({
+      sql: "UPDATE kds_tickets SET status='ready',updated_at=datetime('now') WHERE id=? AND restaurant_id=?",
+      args: [id, rid],
+    });
+    if (!result.rowsAffected) { res.status(404).json({ error: 'Ticket not found' }); return; }
+    res.json({ id, status: 'ready' });
   } catch (e) { next(e); }
 });
 
@@ -149,11 +191,13 @@ router.patch('/tickets/:id/ready', requireRole('owner', 'manager', 'kitchen'), a
 router.patch('/tickets/:id/delivered', requireRole('owner', 'manager', 'kitchen'), async (req: AuthRequest, res, next) => {
   try {
     const rid = req.user!.restaurant_id;
-    const db = getDb();
-    const ex = await db.execute({ sql: "SELECT id FROM kds_tickets WHERE id=? AND restaurant_id=?", args: [(req.params.id as string), rid] });
-    if (!ex.rows.length) { res.status(404).json({ error: 'Ticket not found' }); return; }
-    await db.execute({ sql: "UPDATE kds_tickets SET status='delivered',updated_at=datetime('now') WHERE id=?", args: [(req.params.id as string)] });
-    res.json({ id: (req.params.id as string), status: 'delivered' });
+    const id = req.params.id as string;
+    const result = await getDb().execute({
+      sql: "UPDATE kds_tickets SET status='delivered',updated_at=datetime('now') WHERE id=? AND restaurant_id=?",
+      args: [id, rid],
+    });
+    if (!result.rowsAffected) { res.status(404).json({ error: 'Ticket not found' }); return; }
+    res.json({ id, status: 'delivered' });
   } catch (e) { next(e); }
 });
 

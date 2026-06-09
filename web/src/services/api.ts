@@ -206,6 +206,12 @@ export const ordersApi = {
     get<ApiOrder[]>(`/api/orders${p ? `?${new URLSearchParams(p as Record<string, string>)}` : ''}`),
   get:          (id: string)                                                  => get<ApiOrder>(`/api/orders/${id}`),
   create:       (d: { table_id?: string; covers?: number; note?: string })    => post<ApiOrder>('/api/orders', d),
+  // One-shot create + send to kitchen in a single batched request (fast print).
+  // Pass enqueue_print:false when printing locally on this device to skip the cloud queue.
+  quickSend:    (d: { table_id: string; covers?: number; note?: string; enqueue_print?: boolean; items: { menu_item_id: string; qty: number; mods?: string[] }[] }) =>
+    post<{ id: string; ticket_id: string; status: string }>('/api/orders/quick-send', d),
+  // Cloud-print fallback if a local same-device print fails.
+  enqueuePrint: (orderId: string) => post<{ ok: boolean }>(`/api/orders/${orderId}/enqueue-print`, {}),
   updateStatus: (id: string, status: string)                                  => patch<{ id: string; status: string }>(`/api/orders/${id}/status`, { status }),
   addItem:      (orderId: string, d: { menu_item_id: string; qty: number; mods?: string[] }) =>
     post<ApiOrderItem>(`/api/orders/${orderId}/items`, d),

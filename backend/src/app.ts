@@ -1,6 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
+import compression from 'compression';
 
 import authRoutes        from './routes/auth.js';
 import userRoutes        from './routes/users.js';
@@ -60,6 +61,11 @@ app.use(cors({
   credentials: true,
 }));
 app.use(globalLimiter);
+
+// ── Compression ─────────────────────────────────────────────────────────────────
+// Gzip responses > 1 KB. Placed before body-parsing so the stream is compressed
+// at the Express layer before it hits the network.
+app.use(compression({ threshold: 1024 }));
 
 // ── Body parsing ────────────────────────────────────────────────────────────────
 // Logo uploads store dithered PNG data URLs (up to ~3 MB).

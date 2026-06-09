@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { z } from 'zod';
+import type { InValue } from '@libsql/client';
 import { getDb } from '../db.js';
 import { requireAuth, type AuthRequest } from '../middleware/auth.js';
 import { requireRole } from '../middleware/rbac.js';
@@ -69,6 +70,151 @@ router.get('/:id', requireRole('owner', 'manager', 'cashier', 'waiter', 'kitchen
       args: [id],
     });
     res.json({ ...order.rows[0], items: items.rows });
+  } catch (e) { next(e); }
+});
+
+// ── POST /api/orders/quick-send ───────────────────────────────────────────────
+// One-shot: create order + items, send to kitchen, build the KDS ticket and
+// enqueue the print job — all in TWO round trips (validate, then one batched
+// transaction) instead of the old N+3 sequential client calls. This is what
+// makes the kitchen print fire within ~1s of tapping "Send" instead of ~15s.
+const QuickSendSchema = z.object({
+  table_id: z.string(),
+  covers:   z.number().int().positive().default(1),
+  note:     z.string().optional(),
+  // When false, the caller is printing locally on this same device (its
+  // Bluetooth/USB kitchen printer), so we skip the cloud print queue entirely
+  // — no round trip, no double-print. Defaults true for cross-device setups.
+  enqueue_print: z.boolean().default(true),
+  items: z.array(z.object({
+    menu_item_id: z.string(),
+    qty:          z.number().int().positive().default(1),
+    mods:         z.array(z.string()).default([]),
+  })).min(1),
+});
+
+router.post('/quick-send', requireRole('owner', 'manager', 'cashier', 'waiter'), async (req: AuthRequest, res, next) => {
+  try {
+    const rid  = req.user!.restaurant_id;
+    const data = QuickSendSchema.parse(req.body);
+    const db   = getDb();
+
+    const ids = data.items.map(i => i.menu_item_id);
+    const ph  = ids.map(() => '?').join(',');
+
+    // Round trip 1: validate menu items + resolve table & server names in parallel.
+    const [menuRes, tableRes, userRes] = await Promise.all([
+      db.execute({ sql: `SELECT id,name,category FROM menu_items WHERE restaurant_id=? AND id IN (${ph})`, args: [rid, ...ids] }),
+      db.execute({ sql: 'SELECT name FROM restaurant_tables WHERE id=? AND restaurant_id=?', args: [data.table_id, rid] }),
+      db.execute({ sql: 'SELECT name FROM users WHERE id=?', args: [req.user!.id] }),
+    ]);
+
+    const menuMap = new Map(menuRes.rows.map(r => [String((r as Record<string, unknown>).id), r as Record<string, unknown>]));
+    const missing = data.items.find(it => !menuMap.has(it.menu_item_id));
+    if (missing) { res.status(400).json({ error: `Menu item not found: ${missing.menu_item_id}` }); return; }
+    if (!tableRes.rows.length) { res.status(400).json({ error: 'Table not found' }); return; }
+
+    const tableName  = String((tableRes.rows[0] as Record<string, unknown>).name);
+    const serverName = userRes.rows.length ? String((userRes.rows[0] as Record<string, unknown>).name) : 'Staff';
+
+    const orderId  = uid();
+    const ticketId = uid();
+    const covers   = data.covers;
+
+    const payload = {
+      ticketId, tableName, serverName, covers,
+      items: data.items.map(it => ({
+        name: String(menuMap.get(it.menu_item_id)!.name),
+        qty:  it.qty,
+        mods: it.mods,
+        alert: false,
+      })),
+      note: data.note || undefined,
+    };
+
+    // Round trip 2: one batched transaction for the entire send.
+    const stmts: { sql: string; args: InValue[] }[] = [
+      {
+        sql: `INSERT INTO orders(id,restaurant_id,table_id,server_id,covers,note,status) VALUES(?,?,?,?,?,?,'sent')`,
+        args: [orderId, rid, data.table_id, req.user!.id, covers, data.note ?? null],
+      },
+      ...data.items.map(it => ({
+        sql:  `INSERT INTO order_items(id,order_id,menu_item_id,qty,mods) VALUES(?,?,?,?,?)`,
+        args: [uid(), orderId, it.menu_item_id, it.qty, JSON.stringify(it.mods)] as InValue[],
+      })),
+      {
+        sql: `INSERT INTO kds_tickets(id,restaurant_id,order_id,table_name,server_name,covers,status,created_at,updated_at)
+              VALUES(?,?,?,?,?,?,'new',datetime('now'),datetime('now'))`,
+        args: [ticketId, rid, orderId, tableName, serverName, covers],
+      },
+      ...data.items.map(it => {
+        const m = menuMap.get(it.menu_item_id)!;
+        return {
+          sql:  `INSERT INTO kds_ticket_items(id,ticket_id,name,qty,station,mods,alert) VALUES(?,?,?,?,?,?,0)`,
+          args: [uid(), ticketId, String(m.name), it.qty, catToStation(String(m.category)), JSON.stringify(it.mods)] as InValue[],
+        };
+      }),
+    ];
+    // Only enqueue a cloud print job for cross-device setups. When the sending
+    // device prints locally we skip it, so nothing double-prints.
+    if (data.enqueue_print) {
+      stmts.push({
+        sql: `INSERT INTO kitchen_print_jobs(id,restaurant_id,ticket_id,payload_json,status) VALUES(?,?,?,?,'pending')`,
+        args: [uid(), rid, ticketId, JSON.stringify(payload)],
+      });
+    }
+    stmts.push({
+      sql: `UPDATE restaurant_tables SET status='occupied' WHERE id=? AND restaurant_id=?`,
+      args: [data.table_id, rid],
+    });
+    await db.batch(stmts);
+
+    res.status(201).json({ id: orderId, ticket_id: ticketId, status: 'sent' });
+  } catch (e) { next(e); }
+});
+
+// ── POST /api/orders/:id/enqueue-print ────────────────────────────────────────
+// Cloud-print fallback: only called when a local same-device print FAILS. Builds
+// a pending print job from the order's existing KDS ticket so another device (or
+// a retry) can still print it. Idempotency: skips if a live job already exists.
+router.post('/:id/enqueue-print', requireRole('owner', 'manager', 'cashier', 'waiter'), async (req: AuthRequest, res, next) => {
+  try {
+    const rid = req.user!.restaurant_id;
+    const orderId = req.params.id as string;
+    const db = getDb();
+
+    const ticketRes = await db.execute({
+      sql: 'SELECT id,table_name,server_name,covers FROM kds_tickets WHERE order_id=? AND restaurant_id=? ORDER BY created_at DESC LIMIT 1',
+      args: [orderId, rid],
+    });
+    if (!ticketRes.rows.length) { res.status(404).json({ error: 'No kitchen ticket for this order' }); return; }
+    const ticket = ticketRes.rows[0] as Record<string, unknown>;
+    const ticketId = String(ticket.id);
+
+    const [itemsRes, dupRes] = await Promise.all([
+      db.execute({ sql: 'SELECT name,qty,mods FROM kds_ticket_items WHERE ticket_id=?', args: [ticketId] }),
+      db.execute({ sql: "SELECT id FROM kitchen_print_jobs WHERE ticket_id=? AND status IN ('pending','printing') LIMIT 1", args: [ticketId] }),
+    ]);
+    if (dupRes.rows.length) { res.status(200).json({ ok: true, deduped: true }); return; }
+
+    const payload = {
+      ticketId,
+      tableName: String(ticket.table_name ?? ''),
+      serverName: String(ticket.server_name ?? 'Staff'),
+      covers: Number(ticket.covers) || 1,
+      items: itemsRes.rows.map(r => {
+        const it = r as Record<string, unknown>;
+        let mods: string[] = [];
+        try { const p = JSON.parse(String(it.mods ?? '[]')); if (Array.isArray(p)) mods = p.map(String); } catch { mods = []; }
+        return { name: String(it.name), qty: Number(it.qty) || 1, mods, alert: false };
+      }),
+    };
+
+    await db.execute({
+      sql: `INSERT INTO kitchen_print_jobs(id,restaurant_id,ticket_id,payload_json,status) VALUES(?,?,?,?,'pending')`,
+      args: [uid(), rid, ticketId, JSON.stringify(payload)],
+    });
+    res.status(201).json({ ok: true });
   } catch (e) { next(e); }
 });
 
@@ -143,95 +289,65 @@ router.patch('/:id/status', requireRole('owner', 'manager', 'cashier', 'waiter')
 
     // ── Auto-create KDS ticket when order is sent to kitchen ──────────────
     if (status === 'sent') {
-      const itemRows = await db.execute({
-        sql:  `SELECT oi.qty, oi.mods, m.name, m.category
-               FROM order_items oi
-               JOIN menu_items m ON m.id = oi.menu_item_id
-               WHERE oi.order_id = ?`,
-        args: [id],
-      });
+      // Fetch order items + resolve table/server names in parallel.
+      const [itemRows, tblRow, srvRow] = await Promise.all([
+        db.execute({
+          sql:  `SELECT oi.qty, oi.mods, m.name, m.category
+                 FROM order_items oi
+                 JOIN menu_items m ON m.id = oi.menu_item_id
+                 WHERE oi.order_id = ?`,
+          args: [id],
+        }),
+        order.table_id
+          ? db.execute({ sql: 'SELECT name FROM restaurant_tables WHERE id=?', args: [String(order.table_id)] })
+          : Promise.resolve(null),
+        order.server_id
+          ? db.execute({ sql: 'SELECT name FROM users WHERE id=?', args: [String(order.server_id)] })
+          : Promise.resolve(null),
+      ]);
 
       if (itemRows.rows.length > 0) {
-        // Resolve table name
-        let tableName = 'No Table';
-        if (order.table_id) {
-          const tbl = await db.execute({
-            sql:  'SELECT name FROM restaurant_tables WHERE id=?',
-            args: [String(order.table_id)],
-          });
-          if (tbl.rows.length) {
-            tableName = String((tbl.rows[0] as Record<string, unknown>).name);
-          }
-        }
+        const tableName  = tblRow?.rows.length  ? String((tblRow.rows[0]  as Record<string, unknown>).name) : 'No Table';
+        const serverName = srvRow?.rows.length  ? String((srvRow.rows[0]  as Record<string, unknown>).name) : 'Staff';
 
-        // Resolve server name
-        let serverName = 'Staff';
-        if (order.server_id) {
-          const srv = await db.execute({
-            sql:  'SELECT name FROM users WHERE id=?',
-            args: [String(order.server_id)],
-          });
-          if (srv.rows.length) {
-            serverName = String((srv.rows[0] as Record<string, unknown>).name);
-          }
-        }
-
-        // Create KDS ticket
         const ticketId = uid();
-        await db.execute({
-          sql:  `INSERT INTO kds_tickets
-                   (id,restaurant_id,order_id,table_name,server_name,covers,status,created_at,updated_at)
-                 VALUES(?,?,?,?,?,?,'new',datetime('now'),datetime('now'))`,
-          args: [ticketId, rid, id, tableName, serverName, Number(order.covers) || 1],
-        });
+        const covers   = Number(order.covers) || 1;
 
-        // Create KDS ticket items
-        for (const row of itemRows.rows) {
-          const it = row as Record<string, unknown>;
-          await db.execute({
-            sql:  `INSERT INTO kds_ticket_items
-                     (id,ticket_id,name,qty,station,mods,alert)
-                   VALUES(?,?,?,?,?,?,0)`,
-            args: [
-              uid(), ticketId,
-              String(it.name),
-              Number(it.qty),
-              catToStation(String(it.category)),
-              String(it.mods ?? '[]'),
-            ],
-          });
-        }
-
-        // Enqueue cloud print job for kitchen auto-printer consumers.
+        // Build print payload before the batch so we can include it in the same round trip.
         const payload = {
-          ticketId,
-          tableName,
-          serverName,
-          covers: Number(order.covers) || 1,
+          ticketId, tableName, serverName, covers,
           items: itemRows.rows.map((row) => {
             const it = row as Record<string, unknown>;
             let mods: string[] = [];
             try {
               const parsed = JSON.parse(String(it.mods ?? '[]'));
               if (Array.isArray(parsed)) mods = parsed.map((m) => String(m));
-            } catch {
-              mods = [];
-            }
-            return {
-              name: String(it.name),
-              qty: Number(it.qty) || 1,
-              mods,
-              alert: false,
-            };
+            } catch { mods = []; }
+            return { name: String(it.name), qty: Number(it.qty) || 1, mods, alert: false };
           }),
           note: order.note ? String(order.note) : undefined,
         };
 
-        await db.execute({
-          sql: `INSERT INTO kitchen_print_jobs(id,restaurant_id,ticket_id,payload_json,status)
-                VALUES(?,?,?,?, 'pending')`,
-          args: [uid(), rid, ticketId, JSON.stringify(payload)],
-        });
+        // Batch the ticket header + all item rows + print job into one HTTP round trip.
+        await db.batch([
+          {
+            sql:  `INSERT INTO kds_tickets
+                     (id,restaurant_id,order_id,table_name,server_name,covers,status,created_at,updated_at)
+                   VALUES(?,?,?,?,?,?,'new',datetime('now'),datetime('now'))`,
+            args: [ticketId, rid, id, tableName, serverName, covers] as InValue[],
+          },
+          ...itemRows.rows.map((row) => {
+            const it = row as Record<string, unknown>;
+            return {
+              sql:  `INSERT INTO kds_ticket_items(id,ticket_id,name,qty,station,mods,alert) VALUES(?,?,?,?,?,?,0)`,
+              args: [uid(), ticketId, String(it.name), Number(it.qty), catToStation(String(it.category)), String(it.mods ?? '[]')] as InValue[],
+            };
+          }),
+          {
+            sql:  `INSERT INTO kitchen_print_jobs(id,restaurant_id,ticket_id,payload_json,status) VALUES(?,?,?,?,'pending')`,
+            args: [uid(), rid, ticketId, JSON.stringify(payload)] as InValue[],
+          },
+        ]);
       }
     }
 

@@ -1,0 +1,102 @@
+.ss-root {
+  position: relative;
+  display: inline-block;
+  margin-top: 4px;
+}
+
+/* Trigger — brand-colored, matches the POS action buttons */
+.ss-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 200px;
+  padding: 9px 14px;
+  border: none;
+  border-radius: var(--radius-md);
+  background: var(--gold);
+  color: var(--on-gold, #fff);
+  font-size: 15px;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(29, 78, 216, 0.28);
+  transition: transform 0.1s, box-shadow 0.15s;
+}
+.ss-trigger:hover:not(:disabled) { transform: translateY(-1px); }
+.ss-trigger:disabled { opacity: 0.5; cursor: not-allowed; box-shadow: none; }
+.ss-value { flex: 1; text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ss-placeholder { opacity: 0.85; }
+.ss-chevron { font-size: 12px; flex-shrink: 0; }
+
+/* Popover panel */
+.ss-panel {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 60;
+  width: 260px;
+  max-width: 80vw;
+  background: var(--bg1);
+  border: 0.5px solid var(--gold-line2);
+  border-radius: 12px;
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.35);
+  overflow: hidden;
+}
+
+.ss-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border-bottom: 0.5px solid var(--line);
+}
+.ss-search span { font-size: 13px; opacity: 0.7; }
+.ss-search input {
+  flex: 1;
+  border: none;
+  background: transparent;
+  color: var(--text0);
+  font-size: 14px;
+  font-family: inherit;
+  outline: none;
+}
+
+.ss-options {
+  max-height: 240px;
+  overflow-y: auto;
+  padding: 6px;
+}
+.ss-option {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 9px 12px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text1);
+  font-size: 14px;
+  font-family: inherit;
+  cursor: pointer;
+}
+.ss-option.active { background: var(--hover, rgba(127,127,127,0.12)); }
+.ss-option.selected {
+  background: var(--gold-bg);
+  color: var(--gold);
+  font-weight: 700;
+}
+.ss-empty {
+  margin: 0;
+  padding: 16px 12px;
+  text-align: center;
+  color: var(--text3);
+  font-size: 13px;
+}
+
+/* Light-theme: the global `select` overrides don't touch buttons, but keep the
+   search input readable and the panel crisp. */
+[data-theme='light'] .ss-panel {
+  border: 1px solid rgba(29, 78, 216, 0.22);
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.16);
+}
+[data-theme='light'] .ss-search input { color: #0a0a0f; }

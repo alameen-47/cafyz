@@ -143,6 +143,12 @@ router.post('/activate', requireAuth, async (req: AuthRequest, res, next) => {
       args: [String(key.plan), rid],
     });
 
+    // Invalidate middleware caches so the new plan and subscription status
+    // take effect immediately without waiting for TTL expiry.
+    const { cacheDel } = await import('../cache.js');
+    cacheDel(`plan:${rid}`);
+    cacheDel(`sub:${rid}`);
+
     const updated = await db.execute({ sql: 'SELECT plan FROM restaurants WHERE id=?', args: [rid] });
     res.json({ success: true, plan: updated.rows[0]?.plan, activated_at: now });
   } catch (e) { next(e); }

@@ -12,12 +12,13 @@ import { getPrinterEnvironment, isIosDevice } from '../services/printerEnvironme
 import { getRestaurantLogo, syncRestaurantLogoCache } from '../services/restaurantLogoStorage';
 import { buildMenuCategoryTabs, defaultCategorySlug } from '../utils/menuCategories';
 import { MenuItemImage } from '../components/MenuItemImage';
+import { SearchSelect } from '../components/SearchSelect';
 import { Modal } from '../components/Modal';
 import { toastBus } from '../services/toastBus';
 import { formatMoney, getCurrencySymbol } from '../utils/currency';
 import './POSPanel.css';
 
-type CartItem     = { menuItem: ApiMenuItem; qty: number; mods: string[] };
+type CartItem     = { menuItem: ApiMenuItem; qty: number; mods: string[]; orderItemId?: string; addedNow?: boolean };
 type PaymentState = 'open' | 'sent' | 'card' | 'cash' | 'comped';
 type PrinterRole = 'kitchen' | 'cashier';
 type AssignedPrinter = { role: PrinterRole; channel: Extract<PrintChannel, 'bluetooth' | 'usb'>; name: string };
@@ -37,6 +38,7 @@ export function POSPanel() {
   const [note,          setNote]          = useState('');
   const [pendingOrders, setPendingOrders] = useState<ApiOrder[]>([]);
   const [busy,          setBusy]          = useState(false);
+  const [editMode,      setEditMode]      = useState(false);
   const [error,         setError]         = useState('');
   const [loading,       setLoading]       = useState(true);
   const [tableOrderLoading, setTableOrderLoading] = useState(false);
@@ -193,6 +195,11 @@ export function POSPanel() {
   const currencyCode = restaurant?.currency_code;
 
   const isPaid   = payState === 'card' || payState === 'cash' || payState === 'comped';
+  // The bill can be edited (add products, change qty) only while it is a pending
+  // kitchen-sent order that hasn't been paid yet.
+  const canEditBill = payState === 'sent' && !!activeOrderId && !isPaid;
+  const additionsCount = cart.filter(c => c.addedNow).reduce((s, c) => s + c.qty, 0);
+  const hasAdditions = additionsCount > 0;
   const statusLabel = payState === 'card'  ? 'Paid · Card'
     : payState === 'cash'  ? 'Paid · Cash'
     : payState === 'sent'  ? 'Sent to Kitchen'
@@ -208,6 +215,7 @@ export function POSPanel() {
     setPayState('open');
     setNote('');
     setError('');
+    setEditMode(false);
     setPrintOk(false);
     setPrintError('');
   }
@@ -217,6 +225,7 @@ export function POSPanel() {
     setSelectedTable(tableId);
     setActiveOrderId(null);
     setPayState('open');
+    setEditMode(false);
     setError('');
     if (!tableId) {
       setCart([]);
@@ -253,7 +262,7 @@ export function POSPanel() {
         } else {
           mods = (it.mods as string[] | undefined) ?? [];
         }
-        return { menuItem: fallback, qty: it.qty, mods };
+        return { menuItem: fallback, qty: it.qty, mods, orderItemId: it.id };
       });
       setCart(nextCart);
       setActiveOrderId(full.id);
@@ -284,6 +293,83 @@ export function POSPanel() {
       await refreshBillingQueues();
     } catch (e) { setError((e as Error).message); }
     finally { setBusy(false); }
+  }
+
+  // ── Bill editing (pending kitchen-sent order) ──────────────────────────────
+  // Change a line's quantity; dropping below 1 removes it. Persists to the order
+  // and reverts the optimistic update if the server call fails.
+  async function editQty(index: number, delta: number) {
+    const item = cart[index];
+    if (!activeOrderId || !item?.orderItemId || busy) return;
+    const newQty = item.qty + delta;
+    if (newQty < 1) { await removeLine(index); return; }
+    const prev = cart;
+    setCart(cs => cs.map((c, i) => (i === index ? { ...c, qty: newQty } : c)));
+    try {
+      await ordersApi.updateItem(activeOrderId, item.orderItemId, { qty: newQty });
+    } catch (e) {
+      setCart(prev);
+      setError((e as Error).message);
+    }
+  }
+
+  async function removeLine(index: number) {
+    const item = cart[index];
+    if (!activeOrderId || !item?.orderItemId || busy) return;
+    const prev = cart;
+    setCart(cs => cs.filter((_, i) => i !== index));
+    try {
+      await ordersApi.deleteItem(activeOrderId, item.orderItemId);
+    } catch (e) {
+      setCart(prev);
+      setError((e as Error).message);
+    }
+  }
+
+  // Add a product to the active bill (customer ordered more). Increments the
+  // line if the item is already present, otherwise creates a new order item.
+  async function addProduct(menuItem: ApiMenuItem) {
+    if (!canEditBill || busy) return;
+    const existing = cart.findIndex(c => c.menuItem.id === menuItem.id && c.mods.length === 0);
+    if (existing >= 0 && cart[existing].orderItemId) {
+      await editQty(existing, 1);
+      setCart(cs => cs.map((c, i) => (i === existing ? { ...c, addedNow: true } : c)));
+      return;
+    }
+    setBusy(true); setError('');
+    try {
+      const created = await ordersApi.addItem(activeOrderId!, { menu_item_id: menuItem.id, qty: 1, mods: [] });
+      setCart(cs => [...cs, { menuItem, qty: 1, mods: [], orderItemId: created.id, addedNow: true }]);
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  // Print just the newly-added items to the kitchen (supplementary ticket).
+  async function fireAdditionsToKitchen() {
+    const additions = cart.filter(c => c.addedNow);
+    if (!additions.length || busy) return;
+    setBusy(true); setError('');
+    try {
+      await printKitchenTicket({
+        restaurantName: restaurant?.name || user?.restaurant_name || 'Restaurant',
+        ticketId: `add-${(activeOrderId ?? '').slice(0, 8)}-${Date.now()}`,
+        tableName: tableObj?.name ?? selectedTable,
+        serverName: user?.name,
+        covers: tableObj?.covers || undefined,
+        items: additions.map(c => ({ name: c.menuItem.name, qty: c.qty })),
+        note: 'ADDITIONAL ITEMS',
+      }, user?.restaurant_id ?? restaurant?.id, { channel: kitchenPrinter?.channel });
+      setCart(cs => cs.map(c => ({ ...c, addedNow: false })));
+      toastBus.success('Added items sent to kitchen.');
+    } catch (e) {
+      setError((e as Error).message);
+      toastBus.error(`Could not send additions to kitchen: ${(e as Error).message}`);
+    } finally {
+      setBusy(false);
+    }
   }
 
   // ── Printer helpers ────────────────────────────────────────────────────────
@@ -543,20 +629,33 @@ export function POSPanel() {
           </div>
         </div>
 
+        {canEditBill && editMode && (
+          <p className="pos-add-hint">✎ Editing bill — tap a dish to add it to {tableObj?.name ?? 'this table'}.</p>
+        )}
         <div className="pos-dishes">
-          {visible.map(d => (
-            <div key={d.id} className="pos-dish card disabled">
-              <div className="pos-dish-plate">
-                <MenuItemImage imageUrl={d.image_url} name={d.name} variant="pos-plate" />
-                {d.is_popular === 1 && <span className="pos-popular">★ Popular</span>}
+          {visible.map(d => {
+            const addable = canEditBill && editMode;
+            return (
+              <div
+                key={d.id}
+                className={`pos-dish card ${addable ? 'addable' : 'disabled'}`}
+                {...(addable
+                  ? { role: 'button', tabIndex: 0, onClick: () => { void addProduct(d); } }
+                  : {})}
+              >
+                <div className="pos-dish-plate">
+                  <MenuItemImage imageUrl={d.image_url} name={d.name} variant="pos-plate" />
+                  {d.is_popular === 1 && <span className="pos-popular">★ Popular</span>}
+                  {addable && <span className="pos-dish-add">+ Add</span>}
+                </div>
+                <div className="pos-dish-info">
+                  <p className="pos-dish-name">{d.name}</p>
+                  <p className="pos-dish-price mono">{formatMoney(d.price, currencyCode)}</p>
+                  <p className="pos-dish-sub">{d.description}</p>
+                </div>
               </div>
-              <div className="pos-dish-info">
-                <p className="pos-dish-name">{d.name}</p>
-                <p className="pos-dish-price mono">{formatMoney(d.price, currencyCode)}</p>
-                <p className="pos-dish-sub">{d.description}</p>
-              </div>
-            </div>
-          ))}
+            );
+          })}
           {visible.length === 0 && (
             <p style={{ color: 'var(--text3)', padding: 24, gridColumn: '1/-1' }}>
               {search ? `No results for "${search}"` : 'No items in this category.'}
@@ -698,22 +797,20 @@ export function POSPanel() {
             <button type="button" className="btn-outline" style={{ marginBottom: 6 }} onClick={() => setProfileOpen(true)}>
               Restaurant Profile
             </button>
-            <select
+            <SearchSelect
               value={selectedTable}
-              onChange={e => { void handleTableChange(e.target.value); }}
               disabled={isPaid}
-              style={{
-                background: 'transparent', color: 'var(--text1)',
-                border: 'none', fontSize: 18, fontFamily: 'inherit', cursor: 'pointer',
-              }}
-            >
-              <option value="">— No table —</option>
-              {tables
-                .filter(t => t.status === 'empty' || t.status === 'occupied' || t.status === 'paying')
-                .map(t => (
-                  <option key={t.id} value={t.id}>{t.name} · {t.status}</option>
-                ))}
-            </select>
+              placeholder="— Select table —"
+              searchPlaceholder="Search tables…"
+              ariaLabel="Select table"
+              onChange={(v) => { void handleTableChange(v); }}
+              options={[
+                { value: '', label: '— No table —' },
+                ...tables
+                  .filter(t => t.status === 'empty' || t.status === 'occupied' || t.status === 'paying')
+                  .map(t => ({ value: t.id, label: `${t.name} · ${t.status}` })),
+              ]}
+            />
             <p className="pos-meta">
               {tableObj ? `${tableObj.covers} guests` : '—'} ·{' '}
               <span className="mono">
@@ -735,18 +832,62 @@ export function POSPanel() {
 
         {error && <p style={{ color: 'var(--danger)', fontSize: 12, margin: '4px 0' }}>{error}</p>}
 
+        {/* Edit toolbar — only on a pending, unpaid kitchen-sent bill */}
+        {canEditBill && (
+          <div className="pos-edit-bar">
+            <button
+              type="button"
+              className={`pos-edit-toggle ${editMode ? 'active' : ''}`}
+              onClick={() => setEditMode(v => !v)}
+            >
+              {editMode ? '✓ Done Editing' : '✎ Edit Bill'}
+            </button>
+            {hasAdditions && (
+              <button
+                type="button"
+                className="pos-fire-additions"
+                disabled={busy}
+                onClick={() => { void fireAdditionsToKitchen(); }}
+              >
+                🔥 Send {additionsCount} New to Kitchen
+              </button>
+            )}
+          </div>
+        )}
+
         {/* Cart items */}
         <ul className="pos-items">
-          {cart.map(c => (
-            <li key={c.menuItem.id} className="pos-item">
-              <span className="pos-item-qty mono">{c.qty}</span>
+          {cart.map((c, idx) => (
+            <li key={c.orderItemId ?? c.menuItem.id} className={`pos-item ${c.addedNow ? 'added' : ''}`}>
+              {canEditBill && editMode ? (
+                <div className="pos-item-stepper">
+                  <button type="button" onClick={() => { void editQty(idx, -1); }} aria-label="Decrease">−</button>
+                  <span className="mono">{c.qty}</span>
+                  <button type="button" onClick={() => { void editQty(idx, 1); }} aria-label="Increase">+</button>
+                </div>
+              ) : (
+                <span className="pos-item-qty mono">{c.qty}</span>
+              )}
               <div className="pos-item-body">
                 <div className="pos-item-row">
-                  <span>{c.menuItem.name}</span>
+                  <span>
+                    {c.menuItem.name}
+                    {c.addedNow && <span className="pos-item-newtag">NEW</span>}
+                  </span>
                   <span className="mono">{formatMoney(c.menuItem.price * c.qty, currencyCode)}</span>
                 </div>
                 {c.mods.map(m => <p key={m} className="pos-mod">· {m}</p>)}
               </div>
+              {canEditBill && editMode && (
+                <button
+                  type="button"
+                  className="pos-item-remove"
+                  onClick={() => { void removeLine(idx); }}
+                  aria-label="Remove item"
+                >
+                  ×
+                </button>
+              )}
             </li>
           ))}
           {cart.length === 0 && (
