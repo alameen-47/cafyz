@@ -216,6 +216,7 @@
 
 .pos-item {
   display: flex;
+  align-items: flex-start;
   gap: 12px;
   padding: 12px 0;
   border-bottom: 0.5px solid var(--line);
@@ -241,9 +242,22 @@
 
 .pos-item-row {
   display: flex;
+  align-items: baseline;
   justify-content: space-between;
+  gap: 10px;
   font-size: 13px;
   font-weight: 500;
+}
+.pos-item-name {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  line-height: 1.35;
+}
+.pos-item-price {
+  flex-shrink: 0;
+  white-space: nowrap;
+  color: var(--text0);
+  font-variant-numeric: tabular-nums;
 }
 
 .pos-mod {
@@ -279,17 +293,51 @@
 }
 
 .pos-totals {
-  padding: 16px 20px 24px;
+  padding: 16px 20px 20px;
   border-top: 0.5px solid var(--gold-line);
+  flex-shrink: 0;
 }
+
+/* Collapsible price-breakdown dropdown */
+.pos-breakdown-toggle {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 12px;
+  border: 0.5px solid var(--gold-line2);
+  border-radius: var(--radius-md);
+  background: var(--gold-bg);
+  color: var(--text1);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+.pos-breakdown-toggle:hover { border-color: var(--gold); }
+.pos-breakdown-toggle.open { border-bottom-left-radius: 0; border-bottom-right-radius: 0; }
+.pos-breakdown-toggle > span:first-child { flex: 1; text-align: left; }
+.pos-breakdown-summary { color: var(--text3); font-weight: 500; }
+.pos-breakdown-chevron { color: var(--gold); font-size: 11px; flex-shrink: 0; }
+
+.pos-breakdown {
+  padding: 10px 12px;
+  border: 0.5px solid var(--gold-line2);
+  border-top: none;
+  border-radius: 0 0 var(--radius-md) var(--radius-md);
+  background: var(--bg0);
+}
+.pos-breakdown .pos-total-row:last-child { margin-bottom: 0; }
 
 .pos-total-row {
   display: flex;
   justify-content: space-between;
+  gap: 10px;
   font-size: 12px;
   color: var(--text2);
   margin-bottom: 6px;
 }
+.pos-total-row .mono { font-variant-numeric: tabular-nums; flex-shrink: 0; }
 
 .pos-total-final {
   display: flex;

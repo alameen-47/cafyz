@@ -40,6 +40,7 @@ export function POSPanel() {
   const [busy,          setBusy]          = useState(false);
   const [editMode,      setEditMode]      = useState(false);
   const [parcel,        setParcel]        = useState(false);
+  const [breakdownOpen, setBreakdownOpen] = useState(false);
   const [error,         setError]         = useState('');
   const [loading,       setLoading]       = useState(true);
   const [tableOrderLoading, setTableOrderLoading] = useState(false);
@@ -909,11 +910,11 @@ export function POSPanel() {
               )}
               <div className="pos-item-body">
                 <div className="pos-item-row">
-                  <span>
+                  <span className="pos-item-name">
                     {c.menuItem.name}
                     {c.addedNow && <span className="pos-item-newtag">NEW</span>}
                   </span>
-                  <span className="mono">{formatMoney(c.menuItem.price * c.qty, currencyCode)}</span>
+                  <span className="pos-item-price mono">{formatMoney(c.menuItem.price * c.qty, currencyCode)}</span>
                 </div>
                 {c.mods.map(m => <p key={m} className="pos-mod">· {m}</p>)}
               </div>
@@ -945,18 +946,35 @@ export function POSPanel() {
 
         {/* Totals */}
         <footer className="pos-totals">
-          <div className="pos-total-row"><span>Subtotal</span><span className="mono">{formatMoney(subtotal, currencyCode)}</span></div>
-          <div className="pos-total-row"><span>Service · {serviceRate.toFixed(2)}%</span><span className="mono">{formatMoney(service, currencyCode)}</span></div>
-          {taxIncluded && (
-            <div className="pos-total-row">
-              <span>Amount before {taxType}</span>
-              <span className="mono">{formatMoney(preTaxTotal, currencyCode)}</span>
+          {/* Collapsible price breakdown — Total Due stays always visible below */}
+          <button
+            type="button"
+            className={`pos-breakdown-toggle${breakdownOpen ? ' open' : ''}`}
+            aria-expanded={breakdownOpen}
+            onClick={() => setBreakdownOpen(v => !v)}
+          >
+            <span>Price breakdown</span>
+            <span className="pos-breakdown-summary mono">{formatMoney(total, currencyCode)}</span>
+            <span className="pos-breakdown-chevron" aria-hidden>{breakdownOpen ? '▴' : '▾'}</span>
+          </button>
+
+          {breakdownOpen && (
+            <div className="pos-breakdown">
+              <div className="pos-total-row"><span>Subtotal</span><span className="mono">{formatMoney(subtotal, currencyCode)}</span></div>
+              <div className="pos-total-row"><span>Service · {serviceRate.toFixed(2)}%</span><span className="mono">{formatMoney(service, currencyCode)}</span></div>
+              {taxIncluded && (
+                <div className="pos-total-row">
+                  <span>Amount before {taxType}</span>
+                  <span className="mono">{formatMoney(preTaxTotal, currencyCode)}</span>
+                </div>
+              )}
+              <div className="pos-total-row">
+                <span>{taxType} · {taxRate.toFixed(2)}%{taxIncluded ? ' (incl.)' : ''}</span>
+                <span className="mono">{formatMoney(tax, currencyCode)}</span>
+              </div>
             </div>
           )}
-          <div className="pos-total-row">
-            <span>{taxType} · {taxRate.toFixed(2)}%{taxIncluded ? ' (included)' : ''}</span>
-            <span className="mono">{formatMoney(tax, currencyCode)}</span>
-          </div>
+
           <div className="pos-total-final"><span>Total Due</span><span className="serif">{formatMoney(total, currencyCode)}</span></div>
 
           {/* New Check button — shown after payment is finalised */}
