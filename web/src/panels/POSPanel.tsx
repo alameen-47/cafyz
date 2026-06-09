@@ -820,11 +820,11 @@ export function POSPanel() {
         </div>
 
         <header className="pos-order-head">
-          <div>
-            <p className="eyebrow">Active Check</p>
-            <button type="button" className="btn-outline" style={{ marginBottom: 6 }} onClick={() => setProfileOpen(true)}>
-              Restaurant Profile
-            </button>
+          <div className="pos-check-info">
+            <div className="pos-check-top">
+              <p className="eyebrow">Active Check</p>
+              <span className={`badge ${statusClass}`}>{statusLabel}</span>
+            </div>
             <SearchSelect
               value={selectedTable}
               disabled={isPaid}
@@ -846,10 +846,12 @@ export function POSPanel() {
               </span>
             </p>
             {tableOrderLoading && (
-              <p style={{ fontSize: 11, color: 'var(--text3)', marginTop: 4 }}>Loading pending order for table…</p>
+              <p className="pos-loading-note">Loading pending order for table…</p>
             )}
+            <button type="button" className="btn-outline pos-profile-btn" onClick={() => setProfileOpen(true)}>
+              Restaurant Profile
+            </button>
           </div>
-          <span className={`badge ${statusClass}`}>{statusLabel}</span>
         </header>
 
         {note && (

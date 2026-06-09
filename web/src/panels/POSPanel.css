@@ -164,9 +164,32 @@
 .pos-order-head {
   padding: 20px;
   display: flex;
-  gap: 12px;
   border-bottom: 0.5px solid var(--gold-line);
 }
+.pos-check-info {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  width: 100%;
+  min-width: 0;
+}
+/* Eyebrow + status badge on one baseline-aligned row */
+.pos-check-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+}
+.pos-check-top .eyebrow { margin: 0; }
+.pos-order-head .badge { flex-shrink: 0; align-self: center; }
+/* SearchSelect already adds its own 4px top margin; neutralize inside the column */
+.pos-check-info .ss-root { margin-top: 0; width: 100%; }
+.pos-check-info .ss-trigger { width: 100%; }
+.pos-meta { margin: 0; }
+.pos-loading-note { font-size: 11px; color: var(--text3); margin: 0; }
+.pos-profile-btn { height: 34px; align-self: stretch; justify-content: center; }
 
 .pos-order-head h2 {
   font-size: 22px;
