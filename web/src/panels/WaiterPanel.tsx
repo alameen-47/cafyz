@@ -23,6 +23,7 @@ export function WaiterPanel() {
   const [error,      setError]      = useState('');
   const [loading,    setLoading]    = useState(true);
   const [orderLoading, setOrderLoading] = useState(false);
+  const [parcel,     setParcel]     = useState(false);
   const [currencyCode, setCurrencyCode] = useState<string>('USD');
 
   // ── Initial load ────────────────────────────────────────────────────────────
@@ -72,12 +73,15 @@ export function WaiterPanel() {
     if (!fullOrder) return;
     setBusy(true);
     try {
+      // Flag the order as parcel BEFORE sending so the kitchen ticket prints PARCEL.
+      if (parcel) await ordersApi.update(fullOrder.id, { order_type: 'parcel' });
       await ordersApi.updateStatus(fullOrder.id, 'sent'); // backend auto-creates KDS ticket
       await tablesApi.updateStatus(selected!, { status: 'occupied', course: 'Sent to kitchen' });
       // Refresh floor
       const [t, o] = await Promise.all([tablesApi.list(), ordersApi.list()]);
       setTables(t);
       setOrders(o.filter((ord: ApiOrder) => ord.status === 'open' || ord.status === 'sent'));
+      setParcel(false);
     } catch (e) { setError((e as Error).message); }
     finally { setBusy(false); }
   }
@@ -228,11 +232,21 @@ export function WaiterPanel() {
                   + Start order
                 </button>
               )}
-              {/* Open order → send to kitchen */}
+              {/* Open order → parcel toggle + send to kitchen */}
               {fullOrder && fullOrder.status === 'open' && (
-                <button type="button" className="btn-gold" onClick={sendToKitchen} disabled={busy}>
-                  {busy ? '…' : 'Send to kitchen'}
-                </button>
+                <>
+                  <button
+                    type="button"
+                    className={`waiter-parcel-toggle${parcel ? ' active' : ''}`}
+                    aria-pressed={parcel}
+                    onClick={() => setParcel(v => !v)}
+                  >
+                    {parcel ? '📦 Parcel / Takeaway ✓' : '📦 Mark as Parcel'}
+                  </button>
+                  <button type="button" className="btn-gold" onClick={sendToKitchen} disabled={busy}>
+                    {busy ? '…' : parcel ? 'Send Parcel to kitchen' : 'Send to kitchen'}
+                  </button>
+                </>
               )}
               {/* Sent → show status */}
               {fullOrder && fullOrder.status === 'sent' && (

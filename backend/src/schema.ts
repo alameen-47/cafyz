@@ -331,6 +331,8 @@ export async function runMigrations() {
   await migrateMenuItemsFlexibleCategory(db);
   await seedAllMenuCategories(db);
   await addCol(`ALTER TABLE menu_items ADD COLUMN image_url TEXT`, 'image_url');
+  // Dine-in vs parcel/takeaway. Used to flag PARCEL on kitchen tickets.
+  await addCol(`ALTER TABLE orders ADD COLUMN order_type TEXT NOT NULL DEFAULT 'dine_in'`, 'order_type');
 
   await db.execute({
     sql: `INSERT OR IGNORE INTO app_settings(key,value) VALUES('trial_device_guard_enabled','1')`,

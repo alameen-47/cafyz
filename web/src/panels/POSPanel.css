@@ -903,6 +903,27 @@
   border-color: var(--gold);
   box-shadow: 0 4px 12px rgba(212, 175, 55, 0.3);
 }
+.pos-parcel-toggle {
+  height: 32px;
+  padding: 0 14px;
+  border-radius: var(--radius-pill);
+  border: 1px solid rgba(234, 88, 12, 0.5);
+  background: rgba(234, 88, 12, 0.1);
+  color: #ea580c;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s, transform 0.1s;
+}
+.pos-parcel-toggle:hover:not(:disabled) { transform: translateY(-1px); }
+.pos-parcel-toggle:disabled { opacity: 0.5; cursor: not-allowed; }
+.pos-parcel-toggle.active {
+  background: linear-gradient(135deg, #fb923c 0%, #ea580c 100%);
+  color: #ffffff;
+  border-color: #ea580c;
+  box-shadow: 0 4px 12px rgba(234, 88, 12, 0.3);
+}
+
 .pos-fire-additions {
   height: 32px;
   padding: 0 16px;

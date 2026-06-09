@@ -108,6 +108,8 @@ export interface KitchenTicketData {
   items: { name: string; qty: number; mods?: string[]; alert?: boolean }[];
   note?: string;
   createdAt?: string;
+  /** Parcel / takeaway order — printed as a prominent block-letter banner. */
+  parcel?: boolean;
 }
 
 // Build ESC/POS bytes for a receipt (32-char width for 58mm, 48-char for 80mm)
@@ -261,19 +263,26 @@ export function buildKitchenTicket(data: KitchenTicketData, width = 32, logoByte
   }
   b.boldOn().bigOn().text(data.restaurantName).bigOff().boldOff().nl();
   b.boldOn().text('KITCHEN TICKET').boldOff().nl();
+  // Prominent block-letter PARCEL / TAKEAWAY banner.
+  if (data.parcel) {
+    b.alignCenter().boldOn().bigOn().text('*** PARCEL ***').bigOff().nl();
+    b.text('TAKEAWAY ORDER').boldOff().nl();
+    b.alignLeft();
+  }
   b.divider(W);
   b.alignLeft();
   b.text(`Ticket: #${data.ticketId.slice(0, 8).toUpperCase()}`).nl();
-  b.text(`Table: ${data.tableName}`).nl();
+  b.text(`Table: ${data.parcel ? 'PARCEL' : data.tableName}`).nl();
   if (data.serverName) b.text(`Server: ${data.serverName}`).nl();
   if (data.covers) b.text(`Covers: ${data.covers}`).nl();
   if (data.station) b.text(`Station: ${data.station}`).nl();
   b.text(ts).nl();
   b.divider(W);
+  // All kitchen item names print in BLOCK LETTERS for line-cook legibility.
   for (const it of data.items) {
-    const name = `${it.alert ? '⚠ ' : ''}${it.qty}x ${it.name}`;
-    b.text(name).nl();
-    for (const m of (it.mods ?? [])) b.text(` · ${m}`).nl();
+    const name = `${it.alert ? '⚠ ' : ''}${it.qty}x ${String(it.name).toUpperCase()}`;
+    b.boldOn().text(name).boldOff().nl();
+    for (const m of (it.mods ?? [])) b.text(` · ${String(m).toUpperCase()}`).nl();
   }
   if (data.note) {
     b.divider(W);
@@ -287,9 +296,9 @@ export function buildKitchenTicketHTML(data: KitchenTicketData): string {
   const ts = data.createdAt ? new Date(data.createdAt).toLocaleString('en-GB') : new Date().toLocaleString('en-GB');
   const rows = data.items.map(it => `
     <tr>
-      <td style="padding:2px 0;font-weight:700">${it.alert ? '⚠ ' : ''}${it.qty}× ${it.name}</td>
+      <td style="padding:2px 0;font-weight:700;text-transform:uppercase">${it.alert ? '⚠ ' : ''}${it.qty}× ${it.name}</td>
     </tr>
-    ${(it.mods ?? []).map(m => `<tr><td style="padding:1px 0 1px 14px;font-size:11px">· ${m}</td></tr>`).join('')}
+    ${(it.mods ?? []).map(m => `<tr><td style="padding:1px 0 1px 14px;font-size:11px;text-transform:uppercase">· ${m}</td></tr>`).join('')}
   `).join('');
   return `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Kitchen Ticket</title>
   <style>
@@ -299,14 +308,16 @@ export function buildKitchenTicketHTML(data: KitchenTicketData): string {
     hr { border: none; border-top: 1px dashed #000; margin: 6px 0; }
     table { width: 100%; border-collapse: collapse; }
     h1 { font-size: 14px; margin: 4px 0; }
+    .parcel { border: 2px solid #000; padding: 4px; margin: 4px 0; font-weight: 800; font-size: 16px; letter-spacing: 1px; }
   </style></head><body>
   <div class="center ticket-header">
     <h1>${data.restaurantName}</h1>
     <p><b>KITCHEN TICKET</b></p>
+    ${data.parcel ? `<div class="parcel">*** PARCEL ***<br/><span style="font-size:11px">TAKEAWAY ORDER</span></div>` : ''}
   </div>
   <hr>
   <p><b>Ticket:</b> #${data.ticketId.slice(0, 8).toUpperCase()}</p>
-  <p><b>Table:</b> ${data.tableName}</p>
+  <p><b>Table:</b> ${data.parcel ? 'PARCEL' : data.tableName}</p>
   ${data.serverName ? `<p><b>Server:</b> ${data.serverName}</p>` : ''}
   ${data.covers ? `<p><b>Covers:</b> ${data.covers}</p>` : ''}
   ${data.station ? `<p><b>Station:</b> ${data.station}</p>` : ''}

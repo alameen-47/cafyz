@@ -18,6 +18,7 @@ type PrintJobPayload = {
   items: { name: string; qty: number; mods?: string[]; alert?: boolean }[];
   note?: string;
   createdAt?: string;
+  parcel?: boolean;
 };
 
 async function claimNextPrintJob(rid: string, deviceId: string | null) {

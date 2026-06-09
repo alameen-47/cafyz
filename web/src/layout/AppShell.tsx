@@ -275,6 +275,7 @@ export function AppShell({
             createdAt: job.payload.createdAt,
             items: job.payload.items,
             note: job.payload.note,
+            parcel: job.payload.parcel,
           }, restaurantId, {
             allowDialog: false,
             channel: assignedKitchen.channel,

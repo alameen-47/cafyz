@@ -370,6 +370,7 @@ export function MenuPanel() {
   const [orderTable, setOrderTable] = useState('');
   const [orderCart,  setOrderCart]  = useState<OrderCartItem[]>([]);
   const [orderNote,  setOrderNote]  = useState('');
+  const [orderParcel, setOrderParcel] = useState(false);
   const [orderBusy,  setOrderBusy]  = useState(false);
   const [orderError, setOrderError] = useState('');
 
@@ -456,6 +457,7 @@ export function MenuPanel() {
         table_id: orderTable,
         covers: orderTableObj?.covers || 2,
         note: orderNote.trim() || undefined,
+        parcel: orderParcel,
         enqueue_print: !printLocally,
         items: orderCart.map((row) => ({
           menu_item_id: row.menuItem.id,
@@ -477,6 +479,7 @@ export function MenuPanel() {
             covers: orderTableObj?.covers || 2,
             items: orderCart.map((row) => ({ name: row.menuItem.name, qty: row.qty })),
             note: orderNote.trim() || undefined,
+            parcel: orderParcel,
           }, user?.restaurant_id, { allowDialog: false });
         } catch {
           // Local printer hiccup → fall back to the cloud queue so it still prints.
@@ -485,9 +488,10 @@ export function MenuPanel() {
         }
       }
 
-      toastBus.success(`Order sent to kitchen for ${orderTableObj?.name ?? 'selected table'}.`);
+      toastBus.success(`${orderParcel ? 'Parcel order' : 'Order'} sent to kitchen for ${orderTableObj?.name ?? 'selected table'}.`);
       setOrderCart([]);
       setOrderNote('');
+      setOrderParcel(false);
     } catch (e) {
       const msg = (e as Error).message;
       setOrderError(msg);
@@ -775,8 +779,16 @@ export function MenuPanel() {
               onChange={(e) => setOrderNote(e.target.value)}
               placeholder="Optional note for kitchen"
             />
+            <button
+              type="button"
+              className={`menu-parcel-toggle${orderParcel ? ' active' : ''}`}
+              aria-pressed={orderParcel}
+              onClick={() => setOrderParcel(v => !v)}
+            >
+              {orderParcel ? '📦 Parcel / Takeaway ✓' : '📦 Mark as Parcel / Takeaway'}
+            </button>
             <button type="button" className="btn-gold" onClick={sendOrderFromMenu} disabled={orderBusy || orderCart.length === 0}>
-              {orderBusy ? 'Sending…' : 'Send to Kitchen'}
+              {orderBusy ? 'Sending…' : orderParcel ? 'Send Parcel to Kitchen' : 'Send to Kitchen'}
             </button>
           </div>
         )}

@@ -39,6 +39,7 @@ export function POSPanel() {
   const [pendingOrders, setPendingOrders] = useState<ApiOrder[]>([]);
   const [busy,          setBusy]          = useState(false);
   const [editMode,      setEditMode]      = useState(false);
+  const [parcel,        setParcel]        = useState(false);
   const [error,         setError]         = useState('');
   const [loading,       setLoading]       = useState(true);
   const [tableOrderLoading, setTableOrderLoading] = useState(false);
@@ -216,6 +217,7 @@ export function POSPanel() {
     setNote('');
     setError('');
     setEditMode(false);
+    setParcel(false);
     setPrintOk(false);
     setPrintError('');
   }
@@ -226,6 +228,7 @@ export function POSPanel() {
     setActiveOrderId(null);
     setPayState('open');
     setEditMode(false);
+    setParcel(false);
     setError('');
     if (!tableId) {
       setCart([]);
@@ -267,6 +270,7 @@ export function POSPanel() {
       setCart(nextCart);
       setActiveOrderId(full.id);
       setNote(full.note ?? '');
+      setParcel(full.order_type === 'parcel');
       setPayState('sent');
       setError('');
     } catch (e) {
@@ -285,7 +289,18 @@ export function POSPanel() {
     setBusy(true); setError('');
     try {
       await ordersApi.updateStatus(activeOrderId, 'paid');
+      // Settle EVERY other unpaid order on this table too. A dining session can
+      // accumulate multiple 'open'/'sent' orders (each Menu send creates one);
+      // if we only paid the active one, the leftovers would re-appear when the
+      // now-"empty" table is reselected. Clearing them all keeps the table clean.
       if (selectedTable) {
+        try {
+          const tableOrders = await ordersApi.list({ table_id: selectedTable });
+          const leftovers = tableOrders.filter(
+            o => o.id !== activeOrderId && (o.status === 'open' || o.status === 'sent'),
+          );
+          await Promise.all(leftovers.map(o => ordersApi.updateStatus(o.id, 'paid')));
+        } catch { /* best-effort; the table clear below still resets the floor */ }
         await tablesApi.updateStatus(selectedTable, { status: 'empty', course: '', covers: 0 });
       }
       setPayState(method);
@@ -369,6 +384,19 @@ export function POSPanel() {
       toastBus.error(`Could not send additions to kitchen: ${(e as Error).message}`);
     } finally {
       setBusy(false);
+    }
+  }
+
+  // Toggle the active bill between dine-in and parcel/takeaway (persisted).
+  async function toggleParcel() {
+    if (!activeOrderId || busy) return;
+    const next = !parcel;
+    setParcel(next);
+    try {
+      await ordersApi.update(activeOrderId, { order_type: next ? 'parcel' : 'dine_in' });
+    } catch (e) {
+      setParcel(!next);
+      setError((e as Error).message);
     }
   }
 
@@ -841,6 +869,15 @@ export function POSPanel() {
               onClick={() => setEditMode(v => !v)}
             >
               {editMode ? '✓ Done Editing' : '✎ Edit Bill'}
+            </button>
+            <button
+              type="button"
+              className={`pos-parcel-toggle${parcel ? ' active' : ''}`}
+              aria-pressed={parcel}
+              disabled={busy}
+              onClick={() => { void toggleParcel(); }}
+            >
+              {parcel ? '📦 Parcel ✓' : '📦 Parcel / Takeaway'}
             </button>
             {hasAdditions && (
               <button

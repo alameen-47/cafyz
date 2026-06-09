@@ -208,6 +208,7 @@ export function KDSPanel() {
           createdAt: job.payload.createdAt,
           items: job.payload.items,
           note: job.payload.note,
+          parcel: job.payload.parcel,
         }, restaurant?.id, { allowDialog: false });
         await kdsApi.completePrintJob(job.id, 'printed');
       } catch (e) {

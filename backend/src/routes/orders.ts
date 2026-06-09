@@ -13,6 +13,7 @@ const OrderSchema = z.object({
   table_id: z.string().optional(),
   covers:   z.number().int().positive().default(1),
   note:     z.string().optional(),
+  order_type: z.enum(['dine_in', 'parcel']).optional(),
 });
 
 const OrderItemSchema = z.object({
@@ -82,6 +83,8 @@ const QuickSendSchema = z.object({
   table_id: z.string(),
   covers:   z.number().int().positive().default(1),
   note:     z.string().optional(),
+  // Parcel / takeaway order — flagged on the kitchen ticket.
+  parcel:   z.boolean().default(false),
   // When false, the caller is printing locally on this same device (its
   // Bluetooth/USB kitchen printer), so we skip the cloud print queue entirely
   // — no round trip, no double-print. Defaults true for cross-device setups.
@@ -130,13 +133,14 @@ router.post('/quick-send', requireRole('owner', 'manager', 'cashier', 'waiter'),
         alert: false,
       })),
       note: data.note || undefined,
+      parcel: data.parcel,
     };
 
     // Round trip 2: one batched transaction for the entire send.
     const stmts: { sql: string; args: InValue[] }[] = [
       {
-        sql: `INSERT INTO orders(id,restaurant_id,table_id,server_id,covers,note,status) VALUES(?,?,?,?,?,?,'sent')`,
-        args: [orderId, rid, data.table_id, req.user!.id, covers, data.note ?? null],
+        sql: `INSERT INTO orders(id,restaurant_id,table_id,server_id,covers,note,status,order_type) VALUES(?,?,?,?,?,?,'sent',?)`,
+        args: [orderId, rid, data.table_id, req.user!.id, covers, data.note ?? null, data.parcel ? 'parcel' : 'dine_in'],
       },
       ...data.items.map(it => ({
         sql:  `INSERT INTO order_items(id,order_id,menu_item_id,qty,mods) VALUES(?,?,?,?,?)`,
@@ -191,17 +195,20 @@ router.post('/:id/enqueue-print', requireRole('owner', 'manager', 'cashier', 'wa
     const ticket = ticketRes.rows[0] as Record<string, unknown>;
     const ticketId = String(ticket.id);
 
-    const [itemsRes, dupRes] = await Promise.all([
+    const [itemsRes, dupRes, orderRes] = await Promise.all([
       db.execute({ sql: 'SELECT name,qty,mods FROM kds_ticket_items WHERE ticket_id=?', args: [ticketId] }),
       db.execute({ sql: "SELECT id FROM kitchen_print_jobs WHERE ticket_id=? AND status IN ('pending','printing') LIMIT 1", args: [ticketId] }),
+      db.execute({ sql: 'SELECT order_type FROM orders WHERE id=? AND restaurant_id=?', args: [orderId, rid] }),
     ]);
     if (dupRes.rows.length) { res.status(200).json({ ok: true, deduped: true }); return; }
+    const isParcel = String((orderRes.rows[0] as Record<string, unknown> | undefined)?.order_type) === 'parcel';
 
     const payload = {
       ticketId,
       tableName: String(ticket.table_name ?? ''),
       serverName: String(ticket.server_name ?? 'Staff'),
       covers: Number(ticket.covers) || 1,
+      parcel: isParcel,
       items: itemsRes.rows.map(r => {
         const it = r as Record<string, unknown>;
         let mods: string[] = [];
@@ -257,6 +264,7 @@ router.put('/:id', requireRole('owner', 'manager', 'cashier', 'waiter'), async (
     const args: any[]   = [];
     if (data.covers !== undefined) { sets.push('covers=?'); args.push(data.covers); }
     if (data.note   !== undefined) { sets.push('note=?');   args.push(data.note); }
+    if (data.order_type !== undefined) { sets.push('order_type=?'); args.push(data.order_type); }
     sets.push("updated_at=datetime('now')");
     args.push(id, rid);
     await db.execute({ sql: `UPDATE orders SET ${sets.join(',')} WHERE id=? AND restaurant_id=?`, args });
@@ -326,6 +334,7 @@ router.patch('/:id/status', requireRole('owner', 'manager', 'cashier', 'waiter')
             return { name: String(it.name), qty: Number(it.qty) || 1, mods, alert: false };
           }),
           note: order.note ? String(order.note) : undefined,
+          parcel: String(order.order_type) === 'parcel',
         };
 
         // Batch the ticket header + all item rows + print job into one HTTP round trip.

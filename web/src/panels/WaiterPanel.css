@@ -253,3 +253,24 @@
     padding: 16px;
   }
 }
+
+/* ── Parcel / takeaway toggle ────────────────────────────────────────────────── */
+.waiter-parcel-toggle {
+  height: 40px;
+  padding: 0 16px;
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(234, 88, 12, 0.5);
+  background: rgba(234, 88, 12, 0.1);
+  color: #ea580c;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s, transform 0.1s;
+}
+.waiter-parcel-toggle:hover { transform: translateY(-1px); }
+.waiter-parcel-toggle.active {
+  background: linear-gradient(135deg, #fb923c 0%, #ea580c 100%);
+  color: #ffffff;
+  border-color: #ea580c;
+  box-shadow: 0 4px 12px rgba(234, 88, 12, 0.32);
+}

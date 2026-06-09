@@ -206,9 +206,11 @@ export const ordersApi = {
     get<ApiOrder[]>(`/api/orders${p ? `?${new URLSearchParams(p as Record<string, string>)}` : ''}`),
   get:          (id: string)                                                  => get<ApiOrder>(`/api/orders/${id}`),
   create:       (d: { table_id?: string; covers?: number; note?: string })    => post<ApiOrder>('/api/orders', d),
+  update:       (id: string, d: { covers?: number; note?: string; order_type?: 'dine_in' | 'parcel' }) =>
+    put<ApiOrder>(`/api/orders/${id}`, d),
   // One-shot create + send to kitchen in a single batched request (fast print).
   // Pass enqueue_print:false when printing locally on this device to skip the cloud queue.
-  quickSend:    (d: { table_id: string; covers?: number; note?: string; enqueue_print?: boolean; items: { menu_item_id: string; qty: number; mods?: string[] }[] }) =>
+  quickSend:    (d: { table_id: string; covers?: number; note?: string; parcel?: boolean; enqueue_print?: boolean; items: { menu_item_id: string; qty: number; mods?: string[] }[] }) =>
     post<{ id: string; ticket_id: string; status: string }>('/api/orders/quick-send', d),
   // Cloud-print fallback if a local same-device print fails.
   enqueuePrint: (orderId: string) => post<{ ok: boolean }>(`/api/orders/${orderId}/enqueue-print`, {}),
@@ -399,6 +401,7 @@ export interface ApiTable {
 export interface ApiOrder {
   id: string; restaurant_id: string; table_id?: string; server_id?: string;
   status: 'open' | 'sent' | 'paid' | 'voided' | 'comped'; covers: number; note?: string;
+  order_type?: 'dine_in' | 'parcel';
   table_name?: string; created_at: string; updated_at: string; items?: ApiOrderItem[];
 }
 
@@ -434,6 +437,7 @@ export interface ApiKitchenPrintJob {
     items: { name: string; qty: number; mods?: string[]; alert?: boolean }[];
     note?: string;
     createdAt?: string;
+    parcel?: boolean;
   } | null;
 }
 
