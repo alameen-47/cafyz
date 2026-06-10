@@ -240,6 +240,17 @@ export function POSPanel() {
     try {
       const orders = await ordersApi.list({ table_id: tableId });
       const pending = orders.find((o) => o.status === 'sent');
+      // Self-heal: if the table is already empty/cleared but a stale 'sent' order
+      // still lingers from a previous customer, settle it silently so it stops
+      // re-appearing — then show this table as having no active bill.
+      const tableStatus = tables.find((t) => t.id === tableId)?.status;
+      if (pending && tableStatus === 'empty') {
+        try { await ordersApi.settleTable(tableId); } catch { /* best effort */ }
+        setCart([]);
+        setNote('');
+        setError('No pending kitchen-sent bill for this table.');
+        return;
+      }
       if (!pending) {
         setCart([]);
         setNote('');
@@ -289,20 +300,14 @@ export function POSPanel() {
     }
     setBusy(true); setError('');
     try {
-      await ordersApi.updateStatus(activeOrderId, 'paid');
-      // Settle EVERY other unpaid order on this table too. A dining session can
-      // accumulate multiple 'open'/'sent' orders (each Menu send creates one);
-      // if we only paid the active one, the leftovers would re-appear when the
-      // now-"empty" table is reselected. Clearing them all keeps the table clean.
       if (selectedTable) {
-        try {
-          const tableOrders = await ordersApi.list({ table_id: selectedTable });
-          const leftovers = tableOrders.filter(
-            o => o.id !== activeOrderId && (o.status === 'open' || o.status === 'sent'),
-          );
-          await Promise.all(leftovers.map(o => ordersApi.updateStatus(o.id, 'paid')));
-        } catch { /* best-effort; the table clear below still resets the floor */ }
-        await tablesApi.updateStatus(selectedTable, { status: 'empty', course: '', covers: 0 });
+        // Atomic, server-side: marks EVERY active order on the table paid and
+        // clears the table in one transaction — so no leftover 'sent' order can
+        // survive to re-appear on the now-empty table.
+        await ordersApi.settleTable(selectedTable);
+      } else {
+        // Takeaway / no table: just settle the single active order.
+        await ordersApi.updateStatus(activeOrderId, 'paid');
       }
       setPayState(method);
       setActiveOrderId(null);

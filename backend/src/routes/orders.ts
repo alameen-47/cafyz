@@ -373,6 +373,31 @@ router.patch('/:id/status', requireRole('owner', 'manager', 'cashier', 'waiter')
   } catch (e) { next(e); }
 });
 
+// ── POST /api/orders/settle-table ─────────────────────────────────────────────
+// Atomically close out a table: mark EVERY still-active order (open/sent) on it
+// as paid AND clear the table — in one transaction. This guarantees a paid table
+// can never show leftover items (the "table empty but order still sent" bug).
+router.post('/settle-table', requireRole('owner', 'manager', 'cashier'), async (req: AuthRequest, res, next) => {
+  try {
+    const rid = req.user!.restaurant_id;
+    const { table_id } = z.object({ table_id: z.string().min(1) }).parse(req.body);
+    const db = getDb();
+    const result = await db.batch([
+      {
+        sql: `UPDATE orders SET status='paid', updated_at=datetime('now')
+              WHERE restaurant_id=? AND table_id=? AND status IN ('open','sent')`,
+        args: [rid, table_id],
+      },
+      {
+        sql: `UPDATE restaurant_tables SET status='empty', course='', covers=0
+              WHERE id=? AND restaurant_id=?`,
+        args: [table_id, rid],
+      },
+    ]);
+    res.json({ ok: true, settled: result[0]?.rowsAffected ?? 0 });
+  } catch (e) { next(e); }
+});
+
 // ── POST /api/orders/:id/items ────────────────────────────────────────────────
 router.post('/:id/items', requireRole('owner', 'manager', 'cashier', 'waiter'), async (req: AuthRequest, res, next) => {
   try {

@@ -214,6 +214,8 @@ export const ordersApi = {
     post<{ id: string; ticket_id: string; status: string }>('/api/orders/quick-send', d),
   // Cloud-print fallback if a local same-device print fails.
   enqueuePrint: (orderId: string) => post<{ ok: boolean }>(`/api/orders/${orderId}/enqueue-print`, {}),
+  // Atomically settle ALL active orders on a table + clear it (prevents leftover bills).
+  settleTable:  (tableId: string) => post<{ ok: boolean; settled: number }>('/api/orders/settle-table', { table_id: tableId }),
   updateStatus: (id: string, status: string)                                  => patch<{ id: string; status: string }>(`/api/orders/${id}/status`, { status }),
   addItem:      (orderId: string, d: { menu_item_id: string; qty: number; mods?: string[] }) =>
     post<ApiOrderItem>(`/api/orders/${orderId}/items`, d),
