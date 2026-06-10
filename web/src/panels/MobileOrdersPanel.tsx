@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { tablesApi, ordersApi, type ApiTable, type ApiOrder } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { pathForScreen } from '../routes';
+import { Modal } from '../components/Modal';
 import './MobilePanels.css';
 
 const STATUS_DOT: Record<string, string> = {
@@ -21,6 +22,7 @@ export function MobileOrdersPanel() {
   const [orders,  setOrders]  = useState<ApiOrder[]>([]);
   const [loading, setLoading] = useState(true);
   const [error,   setError]   = useState('');
+  const [confirmLogout, setConfirmLogout] = useState(false);
 
   useEffect(() => {
     Promise.all([tablesApi.list(), ordersApi.list()])
@@ -42,6 +44,7 @@ export function MobileOrdersPanel() {
   }
 
   function handleLogout() {
+    setConfirmLogout(false);
     logout();
     navigate('/login');
   }
@@ -55,7 +58,7 @@ export function MobileOrdersPanel() {
           </p>
           <button
             type="button"
-            onClick={handleLogout}
+            onClick={() => setConfirmLogout(true)}
             style={{ fontSize: 11, color: 'var(--text3)', background: 'none', border: 'none', cursor: 'pointer' }}
           >
             Sign out
@@ -110,10 +113,33 @@ export function MobileOrdersPanel() {
       <nav className="mobile-tabbar">
         <Link to={pathForScreen('mobileOrders')} className="active">Tables</Link>
         <Link to={pathForScreen('pos')}>POS</Link>
-        <button type="button" onClick={handleLogout} style={{ background: 'none', border: 'none', color: 'var(--text2)', fontSize: 13, cursor: 'pointer' }}>
+        <button type="button" onClick={() => setConfirmLogout(true)} style={{ background: 'none', border: 'none', color: 'var(--text2)', fontSize: 13, cursor: 'pointer' }}>
           Account
         </button>
       </nav>
+
+      <Modal
+        open={confirmLogout}
+        onClose={() => setConfirmLogout(false)}
+        eyebrow="Session"
+        title="Sign out?"
+        subtitle={`You'll be signed out of ${user?.restaurant_name || 'this account'}.`}
+        size="sm"
+        footer={
+          <>
+            <button type="button" className="roles-cancel-btn" onClick={() => setConfirmLogout(false)}>
+              Cancel
+            </button>
+            <button type="button" className="sidebar-logout-confirm" onClick={handleLogout}>
+              ⏏ Sign out
+            </button>
+          </>
+        }
+      >
+        <p style={{ fontSize: 13, color: 'var(--text2)' }}>
+          Signed in as <strong style={{ color: 'var(--text0)' }}>{user?.name ?? 'this account'}</strong>.
+        </p>
+      </Modal>
     </div>
   );
 }

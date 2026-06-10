@@ -7,6 +7,7 @@ import { useTheme } from '../context/ThemeContext';
 import { PLAN_LABELS, PLAN_COLOR, DEFAULT_PLAN_PANELS, type Plan } from '../config/planAccess';
 import { restaurantApi } from '../services/api';
 import { getRestaurantLogo, RESTAURANT_LOGO_CHANGED, syncRestaurantLogoCache } from '../services/restaurantLogoStorage';
+import { Modal } from '../components/Modal';
 import './Sidebar.css';
 
 const ALL_NAV: { id: Screen; label: string }[] = [
@@ -43,6 +44,7 @@ export function Sidebar({
   const navigate = useNavigate();
   const [logoRefreshTick, setLogoRefreshTick] = useState(0);
   const [serverLogoUrl, setServerLogoUrl] = useState<string | undefined>(undefined);
+  const [confirmLogout, setConfirmLogout] = useState(false);
 
   const isFounder = user?.role === 'founder';
   const plan = user?.plan ?? 'basic';
@@ -103,6 +105,7 @@ export function Sidebar({
   }, []);
 
   function handleLogout() {
+    setConfirmLogout(false);
     logout();
     navigate('/login');
   }
@@ -186,9 +189,33 @@ export function Sidebar({
           {theme === 'dark' ? '☀︎' : '◗'}
         </button>
         {user && (
-          <button className="sidebar-logout" onClick={handleLogout} title="Sign out">⏏</button>
+          <button className="sidebar-logout" onClick={() => setConfirmLogout(true)} title="Sign out">⏏</button>
         )}
       </div>
+
+      <Modal
+        open={confirmLogout}
+        onClose={() => setConfirmLogout(false)}
+        eyebrow="Session"
+        title="Sign out?"
+        subtitle={user ? `You'll be signed out of ${restaurantName}. Any unsaved changes won't be lost — synced data is safe.` : 'You will be returned to the login screen.'}
+        size="sm"
+        footer={
+          <>
+            <button type="button" className="roles-cancel-btn" onClick={() => setConfirmLogout(false)}>
+              Cancel
+            </button>
+            <button type="button" className="sidebar-logout-confirm" onClick={handleLogout}>
+              ⏏ Sign out
+            </button>
+          </>
+        }
+      >
+        <p className="sidebar-logout-body">
+          Signed in as <strong>{user?.name ?? 'this account'}</strong>
+          {user?.role ? ` · ${ROLE_LABELS[user.role] ?? user.role}` : ''}.
+        </p>
+      </Modal>
     </aside>
   );
 }

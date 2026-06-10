@@ -289,3 +289,30 @@
 [data-theme='light'] .sidebar-logout {
   border: 1px solid rgba(0, 0, 0, 0.14);
 }
+
+/* ── Logout confirmation modal ─────────────────────────────────────────────── */
+.sidebar-logout-body {
+  font-size: 13px;
+  color: var(--text2);
+}
+.sidebar-logout-body strong { color: var(--text0); }
+
+.sidebar-logout-confirm {
+  min-height: 44px;
+  padding: 0 20px;
+  border: none;
+  border-radius: var(--radius-btn);
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(239, 68, 68, 0.35);
+  transition: filter 0.15s, transform 0.1s, box-shadow 0.15s;
+}
+.sidebar-logout-confirm:hover {
+  filter: brightness(1.05);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(239, 68, 68, 0.5);
+}
+.sidebar-logout-confirm:active { transform: translateY(0); }
