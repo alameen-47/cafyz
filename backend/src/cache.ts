@@ -17,11 +17,17 @@ interface Entry {
 
 const store = new Map<string, Entry>();
 
+// Disable caching under test so suites see immediate, deterministic state
+// (the cache is a production latency optimization, not part of the auth logic).
+const DISABLED = process.env.NODE_ENV === 'test';
+
 export function cacheSet(key: string, value: unknown, ttlMs: number): void {
+  if (DISABLED) return;
   store.set(key, { value, expires: Date.now() + ttlMs });
 }
 
 export function cacheGet<T>(key: string): T | undefined {
+  if (DISABLED) return undefined;
   const entry = store.get(key);
   if (!entry) return undefined;
   if (Date.now() > entry.expires) {

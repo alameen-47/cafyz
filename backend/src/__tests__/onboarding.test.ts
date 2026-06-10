@@ -18,6 +18,7 @@ describe('POST /api/restaurants/onboarding', () => {
         restaurant_name: 'Bistro Test',
         owner_name: 'Alice Dupont',
         email: 'alice@bistro-test.com',
+        phone: '+33600000001',
         password: 'securepass123',
         timezone: 'Europe/Paris',
       });
@@ -37,6 +38,7 @@ describe('POST /api/restaurants/onboarding', () => {
         restaurant_name: 'Second Bistro',
         owner_name: 'Alice Dupont',
         email: 'alice@bistro-test.com',
+        phone: '+33600000002',
         password: 'securepass123',
       });
 
@@ -76,6 +78,7 @@ describe('POST /api/restaurants/onboarding', () => {
         restaurant_name: 'New Place',
         owner_name: 'Charlie',
         email: 'charlie@new-place.com',
+        phone: '+33600000003',
         password: 'charliepw123',
       });
 

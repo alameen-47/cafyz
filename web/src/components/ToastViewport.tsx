@@ -6,12 +6,13 @@ export function ToastViewport() {
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
 
   useEffect(() => {
-    return toastBus.subscribe((msg) => {
+    const unsubscribe = toastBus.subscribe((msg) => {
       setToasts((prev) => [...prev, msg]);
       window.setTimeout(() => {
         setToasts((prev) => prev.filter((t) => t.id !== msg.id));
       }, msg.durationMs ?? 3200);
     });
+    return () => { unsubscribe(); };
   }, []);
 
   function dismiss(id: string) {

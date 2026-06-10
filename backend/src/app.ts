@@ -83,8 +83,8 @@ app.use('/api/auth/verify-otp',  authIpLimiter, authIdentityLimiter, otpLimiter)
 app.use('/api/auth',             authRoutes);
 app.use('/api/users',            mutationLimiter, requireAuth, requireActiveSubscription, requireSectionAccess('roles'), userRoutes);
 app.use('/api/menu',             mutationLimiter, requireAuth, requireActiveSubscription, requireSectionAccess('menu'), menuRoutes);
-app.use('/api/orders',           mutationLimiter, requireAuth, requireActiveSubscription, requireSectionAccess('pos'), orderRoutes);
-app.use('/api/tables',           mutationLimiter, requireAuth, requireActiveSubscription, requireSectionAccess('tableSetup'), tableRoutes);
+app.use('/api/orders',           mutationLimiter, requireAuth, requireActiveSubscription, requireSectionAccess('pos', 'waiter'), orderRoutes);
+app.use('/api/tables',           mutationLimiter, requireAuth, requireActiveSubscription, requireSectionAccess('tableSetup', 'waiter', 'pos'), tableRoutes);
 app.use('/api/kds',              mutationLimiter, requireAuth, requireActiveSubscription, requireSectionAccess('kds'), requirePlan('pro'),     kdsRoutes);
 app.use('/api/reservations',     mutationLimiter, requireAuth, requireActiveSubscription, requireSectionAccess('manager'), requirePlan('premium'), reservationRoutes);
 app.use('/api/inventory',        mutationLimiter, requireAuth, requireActiveSubscription, requireSectionAccess('inventory'), requirePlan('pro'),     inventoryRoutes);

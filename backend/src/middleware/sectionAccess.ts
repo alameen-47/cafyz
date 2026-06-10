@@ -14,7 +14,14 @@ const ACCESS_TTL = 30_000;
 
 type AccessEntry = { role: string; accessJson: unknown };
 
-export function requireSectionAccess(screen: ScreenId) {
+/**
+ * Gate a route group by section access. Accepts one OR MORE acceptable screens —
+ * access is granted if the user's effective access satisfies ANY of them. This
+ * lets an API surface be reached by multiple roles that legitimately use it
+ * (e.g. orders are operated from both the POS screen and the Waiter screen),
+ * while finer route-level `requireRole` still guards destructive/admin actions.
+ */
+export function requireSectionAccess(...screens: ScreenId[]) {
   return async (req: AuthRequest, res: Response, next: NextFunction) => {
     if (!req.user) {
       res.status(401).json({ error: 'Not authenticated' });
@@ -43,10 +50,10 @@ export function requireSectionAccess(screen: ScreenId) {
       }
 
       const effective = mergeRoleAccess(entry.role, parseAccessJson(entry.accessJson));
-      const ok = hasScreenAccess(req.method, effective, screen);
+      const ok = screens.some((screen) => hasScreenAccess(req.method, effective, screen));
       if (!ok) {
         res.status(403).json({
-          error: `Access denied for ${screen} (${req.method.toUpperCase()})`,
+          error: `Access denied for ${screens.join('/')} (${req.method.toUpperCase()})`,
           code: 'SECTION_ACCESS_DENIED',
         });
         return;

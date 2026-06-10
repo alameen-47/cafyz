@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { licensesApi, type ApiLicenseKey, type ApiLicensePurchaseRequest, type ApiSubscriptionStatus } from '../services/api';
+import { licensesApi, type ApiLicensePurchaseRequest, type ApiSubscriptionStatus } from '../services/api';
 import { PLAN_LABELS, type Plan } from '../config/planAccess';
 import { useAuth } from '../context/AuthContext';
 import { ALL_PLAN_FEATURES, PLAN_COLOR } from '../config/planAccess';

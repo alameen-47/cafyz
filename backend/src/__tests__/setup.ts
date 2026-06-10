@@ -68,8 +68,11 @@ export async function setupTestDb() {
     { plan: 'premium', label: 'Premium', price: 199, panels: JSON.stringify(['pos','menu','waiter','kds','manager','inventory','staff','reports','roles','license']) },
   ];
   for (const p of plans) {
+    // runMigrations() already seeds plan_config (INSERT OR IGNORE), so use
+    // OR REPLACE here to set the exact panel config these tests expect without
+    // colliding on the plan primary key.
     await db.execute({
-      sql: `INSERT INTO plan_config(plan,panels_json,label,description,price_monthly) VALUES(?,?,?,?,?)`,
+      sql: `INSERT OR REPLACE INTO plan_config(plan,panels_json,label,description,price_monthly) VALUES(?,?,?,?,?)`,
       args: [p.plan, p.panels, p.label, '', p.price],
     });
   }

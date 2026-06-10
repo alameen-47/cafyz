@@ -80,11 +80,11 @@ export function POSPanel() {
     const assigned: AssignedPrinter = { role, channel, name };
     if (role === 'kitchen') {
       setKitchenPrinter(assigned);
-      const updated = await restaurantApi.update({ kitchen_printer: assigned });
+      const updated = await restaurantApi.update({ kitchen_printer: { role: 'kitchen', channel, name } });
       setRestaurant(updated);
     } else {
       setCashierPrinter(assigned);
-      const updated = await restaurantApi.update({ cashier_printer: assigned });
+      const updated = await restaurantApi.update({ cashier_printer: { role: 'cashier', channel, name } });
       setRestaurant(updated);
     }
   }
