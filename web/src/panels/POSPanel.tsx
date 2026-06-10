@@ -723,34 +723,41 @@ export function POSPanel() {
       {/* ── Order sidebar ──────────────────────────────────────────────── */}
       <aside className="pos-order">
 
-        {/* ── Printer status bar ─────────────────────────────────────────── */}
+        {/* ── Printer (collapsed into an icon — click to view/manage) ──────── */}
         <div className="pos-printer-bar">
           <PrinterHelpBanner />
-          <div className="pos-printer-bar-row">
-            {printer.type !== 'none' ? (
-              <span className="pos-printer-connected">
-                {printer.type === 'bluetooth' ? <BluetoothIcon /> : '🔌'} {printer.name}
-                <button type="button" className="pos-printer-disconnect" onClick={handleDisconnect}>×</button>
-              </span>
-            ) : (
-              <span className="pos-printer-idle">No printer connected</span>
-            )}
-            <button type="button" className="pos-printer-trigger" onClick={handleDisconnect} disabled={printBusy || printer.type === 'none'}>
-              Disconnect Active
-            </button>
-          </div>
           <button
             type="button"
-            className={`pos-printer-dropdown-toggle ${printerSetupOpen ? 'open' : ''}`}
+            className={`pos-printer-icon-btn${printer.type !== 'none' ? ' connected' : ''}${printerSetupOpen ? ' open' : ''}`}
             onClick={() => setPrinterSetupOpen((v) => !v)}
             aria-expanded={printerSetupOpen}
             aria-controls="pos-printer-setup-dropdown"
+            title={printer.type !== 'none' ? `Printer: ${printer.name}` : 'Printer setup'}
           >
-            <span>Printer Configuration Setup</span>
-            <span className="mono">{printerSetupOpen ? '▲' : '▼'}</span>
+            <span className="pos-printer-glyph" aria-hidden>🖨</span>
+            <span className="pos-printer-icon-label">
+              {printer.type !== 'none' ? printer.name : 'Printer'}
+            </span>
+            <span className={`pos-printer-dot ${printer.type !== 'none' ? 'on' : 'off'}`} aria-hidden />
+            <span className="mono pos-printer-caret" aria-hidden>{printerSetupOpen ? '▲' : '▼'}</span>
           </button>
 
           <div id="pos-printer-setup-dropdown" className={`pos-printer-dropdown ${printerSetupOpen ? 'open' : ''}`}>
+            {/* Current connection + disconnect (the printer "properties") */}
+            <div className="pos-printer-current">
+              {printer.type !== 'none' ? (
+                <>
+                  <span className="pos-printer-connected">
+                    {printer.type === 'bluetooth' ? <BluetoothIcon /> : '🔌'} {printer.name}
+                  </span>
+                  <button type="button" className="pos-printer-trigger" onClick={handleDisconnect} disabled={printBusy}>
+                    Disconnect
+                  </button>
+                </>
+              ) : (
+                <span className="pos-printer-idle">No printer connected</span>
+              )}
+            </div>
             <div className="pos-printer-assignment-grid">
               <button
                 type="button"
