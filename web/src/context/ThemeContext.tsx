@@ -11,7 +11,8 @@ const Ctx = createContext<ThemeCtx>({ theme: 'dark', toggleTheme: () => {} });
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [theme, setTheme] = useState<Theme>(() => {
-    return (localStorage.getItem('cafyz_theme') as Theme) ?? 'light';
+    // Premium enterprise POS defaults to the bold dark theme.
+    return (localStorage.getItem('cafyz_theme') as Theme) ?? 'dark';
   });
 
   useEffect(() => {

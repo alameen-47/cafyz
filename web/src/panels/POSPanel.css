@@ -136,14 +136,17 @@
 }
 
 .pos-dish-name {
-  font-weight: 500;
-  font-size: 13px;
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--text0);
   margin-bottom: 4px;
 }
 
 .pos-dish-price {
   color: var(--gold);
-  font-size: 13px;
+  font-size: 15px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
 }
 
 .pos-dish-sub {
@@ -339,28 +342,41 @@
 }
 .pos-total-row .mono { font-variant-numeric: tabular-nums; flex-shrink: 0; }
 
+/* Grand Total — dominant, highlighted container */
 .pos-total-final {
   display: flex;
   justify-content: space-between;
-  align-items: baseline;
-  margin: 12px 0 16px;
-  font-size: 14px;
+  align-items: center;
+  margin: 10px 0 16px;
+  padding: 14px 18px;
+  border-radius: var(--radius-lg);
+  background: var(--gold-bg);
+  border: 1px solid var(--gold-line2);
+  box-shadow: var(--shadow-sm);
+  font-size: 15px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: var(--text0);
 }
 
 .pos-total-final .serif {
-  font-size: 28px;
+  font-size: 34px;
+  font-weight: 800;
   color: var(--gold);
+  letter-spacing: 0;
+  text-transform: none;
 }
 
 .pos-charge {
   width: 100%;
-  height: 52px;
+  height: 58px;
   border: none;
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-btn);
   background: var(--gold);
   color: var(--on-gold);
-  font-weight: 700;
-  font-size: 14px;
+  font-weight: 800;
+  font-size: 17px;
   margin-bottom: 10px;
   cursor: pointer;
   transition: background 0.15s, transform 0.1s, box-shadow 0.15s;
@@ -386,18 +402,18 @@
 
 .pos-alt-pay button {
   flex: 1;
-  height: 44px;
-  border-radius: var(--radius-md);
+  height: 48px;
+  border-radius: var(--radius-btn);
   border: none;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 700;
-  background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
   color: #ffffff;
   cursor: pointer;
-  box-shadow: 0 4px 12px rgba(22, 163, 74, 0.28);
+  box-shadow: 0 4px 14px rgba(37, 99, 235, 0.32);
   transition: background 0.15s, transform 0.1s;
 }
-.pos-alt-pay button:hover:not(:disabled) { background: linear-gradient(135deg, #2ed06a 0%, #15803d 100%); transform: translateY(-1px); }
+.pos-alt-pay button:hover:not(:disabled) { background: linear-gradient(135deg, #4b8cf7 0%, #1d4ed8 100%); transform: translateY(-1px); }
 .pos-alt-pay button:disabled { opacity: 0.4; cursor: not-allowed; box-shadow: none; }
 
 .pos-alt-pay button.active {
@@ -486,17 +502,18 @@
 }
 
 /* Charge button when order already sent — primary CARD action (blue) */
+/* Primary pay action — dominant green */
 .pos-charge.sent {
-  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
-  color: #ffffff;
-  box-shadow: 0 6px 18px rgba(37, 99, 235, 0.4);
+  background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+  color: #052e16;
+  box-shadow: 0 8px 24px rgba(34, 197, 94, 0.45);
   letter-spacing: 0.3px;
 }
-.pos-charge.sent:hover { background: linear-gradient(135deg, #4b8cf7 0%, #1d4ed8 100%); transform: translateY(-1px); }
+.pos-charge.sent:hover { background: linear-gradient(135deg, #2ed06a 0%, #15803d 100%); transform: translateY(-1px); box-shadow: 0 10px 30px rgba(34,197,94,0.55); }
 .pos-charge.sent:active { transform: translateY(0); }
 
 /* Disable overlay for sold cards */
-.pos-dish.disabled { opacity: 0.45; pointer-events: none; }
+.pos-dish.disabled { opacity: 0.62; pointer-events: none; }
 
 /* 4-button alt-pay row */
 .pos-alt-pay { display: flex; gap: 6px; flex-wrap: wrap; }

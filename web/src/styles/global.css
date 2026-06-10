@@ -5,55 +5,71 @@
    All component CSS uses these variables — toggle one attribute, everything shifts.
 ───────────────────────────────────────────────────────────────────────────── */
 
-/* ── Dark theme (default) ────────────────────────────────────────────────── */
+/* ── Dark theme (default) — premium enterprise POS ───────────────────────────
+   Slate-based surfaces, bright-green primary, blue secondary. Strong borders,
+   deep elevation shadows, large radii — built for touchscreens at a glance. */
 :root,
 [data-theme='dark'] {
-  /* Backgrounds — deep navy-black gradient layers */
-  --bg0:          #030d1a;
-  --bg1:          #0a1628;
-  --bg2:          #07111f;
-  --bg3:          #0f1d38;
-  --bg-sidebar:   #040c17;
-  --bg-glass:     rgba(10, 22, 40, 0.72);
+  /* Backgrounds — layered slate surfaces */
+  --bg0:          #0F172A;   /* app background (slate-900) */
+  --bg1:          #1E293B;   /* primary surface: panels, sidebar (slate-800) */
+  --bg2:          #334155;   /* elevated cards, inputs (slate-700) */
+  --bg3:          #475569;   /* pressed / deepest (slate-600) */
+  --bg-sidebar:   #0B1220;   /* sidebar — deeper than the page */
+  --bg-glass:     rgba(30, 41, 59, 0.82);
 
-  /* Accent — electric blue */
-  --gold:         #60a5fa;
-  --gold-dim:     #3b82f6;
-  --gold-soft:    #93c5fd;
-  --gold-line:    rgba(96, 165, 250, 0.16);
-  --gold-line2:   rgba(96, 165, 250, 0.30);
-  --gold-bg:      rgba(96, 165, 250, 0.08);
-  --gold-glow:    0 0 24px rgba(96, 165, 250, 0.28);
+  /* PRIMARY accent — bright green (confirm / pay / go) */
+  --gold:         #22C55E;
+  --gold-dim:     #16A34A;
+  --gold-soft:    #4ADE80;
+  --gold-line:    rgba(34, 197, 94, 0.24);
+  --gold-line2:   rgba(34, 197, 94, 0.42);
+  --gold-bg:      rgba(34, 197, 94, 0.12);
+  --gold-glow:    0 0 28px rgba(34, 197, 94, 0.32);
 
-  /* Text */
-  --text0:        #eef4ff;
-  --text1:        #b0c8e8;
-  --text2:        #6b8aab;
-  --text3:        #384e6b;
+  /* SECONDARY accent — blue (info / secondary actions) */
+  --blue:         #3B82F6;
+  --blue-dim:     #2563EB;
+  --blue-soft:    #60A5FA;
+  --blue-bg:      rgba(59, 130, 246, 0.14);
+  --blue-line:    rgba(59, 130, 246, 0.38);
+
+  /* Text — high-contrast scale */
+  --text0:        #FFFFFF;
+  --text1:        #E2E8F0;
+  --text2:        #CBD5E1;
+  --text3:        #94A3B8;
 
   /* Semantic */
-  --success:      #2ecc8a;
-  --warning:      #f0a500;
-  --danger:       #e84545;
+  --success:      #22C55E;
+  --warning:      #F59E0B;
+  --danger:       #EF4444;
 
-  /* Borders / dividers */
-  --line:         rgba(255, 255, 255, 0.05);
-  --line2:        rgba(255, 255, 255, 0.09);
+  /* Borders / dividers — visible on dark surfaces */
+  --line:         rgba(255, 255, 255, 0.08);
+  --line2:        rgba(255, 255, 255, 0.14);
+
+  /* Elevation shadows */
+  --shadow-sm:    0 1px 3px rgba(0, 0, 0, 0.35);
+  --shadow-md:    0 4px 14px rgba(0, 0, 0, 0.40);
+  --shadow-lg:    0 12px 34px rgba(0, 0, 0, 0.50);
+  --shadow-card:  0 8px 28px rgba(0, 0, 0, 0.42);
+  --hover:        rgba(255, 255, 255, 0.04);
 
   /* Gradient mesh stops (used in body::before) */
-  --mesh-a:       rgba(37, 99, 235, 0.12);
-  --mesh-b:       rgba(29, 78, 216, 0.08);
-  --mesh-c:       rgba(59, 130, 246, 0.06);
+  --mesh-a:       rgba(34, 197, 94, 0.10);
+  --mesh-b:       rgba(59, 130, 246, 0.08);
+  --mesh-c:       rgba(34, 197, 94, 0.05);
 
   /* Sidebar gradient */
-  --sidebar-grad: linear-gradient(170deg, #091223 0%, #040c17 55%, #030a15 100%);
+  --sidebar-grad: linear-gradient(180deg, #131f36 0%, #0B1220 100%);
 
-  /* Card gradient */
-  --card-bg:      linear-gradient(135deg, rgba(255,255,255,0.03) 0%, #0a1628 100%);
-  --card-border:  rgba(96, 165, 250, 0.16);
+  /* Card — solid elevated surface with a clear border */
+  --card-bg:      #1E293B;
+  --card-border:  rgba(255, 255, 255, 0.10);
 
-  /* Button text on gold bg */
-  --on-gold:      #030d1a;
+  /* Button text on green primary */
+  --on-gold:      #052E16;
 
   color-scheme: dark;
 }
@@ -68,14 +84,21 @@
   --bg-sidebar:   #eff6ff;   /* sidebar — distinct from white */
   --bg-glass:     rgba(255, 255, 255, 0.97);
 
-  /* Accent — deep vivid blue */
-  --gold:         #1d4ed8;
-  --gold-dim:     #1e40af;
-  --gold-soft:    #2563eb;
-  --gold-line:    rgba(29, 78, 216, 0.22);
-  --gold-line2:   rgba(29, 78, 216, 0.40);
-  --gold-bg:      rgba(29, 78, 216, 0.08);
-  --gold-glow:    0 0 18px rgba(29, 78, 216, 0.14);
+  /* PRIMARY accent — green (brand-consistent with dark theme) */
+  --gold:         #16A34A;
+  --gold-dim:     #15803D;
+  --gold-soft:    #22C55E;
+  --gold-line:    rgba(22, 163, 74, 0.26);
+  --gold-line2:   rgba(22, 163, 74, 0.44);
+  --gold-bg:      rgba(22, 163, 74, 0.10);
+  --gold-glow:    0 0 18px rgba(22, 163, 74, 0.16);
+
+  /* SECONDARY accent — blue */
+  --blue:         #2563EB;
+  --blue-dim:     #1D4ED8;
+  --blue-soft:    #3B82F6;
+  --blue-bg:      rgba(37, 99, 235, 0.10);
+  --blue-line:    rgba(37, 99, 235, 0.40);
 
   /* Text — high-contrast scale */
   --text0:        #0a1628;   /* near-black with blue tint */
@@ -91,6 +114,13 @@
   /* Borders — strong enough to see on white */
   --line:         rgba(0, 0, 0, 0.11);
   --line2:        rgba(0, 0, 0, 0.18);
+
+  /* Elevation shadows */
+  --shadow-sm:    0 1px 3px rgba(15, 23, 42, 0.10);
+  --shadow-md:    0 4px 14px rgba(15, 23, 42, 0.12);
+  --shadow-lg:    0 12px 34px rgba(15, 23, 42, 0.16);
+  --shadow-card:  0 6px 22px rgba(15, 23, 42, 0.10);
+  --hover:        rgba(15, 23, 42, 0.04);
 
   /* Gradient mesh */
   --mesh-a:       rgba(59, 130, 246, 0.07);
@@ -112,11 +142,13 @@
 
 /* ── Radius + Font tokens ─────────────────────────────────────────────────── */
 :root {
-  --radius-sm:    6px;
-  --radius-md:    8px;
-  --radius-lg:    12px;
-  --radius-xl:    16px;
+  --radius-sm:    8px;
+  --radius-md:    12px;
+  --radius-lg:    14px;
+  --radius-xl:    18px;
+  --radius-btn:   12px;
   --radius-pill:  999px;
+  --touch:        48px;   /* minimum touch target */
   --font-serif:   'Playfair Display', Georgia, serif;
   --font-sans:    Inter, system-ui, sans-serif;
   --font-mono:    'JetBrains Mono', 'Fira Code', monospace;
@@ -252,63 +284,71 @@ a {
 /* ── Card ─────────────────────────────────────────────────────────────────── */
 .card {
   background: var(--card-bg);
-  border: 0.5px solid var(--card-border);
+  border: 1px solid var(--card-border);
   border-radius: var(--radius-lg);
-  /* Subtle top-edge highlight for depth */
+  /* Subtle top-edge highlight + deep elevation for a tactile, raised feel */
   box-shadow:
-    0 1px 0 0 rgba(255,255,255,0.04) inset,
-    0 4px 24px rgba(0,0,0,0.18);
-  transition: border-color 0.2s, box-shadow 0.2s;
+    0 1px 0 0 rgba(255,255,255,0.05) inset,
+    var(--shadow-card);
+  transition: border-color 0.2s, box-shadow 0.2s, transform 0.15s;
+}
+.card:hover {
+  border-color: var(--gold-line2);
+  box-shadow: 0 1px 0 0 rgba(255,255,255,0.06) inset, var(--shadow-lg);
 }
 
 [data-theme='light'] .card {
   border-width: 1px;                           /* thicker border for visibility */
-  box-shadow:
-    0 2px 20px rgba(29, 78, 216, 0.08),
-    0 1px 5px  rgba(0, 0, 0, 0.09);
+  box-shadow: var(--shadow-card);
 }
 
 /* ── Buttons ──────────────────────────────────────────────────────────────── */
+/* Primary action — bright green, touch-sized, bold. Dominant on the screen. */
 .btn-gold {
-  height: 44px;
-  padding: 0 20px;
-  border-radius: var(--radius-md);
-  background: linear-gradient(135deg, var(--gold-soft) 0%, var(--gold) 60%, var(--gold-dim) 100%);
+  min-height: var(--touch);
+  padding: 0 24px;
+  border: none;
+  border-radius: var(--radius-btn);
+  background: linear-gradient(135deg, var(--gold-soft) 0%, var(--gold) 100%);
   color: var(--on-gold);
-  font-weight: 700;
-  font-size: 13px;
-  letter-spacing: 0.3px;
-  box-shadow: 0 2px 16px rgba(59,130,246,0.35);
-  transition: opacity 0.15s, box-shadow 0.15s;
+  font-weight: 800;
+  font-size: 15px;
+  letter-spacing: 0.2px;
+  box-shadow: 0 6px 18px rgba(34, 197, 94, 0.35);
+  transition: filter 0.15s, box-shadow 0.15s, transform 0.1s;
 }
 
 .btn-gold:hover {
-  opacity: 0.9;
-  box-shadow: 0 4px 24px rgba(59,130,246,0.5);
+  filter: brightness(1.05);
+  box-shadow: 0 8px 26px rgba(34, 197, 94, 0.5);
+  transform: translateY(-1px);
 }
 
-.btn-gold:active { opacity: 0.82; }
+.btn-gold:active { transform: translateY(0); filter: brightness(0.96); }
+.btn-gold:disabled { opacity: 0.5; cursor: not-allowed; box-shadow: none; transform: none; filter: none; }
 
+/* Secondary action — blue, filled, clearly tappable */
 .btn-outline {
-  height: 40px;
-  padding: 0 16px;
-  border-radius: var(--radius-md);
-  border: 0.5px solid var(--gold-line2);
-  background: var(--gold-bg);
-  color: var(--gold);
-  font-size: 11px;
+  min-height: 44px;
+  padding: 0 18px;
+  border-radius: var(--radius-btn);
+  border: 1px solid var(--blue-line);
+  background: var(--blue-bg);
+  color: var(--blue-soft);
+  font-size: 12px;
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 1px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
-  transition: border-color 0.15s, color 0.15s, background 0.15s, transform 0.1s;
+  letter-spacing: 0.8px;
+  box-shadow: var(--shadow-sm);
+  transition: border-color 0.15s, color 0.15s, background 0.15s, transform 0.1s, box-shadow 0.15s;
 }
 
 .btn-outline:hover {
-  border-color: var(--gold);
-  color: var(--gold);
-  background: var(--gold-bg);
+  border-color: var(--blue);
+  color: var(--text0);
+  background: var(--blue-bg);
   transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
 }
 .btn-outline:active { transform: translateY(0); }
 .btn-outline:disabled { opacity: 0.5; cursor: not-allowed; box-shadow: none; }
@@ -399,10 +439,10 @@ a {
 
 /* Btn-outline — visible border */
 [data-theme='light'] .btn-outline {
-  border: 1px solid var(--gold-line2);
-  background: var(--gold-bg);
-  color: var(--gold);
-  box-shadow: 0 2px 8px rgba(29, 78, 216, 0.12);
+  border: 1px solid var(--blue-line);
+  background: var(--blue-bg);
+  color: var(--blue-dim);
+  box-shadow: var(--shadow-sm);
 }
 
 /* Badge "off" fix — uses white bg which disappears in light mode */
