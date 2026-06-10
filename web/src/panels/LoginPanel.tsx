@@ -34,7 +34,7 @@ export function LoginPanel() {
     query.get('mode') === 'reset' ? 'reset' : 'signin',
   );
   const [method, setMethod] = useState<'otp' | 'email'>('otp');
-  const [mobileMethod, setMobileMethod] = useState<'email' | 'pin'>('email');
+  const [mobileMethod, setMobileMethod] = useState<'email' | 'pin' | 'otp'>('email');
   const [email, setEmail] = useState('');
   const [pinEmail, setPinEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -72,6 +72,17 @@ export function LoginPanel() {
 
   function switchAuthMode(next: 'signin' | 'forgot' | 'reset') {
     setAuthMode(next);
+    setLocalErr('');
+    setLocalMsg('');
+    clearError();
+  }
+
+  // Mobile method switch with the same clean reset as the desktop switch.
+  function switchMobileMethod(next: 'email' | 'pin' | 'otp') {
+    setMobileMethod(next);
+    setAuthMode('signin');
+    setOtpSent(false);
+    setOtp('');
     setLocalErr('');
     setLocalMsg('');
     clearError();
@@ -540,19 +551,27 @@ export function LoginPanel() {
         <div className="login-method-switch login-method-switch-mobile">
           <button
             type="button"
-            className="login-link-btn"
-            onClick={() => setMobileMethod('email')}
-            disabled={mobileMethod === 'email' || busy}
+            className={`login-link-btn${mobileMethod === 'email' ? ' active' : ''}`}
+            onClick={() => switchMobileMethod('email')}
+            disabled={busy}
           >
-            Email Login
+            Email
           </button>
           <button
             type="button"
-            className="login-link-btn"
-            onClick={() => setMobileMethod('pin')}
-            disabled={mobileMethod === 'pin' || busy}
+            className={`login-link-btn${mobileMethod === 'pin' ? ' active' : ''}`}
+            onClick={() => switchMobileMethod('pin')}
+            disabled={busy}
           >
-            PIN Login
+            PIN
+          </button>
+          <button
+            type="button"
+            className={`login-link-btn${mobileMethod === 'otp' ? ' active' : ''}`}
+            onClick={() => switchMobileMethod('otp')}
+            disabled={busy}
+          >
+            Phone OTP
           </button>
         </div>
 
@@ -647,6 +666,36 @@ export function LoginPanel() {
               </div>
             )}
           </>
+        ) : mobileMethod === 'otp' ? (
+          <>
+            <label className="login-field" style={{ marginTop: 12 }}>
+              <span>Phone number</span>
+              <input
+                type="tel"
+                value={phone}
+                onChange={e => { setPhone(e.target.value); setLocalErr(''); clearError(); }}
+                placeholder="+971500000000"
+              />
+            </label>
+            <label className="login-field">
+              <span>One-time password (OTP)</span>
+              <input
+                type="text"
+                value={otp}
+                onChange={e => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                placeholder="6-digit code"
+                disabled={!otpSent}
+              />
+            </label>
+            <button type="button" className="login-submit" onClick={otpSent ? handleVerifyOtp : handleSendOtp} disabled={busy}>
+              {busy ? (otpSent ? 'Verifying…' : 'Sending OTP…') : otpSent ? 'Verify OTP & Enter →' : 'Send OTP'}
+            </button>
+            {otpSent && (
+              <div className="login-mobile-reset-links">
+                <button type="button" className="login-link-btn" onClick={handleSendOtp} disabled={busy}>Resend OTP</button>
+              </div>
+            )}
+          </>
         ) : (
           <>
             <label className="login-field" style={{ marginTop: 12 }}>
@@ -694,6 +743,17 @@ export function LoginPanel() {
             {localErr}
           </p>
         )}
+
+        {/* New user → sign up (parity with desktop) */}
+        <div className="login-get-account-bar">
+          <span>New to Cafyz?</span>
+          <a href="/get-account?intent=trial&plan=premium" className="login-get-account-link">
+            Trial Request →
+          </a>
+          <a href="/get-account?intent=purchase" className="login-get-account-link login-get-account-link-alt">
+            Purchase Plan →
+          </a>
+        </div>
       </section>
     </div>
   );

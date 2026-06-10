@@ -311,16 +311,19 @@
   text-decoration: none;
 }
 
-.login-method-switch .login-link-btn:disabled {
+.login-method-switch .login-link-btn:disabled,
+.login-method-switch .login-link-btn.active {
   color: var(--on-gold);
   background: var(--gold);
   border-color: var(--gold);
   cursor: default;
   text-decoration: none;
 }
+.login-method-switch .login-link-btn.active:hover { text-decoration: none; }
 
 .login-method-switch-mobile {
   justify-content: center;
+  flex-wrap: wrap;
   margin-top: 6px;
   margin-bottom: 10px;
 }
@@ -643,6 +646,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  flex-wrap: wrap;
   gap: 8px;
   margin-top: 20px;
   padding: 14px 20px;
