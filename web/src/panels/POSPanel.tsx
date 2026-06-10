@@ -1,90 +1,141 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { menuApi, menuCategoriesApi, ordersApi, restaurantApi, tablesApi, type ApiMenuCategory, type ApiMenuItem, type ApiOrder, type ApiRestaurant, type ApiTable } from '../services/api';
+import {
+  menuApi,
+  menuCategoriesApi,
+  ordersApi,
+  restaurantApi,
+  tablesApi,
+  type ApiMenuCategory,
+  type ApiMenuItem,
+  type ApiOrder,
+  type ApiRestaurant,
+  type ApiTable,
+} from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import {
-  autoReconnectBluetooth, connectBluetooth, connectUSB, disconnectPrinter, printerChannels, printerStatus, print as printReceipt, printKitchenTicket, printTest,
+  autoReconnectBluetooth,
+  connectBluetooth,
+  connectUSB,
+  disconnectPrinter,
+  printerChannels,
+  printerStatus,
+  print as printReceipt,
+  printKitchenTicket,
+  printTest,
   type ReceiptData,
   type PrintChannel,
 } from '../services/PrintService';
 import { PrinterHelpBanner } from '../components/PrinterHelpBanner';
 import { BluetoothIcon } from '../components/BluetoothIcon';
-import { getPrinterEnvironment, isIosDevice } from '../services/printerEnvironment';
-import { getRestaurantLogo, syncRestaurantLogoCache } from '../services/restaurantLogoStorage';
-import { buildMenuCategoryTabs, defaultCategorySlug } from '../utils/menuCategories';
+import {
+  getPrinterEnvironment,
+  isIosDevice,
+} from '../services/printerEnvironment';
+import {
+  getRestaurantLogo,
+  syncRestaurantLogoCache,
+} from '../services/restaurantLogoStorage';
+import {
+  buildMenuCategoryTabs,
+  defaultCategorySlug,
+} from '../utils/menuCategories';
 import { MenuItemImage } from '../components/MenuItemImage';
-import { SearchSelect } from '../components/SearchSelect';
 import { Modal } from '../components/Modal';
 import { toastBus } from '../services/toastBus';
 import { formatMoney, getCurrencySymbol } from '../utils/currency';
 import './POSPanel.css';
 
-type CartItem     = { menuItem: ApiMenuItem; qty: number; mods: string[]; orderItemId?: string; addedNow?: boolean };
+type CartItem = { menuItem: ApiMenuItem; qty: number; mods: string[] };
 type PaymentState = 'open' | 'sent' | 'card' | 'cash' | 'comped';
 type PrinterRole = 'kitchen' | 'cashier';
-type AssignedPrinter = { role: PrinterRole; channel: Extract<PrintChannel, 'bluetooth' | 'usb'>; name: string };
+type AssignedPrinter = {
+  role: PrinterRole;
+  channel: Extract<PrintChannel, 'bluetooth' | 'usb'>;
+  name: string;
+};
 
 export function POSPanel() {
   const { user } = useAuth();
 
-  const [menu,          setMenu]          = useState<ApiMenuItem[]>([]);
-  const [categories,    setCategories]    = useState<ApiMenuCategory[]>([]);
-  const [tables,        setTables]        = useState<ApiTable[]>([]);
-  const [cat,           setCat]           = useState('mains');
-  const [search,        setSearch]        = useState('');
-  const [cart,          setCart]          = useState<CartItem[]>([]);
+  const [menu, setMenu] = useState<ApiMenuItem[]>([]);
+  const [categories, setCategories] = useState<ApiMenuCategory[]>([]);
+  const [tables, setTables] = useState<ApiTable[]>([]);
+  const [cat, setCat] = useState('mains');
+  const [search, setSearch] = useState('');
+  const [cart, setCart] = useState<CartItem[]>([]);
   const [selectedTable, setSelectedTable] = useState<string>('');
   const [activeOrderId, setActiveOrderId] = useState<string | null>(null);
-  const [payState,      setPayState]      = useState<PaymentState>('open');
-  const [note,          setNote]          = useState('');
+  const [payState, setPayState] = useState<PaymentState>('open');
+  const [note, setNote] = useState('');
   const [pendingOrders, setPendingOrders] = useState<ApiOrder[]>([]);
-  const [busy,          setBusy]          = useState(false);
-  const [editMode,      setEditMode]      = useState(false);
-  const [parcel,        setParcel]        = useState(false);
-  const [breakdownOpen, setBreakdownOpen] = useState(false);
-  const [error,         setError]         = useState('');
-  const [loading,       setLoading]       = useState(true);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(true);
   const [tableOrderLoading, setTableOrderLoading] = useState(false);
-  const [restaurant,    setRestaurant]    = useState<ApiRestaurant | null>(null);
-  const [profileOpen,   setProfileOpen]   = useState(false);
-  const [profileBusy,   setProfileBusy]   = useState(false);
-  const [profileDraft,  setProfileDraft]  = useState({
-    name: '', contact_phone: '', contact_email: '',
-    address_line1: '', address_line2: '', city: '', country: '', postal_code: '', tax_id: '',
+  const [restaurant, setRestaurant] = useState<ApiRestaurant | null>(null);
+  const [profileOpen, setProfileOpen] = useState(false);
+  const [profileBusy, setProfileBusy] = useState(false);
+  const [profileDraft, setProfileDraft] = useState({
+    name: '',
+    contact_phone: '',
+    contact_email: '',
+    address_line1: '',
+    address_line2: '',
+    city: '',
+    country: '',
+    postal_code: '',
+    tax_id: '',
   });
 
   // ── Printer state ──────────────────────────────────────────────────────────
-  const [printer,      setPrinter]      = useState<{ type: 'none' | 'bluetooth' | 'usb'; name: string }>({ type: 'none', name: '' });
-  const [printBusy,    setPrintBusy]    = useState(false);
-  const [printError,   setPrintError]   = useState('');
-  const [printOk,      setPrintOk]      = useState(false);
+  const [printer, setPrinter] = useState<{
+    type: 'none' | 'bluetooth' | 'usb';
+    name: string;
+  }>({ type: 'none', name: '' });
+  const [printBusy, setPrintBusy] = useState(false);
+  const [printError, setPrintError] = useState('');
+  const [printOk, setPrintOk] = useState(false);
   const [printerSetupOpen, setPrinterSetupOpen] = useState(false);
   const [connectTarget, setConnectTarget] = useState<PrinterRole>('cashier');
-  const [kitchenPrinter, setKitchenPrinter] = useState<AssignedPrinter | null>(null);
-  const [cashierPrinter, setCashierPrinter] = useState<AssignedPrinter | null>(null);
+  const [kitchenPrinter, setKitchenPrinter] = useState<AssignedPrinter | null>(
+    null,
+  );
+  const [cashierPrinter, setCashierPrinter] = useState<AssignedPrinter | null>(
+    null,
+  );
   const lastConnectToastKeyRef = useRef('');
 
   // Sync printer status on mount (in case a previous session still has a device)
   useEffect(() => {
     setPrinter(printerStatus());
-    void autoReconnectBluetooth().then((result) => {
+    void autoReconnectBluetooth().then(result => {
       if (!result.connected) return;
-      setPrinter({ type: 'bluetooth', name: result.name || 'Bluetooth Printer' });
+      setPrinter({
+        type: 'bluetooth',
+        name: result.name || 'Bluetooth Printer',
+      });
     });
   }, []);
 
-  async function assignPrinter(role: PrinterRole, channel: Extract<PrintChannel, 'bluetooth' | 'usb'>, name: string) {
+  async function assignPrinter(
+    role: PrinterRole,
+    channel: Extract<PrintChannel, 'bluetooth' | 'usb'>,
+    name: string,
+  ) {
     const other = role === 'kitchen' ? cashierPrinter : kitchenPrinter;
     if (other && other.channel === channel) {
-      throw new Error(`"${other.name}" is already assigned to ${other.role}. Use a different connection type for ${role}.`);
+      throw new Error(
+        `"${other.name}" is already assigned to ${other.role}. Use a different connection type for ${role}.`,
+      );
     }
     const assigned: AssignedPrinter = { role, channel, name };
     if (role === 'kitchen') {
       setKitchenPrinter(assigned);
-      const updated = await restaurantApi.update({ kitchen_printer: { role: 'kitchen', channel, name } });
+      const updated = await restaurantApi.update({ kitchen_printer: assigned });
       setRestaurant(updated);
     } else {
       setCashierPrinter(assigned);
-      const updated = await restaurantApi.update({ cashier_printer: { role: 'cashier', channel, name } });
+      const updated = await restaurantApi.update({ cashier_printer: assigned });
       setRestaurant(updated);
     }
   }
@@ -93,12 +144,22 @@ export function POSPanel() {
     const assigned = target === 'kitchen' ? kitchenPrinter : cashierPrinter;
     if (!assigned) return 'Not configured';
     const channelLive = printerChannels();
-    const isConnected = assigned.channel === 'bluetooth' ? channelLive.bluetooth : channelLive.usb;
-    return `${isConnected ? 'Connected' : 'Configured'} · ${assigned.name} (${assigned.channel.toUpperCase()})`;
+    const isConnected =
+      assigned.channel === 'bluetooth'
+        ? channelLive.bluetooth
+        : channelLive.usb;
+    return `${isConnected ? 'Connected' : 'Configured'} · ${
+      assigned.name
+    } (${assigned.channel.toUpperCase()})`;
   }
 
   useEffect(() => {
-    Promise.all([menuApi.list(), menuCategoriesApi.list(), tablesApi.list(), restaurantApi.me()])
+    Promise.all([
+      menuApi.list(),
+      menuCategoriesApi.list(),
+      tablesApi.list(),
+      restaurantApi.me(),
+    ])
       .then(([m, cats, t, r]) => {
         setMenu(m);
         setCategories(cats);
@@ -109,9 +170,15 @@ export function POSPanel() {
         setCashierPrinter(r.cashier_printer ?? null);
         syncRestaurantLogoCache(r);
         setProfileDraft({
-          name: r.name ?? '', contact_phone: r.contact_phone ?? '', contact_email: r.contact_email ?? '',
-          address_line1: r.address_line1 ?? '', address_line2: r.address_line2 ?? '', city: r.city ?? '', country: r.country ?? '',
-          postal_code: r.postal_code ?? '', tax_id: r.tax_id ?? '',
+          name: r.name ?? '',
+          contact_phone: r.contact_phone ?? '',
+          contact_email: r.contact_email ?? '',
+          address_line1: r.address_line1 ?? '',
+          address_line2: r.address_line2 ?? '',
+          city: r.city ?? '',
+          country: r.country ?? '',
+          postal_code: r.postal_code ?? '',
+          tax_id: r.tax_id ?? '',
         });
       })
       .catch(e => setError(e.message))
@@ -140,12 +207,17 @@ export function POSPanel() {
     };
     load();
     const t = window.setInterval(load, 5000);
-    const onOrderSent = () => { void refreshBillingQueues(); };
+    const onOrderSent = () => {
+      void refreshBillingQueues();
+    };
     window.addEventListener('CAFYZ_ORDER_SENT', onOrderSent as EventListener);
     return () => {
       alive = false;
       window.clearInterval(t);
-      window.removeEventListener('CAFYZ_ORDER_SENT', onOrderSent as EventListener);
+      window.removeEventListener(
+        'CAFYZ_ORDER_SENT',
+        onOrderSent as EventListener,
+      );
     };
   }, [refreshBillingQueues]);
 
@@ -174,9 +246,12 @@ export function POSPanel() {
 
   const visible = menu
     .filter(m => cat === 'all' || m.category === cat)
-    .filter(m => !search.trim() ||
-      m.name.toLowerCase().includes(search.trim().toLowerCase()) ||
-      m.description?.toLowerCase().includes(search.trim().toLowerCase()));
+    .filter(
+      m =>
+        !search.trim() ||
+        m.name.toLowerCase().includes(search.trim().toLowerCase()) ||
+        m.description?.toLowerCase().includes(search.trim().toLowerCase()),
+    );
 
   const tableObj = tables.find(t => t.id === selectedTable);
   const printerEnv = getPrinterEnvironment();
@@ -186,28 +261,32 @@ export function POSPanel() {
   const serviceRate = Math.max(0, Number(restaurant?.service_charge_pct ?? 18));
   const taxRate = Math.max(0, Number(restaurant?.tax_rate_pct ?? 8.75));
   const taxType = (restaurant?.tax_type || 'Tax').trim() || 'Tax';
-  const taxIncluded = restaurant?.tax_included === 1 || restaurant?.tax_included === true;
+  const taxIncluded =
+    restaurant?.tax_included === 1 || restaurant?.tax_included === true;
   const service = billable * (serviceRate / 100);
   const taxableAmount = billable + service;
-  const tax = taxIncluded && taxRate > 0
-    ? taxableAmount - taxableAmount / (1 + taxRate / 100)
-    : taxableAmount * (taxRate / 100);
+  const tax =
+    taxIncluded && taxRate > 0
+      ? taxableAmount - taxableAmount / (1 + taxRate / 100)
+      : taxableAmount * (taxRate / 100);
   const preTaxTotal = taxableAmount - tax;
   const total = taxIncluded ? taxableAmount : taxableAmount + tax;
   const currencyCode = restaurant?.currency_code;
 
-  const isPaid   = payState === 'card' || payState === 'cash' || payState === 'comped';
-  // The bill can be edited (add products, change qty) only while it is a pending
-  // kitchen-sent order that hasn't been paid yet.
-  const canEditBill = payState === 'sent' && !!activeOrderId && !isPaid;
-  const additionsCount = cart.filter(c => c.addedNow).reduce((s, c) => s + c.qty, 0);
-  const hasAdditions = additionsCount > 0;
-  const statusLabel = payState === 'card'  ? 'Paid · Card'
-    : payState === 'cash'  ? 'Paid · Cash'
-    : payState === 'sent'  ? 'Sent to Kitchen'
-    : payState === 'comped'? 'Comped'
-    : 'Open';
-  const statusClass = isPaid || payState === 'sent' ? 'badge-paid' : 'badge-pending';
+  const isPaid =
+    payState === 'card' || payState === 'cash' || payState === 'comped';
+  const statusLabel =
+    payState === 'card'
+      ? 'Paid · Card'
+      : payState === 'cash'
+      ? 'Paid · Cash'
+      : payState === 'sent'
+      ? 'Sent to Kitchen'
+      : payState === 'comped'
+      ? 'Comped'
+      : 'Open';
+  const statusClass =
+    isPaid || payState === 'sent' ? 'badge-paid' : 'badge-pending';
 
   // ── Reset check ────────────────────────────────────────────────────────────
   function resetCheck() {
@@ -217,8 +296,6 @@ export function POSPanel() {
     setPayState('open');
     setNote('');
     setError('');
-    setEditMode(false);
-    setParcel(false);
     setPrintOk(false);
     setPrintError('');
   }
@@ -228,8 +305,6 @@ export function POSPanel() {
     setSelectedTable(tableId);
     setActiveOrderId(null);
     setPayState('open');
-    setEditMode(false);
-    setParcel(false);
     setError('');
     if (!tableId) {
       setCart([]);
@@ -239,18 +314,7 @@ export function POSPanel() {
     setTableOrderLoading(true);
     try {
       const orders = await ordersApi.list({ table_id: tableId });
-      const pending = orders.find((o) => o.status === 'sent');
-      // Self-heal: if the table is already empty/cleared but a stale 'sent' order
-      // still lingers from a previous customer, settle it silently so it stops
-      // re-appearing — then show this table as having no active bill.
-      const tableStatus = tables.find((t) => t.id === tableId)?.status;
-      if (pending && tableStatus === 'empty') {
-        try { await ordersApi.settleTable(tableId); } catch { /* best effort */ }
-        setCart([]);
-        setNote('');
-        setError('No pending kitchen-sent bill for this table.');
-        return;
-      }
+      const pending = orders.find(o => o.status === 'sent');
       if (!pending) {
         setCart([]);
         setNote('');
@@ -258,8 +322,8 @@ export function POSPanel() {
         return;
       }
       const full = await ordersApi.get(pending.id);
-      const nextCart: CartItem[] = (full.items ?? []).map((it) => {
-        const fromMenu = menu.find((m) => m.id === it.menu_item_id);
+      const nextCart: CartItem[] = (full.items ?? []).map(it => {
+        const fromMenu = menu.find(m => m.id === it.menu_item_id);
         const fallback: ApiMenuItem = fromMenu ?? {
           id: it.menu_item_id,
           restaurant_id: user?.restaurant_id ?? '',
@@ -273,16 +337,19 @@ export function POSPanel() {
         };
         let mods: string[] = [];
         if (typeof it.mods === 'string') {
-          try { mods = JSON.parse(it.mods || '[]'); } catch { mods = []; }
+          try {
+            mods = JSON.parse(it.mods || '[]');
+          } catch {
+            mods = [];
+          }
         } else {
           mods = (it.mods as string[] | undefined) ?? [];
         }
-        return { menuItem: fallback, qty: it.qty, mods, orderItemId: it.id };
+        return { menuItem: fallback, qty: it.qty, mods };
       });
       setCart(nextCart);
       setActiveOrderId(full.id);
       setNote(full.note ?? '');
-      setParcel(full.order_type === 'parcel');
       setPayState('sent');
       setError('');
     } catch (e) {
@@ -298,117 +365,31 @@ export function POSPanel() {
       setError('Select a pending table bill first.');
       return;
     }
-    setBusy(true); setError('');
+    setBusy(true);
+    setError('');
     try {
+      await ordersApi.updateStatus(activeOrderId, 'paid');
       if (selectedTable) {
-        // Atomic, server-side: marks EVERY active order on the table paid and
-        // clears the table in one transaction — so no leftover 'sent' order can
-        // survive to re-appear on the now-empty table.
-        await ordersApi.settleTable(selectedTable);
-      } else {
-        // Takeaway / no table: just settle the single active order.
-        await ordersApi.updateStatus(activeOrderId, 'paid');
+        await tablesApi.updateStatus(selectedTable, {
+          status: 'empty',
+          course: '',
+          covers: 0,
+        });
       }
       setPayState(method);
       setActiveOrderId(null);
       await refreshBillingQueues();
-    } catch (e) { setError((e as Error).message); }
-    finally { setBusy(false); }
-  }
-
-  // ── Bill editing (pending kitchen-sent order) ──────────────────────────────
-  // Change a line's quantity; dropping below 1 removes it. Persists to the order
-  // and reverts the optimistic update if the server call fails.
-  async function editQty(index: number, delta: number) {
-    const item = cart[index];
-    if (!activeOrderId || !item?.orderItemId || busy) return;
-    const newQty = item.qty + delta;
-    if (newQty < 1) { await removeLine(index); return; }
-    const prev = cart;
-    setCart(cs => cs.map((c, i) => (i === index ? { ...c, qty: newQty } : c)));
-    try {
-      await ordersApi.updateItem(activeOrderId, item.orderItemId, { qty: newQty });
-    } catch (e) {
-      setCart(prev);
-      setError((e as Error).message);
-    }
-  }
-
-  async function removeLine(index: number) {
-    const item = cart[index];
-    if (!activeOrderId || !item?.orderItemId || busy) return;
-    const prev = cart;
-    setCart(cs => cs.filter((_, i) => i !== index));
-    try {
-      await ordersApi.deleteItem(activeOrderId, item.orderItemId);
-    } catch (e) {
-      setCart(prev);
-      setError((e as Error).message);
-    }
-  }
-
-  // Add a product to the active bill (customer ordered more). Increments the
-  // line if the item is already present, otherwise creates a new order item.
-  async function addProduct(menuItem: ApiMenuItem) {
-    if (!canEditBill || busy) return;
-    const existing = cart.findIndex(c => c.menuItem.id === menuItem.id && c.mods.length === 0);
-    if (existing >= 0 && cart[existing].orderItemId) {
-      await editQty(existing, 1);
-      setCart(cs => cs.map((c, i) => (i === existing ? { ...c, addedNow: true } : c)));
-      return;
-    }
-    setBusy(true); setError('');
-    try {
-      const created = await ordersApi.addItem(activeOrderId!, { menu_item_id: menuItem.id, qty: 1, mods: [] });
-      setCart(cs => [...cs, { menuItem, qty: 1, mods: [], orderItemId: created.id, addedNow: true }]);
     } catch (e) {
       setError((e as Error).message);
     } finally {
       setBusy(false);
-    }
-  }
-
-  // Print just the newly-added items to the kitchen (supplementary ticket).
-  async function fireAdditionsToKitchen() {
-    const additions = cart.filter(c => c.addedNow);
-    if (!additions.length || busy) return;
-    setBusy(true); setError('');
-    try {
-      await printKitchenTicket({
-        restaurantName: restaurant?.name || user?.restaurant_name || 'Restaurant',
-        ticketId: `add-${(activeOrderId ?? '').slice(0, 8)}-${Date.now()}`,
-        tableName: tableObj?.name ?? selectedTable,
-        serverName: user?.name,
-        covers: tableObj?.covers || undefined,
-        items: additions.map(c => ({ name: c.menuItem.name, qty: c.qty })),
-        note: 'ADDITIONAL ITEMS',
-      }, user?.restaurant_id ?? restaurant?.id, { channel: kitchenPrinter?.channel });
-      setCart(cs => cs.map(c => ({ ...c, addedNow: false })));
-      toastBus.success('Added items sent to kitchen.');
-    } catch (e) {
-      setError((e as Error).message);
-      toastBus.error(`Could not send additions to kitchen: ${(e as Error).message}`);
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  // Toggle the active bill between dine-in and parcel/takeaway (persisted).
-  async function toggleParcel() {
-    if (!activeOrderId || busy) return;
-    const next = !parcel;
-    setParcel(next);
-    try {
-      await ordersApi.update(activeOrderId, { order_type: next ? 'parcel' : 'dine_in' });
-    } catch (e) {
-      setParcel(!next);
-      setError((e as Error).message);
     }
   }
 
   // ── Printer helpers ────────────────────────────────────────────────────────
   async function handleConnectBluetooth() {
-    setPrintBusy(true); setPrintError('');
+    setPrintBusy(true);
+    setPrintError('');
     try {
       const name = await connectBluetooth();
       setPrinter({ type: 'bluetooth', name });
@@ -416,18 +397,24 @@ export function POSPanel() {
       const toastKey = `${connectTarget}:bluetooth:${name.toLowerCase()}`;
       if (lastConnectToastKeyRef.current !== toastKey) {
         lastConnectToastKeyRef.current = toastKey;
-        toastBus.success(`${connectTarget === 'kitchen' ? 'Kitchen' : 'Cashier'} printer connected: ${name}`);
+        toastBus.success(
+          `${
+            connectTarget === 'kitchen' ? 'Kitchen' : 'Cashier'
+          } printer connected: ${name}`,
+        );
       }
     } catch (e) {
       const msg = (e as Error).message;
       setPrintError(msg);
       toastBus.error(`Bluetooth connection failed: ${msg}`);
+    } finally {
+      setPrintBusy(false);
     }
-    finally { setPrintBusy(false); }
   }
 
   async function handleConnectUSB() {
-    setPrintBusy(true); setPrintError('');
+    setPrintBusy(true);
+    setPrintError('');
     try {
       const name = await connectUSB();
       setPrinter({ type: 'usb', name });
@@ -435,14 +422,19 @@ export function POSPanel() {
       const toastKey = `${connectTarget}:usb:${name.toLowerCase()}`;
       if (lastConnectToastKeyRef.current !== toastKey) {
         lastConnectToastKeyRef.current = toastKey;
-        toastBus.success(`${connectTarget === 'kitchen' ? 'Kitchen' : 'Cashier'} printer connected: ${name}`);
+        toastBus.success(
+          `${
+            connectTarget === 'kitchen' ? 'Kitchen' : 'Cashier'
+          } printer connected: ${name}`,
+        );
       }
     } catch (e) {
       const msg = (e as Error).message;
       setPrintError(msg);
       toastBus.error(`USB connection failed: ${msg}`);
+    } finally {
+      setPrintBusy(false);
     }
-    finally { setPrintBusy(false); }
   }
 
   function handleDisconnect() {
@@ -452,19 +444,33 @@ export function POSPanel() {
   }
 
   function buildReceiptData(payMethod?: string): ReceiptData {
-    const address = [restaurant?.address_line1, restaurant?.address_line2, restaurant?.city, restaurant?.postal_code, restaurant?.country]
-      .filter(Boolean).join(', ');
+    const address = [
+      restaurant?.address_line1,
+      restaurant?.address_line2,
+      restaurant?.city,
+      restaurant?.postal_code,
+      restaurant?.country,
+    ]
+      .filter(Boolean)
+      .join(', ');
     return {
       restaurantName: restaurant?.name || user?.restaurant_name || 'Restaurant',
       currencySymbol: getCurrencySymbol(currencyCode),
-      logoUrl:        getRestaurantLogo(user?.restaurant_id ?? restaurant?.id, restaurant?.logo_url),
-      addressLine:    address || undefined,
-      phone:          restaurant?.contact_phone || undefined,
-      taxId:          restaurant?.tax_id || undefined,
-      tableName:      tableObj?.name ?? selectedTable ?? '',
-      serverName:     user?.name,
-      covers:         tableObj?.covers || undefined,
-      items:          cart.map(c => ({ name: c.menuItem.name, qty: c.qty, price: c.menuItem.price })),
+      logoUrl: getRestaurantLogo(
+        user?.restaurant_id ?? restaurant?.id,
+        restaurant?.logo_url,
+      ),
+      addressLine: address || undefined,
+      phone: restaurant?.contact_phone || undefined,
+      taxId: restaurant?.tax_id || undefined,
+      tableName: tableObj?.name ?? selectedTable ?? '',
+      serverName: user?.name,
+      covers: tableObj?.covers || undefined,
+      items: cart.map(c => ({
+        name: c.menuItem.name,
+        qty: c.qty,
+        price: c.menuItem.price,
+      })),
       subtotal,
       service,
       tax,
@@ -479,7 +485,8 @@ export function POSPanel() {
   }
 
   async function saveProfile() {
-    setProfileBusy(true); setError('');
+    setProfileBusy(true);
+    setError('');
     try {
       const updated = await restaurantApi.update(profileDraft);
       setRestaurant(updated);
@@ -494,13 +501,18 @@ export function POSPanel() {
         }
       }
       setProfileOpen(false);
-    } catch (e) { setError((e as Error).message); }
-    finally { setProfileBusy(false); }
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setProfileBusy(false);
+    }
   }
 
   async function handlePrint(payMethod?: string) {
     if (cart.length === 0) return;
-    setPrintBusy(true); setPrintError(''); setPrintOk(false);
+    setPrintBusy(true);
+    setPrintError('');
+    setPrintOk(false);
     try {
       const cashierChannel = cashierPrinter?.channel;
       const method = await printReceipt(
@@ -523,28 +535,35 @@ export function POSPanel() {
       const msg = (e as Error).message;
       setPrintError(msg);
       toastBus.error(`Receipt print failed: ${msg}`);
+    } finally {
+      setPrintBusy(false);
     }
-    finally { setPrintBusy(false); }
   }
 
   async function checkKitchenPrinter() {
     setPrintBusy(true);
     setPrintError('');
     try {
-      if (!kitchenPrinter) throw new Error('Kitchen printer is not configured. Connect it first.');
-      const method = await printKitchenTicket({
-        restaurantName: restaurant?.name || user?.restaurant_name || 'Restaurant',
-        ticketId: `kds-check-${Date.now()}`,
-        tableName: tableObj?.name || 'POS-TEST',
-        serverName: user?.name || 'Cafyz',
-        covers: 2,
-        station: 'EXPEDITE',
-        items: [
-          { name: 'Kitchen Printer Check', qty: 1, mods: ['From POS'] },
-          { name: 'Line Test Item', qty: 1, alert: true },
-        ],
-        note: 'Kitchen connection test from POS',
-      }, user?.restaurant_id ?? restaurant?.id, { channel: kitchenPrinter.channel });
+      if (!kitchenPrinter)
+        throw new Error('Kitchen printer is not configured. Connect it first.');
+      const method = await printKitchenTicket(
+        {
+          restaurantName:
+            restaurant?.name || user?.restaurant_name || 'Restaurant',
+          ticketId: `kds-check-${Date.now()}`,
+          tableName: tableObj?.name || 'POS-TEST',
+          serverName: user?.name || 'Cafyz',
+          covers: 2,
+          station: 'EXPEDITE',
+          items: [
+            { name: 'Kitchen Printer Check', qty: 1, mods: ['From POS'] },
+            { name: 'Line Test Item', qty: 1, alert: true },
+          ],
+          note: 'Kitchen connection test from POS',
+        },
+        user?.restaurant_id ?? restaurant?.id,
+        { channel: kitchenPrinter.channel },
+      );
       toastBus.success(
         method === 'dialog'
           ? 'Kitchen printer check opened in print preview.'
@@ -564,14 +583,25 @@ export function POSPanel() {
     setPrintBusy(true);
     setPrintError('');
     try {
-      if (!cashierPrinter) throw new Error('Cashier printer is not configured. Connect it first.');
-      const method = await printTest({
-        restaurantName: restaurant?.name || user?.restaurant_name || 'Restaurant',
-        restaurantId: user?.restaurant_id ?? restaurant?.id,
-        logoUrl: getRestaurantLogo(user?.restaurant_id ?? restaurant?.id, restaurant?.logo_url),
-        addressLine: [restaurant?.address_line1, restaurant?.city, restaurant?.country].filter(Boolean).join(', ') || undefined,
-        phone: restaurant?.contact_phone || undefined,
-      }, { channel: cashierPrinter.channel });
+      if (!cashierPrinter)
+        throw new Error('Cashier printer is not configured. Connect it first.');
+      const method = await printTest(
+        {
+          restaurantName:
+            restaurant?.name || user?.restaurant_name || 'Restaurant',
+          restaurantId: user?.restaurant_id ?? restaurant?.id,
+          logoUrl: getRestaurantLogo(
+            user?.restaurant_id ?? restaurant?.id,
+            restaurant?.logo_url,
+          ),
+          addressLine:
+            [restaurant?.address_line1, restaurant?.city, restaurant?.country]
+              .filter(Boolean)
+              .join(', ') || undefined,
+          phone: restaurant?.contact_phone || undefined,
+        },
+        { channel: cashierPrinter.channel },
+      );
       toastBus.success(
         method === 'dialog'
           ? 'Cashier printer check opened in print preview.'
@@ -595,23 +625,37 @@ export function POSPanel() {
         throw new Error('Configure both Kitchen and Cashier printers first.');
       }
       if (kitchenPrinter.channel === cashierPrinter.channel) {
-        throw new Error('Kitchen and Cashier printers must use different connection channels.');
+        throw new Error(
+          'Kitchen and Cashier printers must use different connection channels.',
+        );
       }
-      const kitchenMethod = await printKitchenTicket({
-        restaurantName: restaurant?.name || user?.restaurant_name || 'Restaurant',
-        ticketId: `both-check-${Date.now()}`,
-        tableName: tableObj?.name || 'POS-TEST',
-        serverName: user?.name || 'Cafyz',
-        covers: 2,
-        station: 'EXPEDITE',
-        items: [{ name: 'Dual test · kitchen', qty: 1 }],
-      }, user?.restaurant_id ?? restaurant?.id, { channel: kitchenPrinter.channel });
+      const kitchenMethod = await printKitchenTicket(
+        {
+          restaurantName:
+            restaurant?.name || user?.restaurant_name || 'Restaurant',
+          ticketId: `both-check-${Date.now()}`,
+          tableName: tableObj?.name || 'POS-TEST',
+          serverName: user?.name || 'Cafyz',
+          covers: 2,
+          station: 'EXPEDITE',
+          items: [{ name: 'Dual test · kitchen', qty: 1 }],
+        },
+        user?.restaurant_id ?? restaurant?.id,
+        { channel: kitchenPrinter.channel },
+      );
 
-      const cashierMethod = await printTest({
-        restaurantName: restaurant?.name || user?.restaurant_name || 'Restaurant',
-        restaurantId: user?.restaurant_id ?? restaurant?.id,
-        logoUrl: getRestaurantLogo(user?.restaurant_id ?? restaurant?.id, restaurant?.logo_url),
-      }, { channel: cashierPrinter.channel });
+      const cashierMethod = await printTest(
+        {
+          restaurantName:
+            restaurant?.name || user?.restaurant_name || 'Restaurant',
+          restaurantId: user?.restaurant_id ?? restaurant?.id,
+          logoUrl: getRestaurantLogo(
+            user?.restaurant_id ?? restaurant?.id,
+            restaurant?.logo_url,
+          ),
+        },
+        { channel: cashierPrinter.channel },
+      );
 
       toastBus.success(
         `Both checks complete · Kitchen: ${kitchenMethod} · Cashier: ${cashierMethod}`,
@@ -626,27 +670,31 @@ export function POSPanel() {
     }
   }
 
-  if (loading) return (
-    <div className="pos-layout">
-      <p style={{ color: 'var(--text2)', padding: 32 }}>Loading billing…</p>
-    </div>
-  );
+  if (loading)
+    return (
+      <div className="pos-layout">
+        <p style={{ color: 'var(--text2)', padding: 32 }}>Loading billing…</p>
+      </div>
+    );
 
   return (
     <div className="pos-layout">
-
       {/* ── Billing lookup panel ──────────────────────────────────────── */}
       <section className="pos-grid">
         <div className="pos-toolbar">
-          {categorised.map(c => (
-            <button key={c.id} type="button"
-              className={`pos-pill ${cat === c.id ? 'active' : ''}`}
-              onClick={() => setCat(c.id)}
-            >
-              {c.label}
-              {c.count > 0 && <span className="mono">{c.count}</span>}
-            </button>
-          ))}
+          <div className="flex flex-col w-screen gap-2 overflow-x-auto">
+            {categorised.map(c => (
+              <button
+                key={c.id}
+                type="button"
+                className={`pos-pill ${cat === c.id ? 'active' : ''}`}
+                onClick={() => setCat(c.id)}
+              >
+                {c.label}
+                {c.count > 0 && <span className="mono">{c.count}</span>}
+              </button>
+            ))}
+          </div>
           <div className="pos-search">
             <span>🔍</span>
             <input
@@ -655,59 +703,84 @@ export function POSPanel() {
               onChange={e => setSearch(e.target.value)}
             />
             {search && (
-              <button type="button" onClick={() => setSearch('')}
-                style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text3)', fontSize: 12 }}>
+              <button
+                type="button"
+                onClick={() => setSearch('')}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  color: 'var(--text3)',
+                  fontSize: 12,
+                }}
+              >
                 ✕
               </button>
             )}
           </div>
         </div>
 
-        {canEditBill && editMode && (
-          <p className="pos-add-hint">✎ Editing bill — tap a dish to add it to {tableObj?.name ?? 'this table'}.</p>
-        )}
         <div className="pos-dishes">
-          {visible.map(d => {
-            const addable = canEditBill && editMode;
-            return (
-              <div
-                key={d.id}
-                className={`pos-dish card ${addable ? 'addable' : 'disabled'}`}
-                {...(addable
-                  ? { role: 'button', tabIndex: 0, onClick: () => { void addProduct(d); } }
-                  : {})}
-              >
-                <div className="pos-dish-plate">
-                  <MenuItemImage imageUrl={d.image_url} name={d.name} variant="pos-plate" />
-                  {d.is_popular === 1 && <span className="pos-popular">★ Popular</span>}
-                  {addable && <span className="pos-dish-add">+ Add</span>}
-                </div>
-                <div className="pos-dish-info">
-                  <p className="pos-dish-name">{d.name}</p>
-                  <p className="pos-dish-price mono">{formatMoney(d.price, currencyCode)}</p>
-                  <p className="pos-dish-sub">{d.description}</p>
-                </div>
+          {visible.map(d => (
+            <div key={d.id} className="pos-dish card disabled">
+              <div className="pos-dish-plate">
+                <MenuItemImage
+                  imageUrl={d.image_url}
+                  name={d.name}
+                  variant="pos-plate"
+                />
+                {d.is_popular === 1 && (
+                  <span className="pos-popular">★ Popular</span>
+                )}
               </div>
-            );
-          })}
+              <div className="pos-dish-info">
+                <p className="pos-dish-name">{d.name}</p>
+                <p className="pos-dish-price mono">
+                  {formatMoney(d.price, currencyCode)}
+                </p>
+                <p className="pos-dish-sub">{d.description}</p>
+              </div>
+            </div>
+          ))}
           {visible.length === 0 && (
-            <p style={{ color: 'var(--text3)', padding: 24, gridColumn: '1/-1' }}>
-              {search ? `No results for "${search}"` : 'No items in this category.'}
+            <p
+              style={{ color: 'var(--text3)', padding: 24, gridColumn: '1/-1' }}
+            >
+              {search
+                ? `No results for "${search}"`
+                : 'No items in this category.'}
             </p>
           )}
         </div>
-        <div style={{ padding: 10, borderTop: '0.5px solid var(--line)', marginTop: 10 }}>
+        <div
+          style={{
+            padding: 10,
+            borderTop: '0.5px solid var(--line)',
+            marginTop: 10,
+          }}
+        >
           <p className="eyebrow">Pending Table Bills</p>
           {pendingOrders.length === 0 ? (
-            <p style={{ margin: 0, color: 'var(--text3)', fontSize: 12 }}>No pending table bills.</p>
+            <p style={{ margin: 0, color: 'var(--text3)', fontSize: 12 }}>
+              No pending table bills.
+            </p>
           ) : (
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 6 }}>
-              {pendingOrders.map((o) => (
+            <div
+              style={{
+                display: 'flex',
+                gap: 8,
+                flexWrap: 'wrap',
+                marginTop: 6,
+              }}
+            >
+              {pendingOrders.map(o => (
                 <button
                   key={o.id}
                   type="button"
                   className="pos-pill"
-                  onClick={() => { if (o.table_id) void handleTableChange(o.table_id); }}
+                  onClick={() => {
+                    if (o.table_id) void handleTableChange(o.table_id);
+                  }}
                 >
                   {o.table_name || 'No table'}
                 </button>
@@ -716,33 +789,47 @@ export function POSPanel() {
           )}
         </div>
         <p style={{ margin: '8px 0 0', fontSize: 12, color: 'var(--text3)' }}>
-          Billing-only mode: orders are created and sent from Menu/Waiter panels.
+          Billing-only mode: orders are created and sent from Menu/Waiter
+          panels.
         </p>
       </section>
 
       {/* ── Order sidebar ──────────────────────────────────────────────── */}
       <aside className="pos-order">
-
         {/* ── Printer status bar ─────────────────────────────────────────── */}
         <div className="pos-printer-bar">
           <PrinterHelpBanner />
           <div className="pos-printer-bar-row">
             {printer.type !== 'none' ? (
               <span className="pos-printer-connected">
-                {printer.type === 'bluetooth' ? <BluetoothIcon /> : '🔌'} {printer.name}
-                <button type="button" className="pos-printer-disconnect" onClick={handleDisconnect}>×</button>
+                {printer.type === 'bluetooth' ? <BluetoothIcon /> : '🔌'}{' '}
+                {printer.name}
+                <button
+                  type="button"
+                  className="pos-printer-disconnect"
+                  onClick={handleDisconnect}
+                >
+                  ×
+                </button>
               </span>
             ) : (
               <span className="pos-printer-idle">No printer connected</span>
             )}
-            <button type="button" className="pos-printer-trigger" onClick={handleDisconnect} disabled={printBusy || printer.type === 'none'}>
+            <button
+              type="button"
+              className="pos-printer-trigger"
+              onClick={handleDisconnect}
+              disabled={printBusy || printer.type === 'none'}
+            >
               Disconnect Active
             </button>
           </div>
           <button
             type="button"
-            className={`pos-printer-dropdown-toggle ${printerSetupOpen ? 'open' : ''}`}
-            onClick={() => setPrinterSetupOpen((v) => !v)}
+            className={`pos-printer-dropdown-toggle ${
+              printerSetupOpen ? 'open' : ''
+            }`}
+            onClick={() => setPrinterSetupOpen(v => !v)}
             aria-expanded={printerSetupOpen}
             aria-controls="pos-printer-setup-dropdown"
           >
@@ -750,7 +837,10 @@ export function POSPanel() {
             <span className="mono">{printerSetupOpen ? '▲' : '▼'}</span>
           </button>
 
-          <div id="pos-printer-setup-dropdown" className={`pos-printer-dropdown ${printerSetupOpen ? 'open' : ''}`}>
+          <div
+            id="pos-printer-setup-dropdown"
+            className={`pos-printer-dropdown ${printerSetupOpen ? 'open' : ''}`}
+          >
             <div className="pos-printer-assignment-grid">
               <button
                 type="button"
@@ -758,8 +848,12 @@ export function POSPanel() {
                 onClick={() => setConnectTarget('kitchen')}
                 disabled={printBusy}
               >
-                <span className="pos-printer-assignment-title">Kitchen Printer</span>
-                <span className="pos-printer-assignment-meta">{printerBadgeText('kitchen')}</span>
+                <span className="pos-printer-assignment-title">
+                  Kitchen Printer
+                </span>
+                <span className="pos-printer-assignment-meta">
+                  {printerBadgeText('kitchen')}
+                </span>
               </button>
               <button
                 type="button"
@@ -767,23 +861,25 @@ export function POSPanel() {
                 onClick={() => setConnectTarget('cashier')}
                 disabled={printBusy}
               >
-                <span className="pos-printer-assignment-title">Cashier Printer</span>
-                <span className="pos-printer-assignment-meta">{printerBadgeText('cashier')}</span>
+                <span className="pos-printer-assignment-title">
+                  Cashier Printer
+                </span>
+                <span className="pos-printer-assignment-meta">
+                  {printerBadgeText('cashier')}
+                </span>
               </button>
             </div>
 
-            {printError && (
-              <p className="pos-printer-error">{printError}</p>
-            )}
-            {printOk && (
-              <p className="pos-printer-ok">✓ Sent to printer</p>
-            )}
+            {printError && <p className="pos-printer-error">{printError}</p>}
+            {printOk && <p className="pos-printer-ok">✓ Sent to printer</p>}
             <div className="pos-printer-config-inline">
               <p className="eyebrow">Bluetooth / USB Configuration</p>
               <div className="pos-printer-role-toggle">
                 <button
                   type="button"
-                  className={`pos-printer-role-btn ${connectTarget === 'kitchen' ? 'active' : ''}`}
+                  className={`pos-printer-role-btn ${
+                    connectTarget === 'kitchen' ? 'active' : ''
+                  }`}
                   onClick={() => setConnectTarget('kitchen')}
                   disabled={printBusy}
                 >
@@ -791,7 +887,9 @@ export function POSPanel() {
                 </button>
                 <button
                   type="button"
-                  className={`pos-printer-role-btn ${connectTarget === 'cashier' ? 'active' : ''}`}
+                  className={`pos-printer-role-btn ${
+                    connectTarget === 'cashier' ? 'active' : ''
+                  }`}
                   onClick={() => setConnectTarget('cashier')}
                   disabled={printBusy}
                 >
@@ -800,25 +898,58 @@ export function POSPanel() {
               </div>
               <div className="pos-printer-inline-actions">
                 {!isIosDevice() && printerEnv.canUseBluetooth && (
-                  <button type="button" className="pos-printer-check-btn" onClick={handleConnectBluetooth} disabled={printBusy}>
-                    {printBusy ? '…' : <><BluetoothIcon /> Connect {connectTarget} Bluetooth</>}
+                  <button
+                    type="button"
+                    className="pos-printer-check-btn"
+                    onClick={handleConnectBluetooth}
+                    disabled={printBusy}
+                  >
+                    {printBusy ? (
+                      '…'
+                    ) : (
+                      <>
+                        <BluetoothIcon /> Connect {connectTarget} Bluetooth
+                      </>
+                    )}
                   </button>
                 )}
-                {!isIosDevice() && printerEnv.usbAvailable && printerEnv.platform !== 'ios' && (
-                  <button type="button" className="pos-printer-check-btn" onClick={handleConnectUSB} disabled={printBusy}>
-                    {printBusy ? '…' : `Connect ${connectTarget} USB`}
-                  </button>
-                )}
+                {!isIosDevice() &&
+                  printerEnv.usbAvailable &&
+                  printerEnv.platform !== 'ios' && (
+                    <button
+                      type="button"
+                      className="pos-printer-check-btn"
+                      onClick={handleConnectUSB}
+                      disabled={printBusy}
+                    >
+                      {printBusy ? '…' : `Connect ${connectTarget} USB`}
+                    </button>
+                  )}
               </div>
             </div>
             <div className="pos-printer-checks">
-              <button type="button" className="pos-printer-check-btn" onClick={checkKitchenPrinter} disabled={printBusy}>
+              <button
+                type="button"
+                className="pos-printer-check-btn"
+                onClick={checkKitchenPrinter}
+                disabled={printBusy}
+              >
                 {printBusy ? '…' : 'Kitchen Printer Check'}
               </button>
-              <button type="button" className="pos-printer-check-btn" onClick={checkCashierPrinter} disabled={printBusy}>
+              <button
+                type="button"
+                className="pos-printer-check-btn"
+                onClick={checkCashierPrinter}
+                disabled={printBusy}
+              >
                 {printBusy ? '…' : 'Cashier Printer Check'}
               </button>
-              <button type="button" className="pos-printer-check-btn both" onClick={checkBothPrinters} disabled={printBusy}>
+              <button
+                type="button"
+                className="pos-printer-check-btn both"
+                onClick={checkBothPrinters}
+                disabled={printBusy}
+              >
                 {printBusy ? '…' : 'One Click Check Both'}
               </button>
             </div>
@@ -826,117 +957,95 @@ export function POSPanel() {
         </div>
 
         <header className="pos-order-head">
-          <div className="pos-check-info">
-            <div className="pos-check-top">
-              <p className="eyebrow">Active Check</p>
-              <span className={`badge ${statusClass}`}>{statusLabel}</span>
-            </div>
-            <SearchSelect
+          <div>
+            <p className="eyebrow">Active Check</p>
+            {/* <button
+              type="button"
+              className="btn-outline"
+              style={{ marginBottom: 6 }}
+              onClick={() => setProfileOpen(true)}
+            >
+              Restaurant Profile
+            </button> */}
+            <select
               value={selectedTable}
+              onChange={e => {
+                void handleTableChange(e.target.value);
+              }}
               disabled={isPaid}
-              placeholder="— Select table —"
-              searchPlaceholder="Search tables…"
-              ariaLabel="Select table"
-              onChange={(v) => { void handleTableChange(v); }}
-              options={[
-                { value: '', label: '— No table —' },
-                ...tables
-                  .filter(t => t.status === 'empty' || t.status === 'occupied' || t.status === 'paying')
-                  .map(t => ({ value: t.id, label: `${t.name} · ${t.status}` })),
-              ]}
-            />
+              style={{
+                background: 'transparent',
+                color: 'var(--text1)',
+                border: 'none',
+                fontSize: 18,
+                fontFamily: 'inherit',
+                cursor: 'pointer',
+              }}
+            >
+              <option value="">— No table —</option>
+              {tables
+                .filter(
+                  t =>
+                    t.status === 'empty' ||
+                    t.status === 'occupied' ||
+                    t.status === 'paying',
+                )
+                .map(t => (
+                  <option key={t.id} value={t.id}>
+                    {t.name} · {t.status}
+                  </option>
+                ))}
+            </select>
             <p className="pos-meta">
               {tableObj ? `${tableObj.covers} guests` : '—'} ·{' '}
               <span className="mono">
-                {new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}
+                {new Date().toLocaleTimeString('en-GB', {
+                  hour: '2-digit',
+                  minute: '2-digit',
+                })}
               </span>
             </p>
             {tableOrderLoading && (
-              <p className="pos-loading-note">Loading pending order for table…</p>
+              <p style={{ fontSize: 11, color: 'var(--text3)', marginTop: 4 }}>
+                Loading pending order for table…
+              </p>
             )}
-            <button type="button" className="btn-outline pos-profile-btn" onClick={() => setProfileOpen(true)}>
-              Restaurant Profile
-            </button>
           </div>
+          <span className={`badge ${statusClass}`}>{statusLabel}</span>
         </header>
 
-        {note && (
-          <p className="pos-note">
-            📝 {note}
+        {note && <p className="pos-note">📝 {note}</p>}
+
+        {error && (
+          <p style={{ color: 'var(--danger)', fontSize: 12, margin: '4px 0' }}>
+            {error}
           </p>
-        )}
-
-        {error && <p style={{ color: 'var(--danger)', fontSize: 12, margin: '4px 0' }}>{error}</p>}
-
-        {/* Edit toolbar — only on a pending, unpaid kitchen-sent bill */}
-        {canEditBill && (
-          <div className="pos-edit-bar">
-            <button
-              type="button"
-              className={`pos-edit-toggle ${editMode ? 'active' : ''}`}
-              onClick={() => setEditMode(v => !v)}
-            >
-              {editMode ? '✓ Done Editing' : '✎ Edit Bill'}
-            </button>
-            <button
-              type="button"
-              className={`pos-parcel-toggle${parcel ? ' active' : ''}`}
-              aria-pressed={parcel}
-              disabled={busy}
-              onClick={() => { void toggleParcel(); }}
-            >
-              {parcel ? '📦 Parcel ✓' : '📦 Parcel / Takeaway'}
-            </button>
-            {hasAdditions && (
-              <button
-                type="button"
-                className="pos-fire-additions"
-                disabled={busy}
-                onClick={() => { void fireAdditionsToKitchen(); }}
-              >
-                🔥 Send {additionsCount} New to Kitchen
-              </button>
-            )}
-          </div>
         )}
 
         {/* Cart items */}
         <ul className="pos-items">
-          {cart.map((c, idx) => (
-            <li key={c.orderItemId ?? c.menuItem.id} className={`pos-item ${c.addedNow ? 'added' : ''}`}>
-              {canEditBill && editMode ? (
-                <div className="pos-item-stepper">
-                  <button type="button" onClick={() => { void editQty(idx, -1); }} aria-label="Decrease">−</button>
-                  <span className="mono">{c.qty}</span>
-                  <button type="button" onClick={() => { void editQty(idx, 1); }} aria-label="Increase">+</button>
-                </div>
-              ) : (
-                <span className="pos-item-qty mono">{c.qty}</span>
-              )}
+          {cart.map(c => (
+            <li key={c.menuItem.id} className="pos-item">
+              <span className="pos-item-qty mono">{c.qty}</span>
               <div className="pos-item-body">
                 <div className="pos-item-row">
-                  <span className="pos-item-name">
-                    {c.menuItem.name}
-                    {c.addedNow && <span className="pos-item-newtag">NEW</span>}
+                  <span>{c.menuItem.name}</span>
+                  <span className="mono">
+                    {formatMoney(c.menuItem.price * c.qty, currencyCode)}
                   </span>
-                  <span className="pos-item-price mono">{formatMoney(c.menuItem.price * c.qty, currencyCode)}</span>
                 </div>
-                {c.mods.map(m => <p key={m} className="pos-mod">· {m}</p>)}
+                {c.mods.map(m => (
+                  <p key={m} className="pos-mod">
+                    · {m}
+                  </p>
+                ))}
               </div>
-              {canEditBill && editMode && (
-                <button
-                  type="button"
-                  className="pos-item-remove"
-                  onClick={() => { void removeLine(idx); }}
-                  aria-label="Remove item"
-                >
-                  ×
-                </button>
-              )}
             </li>
           ))}
           {cart.length === 0 && (
-            <p style={{ color: 'var(--text3)', fontSize: 13, padding: '12px 0' }}>
+            <p
+              style={{ color: 'var(--text3)', fontSize: 13, padding: '12px 0' }}
+            >
               Select a pending table to auto-load the bill.
             </p>
           )}
@@ -944,43 +1053,47 @@ export function POSPanel() {
 
         {/* Sent banner */}
         {payState === 'sent' && (
-          <p style={{ fontSize: 12, color: 'var(--success, #4ade80)', padding: '6px 0', borderTop: '0.5px solid var(--line)' }}>
+          <p
+            style={{
+              fontSize: 12,
+              color: 'var(--success, #4ade80)',
+              padding: '6px 0',
+              borderTop: '0.5px solid var(--line)',
+            }}
+          >
             ✓ Sent to kitchen — awaiting payment
           </p>
         )}
 
         {/* Totals */}
         <footer className="pos-totals">
-          {/* Collapsible price breakdown — Total Due stays always visible below */}
-          <button
-            type="button"
-            className={`pos-breakdown-toggle${breakdownOpen ? ' open' : ''}`}
-            aria-expanded={breakdownOpen}
-            onClick={() => setBreakdownOpen(v => !v)}
-          >
-            <span>Price breakdown</span>
-            <span className="pos-breakdown-summary mono">{formatMoney(total, currencyCode)}</span>
-            <span className="pos-breakdown-chevron" aria-hidden>{breakdownOpen ? '▴' : '▾'}</span>
-          </button>
-
-          {breakdownOpen && (
-            <div className="pos-breakdown">
-              <div className="pos-total-row"><span>Subtotal</span><span className="mono">{formatMoney(subtotal, currencyCode)}</span></div>
-              <div className="pos-total-row"><span>Service · {serviceRate.toFixed(2)}%</span><span className="mono">{formatMoney(service, currencyCode)}</span></div>
-              {taxIncluded && (
-                <div className="pos-total-row">
-                  <span>Amount before {taxType}</span>
-                  <span className="mono">{formatMoney(preTaxTotal, currencyCode)}</span>
-                </div>
-              )}
-              <div className="pos-total-row">
-                <span>{taxType} · {taxRate.toFixed(2)}%{taxIncluded ? ' (incl.)' : ''}</span>
-                <span className="mono">{formatMoney(tax, currencyCode)}</span>
-              </div>
+          <div className="pos-total-row">
+            <span>Subtotal</span>
+            <span className="mono">{formatMoney(subtotal, currencyCode)}</span>
+          </div>
+          <div className="pos-total-row">
+            <span>Service · {serviceRate.toFixed(2)}%</span>
+            <span className="mono">{formatMoney(service, currencyCode)}</span>
+          </div>
+          {taxIncluded && (
+            <div className="pos-total-row">
+              <span>Amount before {taxType}</span>
+              <span className="mono">
+                {formatMoney(preTaxTotal, currencyCode)}
+              </span>
             </div>
           )}
-
-          <div className="pos-total-final"><span>Total Due</span><span className="serif">{formatMoney(total, currencyCode)}</span></div>
+          <div className="pos-total-row">
+            <span>
+              {taxType} · {taxRate.toFixed(2)}%
+              {taxIncluded ? ' (included)' : ''}
+            </span>
+            <span className="mono">{formatMoney(tax, currencyCode)}</span>
+          </div>
+          <div className="pos-total-final">
+            <span>Total Due</span>
+            <span className="serif">{formatMoney(total, currencyCode)}</span>
+          </div>
 
           {/* New Check button — shown after payment is finalised */}
           {isPaid ? (
@@ -989,30 +1102,51 @@ export function POSPanel() {
                 type="button"
                 className="pos-print-receipt"
                 disabled={printBusy}
-                onClick={() => handlePrint(
-                  payState === 'card' ? 'Card' : payState === 'cash' ? 'Cash' : payState === 'comped' ? 'Complimentary' : undefined
-                )}
+                onClick={() =>
+                  handlePrint(
+                    payState === 'card'
+                      ? 'Card'
+                      : payState === 'cash'
+                      ? 'Cash'
+                      : payState === 'comped'
+                      ? 'Complimentary'
+                      : undefined,
+                  )
+                }
               >
                 {printBusy ? '…' : '🖨 Print Receipt'}
               </button>
-              <button type="button" className="pos-charge done" onClick={resetCheck}>
+              <button
+                type="button"
+                className="pos-charge done"
+                onClick={resetCheck}
+              >
                 ✓ Done · New Check
               </button>
             </>
           ) : (
             <>
-              <button type="button"
+              <button
+                type="button"
                 className={`pos-charge ${payState === 'sent' ? 'sent' : ''}`}
                 disabled={cart.length === 0 || busy || payState !== 'sent'}
                 onClick={() => handleCharge('card')}
               >
-                {busy ? '…' : payState === 'sent' ? `💳 Charge · ${getCurrencySymbol(currencyCode)}${total.toFixed(2)}` : 'Select Pending Table'}
+                {busy
+                  ? '…'
+                  : payState === 'sent'
+                  ? `💳 Charge · ${getCurrencySymbol(
+                      currencyCode,
+                    )}${total.toFixed(2)}`
+                  : 'Select Pending Table'}
               </button>
 
               <div className="pos-alt-pay">
-                <button type="button"
+                <button
+                  type="button"
                   disabled={cart.length === 0 || busy || payState !== 'sent'}
-                  onClick={() => handleCharge('cash')}>
+                  onClick={() => handleCharge('cash')}
+                >
                   💵 Cash
                 </button>
               </div>
@@ -1020,7 +1154,7 @@ export function POSPanel() {
           )}
         </footer>
       </aside>
-      <Modal
+      {/* <Modal
         open={profileOpen}
         onClose={() => setProfileOpen(false)}
         eyebrow="Restaurant Profile"
@@ -1029,25 +1163,99 @@ export function POSPanel() {
         size="lg"
         footer={
           <>
-            <button type="button" className="roles-cancel-btn" onClick={() => setProfileOpen(false)}>Cancel</button>
-            <button type="button" className="roles-save-btn" onClick={saveProfile} disabled={profileBusy || !profileDraft.name.trim()}>
+            <button
+              type="button"
+              className="roles-cancel-btn"
+              onClick={() => setProfileOpen(false)}
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              className="roles-save-btn"
+              onClick={saveProfile}
+              disabled={profileBusy || !profileDraft.name.trim()}
+            >
               {profileBusy ? 'Saving…' : 'Save Profile'}
             </button>
           </>
         }
       >
         <div className="form-grid-2">
-          <input className="roles-input" placeholder="Restaurant name" value={profileDraft.name} onChange={e => setProfileDraft(d => ({ ...d, name: e.target.value }))} />
-          <input className="roles-input" placeholder="Contact phone" value={profileDraft.contact_phone} onChange={e => setProfileDraft(d => ({ ...d, contact_phone: e.target.value }))} />
-          <input className="roles-input" placeholder="Contact email" value={profileDraft.contact_email} onChange={e => setProfileDraft(d => ({ ...d, contact_email: e.target.value }))} />
-          <input className="roles-input" placeholder="Address line 1" value={profileDraft.address_line1} onChange={e => setProfileDraft(d => ({ ...d, address_line1: e.target.value }))} />
-          <input className="roles-input" placeholder="Address line 2" value={profileDraft.address_line2} onChange={e => setProfileDraft(d => ({ ...d, address_line2: e.target.value }))} />
-          <input className="roles-input" placeholder="City" value={profileDraft.city} onChange={e => setProfileDraft(d => ({ ...d, city: e.target.value }))} />
-          <input className="roles-input" placeholder="Country" value={profileDraft.country} onChange={e => setProfileDraft(d => ({ ...d, country: e.target.value }))} />
-          <input className="roles-input" placeholder="Postal code" value={profileDraft.postal_code} onChange={e => setProfileDraft(d => ({ ...d, postal_code: e.target.value }))} />
-          <input className="roles-input" placeholder="Tax ID" value={profileDraft.tax_id} onChange={e => setProfileDraft(d => ({ ...d, tax_id: e.target.value }))} />
+          <input
+            className="roles-input"
+            placeholder="Restaurant name"
+            value={profileDraft.name}
+            onChange={e =>
+              setProfileDraft(d => ({ ...d, name: e.target.value }))
+            }
+          />
+          <input
+            className="roles-input"
+            placeholder="Contact phone"
+            value={profileDraft.contact_phone}
+            onChange={e =>
+              setProfileDraft(d => ({ ...d, contact_phone: e.target.value }))
+            }
+          />
+          <input
+            className="roles-input"
+            placeholder="Contact email"
+            value={profileDraft.contact_email}
+            onChange={e =>
+              setProfileDraft(d => ({ ...d, contact_email: e.target.value }))
+            }
+          />
+          <input
+            className="roles-input"
+            placeholder="Address line 1"
+            value={profileDraft.address_line1}
+            onChange={e =>
+              setProfileDraft(d => ({ ...d, address_line1: e.target.value }))
+            }
+          />
+          <input
+            className="roles-input"
+            placeholder="Address line 2"
+            value={profileDraft.address_line2}
+            onChange={e =>
+              setProfileDraft(d => ({ ...d, address_line2: e.target.value }))
+            }
+          />
+          <input
+            className="roles-input"
+            placeholder="City"
+            value={profileDraft.city}
+            onChange={e =>
+              setProfileDraft(d => ({ ...d, city: e.target.value }))
+            }
+          />
+          <input
+            className="roles-input"
+            placeholder="Country"
+            value={profileDraft.country}
+            onChange={e =>
+              setProfileDraft(d => ({ ...d, country: e.target.value }))
+            }
+          />
+          <input
+            className="roles-input"
+            placeholder="Postal code"
+            value={profileDraft.postal_code}
+            onChange={e =>
+              setProfileDraft(d => ({ ...d, postal_code: e.target.value }))
+            }
+          />
+          <input
+            className="roles-input"
+            placeholder="Tax ID"
+            value={profileDraft.tax_id}
+            onChange={e =>
+              setProfileDraft(d => ({ ...d, tax_id: e.target.value }))
+            }
+          />
         </div>
-      </Modal>
+      </Modal> */}
     </div>
   );
 }

@@ -23,18 +23,104 @@ interface POSScreenProps {
 }
 
 const DISHES = [
-  { id: 1, cat: 'starters', name: 'Burrata di Andria', price: 18, sub: 'Heirloom tomato · basil oil', sym: '◯' },
-  { id: 2, cat: 'starters', name: 'Tuna Crudo', price: 24, sub: 'Citrus · radish · togarashi', sym: '~' },
-  { id: 3, cat: 'starters', name: 'Beef Tartare', price: 22, sub: 'Cured yolk · cornichon', sym: '◐' },
-  { id: 4, cat: 'mains', name: 'Côte de Bœuf', price: 64, sub: '500g · bone marrow butter', sym: '◐' },
-  { id: 5, cat: 'mains', name: 'Black Cod Miso', price: 42, sub: 'Saikyo · pickled ginger', sym: '~', popular: true },
-  { id: 6, cat: 'mains', name: 'Risotto Milanese', price: 32, sub: 'Saffron · 24-month parmigiano', sym: '✦' },
-  { id: 7, cat: 'mains', name: "Duck à l'Orange", price: 46, sub: 'Confit leg · gastrique', sym: '◐' },
-  { id: 8, cat: 'mains', name: 'Lobster Linguine', price: 58, sub: 'Maine · bisque · tarragon', sym: '✦', popular: true },
-  { id: 9, cat: 'mains', name: 'Wagyu A5 Sando', price: 78, sub: 'Milk bread · katsu', sym: '◐' },
-  { id: 10, cat: 'desserts', name: 'Soufflé Grand Marnier', price: 16, sub: 'Crème anglaise', sym: '◇' },
-  { id: 11, cat: 'desserts', name: 'Île Flottante', price: 14, sub: 'Almond praline', sym: '◇' },
-  { id: 12, cat: 'desserts', name: 'Tarte Tatin', price: 15, sub: 'Crème fraîche', sym: '◇' },
+  {
+    id: 1,
+    cat: 'starters',
+    name: 'Burrata di Andria',
+    price: 18,
+    sub: 'Heirloom tomato · basil oil',
+    sym: '◯',
+  },
+  {
+    id: 2,
+    cat: 'starters',
+    name: 'Tuna Crudo',
+    price: 24,
+    sub: 'Citrus · radish · togarashi',
+    sym: '~',
+  },
+  {
+    id: 3,
+    cat: 'starters',
+    name: 'Beef Tartare',
+    price: 22,
+    sub: 'Cured yolk · cornichon',
+    sym: '◐',
+  },
+  {
+    id: 4,
+    cat: 'mains',
+    name: 'Côte de Bœuf',
+    price: 64,
+    sub: '500g · bone marrow butter',
+    sym: '◐',
+  },
+  {
+    id: 5,
+    cat: 'mains',
+    name: 'Black Cod Miso',
+    price: 42,
+    sub: 'Saikyo · pickled ginger',
+    sym: '~',
+    popular: true,
+  },
+  {
+    id: 6,
+    cat: 'mains',
+    name: 'Risotto Milanese',
+    price: 32,
+    sub: 'Saffron · 24-month parmigiano',
+    sym: '✦',
+  },
+  {
+    id: 7,
+    cat: 'mains',
+    name: "Duck à l'Orange",
+    price: 46,
+    sub: 'Confit leg · gastrique',
+    sym: '◐',
+  },
+  {
+    id: 8,
+    cat: 'mains',
+    name: 'Lobster Linguine',
+    price: 58,
+    sub: 'Maine · bisque · tarragon',
+    sym: '✦',
+    popular: true,
+  },
+  {
+    id: 9,
+    cat: 'mains',
+    name: 'Wagyu A5 Sando',
+    price: 78,
+    sub: 'Milk bread · katsu',
+    sym: '◐',
+  },
+  {
+    id: 10,
+    cat: 'desserts',
+    name: 'Soufflé Grand Marnier',
+    price: 16,
+    sub: 'Crème anglaise',
+    sym: '◇',
+  },
+  {
+    id: 11,
+    cat: 'desserts',
+    name: 'Île Flottante',
+    price: 14,
+    sub: 'Almond praline',
+    sym: '◇',
+  },
+  {
+    id: 12,
+    cat: 'desserts',
+    name: 'Tarte Tatin',
+    price: 15,
+    sub: 'Crème fraîche',
+    sym: '◇',
+  },
 ];
 
 const CATEGORIES = [
@@ -68,12 +154,14 @@ export function POSScreen({
   const [tableNote, setTableNote] = useState<string | null>(null);
   const [compApplied, setCompApplied] = useState(false);
   const [splitMode, setSplitMode] = useState(false);
-  const [paymentMethod, setPaymentMethod] = useState<'open' | 'card' | 'cash' | 'sent'>('open');
+  const [paymentMethod, setPaymentMethod] = useState<
+    'open' | 'card' | 'cash' | 'sent'
+  >('open');
 
   const visible = DISHES.filter(d => cat === 'all' || d.cat === cat);
   const orderMap = Object.fromEntries(order.map(o => [o.id, o.qty]));
 
-  const addDish = (dish: typeof DISHES[0]) => {
+  const addDish = (dish: (typeof DISHES)[0]) => {
     setOrder(prev => {
       const i = prev.findIndex(o => o.id === dish.id);
       if (i >= 0) {
@@ -102,7 +190,8 @@ export function POSScreen({
   const tax = billableSubtotal * 0.0875;
   const total = billableSubtotal + service + tax;
 
-  const addTableNote = () => setTableNote('Allergies: shellfish — anniversary dessert');
+  const addTableNote = () =>
+    setTableNote('Allergies: shellfish — anniversary dessert');
   const applyComp = () => setCompApplied(true);
   const applySplit = () => setSplitMode(true);
 
@@ -136,13 +225,15 @@ export function POSScreen({
               : 'Open'
           }
           variant={
-            paymentMethod !== 'open' || compApplied ? 'paid' : splitMode ? 'pending' : 'pending'
+            paymentMethod !== 'open' || compApplied
+              ? 'paid'
+              : splitMode
+              ? 'pending'
+              : 'pending'
           }
         />
       </View>
-      {tableNote ? (
-        <Text style={os.tableNote}>Note · {tableNote}</Text>
-      ) : null}
+      {tableNote ? <Text style={os.tableNote}>Note · {tableNote}</Text> : null}
 
       {/* Items */}
       <ScrollView style={os.itemsScroll}>
@@ -157,20 +248,30 @@ export function POSScreen({
               <View style={{ flex: 1 }}>
                 <View style={os.itemRow}>
                   <Text style={os.itemName}>{d.name}</Text>
-                  <Text style={os.itemPrice}>${(d.price * o.qty).toFixed(2)}</Text>
+                  <Text style={os.itemPrice}>
+                    ${(d.price * o.qty).toFixed(2)}
+                  </Text>
                 </View>
                 {o.mods.length > 0 && (
                   <View style={{ marginTop: 4 }}>
                     {o.mods.map((m, mi) => (
-                      <Text key={mi} style={os.mod}>· {m}</Text>
+                      <Text key={mi} style={os.mod}>
+                        · {m}
+                      </Text>
                     ))}
                   </View>
                 )}
                 <View style={os.qtyBtns}>
-                  <TouchableOpacity style={os.qtyBtn} onPress={() => changeQty(o.id, -1)}>
+                  <TouchableOpacity
+                    style={os.qtyBtn}
+                    onPress={() => changeQty(o.id, -1)}
+                  >
                     <Text style={os.qtyBtnText}>−</Text>
                   </TouchableOpacity>
-                  <TouchableOpacity style={os.qtyBtn} onPress={() => changeQty(o.id, 1)}>
+                  <TouchableOpacity
+                    style={os.qtyBtn}
+                    onPress={() => changeQty(o.id, 1)}
+                  >
                     <Text style={os.qtyBtnText}>+</Text>
                   </TouchableOpacity>
                 </View>
@@ -180,20 +281,26 @@ export function POSScreen({
         })}
         <View style={os.extraBtns}>
           <TouchableOpacity style={os.extraBtn} onPress={addTableNote}>
-            <Text style={os.extraBtnText}>{tableNote ? 'Edit note' : 'Add note'}</Text>
+            <Text style={os.extraBtnText}>
+              {tableNote ? 'Edit note' : 'Add note'}
+            </Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={[os.extraBtn, compApplied && os.extraBtnActive]}
             onPress={applyComp}
             disabled={compApplied}
           >
-            <Text style={os.extraBtnText}>{compApplied ? 'Comped' : 'Comp'}</Text>
+            <Text style={os.extraBtnText}>
+              {compApplied ? 'Comped' : 'Comp'}
+            </Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={[os.extraBtn, splitMode && os.extraBtnActive]}
             onPress={applySplit}
           >
-            <Text style={os.extraBtnText}>{splitMode ? 'Split · 2' : 'Split'}</Text>
+            <Text style={os.extraBtnText}>
+              {splitMode ? 'Split · 2' : 'Split'}
+            </Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
@@ -223,18 +330,24 @@ export function POSScreen({
         </TouchableOpacity>
         <View style={os.altPayBtns}>
           <TouchableOpacity
-            style={[os.altPayBtn, paymentMethod === 'cash' && os.altPayBtnActive]}
+            style={[
+              os.altPayBtn,
+              paymentMethod === 'cash' && os.altPayBtnActive,
+            ]}
             onPress={() => setPaymentMethod('cash')}
             disabled={paymentMethod !== 'open' || order.length === 0}
           >
-            <Text style={os.altPayText}>💵  Cash</Text>
+            <Text style={os.altPayText}>💵 Cash</Text>
           </TouchableOpacity>
           <TouchableOpacity
-            style={[os.altPayBtn, paymentMethod === 'sent' && os.altPayBtnActive]}
+            style={[
+              os.altPayBtn,
+              paymentMethod === 'sent' && os.altPayBtnActive,
+            ]}
             onPress={() => setPaymentMethod('sent')}
             disabled={paymentMethod !== 'open' || order.length === 0}
           >
-            <Text style={os.altPayText}>🧾  Send</Text>
+            <Text style={os.altPayText}>🧾 Send</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -244,17 +357,26 @@ export function POSScreen({
   const productGrid = (
     <View style={[styles.grid, !isTablet && styles.gridMobile]}>
       {/* Category pills */}
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.pillScroll} contentContainerStyle={styles.pillContent}>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        style={styles.pillScroll}
+        contentContainerStyle={styles.pillContent}
+      >
         {CATEGORIES.map(c => (
           <TouchableOpacity
             key={c.id}
             onPress={() => setCat(c.id)}
             style={[styles.pill, cat === c.id && styles.pillActive]}
           >
-            <Text style={[styles.pillText, cat === c.id && styles.pillTextActive]}>
+            <Text
+              style={[styles.pillText, cat === c.id && styles.pillTextActive]}
+            >
               {c.label}
             </Text>
-            <Text style={[styles.pillCount, cat === c.id && styles.pillCountActive]}>
+            <Text
+              style={[styles.pillCount, cat === c.id && styles.pillCountActive]}
+            >
               {c.count}
             </Text>
           </TouchableOpacity>
@@ -280,7 +402,10 @@ export function POSScreen({
               key={d.id}
               onPress={() => addDish(d)}
               activeOpacity={0.85}
-              style={[styles.dishCard, orderMap[d.id] ? styles.dishCardActive : undefined]}
+              style={[
+                styles.dishCard,
+                orderMap[d.id] ? styles.dishCardActive : undefined,
+              ]}
             >
               {/* Plate visual */}
               <View style={styles.plateArea}>
@@ -295,15 +420,21 @@ export function POSScreen({
                 )}
                 {orderMap[d.id] && (
                   <View style={styles.qtyOverlay}>
-                    <Text style={styles.qtyOverlayText}>× {orderMap[d.id]}</Text>
+                    <Text style={styles.qtyOverlayText}>
+                      × {orderMap[d.id]}
+                    </Text>
                   </View>
                 )}
               </View>
               {/* Info */}
               <View style={styles.dishInfo}>
-                <Text style={styles.dishName} numberOfLines={1}>{d.name}</Text>
+                <Text style={styles.dishName} numberOfLines={1}>
+                  {d.name}
+                </Text>
                 <Text style={styles.dishPrice}>${d.price}</Text>
-                <Text style={styles.dishSub} numberOfLines={1}>{d.sub}</Text>
+                <Text style={styles.dishSub} numberOfLines={1}>
+                  {d.sub}
+                </Text>
               </View>
             </TouchableOpacity>
           ))}
@@ -334,15 +465,11 @@ export function POSScreen({
     <View style={styles.root}>
       <View style={{ flex: 1, flexDirection: 'column' }}>
         <TopBar crumb={['Service', 'POS']} restaurantName={restaurantName} />
-        <View style={styles.mainContent}>
-          {productGrid}
-        </View>
+        <View style={styles.mainContent}>{productGrid}</View>
         {/* Mobile: mini order summary */}
         <View style={styles.mobileSummaryBar}>
           <View>
-            <Text style={styles.mobileSummaryLabel}>
-              {order.length} items
-            </Text>
+            <Text style={styles.mobileSummaryLabel}>{order.length} items</Text>
             <Text style={styles.mobileSummaryTotal}>${total.toFixed(2)}</Text>
           </View>
           <TouchableOpacity style={styles.mobileSummaryBtn}>
