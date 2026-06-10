@@ -18,21 +18,21 @@
   --bg-sidebar:   #0B1220;   /* sidebar — deeper than the page */
   --bg-glass:     rgba(30, 41, 59, 0.82);
 
-  /* PRIMARY accent — bright green (confirm / pay / go) */
-  --gold:         #22C55E;
-  --gold-dim:     #16A34A;
-  --gold-soft:    #4ADE80;
-  --gold-line:    rgba(34, 197, 94, 0.24);
-  --gold-line2:   rgba(34, 197, 94, 0.42);
-  --gold-bg:      rgba(34, 197, 94, 0.12);
-  --gold-glow:    0 0 28px rgba(34, 197, 94, 0.32);
+  /* PRIMARY accent — vivid blue (confirm / pay / primary actions) */
+  --gold:         #3B82F6;
+  --gold-dim:     #2563EB;
+  --gold-soft:    #60A5FA;
+  --gold-line:    rgba(59, 130, 246, 0.26);
+  --gold-line2:   rgba(59, 130, 246, 0.44);
+  --gold-bg:      rgba(59, 130, 246, 0.14);
+  --gold-glow:    0 0 28px rgba(59, 130, 246, 0.34);
 
-  /* SECONDARY accent — blue (info / secondary actions) */
-  --blue:         #3B82F6;
-  --blue-dim:     #2563EB;
-  --blue-soft:    #60A5FA;
-  --blue-bg:      rgba(59, 130, 246, 0.14);
-  --blue-line:    rgba(59, 130, 246, 0.38);
+  /* SECONDARY accent — lighter sky blue (secondary actions / info) */
+  --blue:         #60A5FA;
+  --blue-dim:     #3B82F6;
+  --blue-soft:    #93C5FD;
+  --blue-bg:      rgba(96, 165, 250, 0.14);
+  --blue-line:    rgba(96, 165, 250, 0.38);
 
   /* Text — high-contrast scale */
   --text0:        #FFFFFF;
@@ -57,9 +57,9 @@
   --hover:        rgba(255, 255, 255, 0.04);
 
   /* Gradient mesh stops (used in body::before) */
-  --mesh-a:       rgba(34, 197, 94, 0.10);
-  --mesh-b:       rgba(59, 130, 246, 0.08);
-  --mesh-c:       rgba(34, 197, 94, 0.05);
+  --mesh-a:       rgba(59, 130, 246, 0.12);
+  --mesh-b:       rgba(37, 99, 235, 0.08);
+  --mesh-c:       rgba(96, 165, 250, 0.06);
 
   /* Sidebar gradient */
   --sidebar-grad: linear-gradient(180deg, #131f36 0%, #0B1220 100%);
@@ -68,8 +68,8 @@
   --card-bg:      #1E293B;
   --card-border:  rgba(255, 255, 255, 0.10);
 
-  /* Button text on green primary */
-  --on-gold:      #052E16;
+  /* Button text on blue primary */
+  --on-gold:      #FFFFFF;
 
   color-scheme: dark;
 }
@@ -84,21 +84,21 @@
   --bg-sidebar:   #eff6ff;   /* sidebar — distinct from white */
   --bg-glass:     rgba(255, 255, 255, 0.97);
 
-  /* PRIMARY accent — green (brand-consistent with dark theme) */
-  --gold:         #16A34A;
-  --gold-dim:     #15803D;
-  --gold-soft:    #22C55E;
-  --gold-line:    rgba(22, 163, 74, 0.26);
-  --gold-line2:   rgba(22, 163, 74, 0.44);
-  --gold-bg:      rgba(22, 163, 74, 0.10);
-  --gold-glow:    0 0 18px rgba(22, 163, 74, 0.16);
+  /* PRIMARY accent — deep vivid blue */
+  --gold:         #2563EB;
+  --gold-dim:     #1D4ED8;
+  --gold-soft:    #3B82F6;
+  --gold-line:    rgba(37, 99, 235, 0.26);
+  --gold-line2:   rgba(37, 99, 235, 0.44);
+  --gold-bg:      rgba(37, 99, 235, 0.10);
+  --gold-glow:    0 0 18px rgba(37, 99, 235, 0.16);
 
-  /* SECONDARY accent — blue */
-  --blue:         #2563EB;
-  --blue-dim:     #1D4ED8;
-  --blue-soft:    #3B82F6;
-  --blue-bg:      rgba(37, 99, 235, 0.10);
-  --blue-line:    rgba(37, 99, 235, 0.40);
+  /* SECONDARY accent — brighter blue */
+  --blue:         #3B82F6;
+  --blue-dim:     #2563EB;
+  --blue-soft:    #60A5FA;
+  --blue-bg:      rgba(59, 130, 246, 0.10);
+  --blue-line:    rgba(59, 130, 246, 0.40);
 
   /* Text — high-contrast scale */
   --text0:        #0a1628;   /* near-black with blue tint */
@@ -314,13 +314,13 @@ a {
   font-weight: 800;
   font-size: 15px;
   letter-spacing: 0.2px;
-  box-shadow: 0 6px 18px rgba(34, 197, 94, 0.35);
+  box-shadow: 0 6px 18px rgba(59, 130, 246, 0.38);
   transition: filter 0.15s, box-shadow 0.15s, transform 0.1s;
 }
 
 .btn-gold:hover {
   filter: brightness(1.05);
-  box-shadow: 0 8px 26px rgba(34, 197, 94, 0.5);
+  box-shadow: 0 8px 26px rgba(59, 130, 246, 0.52);
   transform: translateY(-1px);
 }
 
