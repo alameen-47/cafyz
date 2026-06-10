@@ -247,22 +247,29 @@
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
-  justify-content: flex-end;
+  align-items: center;
 }
 
 .menu-order-controls-inline {
-  margin-left: auto;
+  width: 100%;
 }
 
 .menu-order-controls select,
 .menu-order-controls input {
-  min-height: 34px;
+  min-height: 38px;
   border-radius: var(--radius-sm);
   border: 0.5px solid var(--line2);
   background: var(--bg2);
   color: var(--text1);
   padding: 0 10px;
+  min-width: 0;
 }
+/* Flexible widths so the row fills cleanly and the Send button grows to
+   full-width when it wraps — instead of floating alone on its own line. */
+.menu-order-controls select { flex: 1 1 150px; }
+.menu-order-controls input  { flex: 2 1 200px; }
+.menu-order-controls .menu-parcel-toggle { flex: 0 1 auto; }
+.menu-order-controls .btn-gold { flex: 1 1 170px; justify-content: center; min-height: 38px; }
 
 .menu-order-layout {
   display: grid;

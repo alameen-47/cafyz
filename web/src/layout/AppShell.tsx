@@ -39,6 +39,7 @@ const CRUMBS: Partial<Record<Screen, [string, string]>> = {
   kds:       ['Kitchen', 'Expedite'],
   waiter:      ['Service', 'Floor Plan'],
   tableSetup:  ['Operations', 'Table Setup'],
+  license:     ['Account', 'License & Plan'],
 };
 
 const COVERS: Partial<Record<Screen, string>> = {

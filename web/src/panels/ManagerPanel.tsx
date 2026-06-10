@@ -1107,16 +1107,15 @@ function Reports() {
             </div>
           )}
 
-          {/* Service metrics */}
-          <div className="mgr-report-table card">
-            <div className="mgr-report-head">
-              <span>Metric</span><span>Live Value</span><span>Flag</span>
-            </div>
+          {/* Service metrics — compact, scannable KPI grid */}
+          <div className="mgr-metrics-grid card">
             {statsRows.map(r => (
-              <div key={r.label} className="mgr-report-row">
-                <span className="mgr-report-label">{r.label}</span>
-                <span className="serif mgr-report-val">{r.value}</span>
-                <span className={`mgr-report-delta ${r.up ? 'up' : 'dn'}`}>{r.delta}</span>
+              <div key={r.label} className="mgr-metric">
+                <span className="mgr-metric-label">{r.label}</span>
+                <span className="mgr-metric-val">
+                  <span className="serif">{r.value}</span>
+                  {r.delta && <em className={`mgr-metric-flag ${r.up ? 'up' : 'dn'}`}>{r.delta}</em>}
+                </span>
               </div>
             ))}
           </div>

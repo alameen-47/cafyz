@@ -495,6 +495,35 @@
 
 .mgr-status-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
 
+/* Compact KPI grid for the Reports service metrics — dense + scannable,
+   auto-fits 2 cols on phones up to 4–5 on wide screens. */
+.mgr-metrics-grid {
+  margin-top: 20px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  overflow: hidden;
+}
+.mgr-metric {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 16px 18px;
+  border-right: 0.5px solid var(--line);
+  border-bottom: 0.5px solid var(--line);
+}
+.mgr-metric-label {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--text3);
+}
+.mgr-metric-val { display: flex; align-items: baseline; gap: 6px; }
+.mgr-metric-val .serif { font-size: 26px; color: var(--text0); line-height: 1; }
+.mgr-metric-flag { font-style: normal; font-size: 14px; }
+.mgr-metric-flag.dn { color: var(--warning); }
+.mgr-metric-flag.up { color: var(--success); }
+
 .mgr-report-table { margin-top: 20px; overflow: hidden; }
 
 .mgr-report-head {
@@ -544,6 +573,13 @@
 [data-theme='light'] .mgr-range {
   border: 1px solid rgba(0, 0, 0, 0.16);
   background: #ffffff;
+}
+/* Active period toggle must keep the brand fill in light mode — otherwise the
+   generic light `.mgr-range` white background hid the white active label. */
+[data-theme='light'] .mgr-range.active {
+  background: var(--gold);
+  color: #ffffff;
+  border-color: var(--gold);
 }
 [data-theme='light'] .mgr-tab { color: var(--text2); }
 [data-theme='light'] .mgr-tab.active { color: var(--gold); border-bottom-color: var(--gold); }
