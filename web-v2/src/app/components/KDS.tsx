@@ -1,7 +1,8 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Flame, CheckCircle2, Truck, AlertTriangle, Clock, ChefHat, Printer, Filter } from "lucide-react";
 import { toast } from "./Toast";
+import { kdsApi, type ApiKdsTicket } from "../../services/api";
 
 type KDSStatus = "new" | "prep" | "ready";
 
@@ -11,20 +12,29 @@ interface KDSOrder {
   status: KDSStatus; startedAt: number; vip: boolean; allergy?: string;
 }
 
-const initialOrders: KDSOrder[] = [
-  { id: "K001", table: "T-02", server: "Priya", items: [{ name: "Butter Chicken", qty: 1, station: "Hot" }, { name: "Garlic Naan", qty: 2, station: "Tandoor" }], status: "new", startedAt: Date.now() - 120000, vip: false },
-  { id: "K002", table: "T-07", server: "Ravi", items: [{ name: "Ribeye Steak", qty: 1, note: "Med rare, no sauce", station: "Grill" }, { name: "Fries", qty: 1, station: "Fry" }], status: "new", startedAt: Date.now() - 60000, vip: true, allergy: "Nuts" },
-  { id: "K003", table: "T-12", server: "Priya", items: [{ name: "Margherita Pizza", qty: 1, station: "Oven" }, { name: "Caesar Salad", qty: 1, station: "Cold" }], status: "prep", startedAt: Date.now() - 360000, vip: false },
-  { id: "K004", table: "T-05", server: "Ravi", items: [{ name: "Veg Biryani", qty: 2, station: "Hot" }, { name: "Raita", qty: 2, station: "Cold" }], status: "prep", startedAt: Date.now() - 480000, vip: false },
-  { id: "K005", table: "T-09", server: "Mia", items: [{ name: "Grilled Salmon", qty: 1, note: "Extra lemon", station: "Grill" }], status: "ready", startedAt: Date.now() - 720000, vip: true },
-  { id: "K006", table: "T-03", server: "Sam", items: [{ name: "Chicken Biryani", qty: 3, station: "Hot" }], status: "new", startedAt: Date.now() - 30000, vip: false },
-  { id: "K007", table: "T-11", server: "Mia", items: [{ name: "Paneer Tikka", qty: 2, station: "Tandoor" }, { name: "Dal Makhani", qty: 1, station: "Hot" }], status: "ready", startedAt: Date.now() - 600000, vip: false },
-];
-
-const stations = ["All", "Hot", "Grill", "Tandoor", "Oven", "Fry", "Cold"];
-const stationColors: Record<string, string> = {
-  Hot: "#ff6b35", Grill: "#f59e0b", Tandoor: "#ef4444", Oven: "#f97316", Fry: "#eab308", Cold: "#22d3ee",
+// Station accent colours — known stations get a fixed hue, the rest are mapped
+// deterministically onto a palette so each station stays visually distinct.
+const STATION_PRESET: Record<string, string> = {
+  hot: "#ff6b35", grill: "#f59e0b", tandoor: "#ef4444", oven: "#f97316",
+  fry: "#eab308", cold: "#22d3ee", expedite: "#1e7fff", bar: "#a855f7",
 };
+const STATION_PALETTE = ["#ff6b35", "#f59e0b", "#ef4444", "#f97316", "#eab308", "#22d3ee", "#a855f7", "#1e7fff"];
+function stationColor(name?: string): string {
+  if (!name) return "#6b82a0";
+  const preset = STATION_PRESET[name.toLowerCase()];
+  if (preset) return preset;
+  let h = 0;
+  for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) >>> 0;
+  return STATION_PALETTE[h % STATION_PALETTE.length];
+}
+
+function parseMods(mods?: string): string[] {
+  if (!mods) return [];
+  try { const v = JSON.parse(mods); return Array.isArray(v) ? v : []; } catch { return []; }
+}
+function tsOf(iso: string): number {
+  return new Date(iso.includes("T") ? iso : iso.replace(" ", "T") + "Z").getTime();
+}
 
 function useElapsed(startedAt: number) {
   const [elapsed, setElapsed] = useState(Math.floor((Date.now() - startedAt) / 1000));
@@ -95,7 +105,7 @@ function OrderTicket({ order, onAction }: { order: KDSOrder; onAction: (id: stri
                 <span style={{ color: "#e8eef8", fontSize: "0.82rem", fontWeight: 500 }}>{item.name}</span>
                 {item.station && (
                   <span className="text-xs px-1.5 py-0.5 rounded"
-                    style={{ background: `${stationColors[item.station] || "#6b82a0"}18`, color: stationColors[item.station] || "#6b82a0" }}>
+                    style={{ background: `${stationColor(item.station)}18`, color: stationColor(item.station) }}>
                     {item.station}
                   </span>
                 )}
@@ -135,24 +145,64 @@ const columns: { key: KDSStatus; label: string; color: string; icon: React.Eleme
 ];
 
 export function KDS() {
-  const [orders, setOrders] = useState(initialOrders);
+  const [tickets, setTickets] = useState<ApiKdsTicket[]>([]);
   const [stationFilter, setStationFilter] = useState("All");
   const [autoPrint, setAutoPrint] = useState(true);
   const [activeCol, setActiveCol] = useState<KDSStatus>("new"); // mobile tab
 
-  const handleAction = (id: string, status: KDSStatus) => {
+  // Live board: poll kitchen tickets every 5s.
+  const load = useCallback(async () => {
+    try { setTickets(await kdsApi.list()); } catch { /* keep last board on transient errors */ }
+  }, []);
+  useEffect(() => {
+    void load();
+    const id = window.setInterval(() => void load(), 5000);
+    return () => window.clearInterval(id);
+  }, [load]);
+
+  // Map live tickets → the board's order shape (drop delivered tickets).
+  const orders: KDSOrder[] = tickets
+    .filter(t => t.status !== "delivered")
+    .map(t => ({
+      id: t.id,
+      table: t.table_name || "—",
+      server: t.server_name || "",
+      items: (t.items ?? []).map(it => {
+        const mods = parseMods(it.mods);
+        return { name: it.name, qty: it.qty, note: mods.length ? mods.join(", ") : undefined, station: it.station };
+      }),
+      status: t.status as KDSStatus,
+      startedAt: tsOf(t.created_at),
+      vip: t.vip === 1,
+      allergy: (t.items ?? []).some(it => it.alert) ? "Allergy" : undefined,
+    }));
+
+  // Advance a ticket through fire → ready → delivered, persisting each move.
+  const handleAction = async (id: string, status: KDSStatus) => {
     const order = orders.find(o => o.id === id);
-    if (order?.status === "ready") {
-      setOrders(prev => prev.filter(o => o.id !== id));
-      toast.success(`${order.table} delivered`, `Order cleared from KDS`);
-    } else if (status === "prep") {
-      setOrders(prev => prev.map(o => o.id === id ? { ...o, status } : o));
-      toast.info(`${order?.table} — Cooking started`, `Moved to In-Prep`);
-    } else if (status === "ready") {
-      setOrders(prev => prev.map(o => o.id === id ? { ...o, status } : o));
-      toast.success(`${order?.table} — Ready to serve!`, `Notify your waiter`);
+    try {
+      if (order?.status === "ready") {
+        await kdsApi.delivered(id);
+        setTickets(prev => prev.filter(t => t.id !== id));
+        toast.success(`${order.table} delivered`, "Order cleared from KDS");
+      } else if (status === "prep") {
+        await kdsApi.fire(id);
+        setTickets(prev => prev.map(t => (t.id === id ? { ...t, status: "prep" } : t)));
+        toast.info(`${order?.table} — Cooking started`, "Moved to In-Prep");
+      } else if (status === "ready") {
+        await kdsApi.ready(id);
+        setTickets(prev => prev.map(t => (t.id === id ? { ...t, status: "ready" } : t)));
+        toast.success(`${order?.table} — Ready to serve!`, "Notify your waiter");
+      }
+    } catch (e) {
+      toast.error("Couldn't update ticket", (e as Error).message);
     }
   };
+
+  // Station filter list — built from whatever stations are live on the board.
+  const stationSet = new Set<string>();
+  tickets.forEach(t => t.items?.forEach(it => { if (it.station) stationSet.add(it.station); }));
+  const stations = ["All", ...[...stationSet].sort()];
 
   const filteredOrders = (status: KDSStatus) =>
     orders.filter(o => o.status === status &&
