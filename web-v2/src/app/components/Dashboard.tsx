@@ -1,49 +1,32 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "motion/react";
 import {
   TrendingUp, TrendingDown, ShoppingBag, Users, DollarSign,
-  Clock, Star, ChevronRight, AlertCircle
+  Package, ChevronRight, AlertCircle
 } from "lucide-react";
+import { dashboardApi, ordersApi, menuApi } from "../../services/api";
+import { formatMoney, getCurrencySymbol } from "../../utils/currency";
 
-const revenueData = [
-  { time: "9am", revenue: 1200 },
-  { time: "10am", revenue: 1800 },
-  { time: "11am", revenue: 2400 },
-  { time: "12pm", revenue: 4200 },
-  { time: "1pm", revenue: 5100 },
-  { time: "2pm", revenue: 3800 },
-  { time: "3pm", revenue: 2600 },
-  { time: "4pm", revenue: 2100 },
-  { time: "5pm", revenue: 3400 },
-  { time: "6pm", revenue: 5800 },
-  { time: "7pm", revenue: 6400 },
-  { time: "8pm", revenue: 5200 },
-];
+const CAT_COLORS = ["#1e7fff", "#00c6ff", "#a855f7", "#22d3ee", "#f59e0b", "#22c55e"];
+const CAT_LABELS: Record<string, string> = { starters: "Starters", mains: "Mains", desserts: "Desserts", wine: "Wine", drinks: "Drinks" };
 
-const categoryData = [
-  { name: "Mains", value: 38, color: "#1e7fff" },
-  { name: "Starters", value: 24, color: "#00c6ff" },
-  { name: "Desserts", value: 18, color: "#a855f7" },
-  { name: "Drinks", value: 20, color: "#22d3ee" },
-];
+// Map backend order status → the design's status vocabulary + colors
+function mapStatus(s: string): "served" | "preparing" | "ready" {
+  if (s === "paid" || s === "comped") return "served";
+  if (s === "open") return "ready";
+  return "preparing"; // sent / voided / default
+}
+function relativeTime(iso?: string): string {
+  if (!iso) return "";
+  const t = new Date(iso.includes("T") ? iso : iso.replace(" ", "T") + "Z").getTime();
+  const mins = Math.max(0, Math.round((Date.now() - t) / 60000));
+  if (mins < 1) return "just now";
+  if (mins < 60) return `${mins}m ago`;
+  return `${Math.round(mins / 60)}h ago`;
+}
 
-const weeklyData = [
-  { day: "Mon", revenue: 3200 },
-  { day: "Tue", revenue: 4100 },
-  { day: "Wed", revenue: 3800 },
-  { day: "Thu", revenue: 5200 },
-  { day: "Fri", revenue: 7400 },
-  { day: "Sat", revenue: 8900 },
-  { day: "Sun", revenue: 6100 },
-];
-
-const recentOrders = [
-  { id: "#4821", table: "T-05", items: "Butter Chicken, Naan ×2", amount: 32.50, status: "served", time: "2m ago" },
-  { id: "#4820", table: "T-12", items: "Margherita Pizza, Coke", amount: 24.00, status: "preparing", time: "5m ago" },
-  { id: "#4819", table: "T-03", items: "Grilled Salmon, Wine", amount: 58.00, status: "preparing", time: "8m ago" },
-  { id: "#4818", table: "T-07", items: "Steak, Fries, Beer ×2", amount: 76.50, status: "ready", time: "11m ago" },
-  { id: "#4817", table: "T-09", items: "Veg Biryani, Raita", amount: 18.00, status: "served", time: "14m ago" },
-];
+type CatDatum = { name: string; value: number; color: string };
+type OrderRow = { id: string; table: string; items: string; amount: number; status: string; time: string };
 
 const statusColors: Record<string, string> = {
   served: "#22c55e",
@@ -56,15 +39,8 @@ const statusBg: Record<string, string> = {
   ready: "rgba(30,127,255,0.12)",
 };
 
-const kpis = [
-  { label: "Today's Revenue", value: "₹52,840", change: "+12.4%", up: true, icon: DollarSign, color: "#1e7fff" },
-  { label: "Total Orders", value: "342", change: "+8.1%", up: true, icon: ShoppingBag, color: "#00c6ff" },
-  { label: "Active Tables", value: "18/24", change: "75% occ.", up: true, icon: Users, color: "#a855f7" },
-  { label: "Avg Wait Time", value: "14 min", change: "-2 min", up: true, icon: Clock, color: "#22d3ee" },
-];
-
 // ── Area sparkline ────────────────────────────────────────────────────────────
-function AreaSparkline({ data, color }: { data: number[]; color: string }) {
+function AreaSparkline({ data, color, labels, cur = "₹" }: { data: number[]; color: string; labels?: string[]; cur?: string }) {
   const W = 520, H = 160, padL = 44, padR = 16, padT = 12, padB = 28;
   const innerW = W - padL - padR;
   const innerH = H - padT - padB;
@@ -86,13 +62,13 @@ function AreaSparkline({ data, color }: { data: number[]; color: string }) {
         return (
           <g key={i}>
             <line x1={padL} y1={y} x2={W - padR} y2={y} stroke="rgba(30,127,255,0.07)" strokeDasharray="4 4" />
-            <text x={padL - 5} y={y + 3.5} textAnchor="end" fill="#6b82a0" fontSize={9}>₹{(val / 1000).toFixed(0)}k</text>
+            <text x={padL - 5} y={y + 3.5} textAnchor="end" fill="#6b82a0" fontSize={9}>{cur}{(val / 1000).toFixed(0)}k</text>
           </g>
         );
       })}
       {/* X-axis labels */}
-      {revenueData.map((d, i) => i % 2 === 0 && (
-        <text key={i} x={xs[i]} y={H - 4} textAnchor="middle" fill="#6b82a0" fontSize={9}>{d.time}</text>
+      {(labels ?? []).map((lbl, i) => i % 2 === 0 && xs[i] != null && (
+        <text key={i} x={xs[i]} y={H - 4} textAnchor="middle" fill="#6b82a0" fontSize={9}>{lbl}</text>
       ))}
       {/* Area fill */}
       <path d={areaPath} fill={color} fillOpacity={0.12} />
@@ -108,18 +84,18 @@ function AreaSparkline({ data, color }: { data: number[]; color: string }) {
       <rect x={xs[xs.length-1] - 24} y={ys[ys.length-1] - 22} width={48} height={16} rx={4}
         fill={color} fillOpacity={0.9} />
       <text x={xs[xs.length-1]} y={ys[ys.length-1] - 11} textAnchor="middle" fill="#fff" fontSize={9} fontWeight="bold">
-        ₹{(data[data.length-1] / 1000).toFixed(1)}k
+        {cur}{(data[data.length-1] / 1000).toFixed(1)}k
       </text>
     </svg>
   );
 }
 
 // ── Bar sparkline ─────────────────────────────────────────────────────────────
-function BarSparkline({ data, color }: { data: { day: string; revenue: number }[]; color: string }) {
+function BarSparkline({ data, color, cur = "₹" }: { data: { day: string; revenue: number }[]; color: string; cur?: string }) {
   const W = 320, H = 155, padL = 8, padR = 8, padT = 12, padB = 22;
   const innerW = W - padL - padR;
   const innerH = H - padT - padB;
-  const max = Math.max(...data.map(d => d.revenue));
+  const max = Math.max(...data.map(d => d.revenue)) || 1;
   const gap = 6;
   const barW = (innerW - gap * (data.length - 1)) / data.length;
 
@@ -149,7 +125,7 @@ function BarSparkline({ data, color }: { data: { day: string; revenue: number }[
             {/* Value label on tallest bar */}
             {isMax && (
               <text x={x + barW / 2} y={y - 4} textAnchor="middle" fill={color} fontSize={8} fontWeight="bold">
-                ₹{(d.revenue / 1000).toFixed(1)}k
+                {cur}{(d.revenue / 1000).toFixed(1)}k
               </text>
             )}
             {/* Day label */}
@@ -162,7 +138,7 @@ function BarSparkline({ data, color }: { data: { day: string; revenue: number }[
 }
 
 // ── Donut chart using stroke-dasharray (correct and reliable) ─────────────────
-function DonutChart({ data }: { data: typeof categoryData }) {
+function DonutChart({ data, centerValue, centerLabel = "items" }: { data: CatDatum[]; centerValue?: number; centerLabel?: string }) {
   const size = 160;
   const cx = size / 2;
   const cy = size / 2;
@@ -206,25 +182,101 @@ function DonutChart({ data }: { data: typeof categoryData }) {
       {/* Centre label */}
       <text x={cx} y={cy - 6} textAnchor="middle" fill="#e8eef8" fontSize={18} fontWeight="700"
         style={{ fontFamily: "var(--font-display)" }}>
-        {total}
+        {centerValue ?? total}
       </text>
-      <text x={cx} y={cy + 10} textAnchor="middle" fill="#6b82a0" fontSize={9}>orders</text>
+      <text x={cx} y={cy + 10} textAnchor="middle" fill="#6b82a0" fontSize={9}>{centerLabel}</text>
     </svg>
   );
 }
 
 export function Dashboard() {
+  const [revRows, setRevRows] = useState<{ day: string; revenue: number }[]>([]);
+  const [todayRevenue, setTodayRevenue] = useState(0);
+  const [stats, setStats] = useState<{ orders_today: number; tables_total: number; tables_occupied: number; inventory_low: number; staff_active: number } | null>(null);
+  const [categoryData, setCategoryData] = useState<CatDatum[]>([]);
+  const [itemsSold, setItemsSold] = useState(0);
+  const [recentOrders, setRecentOrders] = useState<OrderRow[]>([]);
+
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      try {
+        const [s, week, today, sold, menu, orders] = await Promise.all([
+          dashboardApi.stats(),
+          dashboardApi.revenue({ period: 'week' }),
+          dashboardApi.revenue({ period: 'day' }),
+          dashboardApi.soldItems({ period: 'week' }).catch(() => null),
+          menuApi.list().catch(() => []),
+          ordersApi.list().catch(() => []),
+        ]);
+        if (!alive) return;
+        setStats(s);
+        setTodayRevenue(today.totalRevenue ?? 0);
+        setRevRows((week.rows ?? []).map(r => ({
+          day: new Date((r.day || '') + 'T00:00:00').toLocaleDateString(undefined, { weekday: 'short' }),
+          revenue: r.revenue,
+        })));
+        // Category split from sold-items × menu category map
+        if (sold && menu.length) {
+          const catOf = new Map(menu.map(m => [m.id, m.category]));
+          const totals = new Map<string, number>();
+          for (const day of sold.days ?? []) for (const it of day.items) {
+            const cat = catOf.get(it.menu_item_id) ?? 'other';
+            totals.set(cat, (totals.get(cat) ?? 0) + it.qty_sold);
+          }
+          const sum = [...totals.values()].reduce((a, b) => a + b, 0) || 1;
+          setItemsSold([...totals.values()].reduce((a, b) => a + b, 0));
+          setCategoryData([...totals.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5).map(([cat, qty], i) => ({
+            name: CAT_LABELS[cat] ?? cat, value: Math.round((qty / sum) * 100), color: CAT_COLORS[i % CAT_COLORS.length],
+          })));
+        }
+        // Recent orders — enrich the 5 newest with item summary + amount
+        const recent = orders.slice(0, 5);
+        const detailed = await Promise.all(recent.map(o => ordersApi.get(o.id).catch(() => null)));
+        if (!alive) return;
+        setRecentOrders(recent.map((o, i) => {
+          const full = detailed[i];
+          const items = full?.items ?? [];
+          const amount = items.reduce((sum, it) => sum + (it.price ?? 0) * it.qty, 0);
+          const itemText = items.map(it => `${it.name}${it.qty > 1 ? ` ×${it.qty}` : ''}`).join(', ') || '—';
+          return {
+            id: '#' + o.id.slice(0, 4).toUpperCase(),
+            table: o.table_name || '—',
+            items: itemText,
+            amount,
+            status: mapStatus(o.status),
+            time: relativeTime(o.created_at),
+          };
+        }));
+      } catch { /* gracefully render empty */ }
+    })();
+    return () => { alive = false; };
+  }, []);
+
+  const cur = getCurrencySymbol();
+  const kpis = [
+    { label: "Today's Revenue", value: formatMoney(todayRevenue), change: "Today", up: true, icon: DollarSign, color: "#1e7fff" },
+    { label: "Orders Today", value: String(stats?.orders_today ?? 0), change: "Live", up: true, icon: ShoppingBag, color: "#00c6ff" },
+    { label: "Active Tables", value: `${stats?.tables_occupied ?? 0}/${stats?.tables_total ?? 0}`, change: stats?.tables_total ? `${Math.round(((stats.tables_occupied) / stats.tables_total) * 100)}% occ.` : "—", up: true, icon: Users, color: "#a855f7" },
+    { label: "Low Inventory", value: String(stats?.inventory_low ?? 0), change: "below par", up: (stats?.inventory_low ?? 0) === 0, icon: Package, color: "#22d3ee" },
+  ];
+  const revenueData = revRows;
+  const weeklyData = revRows;
+  const lowStock = (stats?.inventory_low ?? 0) > 0;
+
   return (
     <div className="p-3 sm:p-4 md:p-6 space-y-4 md:space-y-6">
-      {/* Alert banner */}
-      <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}
-        className="flex items-start gap-2.5 px-3 py-2.5 rounded-xl"
-        style={{ background: "rgba(245,158,11,0.08)", border: "1px solid rgba(245,158,11,0.2)" }}>
-        <AlertCircle size={15} style={{ color: "#f59e0b", flexShrink: 0, marginTop: 2 }} />
-        <p style={{ color: "#f59e0b", fontSize: "0.78rem", lineHeight: 1.5 }}>
-          <strong>Low stock:</strong> Basmati Rice (2kg), Olive Oil (500ml) — reorder soon
-        </p>
-      </motion.div>
+      {/* Alert banner — only when items are below par */}
+      {lowStock && (
+        <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}
+          className="flex items-start gap-2.5 px-3 py-2.5 rounded-xl"
+          style={{ background: "rgba(245,158,11,0.08)", border: "1px solid rgba(245,158,11,0.2)" }}>
+          <AlertCircle size={15} style={{ color: "#f59e0b", flexShrink: 0, marginTop: 2 }} />
+          <p style={{ color: "#f59e0b", fontSize: "0.78rem", lineHeight: 1.5 }}>
+            <strong>Low stock:</strong> {stats?.inventory_low} item{(stats?.inventory_low ?? 0) > 1 ? 's are' : ' is'} below par — reorder soon
+          </p>
+        </motion.div>
+      )}
 
       {/* KPI Cards — 2 cols on mobile, 4 on desktop */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
@@ -268,7 +320,12 @@ export function Dashboard() {
             <span className="text-xs px-2.5 py-1 rounded-full" style={{ background: "rgba(30,127,255,0.12)", color: "#1e7fff" }}>Live</span>
           </div>
           <div className="w-full overflow-hidden">
-            <AreaSparkline data={revenueData.map(d => d.revenue)} color="#1e7fff" />
+            <AreaSparkline
+              data={revenueData.length >= 2 ? revenueData.map(d => d.revenue) : [0, 0]}
+              labels={revenueData.length >= 2 ? revenueData.map(d => d.day) : []}
+              cur={cur}
+              color="#1e7fff"
+            />
           </div>
         </motion.div>
 
@@ -281,7 +338,7 @@ export function Dashboard() {
           {/* On mobile: horizontal layout; on desktop: stacked */}
           <div className="flex lg:flex-col items-center gap-4 lg:gap-2">
             <div className="flex-shrink-0">
-              <DonutChart data={categoryData} />
+              <DonutChart data={categoryData} centerValue={itemsSold} centerLabel="items" />
             </div>
             <div className="flex-1 w-full space-y-2">
               {categoryData.map((cat) => (
@@ -306,7 +363,7 @@ export function Dashboard() {
           <h3 style={{ color: "#e8eef8", fontFamily: "var(--font-display)", fontWeight: 600, fontSize: "0.92rem", marginBottom: 2 }}>Weekly Revenue</h3>
           <p style={{ color: "#6b82a0", fontSize: "0.72rem", marginBottom: 8 }}>This week</p>
           <div className="w-full overflow-hidden">
-            <BarSparkline data={weeklyData} color="#1e7fff" />
+            <BarSparkline data={weeklyData.length ? weeklyData : [{ day: '—', revenue: 0 }]} cur={cur} color="#1e7fff" />
           </div>
         </motion.div>
 
@@ -343,7 +400,7 @@ export function Dashboard() {
                   <p className="truncate" style={{ color: "#6b82a0", fontSize: "0.72rem" }}>{order.items}</p>
                 </div>
                 <div className="text-right flex-shrink-0">
-                  <p style={{ color: "#e8eef8", fontSize: "0.82rem", fontFamily: "var(--font-mono)", fontWeight: 700 }}>₹{order.amount.toFixed(0)}</p>
+                  <p style={{ color: "#e8eef8", fontSize: "0.82rem", fontFamily: "var(--font-mono)", fontWeight: 700 }}>{cur}{order.amount.toFixed(0)}</p>
                   <span className="text-xs px-1.5 py-0.5 rounded-full capitalize"
                     style={{ background: statusBg[order.status], color: statusColors[order.status] }}>
                     {order.status}
