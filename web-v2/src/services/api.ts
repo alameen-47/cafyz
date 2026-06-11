@@ -182,8 +182,13 @@ export const publicApi = {
 };
 
 export const menuApi = {
-  list:   (category?: string) =>
-    get<ApiMenuItem[]>(`/api/menu${category && category !== 'all' ? `?category=${encodeURIComponent(category)}` : ''}`),
+  list:   (category?: string, opts?: { all?: boolean }) => {
+    const qs = new URLSearchParams();
+    if (category && category !== 'all') qs.set('category', category);
+    if (opts?.all) qs.set('all', '1');
+    const q = qs.toString();
+    return get<ApiMenuItem[]>(`/api/menu${q ? `?${q}` : ''}`);
+  },
   create: (d: CreateMenuItemPayload)                                          => post<ApiMenuItem>('/api/menu', d),
   update: (id: string, d: Partial<CreateMenuItemPayload>)                     => put<ApiMenuItem>(`/api/menu/${id}`, d),
   delete: (id: string)                                                        => del(`/api/menu/${id}`),

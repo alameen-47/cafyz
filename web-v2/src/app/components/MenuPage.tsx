@@ -1,44 +1,30 @@
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Plus, Search, Edit2, Trash2, Star, ToggleLeft, ToggleRight, X, Save, ImageIcon, Check } from "lucide-react";
 import { toast } from "./Toast";
 import { ConfirmModal } from "./ConfirmModal";
+import { menuApi, menuCategoriesApi, dashboardApi, type ApiMenuItem, type ApiMenuCategory } from "../../services/api";
+import { getCurrencySymbol } from "../../utils/currency";
 
-const categories = ["All", "Starters", "Mains", "Biryani & Rice", "Desserts", "Drinks", "Specials"];
-const itemCategories = ["Starters", "Mains", "Biryani & Rice", "Desserts", "Drinks", "Specials"];
+const FALLBACK_IMG = "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=300&h=200&fit=crop";
 
 interface MenuItem {
   id: string; name: string; category: string; price: number; description: string;
-  rating: number; orders: number; available: boolean; tag?: string;
-  image: string; veg: boolean;
+  rating?: number; orders: number; available: boolean; tag?: string;
+  image: string; veg?: boolean;
 }
 
-const initial: MenuItem[] = [
-  { id: "m1", name: "Chicken Tikka Masala", category: "Mains",    price: 18, description: "Creamy tomato gravy with tandoori chicken, served with basmati rice",       rating: 4.8, orders: 1240, available: true,  tag: "Bestseller", image: "https://images.unsplash.com/photo-1565557623262-b51c2513a641?w=300&h=200&fit=crop", veg: false },
-  { id: "m2", name: "Margherita Pizza",      category: "Mains",    price: 16, description: "San Marzano tomatoes, fresh mozzarella, basil on stone-baked crust",         rating: 4.6, orders: 890,  available: true,  image: "https://images.unsplash.com/photo-1574071318508-1cdbab80d002?w=300&h=200&fit=crop", veg: true },
-  { id: "m3", name: "Grilled Salmon",        category: "Mains",    price: 28, description: "Atlantic salmon, lemon butter sauce, asparagus, herb roasted potatoes",      rating: 4.7, orders: 640,  available: true,  tag: "Chef's Pick", image: "https://images.unsplash.com/photo-1467003909585-2f8a72700288?w=300&h=200&fit=crop", veg: false },
-  { id: "m4", name: "Paneer Tikka",          category: "Starters", price: 14, description: "Marinated cottage cheese grilled in tandoor with mint chutney",              rating: 4.5, orders: 760,  available: true,  image: "https://images.unsplash.com/photo-1567188040759-fb8a883dc6d8?w=300&h=200&fit=crop", veg: true },
-  { id: "m5", name: "Caesar Salad",          category: "Starters", price: 12, description: "Romaine, parmesan, croutons, anchovy dressing",                              rating: 4.3, orders: 420,  available: true,  image: "https://images.unsplash.com/photo-1546793665-c74683f339c1?w=300&h=200&fit=crop", veg: false },
-  { id: "m6", name: "Veg Biryani",           category: "Biryani & Rice", price: 14, description: "Aromatic basmati rice layered with seasonal vegetables and whole spices", rating: 4.6, orders: 580, available: true, image: "https://images.unsplash.com/photo-1589302168068-964664d93dc0?w=300&h=200&fit=crop", veg: true },
-  { id: "m7", name: "Tiramisu",              category: "Desserts", price: 9,  description: "Classic Italian ladyfingers, espresso, mascarpone, dusted cocoa",            rating: 4.9, orders: 520,  available: true,  tag: "Top Rated", image: "https://images.unsplash.com/photo-1571877227200-a0d98ea607e9?w=300&h=200&fit=crop", veg: true },
-  { id: "m8", name: "Mango Lassi",           category: "Drinks",   price: 5,  description: "Chilled Alphonso mango with creamy yogurt and cardamom",                     rating: 4.7, orders: 950,  available: true,  image: "https://images.unsplash.com/photo-1527661591475-527312dd65f5?w=300&h=200&fit=crop", veg: true },
-  { id: "m9", name: "Ribeye Steak 300g",     category: "Specials", price: 45, description: "28-day dry-aged US prime cut, chimichurri, truffle fries, roasted garlic",   rating: 4.9, orders: 320,  available: true,  tag: "Premium", image: "https://images.unsplash.com/photo-1546833999-b9f581a1996d?w=300&h=200&fit=crop", veg: false },
-  { id: "m10",name: "Fish & Chips",          category: "Mains",    price: 22, description: "Beer-battered cod, triple-cooked chips, mushy peas and tartare sauce",       rating: 4.4, orders: 480,  available: false, image: "https://images.unsplash.com/photo-1585505808860-6e8e1db42c44?w=300&h=200&fit=crop", veg: false },
-  { id: "m11",name: "Chocolate Lava Cake",   category: "Desserts", price: 8,  description: "Warm Belgian chocolate cake with molten center, vanilla ice cream",          rating: 4.8, orders: 610,  available: true,  image: "https://images.unsplash.com/photo-1606313564200-e75d5e30476c?w=300&h=200&fit=crop", veg: true },
-  { id: "m12",name: "Garlic Naan",           category: "Starters", price: 4,  description: "Freshly baked tandoor bread with garlic butter and coriander",               rating: 4.5, orders: 2100, available: true,  image: "https://images.unsplash.com/photo-1601050690597-df0568f70950?w=300&h=200&fit=crop", veg: true },
-];
-
-const emptyForm = { name: "", category: "Mains", price: "", description: "", tag: "", veg: true, available: true, image: "" };
-
-function ItemModal({ item, onSave, onClose }: {
+function ItemModal({ item, itemCategories, onSave, onClose }: {
   item: Partial<MenuItem> | null;
+  itemCategories: string[];
   onSave: (data: Partial<MenuItem>) => void;
   onClose: () => void;
 }) {
   const isEdit = !!item?.id;
+  const cur = getCurrencySymbol();
   const [form, setForm] = useState({
     name: item?.name || "",
-    category: item?.category || "Mains",
+    category: item?.category || itemCategories[0] || "Mains",
     price: item?.price?.toString() || "",
     description: item?.description || "",
     tag: item?.tag || "",
@@ -128,7 +114,7 @@ function ItemModal({ item, onSave, onClose }: {
                 {itemCategories.map(c => <option key={c}>{c}</option>)}
               </select>
             </div>
-            <Field label="Price (₹) *" field="price" type="number" placeholder="18" />
+            <Field label={`Price (${cur}) *`} field="price" type="number" placeholder="18" />
           </div>
 
           <div>
@@ -186,11 +172,49 @@ function ItemModal({ item, onSave, onClose }: {
 export function MenuPage() {
   const [activeCategory, setActiveCategory] = useState("All");
   const [search, setSearch] = useState("");
-  const [items, setItems] = useState(initial);
+  const [items, setItems] = useState<MenuItem[]>([]);
+  const [cats, setCats] = useState<ApiMenuCategory[]>([]);
   const [modalItem, setModalItem] = useState<Partial<MenuItem> | null | false>(false); // false=closed, null=new, MenuItem=edit
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
 
-  const toggleAvailable = (id: string) => {
+  const cur = getCurrencySymbol();
+  const slugByLabel = new Map(cats.map(c => [c.label, c.slug]));
+  const categories = ["All", ...cats.map(c => c.label)];
+  const itemCategories = cats.map(c => c.label);
+
+  const mapItem = useCallback((m: ApiMenuItem, soldQty: Map<string, number>, labels: Map<string, string>): MenuItem => ({
+    id: m.id,
+    name: m.name,
+    category: labels.get(m.category) ?? m.category,
+    price: m.price,
+    description: m.description ?? "",
+    available: m.is_available === 1,
+    tag: m.is_popular ? "Popular" : undefined,
+    image: m.image_url || FALLBACK_IMG,
+    orders: soldQty.get(m.id) ?? 0,
+  }), []);
+
+  const load = useCallback(async () => {
+    try {
+      const [menu, categoryRows, sold] = await Promise.all([
+        menuApi.list(undefined, { all: true }),   // management view incl. 86'd items
+        menuCategoriesApi.list(),
+        dashboardApi.soldItems({ period: "month" }).catch(() => null),
+      ]);
+      const labels = new Map(categoryRows.map(c => [c.slug, c.label]));
+      const soldQty = new Map<string, number>();
+      for (const day of sold?.days ?? []) for (const it of day.items) {
+        soldQty.set(it.menu_item_id, (soldQty.get(it.menu_item_id) ?? 0) + it.qty_sold);
+      }
+      setCats(categoryRows);
+      setItems(menu.map(m => mapItem(m, soldQty, labels)));
+    } catch (e) {
+      toast.error("Couldn't load menu", (e as Error).message);
+    }
+  }, [mapItem]);
+  useEffect(() => { void load(); }, [load]);
+
+  const toggleAvailable = async (id: string) => {
     const item = items.find(i => i.id === id);
     if (!item) return;
     setItems(prev => prev.map(i => i.id === id ? { ...i, available: !i.available } : i));
@@ -198,31 +222,52 @@ export function MenuPage() {
       `${item.name} ${item.available ? "marked unavailable" : "marked available"}`,
       item.available ? "Hidden from customer menu" : "Now visible to customers"
     );
-  };
-
-  const handleSave = (data: Partial<MenuItem>) => {
-    const isEdit = !!(modalItem as MenuItem)?.id;
-    if (isEdit) {
-      setItems(prev => prev.map(i => i.id === (modalItem as MenuItem).id ? { ...i, ...data } : i));
-      toast.success("Item updated", `${data.name} has been saved`);
-    } else {
-      const newItem: MenuItem = {
-        id: `m${Date.now()}`,
-        rating: 4.5, orders: 0,
-        ...(data as any),
-        image: data.image || "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=300&h=200&fit=crop",
-      };
-      setItems(prev => [...prev, newItem]);
-      toast.success("Item added", `${data.name} is now live on the menu`);
+    try {
+      await menuApi.update(id, { is_available: !item.available });
+    } catch (e) {
+      setItems(prev => prev.map(i => i.id === id ? { ...i, available: item.available } : i));
+      toast.error("Couldn't update availability", (e as Error).message);
     }
-    setModalItem(false);
   };
 
-  const handleDelete = () => {
+  const handleSave = async (data: Partial<MenuItem>) => {
+    const editId = (modalItem as MenuItem)?.id;
+    const payload = {
+      name: data.name ?? "",
+      category: slugByLabel.get(data.category ?? "") ?? cats[0]?.slug ?? "mains",
+      price: Number(data.price) || 0,
+      description: data.description ?? "",
+      image_url: data.image || null,
+      is_popular: !!(data.tag && data.tag.trim()),
+      is_available: data.available ?? true,
+    };
+    try {
+      if (editId) {
+        await menuApi.update(editId, payload);
+        toast.success("Item updated", `${data.name} has been saved`);
+      } else {
+        await menuApi.create(payload);
+        toast.success("Item added", `${data.name} is now live on the menu`);
+      }
+      setModalItem(false);
+      await load();
+    } catch (e) {
+      toast.error("Couldn't save item", (e as Error).message);
+    }
+  };
+
+  const handleDelete = async () => {
     const item = items.find(i => i.id === deleteTarget);
-    setItems(prev => prev.filter(i => i.id !== deleteTarget));
+    const id = deleteTarget;
     setDeleteTarget(null);
-    toast.success("Item removed", `${item?.name} has been deleted from the menu`);
+    if (!id) return;
+    try {
+      await menuApi.delete(id);
+      setItems(prev => prev.filter(i => i.id !== id));
+      toast.success("Item removed", `${item?.name} has been deleted from the menu`);
+    } catch (e) {
+      toast.error("Couldn't delete item", (e as Error).message);
+    }
   };
 
   const filtered = items.filter(item =>
@@ -293,10 +338,12 @@ export function MenuPage() {
                         {item.tag}
                       </span>
                     )}
-                    <span className="w-4 h-4 rounded flex items-center justify-center"
-                      style={{ background: item.veg ? "rgba(34,197,94,0.9)" : "rgba(255,59,92,0.9)" }}>
-                      <div className="w-2 h-2 rounded-full bg-white" />
-                    </span>
+                    {item.veg !== undefined && (
+                      <span className="w-4 h-4 rounded flex items-center justify-center"
+                        style={{ background: item.veg ? "rgba(34,197,94,0.9)" : "rgba(255,59,92,0.9)" }}>
+                        <div className="w-2 h-2 rounded-full bg-white" />
+                      </span>
+                    )}
                   </div>
                   {!item.available && (
                     <div className="absolute inset-0 flex items-center justify-center"
@@ -313,16 +360,18 @@ export function MenuPage() {
                 <div className="p-3.5">
                   <div className="flex items-start justify-between gap-2 mb-1">
                     <h4 style={{ color: "#e8eef8", fontFamily: "var(--font-display)", fontWeight: 600, fontSize: "0.92rem", lineHeight: 1.3 }}>{item.name}</h4>
-                    <span style={{ color: "#1e7fff", fontFamily: "var(--font-mono)", fontWeight: 700, fontSize: "0.95rem", flexShrink: 0 }}>₹{item.price}</span>
+                    <span style={{ color: "#1e7fff", fontFamily: "var(--font-mono)", fontWeight: 700, fontSize: "0.95rem", flexShrink: 0 }}>{cur}{item.price}</span>
                   </div>
                   <p style={{ color: "#6b82a0", fontSize: "0.73rem", lineHeight: 1.5, marginBottom: 10 }} className="line-clamp-2">{item.description}</p>
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2.5">
-                      <div className="flex items-center gap-1">
-                        <Star size={11} fill="#f59e0b" stroke="none" />
-                        <span style={{ color: "#f59e0b", fontSize: "0.72rem", fontWeight: 600 }}>{item.rating}</span>
-                      </div>
-                      <span style={{ color: "#6b82a0", fontSize: "0.68rem" }}>{item.orders.toLocaleString()} orders</span>
+                      {item.rating != null && (
+                        <div className="flex items-center gap-1">
+                          <Star size={11} fill="#f59e0b" stroke="none" />
+                          <span style={{ color: "#f59e0b", fontSize: "0.72rem", fontWeight: 600 }}>{item.rating}</span>
+                        </div>
+                      )}
+                      <span style={{ color: "#6b82a0", fontSize: "0.68rem" }}>{item.orders.toLocaleString()} sold</span>
                     </div>
                     <div className="flex items-center gap-1.5">
                       <motion.button whileTap={{ scale: 0.9 }}
@@ -356,6 +405,7 @@ export function MenuPage() {
         {modalItem !== false && (
           <ItemModal
             item={modalItem}
+            itemCategories={itemCategories}
             onSave={handleSave}
             onClose={() => setModalItem(false)}
           />

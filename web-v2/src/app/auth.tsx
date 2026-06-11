@@ -58,6 +58,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const token = localStorage.getItem('cafyz_token');
     if (stored && token) {
       try { setUser(JSON.parse(stored) as AuthUser); } catch { /* ignore */ }
+      // Re-establish the active currency/plan from the restaurant record so every
+      // screen formats money correctly after a hard reload (login already does this).
+      restaurantApi.me()
+        .then(r => { if (r.currency_code) setActiveCurrencyCode(r.currency_code); })
+        .catch(() => { /* keep defaults if offline / session expired */ });
     }
     setLoading(false);
   }, []);

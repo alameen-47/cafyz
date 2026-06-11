@@ -86,8 +86,13 @@ router.get('/', async (req: AuthRequest, res, next) => {
     const { category } = req.query;
     const rid = req.user?.restaurant_id ?? (req.query.restaurant_id as string | undefined);
 
-    let sql = 'SELECT * FROM menu_items WHERE is_available=1';
+    // Authenticated staff can request the full catalogue (incl. 86'd items) for
+    // the menu-management screen via ?all=1. Public browsing stays available-only.
+    const includeUnavailable = !!req.user && req.query.all === '1';
+
+    let sql = 'SELECT * FROM menu_items WHERE 1=1';
     const args: any[] = [];
+    if (!includeUnavailable) { sql += ' AND is_available=1'; }
     if (rid) { sql += ' AND restaurant_id=?'; args.push(rid); }
     if (category) { sql += ' AND category=?'; args.push(String(category)); }
     sql += ' ORDER BY category, name';
