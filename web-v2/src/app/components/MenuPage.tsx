@@ -14,6 +14,24 @@ interface MenuItem {
   image: string; veg?: boolean;
 }
 
+// Module scope so a stable identity survives re-renders (otherwise each keystroke
+// remounts the input and steals focus).
+function Field({ label, value, onChange, error, type = "text", placeholder = "" }: { label: string; value: string; onChange: (v: string) => void; error?: string; type?: string; placeholder?: string }) {
+  return (
+    <div>
+      <label style={{ color: "#a8bdd4", fontSize: "0.75rem", display: "block", marginBottom: 5 }}>{label}</label>
+      <input type={type} placeholder={placeholder} value={value}
+        onChange={e => onChange(e.target.value)}
+        className="w-full rounded-xl px-3 py-2.5 text-sm outline-none transition-all"
+        style={{
+          background: "#111b35", color: "#e8eef8",
+          border: `1px solid ${error ? "rgba(255,59,92,0.4)" : "rgba(30,127,255,0.12)"}`,
+        }} />
+      {error && <p style={{ color: "#ff3b5c", fontSize: "0.68rem", marginTop: 3 }}>{error}</p>}
+    </div>
+  );
+}
+
 function ItemModal({ item, itemCategories, onSave, onClose }: {
   item: Partial<MenuItem> | null;
   itemCategories: string[];
@@ -53,19 +71,7 @@ function ItemModal({ item, itemCategories, onSave, onClose }: {
     }, 600);
   };
 
-  const Field = ({ label, field, type = "text", placeholder = "" }: { label: string; field: string; type?: string; placeholder?: string }) => (
-    <div>
-      <label style={{ color: "#a8bdd4", fontSize: "0.75rem", display: "block", marginBottom: 5 }}>{label}</label>
-      <input type={type} placeholder={placeholder} value={(form as any)[field]}
-        onChange={e => { setForm(f => ({ ...f, [field]: e.target.value })); setErrors(er => ({ ...er, [field]: "" })); }}
-        className="w-full rounded-xl px-3 py-2.5 text-sm outline-none transition-all"
-        style={{
-          background: "#111b35", color: "#e8eef8",
-          border: `1px solid ${errors[field] ? "rgba(255,59,92,0.4)" : "rgba(30,127,255,0.12)"}`,
-        }} />
-      {errors[field] && <p style={{ color: "#ff3b5c", fontSize: "0.68rem", marginTop: 3 }}>{errors[field]}</p>}
-    </div>
-  );
+  const setField = (field: string, v: string) => { setForm(f => ({ ...f, [field]: v })); setErrors(er => ({ ...er, [field]: "" })); };
 
   return (
     <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center p-0 sm:p-4"
@@ -102,10 +108,10 @@ function ItemModal({ item, itemCategories, onSave, onClose }: {
               </div>
             )}
           </div>
-          <Field label="Image URL (optional)" field="image" placeholder="https://images.unsplash.com/..." />
+          <Field label="Image URL (optional)" value={form.image} onChange={v => setField("image", v)} placeholder="https://images.unsplash.com/..." />
 
           <div className="grid grid-cols-2 gap-3">
-            <div className="col-span-2"><Field label="Item Name *" field="name" placeholder="Butter Chicken" /></div>
+            <div className="col-span-2"><Field label="Item Name *" value={form.name} onChange={v => setField("name", v)} error={errors.name} placeholder="Butter Chicken" /></div>
             <div>
               <label style={{ color: "#a8bdd4", fontSize: "0.75rem", display: "block", marginBottom: 5 }}>Category *</label>
               <select value={form.category} onChange={e => setForm(f => ({ ...f, category: e.target.value }))}
@@ -114,7 +120,7 @@ function ItemModal({ item, itemCategories, onSave, onClose }: {
                 {itemCategories.map(c => <option key={c}>{c}</option>)}
               </select>
             </div>
-            <Field label={`Price (${cur}) *`} field="price" type="number" placeholder="18" />
+            <Field label={`Price (${cur}) *`} value={form.price} onChange={v => setField("price", v)} error={errors.price} type="number" placeholder="18" />
           </div>
 
           <div>
@@ -126,7 +132,7 @@ function ItemModal({ item, itemCategories, onSave, onClose }: {
             {errors.description && <p style={{ color: "#ff3b5c", fontSize: "0.68rem", marginTop: 3 }}>{errors.description}</p>}
           </div>
 
-          <Field label="Tag (optional)" field="tag" placeholder="Bestseller · Chef's Pick · Popular · New" />
+          <Field label="Tag (optional)" value={form.tag} onChange={v => setField("tag", v)} placeholder="Bestseller · Chef's Pick · Popular · New" />
 
           <div className="grid grid-cols-2 gap-3">
             <div className="rounded-xl p-3 flex items-center justify-between" style={{ background: "#111b35", border: "1px solid rgba(30,127,255,0.08)" }}>
