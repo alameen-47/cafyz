@@ -1,0 +1,87 @@
+@import 'tailwindcss' source(none);
+@source '../**/*.{js,ts,jsx,tsx}';
+
+@import 'tw-animate-css';
+
+@layer utilities {
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+  .line-clamp-2 {
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+  }
+}
+
+/* ── Sonner toast overrides ── */
+[data-sonner-toaster] {
+  --border-radius: 14px !important;
+}
+[data-sonner-toast] {
+  background: #0d1326 !important;
+  border: 1px solid rgba(30,127,255,0.2) !important;
+  color: #e8eef8 !important;
+  font-family: var(--font-body) !important;
+  font-size: 0.84rem !important;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.5) !important;
+}
+[data-sonner-toast] [data-description] {
+  color: #6b82a0 !important;
+  font-size: 0.75rem !important;
+}
+[data-sonner-toast][data-type="success"] {
+  border-color: rgba(34,197,94,0.3) !important;
+}
+[data-sonner-toast][data-type="error"] {
+  border-color: rgba(255,59,92,0.3) !important;
+}
+[data-sonner-toast][data-type="warning"] {
+  border-color: rgba(245,158,11,0.3) !important;
+}
+[data-sonner-toast] button[data-close-button] {
+  background: rgba(30,127,255,0.08) !important;
+  border: 1px solid rgba(30,127,255,0.12) !important;
+  color: #6b82a0 !important;
+}
+
+@layer base {
+  /* Prevent horizontal overflow on all screens */
+  html, body {
+    overflow-x: hidden;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  /* Thin scrollbar for main content on desktop */
+  ::-webkit-scrollbar {
+    width: 4px;
+    height: 4px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: rgba(30, 127, 255, 0.15);
+    border-radius: 4px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgba(30, 127, 255, 0.3);
+  }
+
+  /* Better tap highlights on mobile */
+  button, a {
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+  }
+
+  /* Native select/input styling reset */
+  select {
+    appearance: none;
+    -webkit-appearance: none;
+  }
+}
