@@ -1,66 +1,41 @@
 import { motion } from "motion/react";
-import { useState } from "react";
-import { TrendingUp, TrendingDown } from "lucide-react";
+import { useState, useEffect } from "react";
+import { TrendingUp } from "lucide-react";
+import { dashboardApi, menuApi, ordersApi, type RevenuePeriod } from "../../services/api";
+import { formatMoney, getCurrencySymbol } from "../../utils/currency";
 
 const periods = ["Today", "7 Days", "30 Days", "3 Months"];
 
-const revenueMonthly = [
-  { month: "Jan", revenue: 142000, profit: 48000 },
-  { month: "Feb", revenue: 158000, profit: 54000 },
-  { month: "Mar", revenue: 171000, profit: 61000 },
-  { month: "Apr", revenue: 165000, profit: 58000 },
-  { month: "May", revenue: 183000, profit: 67000 },
-  { month: "Jun", revenue: 196000, profit: 74000 },
-];
+type RevPoint = { month: string; revenue: number; profit: number };
+type ItemPoint = { name: string; revenue: number };
+type RadarPoint = { metric: string; score: number };
+type HourPoint = { hour: string; covers: number };
+type Kpi = { label: string; value: string; change: string; up: boolean };
 
-const topItems = [
-  { name: "Chicken Tikka Masala", revenue: 22320 },
-  { name: "Garlic Naan", revenue: 8400 },
-  { name: "Grilled Salmon", revenue: 17920 },
-  { name: "Ribeye Steak", revenue: 14400 },
-  { name: "Mango Lassi", revenue: 4750 },
-  { name: "Tiramisu", revenue: 4680 },
-];
+const shortDay = (iso: string) => {
+  const d = new Date((iso || "") + "T00:00:00");
+  return isNaN(d.getTime()) ? iso : d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+};
+const catLabel = (slug: string) => slug ? slug.charAt(0).toUpperCase() + slug.slice(1) : "Other";
 
-const hourlyAvg = [
-  { hour: "9h", covers: 4 }, { hour: "10h", covers: 8 }, { hour: "11h", covers: 16 },
-  { hour: "12h", covers: 38 }, { hour: "13h", covers: 42 }, { hour: "14h", covers: 28 },
-  { hour: "15h", covers: 18 }, { hour: "16h", covers: 14 }, { hour: "17h", covers: 22 },
-  { hour: "18h", covers: 44 }, { hour: "19h", covers: 52 }, { hour: "20h", covers: 46 },
-  { hour: "21h", covers: 34 }, { hour: "22h", covers: 20 },
-];
-
-const customerRadar = [
-  { metric: "Food Quality", score: 92 },
-  { metric: "Service", score: 88 },
-  { metric: "Ambiance", score: 85 },
-  { metric: "Value", score: 78 },
-  { metric: "Speed", score: 82 },
-  { metric: "Cleanliness", score: 94 },
-];
-
-const kpis = [
-  { label: "Monthly Revenue", value: "₹1.96L", change: "+7.1%", up: true },
-  { label: "Avg Order Value", value: "₹1,540", change: "+4.2%", up: true },
-  { label: "Covers / Day", value: "286", change: "+6.8%", up: true },
-  { label: "Table Turnover", value: "3.2×", change: "-0.1×", up: false },
-  { label: "Food Cost %", value: "28.4%", change: "-1.2%", up: true },
-  { label: "Customer Rating", value: "4.7 ★", change: "+0.1", up: true },
-];
-
-// ── Custom dual-line area chart ──────────────────────────────────────────────
-function DualAreaChart({ data }: { data: typeof revenueMonthly }) {
+// ── Custom dual-line area chart (revenue; profit line only if present) ─────────
+function DualAreaChart({ data, cur = "₹" }: { data: RevPoint[]; cur?: string }) {
   const W = 600, H = 180, padL = 48, padR = 16, padT = 12, padB = 24;
   const innerW = W - padL - padR;
   const innerH = H - padT - padB;
-  const allVals = data.flatMap(d => [d.revenue, d.profit]);
-  const max = Math.max(...allVals);
+  if (data.length < 2) {
+    return <div style={{ height: 180 }} className="flex items-center justify-center"><span style={{ color: "#6b82a0", fontSize: "0.8rem" }}>Not enough data for this period yet</span></div>;
+  }
+  const hasProfit = data.some(d => d.profit > 0);
+  const allVals = data.flatMap(d => hasProfit ? [d.revenue, d.profit] : [d.revenue]);
+  const max = Math.max(...allVals) || 1;
   const xs = data.map((_, i) => padL + (i / (data.length - 1)) * innerW);
   const yRev = data.map(d => padT + (1 - d.revenue / max) * innerH);
   const yProf = data.map(d => padT + (1 - d.profit / max) * innerH);
   const linePath = (ys: number[]) => xs.map((x, i) => `${i === 0 ? "M" : "L"}${x.toFixed(1)},${ys[i].toFixed(1)}`).join(" ");
   const areaPath = (ys: number[]) => linePath(ys) + ` L${xs[xs.length-1].toFixed(1)},${H - padB} L${xs[0].toFixed(1)},${H - padB} Z`;
   const gridYs = [0.25, 0.5, 0.75, 1].map(t => padT + (1 - t) * innerH);
+  const labelEvery = Math.ceil(data.length / 8);
 
   return (
     <svg viewBox={`0 0 ${W} ${H}`} className="w-full" style={{ height: 180 }}>
@@ -68,21 +43,21 @@ function DualAreaChart({ data }: { data: typeof revenueMonthly }) {
         <g key={i}>
           <line x1={padL} y1={y} x2={W - padR} y2={y} stroke="rgba(30,127,255,0.06)" strokeDasharray="4 3" />
           <text x={padL - 4} y={y + 4} textAnchor="end" fill="#6b82a0" fontSize={9}>
-            ₹{((max * [0.25,0.5,0.75,1][i]) / 1000).toFixed(0)}k
+            {cur}{((max * [0.25,0.5,0.75,1][i]) / 1000).toFixed(1)}k
           </text>
         </g>
       ))}
-      {data.map((d, i) => (
+      {data.map((d, i) => i % labelEvery === 0 && (
         <text key={i} x={xs[i]} y={H - 6} textAnchor="middle" fill="#6b82a0" fontSize={9}>{d.month}</text>
       ))}
       <path d={areaPath(yRev)} fill="#1e7fff" fillOpacity={0.1} />
-      <path d={areaPath(yProf)} fill="#00c6ff" fillOpacity={0.08} />
+      {hasProfit && <path d={areaPath(yProf)} fill="#00c6ff" fillOpacity={0.08} />}
       <path d={linePath(yRev)} fill="none" stroke="#1e7fff" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
-      <path d={linePath(yProf)} fill="none" stroke="#00c6ff" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+      {hasProfit && <path d={linePath(yProf)} fill="none" stroke="#00c6ff" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />}
       {xs.map((x, i) => (
         <g key={i}>
           <circle cx={x} cy={yRev[i]} r={3} fill="#1e7fff" />
-          <circle cx={x} cy={yProf[i]} r={3} fill="#00c6ff" />
+          {hasProfit && <circle cx={x} cy={yProf[i]} r={3} fill="#00c6ff" />}
         </g>
       ))}
     </svg>
@@ -90,8 +65,11 @@ function DualAreaChart({ data }: { data: typeof revenueMonthly }) {
 }
 
 // ── Custom horizontal bar chart ───────────────────────────────────────────────
-function HorizontalBarChart({ data }: { data: typeof topItems }) {
-  const max = Math.max(...data.map(d => d.revenue));
+function HorizontalBarChart({ data, cur = "₹" }: { data: ItemPoint[]; cur?: string }) {
+  if (data.length === 0) {
+    return <div className="py-8 text-center"><span style={{ color: "#6b82a0", fontSize: "0.8rem" }}>No sales recorded for this period yet</span></div>;
+  }
+  const max = Math.max(...data.map(d => d.revenue)) || 1;
   return (
     <div className="space-y-3">
       {data.map((item, i) => {
@@ -110,8 +88,8 @@ function HorizontalBarChart({ data }: { data: typeof topItems }) {
                 style={{ background: i === 0 ? "#1e7fff" : i === 2 ? "#00c6ff" : "#1e4a88" }}
               />
             </div>
-            <span style={{ color: "#6b82a0", fontFamily: "var(--font-mono)", fontSize: "0.72rem", width: 50, textAlign: "right", flexShrink: 0 }}>
-              ₹{(item.revenue / 1000).toFixed(1)}k
+            <span style={{ color: "#6b82a0", fontFamily: "var(--font-mono)", fontSize: "0.72rem", width: 56, textAlign: "right", flexShrink: 0 }}>
+              {cur}{(item.revenue / 1000).toFixed(1)}k
             </span>
           </div>
         );
@@ -121,9 +99,12 @@ function HorizontalBarChart({ data }: { data: typeof topItems }) {
 }
 
 // ── Custom radar / spider chart ───────────────────────────────────────────────
-function RadarChart({ data }: { data: typeof customerRadar }) {
+function RadarChart({ data }: { data: RadarPoint[] }) {
   const cx = 110, cy = 110, r = 80;
   const n = data.length;
+  if (n < 3) {
+    return <div style={{ height: 200 }} className="flex items-center justify-center"><span style={{ color: "#6b82a0", fontSize: "0.8rem" }}>Not enough categories sold yet</span></div>;
+  }
   const angleStep = (2 * Math.PI) / n;
   const startAngle = -Math.PI / 2;
   const rings = [0.25, 0.5, 0.75, 1];
@@ -169,11 +150,14 @@ function RadarChart({ data }: { data: typeof customerRadar }) {
 }
 
 // ── Custom line sparkline ─────────────────────────────────────────────────────
-function LineSparkline({ data }: { data: typeof hourlyAvg }) {
+function LineSparkline({ data }: { data: HourPoint[] }) {
   const W = 600, H = 120, padL = 30, padR = 12, padT = 8, padB = 20;
   const innerW = W - padL - padR;
   const innerH = H - padT - padB;
-  const max = Math.max(...data.map(d => d.covers));
+  if (data.length < 2) {
+    return <div style={{ height: 120 }} className="flex items-center justify-center"><span style={{ color: "#6b82a0", fontSize: "0.8rem" }}>No order activity yet</span></div>;
+  }
+  const max = Math.max(...data.map(d => d.covers)) || 1;
   const xs = data.map((_, i) => padL + (i / (data.length - 1)) * innerW);
   const ys = data.map(d => padT + (1 - d.covers / max) * innerH);
   const linePath = xs.map((x, i) => `${i === 0 ? "M" : "L"}${x.toFixed(1)},${ys[i].toFixed(1)}`).join(" ");
@@ -202,6 +186,72 @@ function LineSparkline({ data }: { data: typeof hourlyAvg }) {
 
 export function Analytics() {
   const [period, setPeriod] = useState("30 Days");
+  const [kpis, setKpis] = useState<Kpi[]>([]);
+  const [revTrend, setRevTrend] = useState<RevPoint[]>([]);
+  const [topItems, setTopItems] = useState<ItemPoint[]>([]);
+  const [radar, setRadar] = useState<RadarPoint[]>([]);
+  const [hourly, setHourly] = useState<HourPoint[]>([]);
+  const cur = getCurrencySymbol();
+
+  useEffect(() => {
+    let alive = true;
+    const periodKey: RevenuePeriod = period === "Today" ? "day" : period === "7 Days" ? "week" : "month";
+    (async () => {
+      const [stats, rev, sold, menu, orders] = await Promise.all([
+        dashboardApi.stats().catch(() => null),
+        dashboardApi.revenue({ period: periodKey }).catch(() => null),
+        dashboardApi.soldItems({ period: periodKey }).catch(() => null),
+        menuApi.list().catch(() => []),
+        ordersApi.list().catch(() => []),
+      ]);
+      if (!alive) return;
+
+      // Revenue trend (daily rows)
+      setRevTrend((rev?.rows ?? []).map(r => ({ month: shortDay(r.day), revenue: r.revenue, profit: 0 })));
+
+      // Top items + category split from sold-items × menu prices
+      const priceById = new Map(menu.map(m => [m.id, m.price]));
+      const nameById = new Map(menu.map(m => [m.id, m.name]));
+      const catById = new Map(menu.map(m => [m.id, m.category]));
+      const itemRev = new Map<string, number>();
+      const catQty = new Map<string, number>();
+      for (const day of sold?.days ?? []) for (const it of day.items) {
+        itemRev.set(it.menu_item_id, (itemRev.get(it.menu_item_id) ?? 0) + (priceById.get(it.menu_item_id) ?? 0) * it.qty_sold);
+        const cat = catById.get(it.menu_item_id) ?? "other";
+        catQty.set(cat, (catQty.get(cat) ?? 0) + it.qty_sold);
+      }
+      setTopItems([...itemRev.entries()]
+        .map(([id, r]) => ({ name: nameById.get(id) ?? "Item", revenue: r }))
+        .sort((a, b) => b.revenue - a.revenue).slice(0, 6));
+
+      const allCats = [...new Set(menu.map(m => m.category))];
+      const maxCat = Math.max(1, ...[...catQty.values()]);
+      setRadar(allCats.map(c => ({ metric: catLabel(c), score: Math.round(((catQty.get(c) ?? 0) / maxCat) * 100) })));
+
+      // Covers by hour from order timestamps (server-local hour from the string)
+      const buckets = Array.from({ length: 24 }, (_, h) => ({ hour: `${h}h`, covers: 0 }));
+      orders.forEach(o => {
+        const h = parseInt((o.created_at || "").slice(11, 13), 10);
+        if (!isNaN(h) && h >= 0 && h < 24) buckets[h].covers += o.covers || 1;
+      });
+      setHourly(buckets.slice(9, 24)); // business hours window
+
+      // KPIs from real totals
+      const totalRev = rev?.totalRevenue ?? 0;
+      const totalOrders = rev?.totalOrders ?? 0;
+      const itemsSold = [...catQty.values()].reduce((a, b) => a + b, 0);
+      const occ = stats?.tables_total ? Math.round((stats.tables_occupied / stats.tables_total) * 100) : 0;
+      setKpis([
+        { label: "Revenue", value: formatMoney(totalRev), change: rev?.periodLabel ?? period, up: true },
+        { label: "Avg Order Value", value: formatMoney(totalOrders ? totalRev / totalOrders : 0), change: "per order", up: true },
+        { label: "Orders", value: String(totalOrders), change: period, up: true },
+        { label: "Items Sold", value: String(itemsSold), change: "this period", up: true },
+        { label: "Active Tables", value: `${stats?.tables_occupied ?? 0}/${stats?.tables_total ?? 0}`, change: `${occ}% occ.`, up: true },
+        { label: "Paid Orders", value: String(stats?.orders_paid ?? 0), change: "today", up: true },
+      ]);
+    })();
+    return () => { alive = false; };
+  }, [period]);
 
   return (
     <div className="p-3 sm:p-4 md:p-6 space-y-4 md:space-y-6">
@@ -223,55 +273,50 @@ export function Analytics() {
             className="rounded-2xl p-4" style={{ background: "#0d1326", border: "1px solid rgba(30,127,255,0.1)" }}>
             <div style={{ color: "#6b82a0", fontSize: "0.7rem", marginBottom: 4 }}>{kpi.label}</div>
             <div style={{ color: "#e8eef8", fontFamily: "var(--font-display)", fontWeight: 700, fontSize: "1.1rem" }}>{kpi.value}</div>
-            <div className="flex items-center gap-1 mt-1" style={{ color: kpi.up ? "#22c55e" : "#ff3b5c", fontSize: "0.72rem" }}>
-              {kpi.up ? <TrendingUp size={10} /> : <TrendingDown size={10} />}
+            <div className="flex items-center gap-1 mt-1" style={{ color: "#6b82a0", fontSize: "0.72rem" }}>
+              <TrendingUp size={10} style={{ color: "#1e7fff" }} />
               {kpi.change}
             </div>
           </motion.div>
         ))}
       </div>
 
-      {/* Revenue vs Profit */}
+      {/* Revenue trend */}
       <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}
         className="rounded-2xl p-5" style={{ background: "#0d1326", border: "1px solid rgba(30,127,255,0.1)" }}>
         <div className="flex items-center justify-between mb-1">
-          <h3 style={{ color: "#e8eef8", fontFamily: "var(--font-display)", fontWeight: 600 }}>Revenue vs Profit</h3>
-          <div className="flex items-center gap-4">
-            <span className="flex items-center gap-1.5 text-xs" style={{ color: "#1e7fff" }}>
-              <span className="w-3 h-0.5 rounded inline-block" style={{ background: "#1e7fff" }} /> Revenue
-            </span>
-            <span className="flex items-center gap-1.5 text-xs" style={{ color: "#00c6ff" }}>
-              <span className="w-3 h-0.5 rounded inline-block" style={{ background: "#00c6ff" }} /> Profit
-            </span>
-          </div>
+          <h3 style={{ color: "#e8eef8", fontFamily: "var(--font-display)", fontWeight: 600 }}>Revenue Trend</h3>
+          <span className="flex items-center gap-1.5 text-xs" style={{ color: "#1e7fff" }}>
+            <span className="w-3 h-0.5 rounded inline-block" style={{ background: "#1e7fff" }} /> Revenue
+          </span>
         </div>
-        <p style={{ color: "#6b82a0", fontSize: "0.75rem", marginBottom: 12 }}>6-month trend</p>
-        <DualAreaChart data={revenueMonthly} />
+        <p style={{ color: "#6b82a0", fontSize: "0.75rem", marginBottom: 12 }}>Daily revenue · {period}</p>
+        <DualAreaChart data={revTrend} cur={cur} />
       </motion.div>
 
-      {/* Top items + Radar */}
+      {/* Top items + Category split */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 md:gap-4">
         <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.35 }}
           className="lg:col-span-2 rounded-2xl p-5" style={{ background: "#0d1326", border: "1px solid rgba(30,127,255,0.1)" }}>
           <h3 style={{ color: "#e8eef8", fontFamily: "var(--font-display)", fontWeight: 600, marginBottom: 4 }}>Top Performing Items</h3>
           <p style={{ color: "#6b82a0", fontSize: "0.75rem", marginBottom: 16 }}>By revenue generated</p>
-          <HorizontalBarChart data={topItems} />
+          <HorizontalBarChart data={topItems} cur={cur} />
         </motion.div>
 
         <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}
           className="rounded-2xl p-5" style={{ background: "#0d1326", border: "1px solid rgba(30,127,255,0.1)" }}>
-          <h3 style={{ color: "#e8eef8", fontFamily: "var(--font-display)", fontWeight: 600, marginBottom: 4 }}>Customer Satisfaction</h3>
-          <p style={{ color: "#6b82a0", fontSize: "0.75rem", marginBottom: 4 }}>Avg ratings by category</p>
-          <RadarChart data={customerRadar} />
+          <h3 style={{ color: "#e8eef8", fontFamily: "var(--font-display)", fontWeight: 600, marginBottom: 4 }}>Sales by Category</h3>
+          <p style={{ color: "#6b82a0", fontSize: "0.75rem", marginBottom: 4 }}>Share of items sold</p>
+          <RadarChart data={radar} />
         </motion.div>
       </div>
 
       {/* Hourly covers */}
       <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.45 }}
         className="rounded-2xl p-5" style={{ background: "#0d1326", border: "1px solid rgba(30,127,255,0.1)" }}>
-        <h3 style={{ color: "#e8eef8", fontFamily: "var(--font-display)", fontWeight: 600, marginBottom: 4 }}>Average Covers by Hour</h3>
+        <h3 style={{ color: "#e8eef8", fontFamily: "var(--font-display)", fontWeight: 600, marginBottom: 4 }}>Covers by Hour</h3>
         <p style={{ color: "#6b82a0", fontSize: "0.75rem", marginBottom: 12 }}>Identifies peak dining times</p>
-        <LineSparkline data={hourlyAvg} />
+        <LineSparkline data={hourly} />
       </motion.div>
     </div>
   );
