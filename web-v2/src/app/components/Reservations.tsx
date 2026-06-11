@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Plus, Calendar, Clock, Users, Phone, StickyNote, Check, X, Crown } from "lucide-react";
 import { toast } from "./Toast";
+import { reservationsApi, tablesApi, type ApiReservation, type ApiTable } from "../../services/api";
 
 type ResStatus = "confirmed" | "pending" | "seated" | "cancelled" | "completed";
 
@@ -17,39 +18,92 @@ interface Reservation {
   status: ResStatus;
 }
 
-const reservations: Reservation[] = [
-  { id: "r1", guest: "Arjun Mehta", phone: "+91 98765 11111", covers: 4, date: "2026-06-11", time: "19:00", table: "T-04", note: "Anniversary dinner, candle setup", status: "confirmed" },
-  { id: "r2", guest: "Priya Sharma", phone: "+91 98765 22222", covers: 2, date: "2026-06-11", time: "19:30", table: "T-01", note: "", status: "confirmed" },
-  { id: "r3", guest: "Raj & Family", phone: "+91 98765 33333", covers: 6, date: "2026-06-11", time: "20:00", table: "T-08", note: "High chair needed", status: "pending" },
-  { id: "r4", guest: "Birthday Party", phone: "+91 98765 44444", covers: 8, date: "2026-06-11", time: "20:30", table: "T-18", note: "Birthday cake — confirm by 8pm", status: "confirmed" },
-  { id: "r5", guest: "Johnson Party", phone: "+91 98765 55555", covers: 3, date: "2026-06-12", time: "21:00", table: "T-14", note: "", status: "pending" },
-  { id: "r6", guest: "Corporate Dinner", phone: "+91 98765 66666", covers: 12, date: "2026-06-12", time: "19:00", table: "T-08", note: "Private room requested", status: "confirmed" },
-];
-
 const statusConfig: Record<ResStatus, { color: string; bg: string; label: string }> = {
   confirmed: { color: "#22c55e", bg: "rgba(34,197,94,0.1)", label: "Confirmed" },
   pending: { color: "#f59e0b", bg: "rgba(245,158,11,0.1)", label: "Pending" },
   seated: { color: "#1e7fff", bg: "rgba(30,127,255,0.1)", label: "Seated" },
   cancelled: { color: "#ff3b5c", bg: "rgba(255,59,92,0.1)", label: "Cancelled" },
-  completed: { color: "#6b82a0", bg: "rgba(107,130,160,0.1)", label: "Completed" },
+  completed: { color: "#6b82a0", bg: "rgba(107,130,160,0.1)", label: "No-show" },
 };
 
 const timeSlots = ["18:00","18:30","19:00","19:30","20:00","20:30","21:00","21:30","22:00"];
-const tables = ["T-01","T-02","T-04","T-06","T-08","T-14","T-15","T-18","T-19","T-21"];
+
+// Backend status (confirmed/seated/cancelled/no-show) → UI vocabulary, and back.
+const ST_FWD: Record<string, ResStatus> = { confirmed: "confirmed", seated: "seated", cancelled: "cancelled", "no-show": "completed" };
+const ST_REV: Partial<Record<ResStatus, string>> = { confirmed: "confirmed", seated: "seated", cancelled: "cancelled", completed: "no-show" };
+
+function splitResTime(rt?: string): { date: string; time: string } {
+  if (!rt) return { date: "", time: "" };
+  const s = rt.includes("T") ? rt : rt.replace(" ", "T");
+  const [d, t = ""] = s.split("T");
+  return { date: d, time: t.slice(0, 5) };
+}
 
 export function Reservations() {
-  const [items, setItems] = useState(reservations);
+  const [items, setItems] = useState<Reservation[]>([]);
+  const [tableOpts, setTableOpts] = useState<ApiTable[]>([]);
   const [showForm, setShowForm] = useState(false);
-  const [filterDate, setFilterDate] = useState("2026-06-11");
-  const [newRes, setNewRes] = useState({ guest: "", phone: "", covers: 2, date: "2026-06-12", time: "19:00", table: "T-01", note: "" });
+  const [filterDate, setFilterDate] = useState("");
+  const [newRes, setNewRes] = useState({ guest: "", phone: "", covers: 2, date: "", time: "19:00", table: "", note: "" });
+
+  const load = useCallback(async () => {
+    try {
+      const [rows, tables] = await Promise.all([reservationsApi.list(), tablesApi.list().catch(() => [])]);
+      setTableOpts(tables);
+      const nameById = new Map(tables.map(t => [t.id, t.name]));
+      setItems(rows.map((r: ApiReservation) => {
+        const { date, time } = splitResTime(r.res_time);
+        return {
+          id: r.id,
+          guest: r.guest_name,
+          phone: "",
+          covers: r.covers,
+          date, time,
+          table: r.table_name || (r.table_id ? nameById.get(r.table_id) ?? "—" : "—"),
+          note: r.note ?? "",
+          status: ST_FWD[r.status] ?? "confirmed",
+        };
+      }));
+    } catch (e) {
+      toast.error("Couldn't load reservations", (e as Error).message);
+    }
+  }, []);
+  useEffect(() => { void load(); }, [load]);
 
   const filtered = items.filter(r => !filterDate || r.date === filterDate);
 
-  const updateStatus = (id: string, status: ResStatus) => {
+  const updateStatus = async (id: string, status: ResStatus) => {
     const res = items.find(r => r.id === id);
     setItems(prev => prev.map(r => r.id === id ? { ...r, status } : r));
     if (status === "confirmed") toast.success("Reservation confirmed", `${res?.guest} · ${res?.time} · ${res?.table}`);
     if (status === "cancelled") toast.error("Reservation cancelled", `${res?.guest}'s booking has been cancelled`);
+    try {
+      await reservationsApi.update(id, { status: ST_REV[status] ?? "confirmed" });
+      void load();
+    } catch (e) {
+      toast.error("Couldn't update reservation", (e as Error).message);
+      void load();
+    }
+  };
+
+  const createReservation = async () => {
+    if (!newRes.guest.trim()) { toast.error("Guest name required", "Enter a name for the reservation"); return; }
+    const date = newRes.date || new Date().toISOString().slice(0, 10);
+    try {
+      await reservationsApi.create({
+        guest_name: newRes.guest.trim(),
+        covers: newRes.covers,
+        res_time: `${date}T${newRes.time}:00`,
+        note: newRes.note || undefined,
+        table_id: newRes.table || undefined,
+      });
+      toast.success("Reservation created", `${newRes.guest} · ${date} at ${newRes.time}`);
+      setShowForm(false);
+      setNewRes({ guest: "", phone: "", covers: 2, date: "", time: "19:00", table: "", note: "" });
+      await load();
+    } catch (e) {
+      toast.error("Couldn't create reservation", (e as Error).message);
+    }
   };
 
   return (
@@ -128,9 +182,11 @@ export function Reservations() {
                     <span className="flex items-center gap-1" style={{ color: "#6b82a0", fontSize: "0.75rem" }}>
                       <Users size={11} /> {res.covers} covers
                     </span>
-                    <span className="flex items-center gap-1" style={{ color: "#6b82a0", fontSize: "0.75rem" }}>
-                      <Phone size={11} /> {res.phone}
-                    </span>
+                    {res.phone && (
+                      <span className="flex items-center gap-1" style={{ color: "#6b82a0", fontSize: "0.75rem" }}>
+                        <Phone size={11} /> {res.phone}
+                      </span>
+                    )}
                     {res.note && (
                       <span className="flex items-center gap-1" style={{ color: "#f59e0b", fontSize: "0.72rem" }}>
                         <StickyNote size={11} /> {res.note}
@@ -217,7 +273,8 @@ export function Reservations() {
                     <select value={newRes.table} onChange={e => setNewRes(r => ({ ...r, table: e.target.value }))}
                       className="w-full rounded-xl px-3 py-2.5 text-sm outline-none"
                       style={{ background: "#111b35", color: "#e8eef8", border: "1px solid rgba(30,127,255,0.12)" }}>
-                      {tables.map(t => <option key={t}>{t}</option>)}
+                      <option value="">No table</option>
+                      {tableOpts.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
                     </select>
                   </div>
                 </div>
@@ -235,13 +292,7 @@ export function Reservations() {
                   Cancel
                 </button>
                 <button
-                  onClick={() => {
-                    if (newRes.guest) {
-                      setItems(prev => [...prev, { ...newRes, id: `r${prev.length + 1}`, status: "confirmed" }]);
-                      toast.success("Reservation created", `${newRes.guest} · ${newRes.date} at ${newRes.time}`);
-                      setShowForm(false);
-                    }
-                  }}
+                  onClick={createReservation}
                   className="flex-1 py-2.5 rounded-xl text-sm font-semibold flex items-center justify-center gap-2"
                   style={{ background: "linear-gradient(135deg, #1e7fff, #00c6ff)", color: "#fff" }}>
                   <Check size={15} /> Confirm
