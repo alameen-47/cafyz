@@ -1,43 +1,34 @@
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import {
   Search, Plus, Minus, Trash2, Printer, ChevronDown, ChevronUp,
-  CreditCard, Banknote, Package, X, Check, Wifi, Bluetooth, Usb,
-  ReceiptText, ShoppingCart, ChevronLeft
+  CreditCard, Banknote, X, Check, Wifi, Bluetooth, Usb,
+  ReceiptText, ShoppingCart,
 } from "lucide-react";
 import { toast } from "./Toast";
+import {
+  menuApi, menuCategoriesApi, ordersApi, restaurantApi, tablesApi,
+  type ApiMenuItem, type ApiMenuCategory, type ApiTable, type ApiRestaurant,
+} from "../../services/api";
+import { getCurrencySymbol } from "../../utils/currency";
 
-const categories = ["All", "Starters", "Mains", "Biryani", "Pizza", "Desserts", "Drinks"];
+// A cart line carries the menu item id (id), and — once the bill is a live
+// kitchen-sent order — its backing order_item id so edits persist server-side.
+interface CartItem { id: string; name: string; price: number; qty: number; emoji: string; orderItemId?: string; addedNow?: boolean }
+type PaymentState = "open" | "sent" | "card" | "cash" | "comped";
 
-const menuItems = [
-  { id: "p1",  name: "Paneer Tikka",     cat: "Starters", price: 14, emoji: "🧀", popular: true },
-  { id: "p2",  name: "Chicken Wings",    cat: "Starters", price: 12, emoji: "🍗", popular: false },
-  { id: "p3",  name: "Caesar Salad",     cat: "Starters", price: 10, emoji: "🥗", popular: false },
-  { id: "p4",  name: "Garlic Naan",      cat: "Starters", price:  4, emoji: "🫓", popular: true },
-  { id: "p5",  name: "Butter Chicken",   cat: "Mains",    price: 18, emoji: "🍛", popular: true },
-  { id: "p6",  name: "Grilled Salmon",   cat: "Mains",    price: 28, emoji: "🐟", popular: false },
-  { id: "p7",  name: "Ribeye Steak",     cat: "Mains",    price: 45, emoji: "🥩", popular: true },
-  { id: "p8",  name: "Dal Makhani",      cat: "Mains",    price: 12, emoji: "🫕", popular: false },
-  { id: "p9",  name: "Veg Biryani",      cat: "Biryani",  price: 14, emoji: "🍚", popular: false },
-  { id: "p10", name: "Chicken Biryani",  cat: "Biryani",  price: 16, emoji: "🍲", popular: true },
-  { id: "p11", name: "Margherita",       cat: "Pizza",    price: 16, emoji: "🍕", popular: false },
-  { id: "p12", name: "Pepperoni",        cat: "Pizza",    price: 18, emoji: "🍕", popular: true },
-  { id: "p13", name: "Tiramisu",         cat: "Desserts", price:  9, emoji: "🍰", popular: true },
-  { id: "p14", name: "Choc Lava Cake",   cat: "Desserts", price:  8, emoji: "🎂", popular: false },
-  { id: "p15", name: "Mango Lassi",      cat: "Drinks",   price:  5, emoji: "🥭", popular: true },
-  { id: "p16", name: "Cold Coffee",      cat: "Drinks",   price:  6, emoji: "☕", popular: false },
-];
+// Relative "since" label for the pending-bills strip.
+function relSince(iso?: string): string {
+  if (!iso) return "";
+  const t = new Date(iso.includes("T") ? iso : iso.replace(" ", "T") + "Z").getTime();
+  const mins = Math.max(0, Math.round((Date.now() - t) / 60000));
+  if (mins < 1) return "just now";
+  if (mins < 60) return `${mins}m`;
+  const h = Math.floor(mins / 60);
+  return `${h}h ${mins % 60}m`;
+}
 
-const tables = ["T-01","T-02","T-03","T-04","T-05","T-06","T-07","T-08","T-09","T-10","T-11","T-12"];
-const pendingBills = [
-  { table: "T-05", items: 4, total: 82, since: "45m" },
-  { table: "T-12", items: 3, total: 54, since: "22m" },
-  { table: "T-03", items: 6, total: 148, since: "1h 12m" },
-];
-
-interface CartItem { id: string; name: string; price: number; qty: number; emoji: string }
-
-function PrinterPopover({ onClose }: { onClose: () => void }) {
+function PrinterPopover({ onClose, kitchen, cashier }: { onClose: () => void; kitchen?: string | null; cashier?: string | null }) {
   return (
     <motion.div
       initial={{ opacity: 0, scale: 0.95, y: -8 }}
@@ -52,9 +43,9 @@ function PrinterPopover({ onClose }: { onClose: () => void }) {
       </div>
       <div className="space-y-2">
         {[
-          { Icon: Bluetooth, label: "Bluetooth Printer", sub: "Not paired", active: false },
-          { Icon: Usb,       label: "USB Printer",       sub: "COM3 · Connected", active: true },
-          { Icon: Wifi,      label: "Network Printer",   sub: "192.168.1.42", active: false },
+          { Icon: Bluetooth, label: "Bluetooth Printer", sub: "Pair from a mobile device", active: false },
+          { Icon: Usb,       label: "USB Printer",       sub: cashier ? `${cashier} · Connected` : "Connect a receipt printer", active: !!cashier },
+          { Icon: Wifi,      label: "Network Printer",   sub: kitchen ? `Kitchen · ${kitchen}` : "Configure on a device", active: !!kitchen },
         ].map(({ Icon, label, sub, active }) => (
           <div key={label} className="flex items-center gap-3 p-3 rounded-xl"
             style={{ background: "rgba(30,127,255,0.05)", border: "1px solid rgba(30,127,255,0.08)" }}>
@@ -70,44 +61,31 @@ function PrinterPopover({ onClose }: { onClose: () => void }) {
           </div>
         ))}
       </div>
-      <div className="grid grid-cols-2 gap-2">
-        {["Kitchen Printer","Cashier Printer"].map(lbl => (
-          <div key={lbl}>
-            <label style={{ color: "#6b82a0", fontSize: "0.68rem", display: "block", marginBottom: 4 }}>{lbl}</label>
-            <select className="w-full rounded-lg px-2 py-1.5 text-xs outline-none"
-              style={{ background: "#111b35", color: "#e8eef8", border: "1px solid rgba(30,127,255,0.1)" }}>
-              <option>USB Printer</option><option>Bluetooth</option>
-            </select>
-          </div>
-        ))}
-      </div>
-      <button className="w-full py-2 rounded-xl text-xs font-semibold"
-        style={{ background: "rgba(30,127,255,0.1)", color: "#1e7fff", border: "1px solid rgba(30,127,255,0.15)" }}>
-        Test Print
-      </button>
+      <p style={{ color: "#6b82a0", fontSize: "0.66rem", lineHeight: 1.5 }}>
+        Kitchen tickets print automatically when a bill is charged. Pair printers from the mobile app for on-device printing.
+      </p>
     </motion.div>
   );
 }
 
 // ── Cart Panel (shared between desktop sidebar & mobile sheet) ───────────────
 function CartPanel({
-  cart, selectedTable, tables, isParcel, editMode, breakdownOpen, showPrinter, charged,
+  cart, selectedTable, tables, isParcel, editMode, breakdownOpen, showPrinter, charged, busy,
+  cur, subtotal, service, tax, grandTotal, serviceRate, taxRate, taxLabel, kitchenPrinter, cashierPrinter,
   onTableChange, onParcelToggle, onEditToggle, onBreakdownToggle, onPrinterToggle,
   onUpdateQty, onClear, onCharge, onCash, onClose,
   isMobile,
 }: {
-  cart: CartItem[]; selectedTable: string; tables: string[]; isParcel: boolean;
-  editMode: boolean; breakdownOpen: boolean; showPrinter: boolean; charged: boolean;
+  cart: CartItem[]; selectedTable: string; tables: ApiTable[]; isParcel: boolean;
+  editMode: boolean; breakdownOpen: boolean; showPrinter: boolean; charged: boolean; busy: boolean;
+  cur: string; subtotal: number; service: number; tax: number; grandTotal: number;
+  serviceRate: number; taxRate: number; taxLabel: string; kitchenPrinter?: string | null; cashierPrinter?: string | null;
   onTableChange: (t: string) => void; onParcelToggle: () => void; onEditToggle: () => void;
   onBreakdownToggle: () => void; onPrinterToggle: () => void;
   onUpdateQty: (id: string, d: number) => void; onClear: () => void;
   onCharge: () => void; onCash: () => void; onClose?: () => void;
   isMobile?: boolean;
 }) {
-  const subtotal = cart.reduce((s, c) => s + c.price * c.qty, 0);
-  const serviceCharge = parseFloat((subtotal * 0.05).toFixed(2));
-  const tax = parseFloat((subtotal * 0.18).toFixed(2));
-  const grandTotal = subtotal + serviceCharge + tax;
   const itemCount = cart.reduce((s, c) => s + c.qty, 0);
 
   return (
@@ -130,7 +108,8 @@ function CartPanel({
             <select value={selectedTable} onChange={e => onTableChange(e.target.value)}
               className="w-full rounded-xl px-3 py-2.5 text-sm outline-none"
               style={{ background: "#0d1326", color: "#e8eef8", border: "1px solid rgba(30,127,255,0.15)", fontFamily: "var(--font-mono)" }}>
-              {tables.map(t => <option key={t}>{t}</option>)}
+              <option value="">Select table…</option>
+              {tables.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
             </select>
           </div>
           <div className="flex flex-col items-center gap-1 flex-shrink-0">
@@ -171,17 +150,17 @@ function CartPanel({
             </motion.div>
           )}
           {cart.map(item => (
-            <motion.div key={item.id} initial={{ opacity: 0, x: 12 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -12 }}
+            <motion.div key={item.orderItemId ?? item.id} initial={{ opacity: 0, x: 12 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -12 }}
               className="flex items-center gap-2 p-2.5 rounded-xl"
-              style={{ background: "rgba(30,127,255,0.04)", border: "1px solid rgba(30,127,255,0.08)" }}>
+              style={{ background: item.addedNow ? "rgba(0,198,255,0.07)" : "rgba(30,127,255,0.04)", border: `1px solid ${item.addedNow ? "rgba(0,198,255,0.25)" : "rgba(30,127,255,0.08)"}` }}>
               <span className="text-xl flex-shrink-0">{item.emoji}</span>
               <div className="flex-1 min-w-0">
                 <p style={{ color: "#e8eef8", fontSize: "0.78rem", fontWeight: 500 }} className="truncate">{item.name}</p>
-                <p style={{ color: "#1e7fff", fontFamily: "var(--font-mono)", fontSize: "0.72rem" }}>₹{(item.price * item.qty)}</p>
+                <p style={{ color: "#1e7fff", fontFamily: "var(--font-mono)", fontSize: "0.72rem" }}>{cur}{(item.price * item.qty)}</p>
               </div>
               {editMode ? (
                 <div className="flex items-center gap-1 flex-shrink-0">
-                  <button onClick={() => onUpdateQty(item.id, -1)}
+                  <button disabled={busy} onClick={() => onUpdateQty(item.id, -1)}
                     className="w-7 h-7 rounded-lg flex items-center justify-center"
                     style={{ background: "rgba(255,59,92,0.1)" }}>
                     <Minus size={12} style={{ color: "#ff3b5c" }} />
@@ -189,12 +168,12 @@ function CartPanel({
                   <span style={{ color: "#e8eef8", fontFamily: "var(--font-mono)", fontWeight: 700, fontSize: "0.85rem", minWidth: 18, textAlign: "center" }}>
                     {item.qty}
                   </span>
-                  <button onClick={() => onUpdateQty(item.id, 1)}
+                  <button disabled={busy} onClick={() => onUpdateQty(item.id, 1)}
                     className="w-7 h-7 rounded-lg flex items-center justify-center"
                     style={{ background: "rgba(30,127,255,0.1)" }}>
                     <Plus size={12} style={{ color: "#1e7fff" }} />
                   </button>
-                  <button onClick={() => onUpdateQty(item.id, -item.qty)}
+                  <button disabled={busy} onClick={() => onUpdateQty(item.id, -item.qty)}
                     className="w-7 h-7 rounded-lg flex items-center justify-center ml-0.5"
                     style={{ background: "rgba(255,59,92,0.08)" }}>
                     <Trash2 size={12} style={{ color: "#ff3b5c" }} />
@@ -218,10 +197,10 @@ function CartPanel({
           {breakdownOpen && (
             <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }}
               className="overflow-hidden space-y-1.5">
-              {[["Subtotal", subtotal], ["Service (5%)", serviceCharge], ["GST (18%)", tax]].map(([l, v]) => (
+              {[["Subtotal", subtotal], [`Service (${serviceRate}%)`, service], [`${taxLabel} (${taxRate}%)`, tax]].map(([l, v]) => (
                 <div key={l as string} className="flex justify-between">
                   <span style={{ color: "#6b82a0", fontSize: "0.72rem" }}>{l}</span>
-                  <span style={{ color: "#a8bdd4", fontFamily: "var(--font-mono)", fontSize: "0.72rem" }}>₹{(v as number).toFixed(0)}</span>
+                  <span style={{ color: "#a8bdd4", fontFamily: "var(--font-mono)", fontSize: "0.72rem" }}>{cur}{(v as number).toFixed(0)}</span>
                 </div>
               ))}
             </motion.div>
@@ -232,19 +211,19 @@ function CartPanel({
           style={{ background: "rgba(30,127,255,0.08)", border: "1px solid rgba(30,127,255,0.15)" }}>
           <span style={{ color: "#a8bdd4", fontWeight: 600, fontSize: "0.88rem" }}>Grand Total</span>
           <span style={{ color: "#fff", fontFamily: "var(--font-mono)", fontWeight: 800, fontSize: "1.4rem" }}>
-            ₹{grandTotal.toFixed(0)}
+            {cur}{grandTotal.toFixed(0)}
           </span>
         </div>
 
         <div className="flex gap-2 relative">
-          <motion.button whileTap={{ scale: 0.95 }} onClick={onCharge}
+          <motion.button whileTap={{ scale: 0.95 }} disabled={busy} onClick={onCharge}
             className="flex-1 py-3 rounded-xl text-sm font-semibold flex items-center justify-center gap-2"
-            style={{ background: "linear-gradient(135deg, #1e7fff, #00c6ff)", color: "#fff" }}>
+            style={{ background: "linear-gradient(135deg, #1e7fff, #00c6ff)", color: "#fff", opacity: busy ? 0.6 : 1 }}>
             {charged ? <><Check size={15} /> Charged!</> : <><CreditCard size={15} /> Charge</>}
           </motion.button>
-          <motion.button whileTap={{ scale: 0.95 }} onClick={onCash}
+          <motion.button whileTap={{ scale: 0.95 }} disabled={busy} onClick={onCash}
             className="flex-1 py-3 rounded-xl text-sm font-semibold flex items-center justify-center gap-2"
-            style={{ background: "rgba(34,197,94,0.1)", color: "#22c55e", border: "1px solid rgba(34,197,94,0.2)" }}>
+            style={{ background: "rgba(34,197,94,0.1)", color: "#22c55e", border: "1px solid rgba(34,197,94,0.2)", opacity: busy ? 0.6 : 1 }}>
             <Banknote size={15} /> Cash
           </motion.button>
           <button onClick={onPrinterToggle}
@@ -253,7 +232,7 @@ function CartPanel({
             <Printer size={16} style={{ color: "#1e7fff" }} />
           </button>
           <AnimatePresence>
-            {showPrinter && <PrinterPopover onClose={onPrinterToggle} />}
+            {showPrinter && <PrinterPopover onClose={onPrinterToggle} kitchen={kitchenPrinter} cashier={cashierPrinter} />}
           </AnimatePresence>
         </div>
       </div>
@@ -261,61 +240,252 @@ function CartPanel({
   );
 }
 
+type PendingBill = { id: string; table_id?: string; table_name: string; items: number; total: number; since: string };
+
 export function POS() {
-  const [activeCat, setActiveCat] = useState("All");
+  const [menu, setMenu] = useState<ApiMenuItem[]>([]);
+  const [categories, setCategories] = useState<ApiMenuCategory[]>([]);
+  const [tables, setTables] = useState<ApiTable[]>([]);
+  const [restaurant, setRestaurant] = useState<ApiRestaurant | null>(null);
+  const [pending, setPending] = useState<PendingBill[]>([]);
+
+  const [activeCat, setActiveCat] = useState("all");
   const [search, setSearch] = useState("");
   const [cart, setCart] = useState<CartItem[]>([]);
-  const [selectedTable, setSelectedTable] = useState("T-05");
+  const [selectedTable, setSelectedTable] = useState("");
+  const [activeOrderId, setActiveOrderId] = useState<string | null>(null);
+  const [payState, setPayState] = useState<PaymentState>("open");
   const [isParcel, setIsParcel] = useState(false);
   const [breakdownOpen, setBreakdownOpen] = useState(true);
   const [showPrinter, setShowPrinter] = useState(false);
   const [editMode, setEditMode] = useState(false);
   const [charged, setCharged] = useState(false);
+  const [busy, setBusy] = useState(false);
   const [showMobileCart, setShowMobileCart] = useState(false);
 
-  const filtered = menuItems.filter(m =>
-    (activeCat === "All" || m.cat === activeCat) &&
-    (search === "" || m.name.toLowerCase().includes(search.toLowerCase()))
-  );
+  // ── Initial load: menu, categories, tables, restaurant settings ────────────
+  useEffect(() => {
+    Promise.all([menuApi.list(), menuCategoriesApi.list(), tablesApi.list(), restaurantApi.me()])
+      .then(([m, cats, t, r]) => {
+        setMenu(m);
+        setCategories(cats);
+        setActiveCat("all");
+        setTables(t);
+        setRestaurant(r);
+      })
+      .catch(() => { /* render empty on failure */ });
+  }, []);
 
-  const addToCart = (item: typeof menuItems[0]) => {
-    setCart(prev => {
-      const ex = prev.find(c => c.id === item.id);
-      if (ex) return prev.map(c => c.id === item.id ? { ...c, qty: c.qty + 1 } : c);
-      return [...prev, { id: item.id, name: item.name, price: item.price, qty: 1, emoji: item.emoji }];
-    });
-  };
+  // ── Pending table bills (kitchen-sent orders) — polled like the cashier panel ─
+  const refreshPending = useCallback(async () => {
+    try {
+      const [rows, tableRows] = await Promise.all([ordersApi.list({ status: "sent" }), tablesApi.list()]);
+      setTables(tableRows);
+      const enriched: PendingBill[] = await Promise.all(rows.map(async (o) => {
+        let items = 0, total = 0;
+        try {
+          const full = await ordersApi.get(o.id);
+          for (const it of full.items ?? []) { items += it.qty; total += (it.price ?? 0) * it.qty; }
+        } catch { /* leave zeros */ }
+        return { id: o.id, table_id: o.table_id, table_name: o.table_name || "No table", items, total, since: relSince(o.created_at) };
+      }));
+      setPending(enriched);
+    } catch {
+      setPending([]);
+    }
+  }, []);
 
-  const updateQty = (id: string, delta: number) =>
-    setCart(prev => prev.map(c => c.id === id ? { ...c, qty: Math.max(0, c.qty + delta) } : c).filter(c => c.qty > 0));
+  useEffect(() => {
+    void refreshPending();
+    const t = window.setInterval(() => void refreshPending(), 5000);
+    const onSent = () => { void refreshPending(); };
+    window.addEventListener("CAFYZ_ORDER_SENT", onSent as EventListener);
+    return () => { window.clearInterval(t); window.removeEventListener("CAFYZ_ORDER_SENT", onSent as EventListener); };
+  }, [refreshPending]);
 
-  const handleCharge = () => {
-    if (!cart.length) { toast.error("Cart is empty", "Add items before charging"); return; }
-    setCharged(true);
-    toast.success(`₹${grandTotal.toFixed(0)} charged · ${selectedTable}`, `${itemCount} item${itemCount !== 1 ? "s" : ""} · Card payment`);
-    setTimeout(() => { setCharged(false); setCart([]); setShowMobileCart(false); }, 2000);
-  };
+  // ── Derived ────────────────────────────────────────────────────────────────
+  const cur = getCurrencySymbol(restaurant?.currency_code);
+  const catTabs = [{ id: "all", label: "All" }, ...categories.map(c => ({ id: c.slug, label: c.label }))];
+  const filtered = menu
+    .filter(m => activeCat === "all" || m.category === activeCat)
+    .filter(m => !search.trim() ||
+      m.name.toLowerCase().includes(search.trim().toLowerCase()) ||
+      (m.description ?? "").toLowerCase().includes(search.trim().toLowerCase()));
 
-  const handleCash = () => {
-    if (!cart.length) { toast.error("Cart is empty", "Add items before payment"); return; }
-    toast.success(`₹${grandTotal.toFixed(0)} received · ${selectedTable}`, `${itemCount} item${itemCount !== 1 ? "s" : ""} · Cash payment`);
-    setTimeout(() => { setCart([]); setShowMobileCart(false); }, 1200);
-  };
+  const subtotal = cart.reduce((s, c) => s + c.price * c.qty, 0);
+  const serviceRate = Math.max(0, Number(restaurant?.service_charge_pct ?? 18));
+  const taxRate = Math.max(0, Number(restaurant?.tax_rate_pct ?? 8.75));
+  const taxLabel = (restaurant?.tax_type || "Tax").trim() || "Tax";
+  const taxIncluded = restaurant?.tax_included === 1 || restaurant?.tax_included === true;
+  const service = subtotal * (serviceRate / 100);
+  const taxableAmount = subtotal + service;
+  const tax = taxIncluded && taxRate > 0
+    ? taxableAmount - taxableAmount / (1 + taxRate / 100)
+    : taxableAmount * (taxRate / 100);
+  const grandTotal = taxIncluded ? taxableAmount : taxableAmount + tax;
 
+  const isPaid = payState === "card" || payState === "cash" || payState === "comped";
+  const canEditBill = payState === "sent" && !!activeOrderId && !isPaid;
   const itemCount = cart.reduce((s, c) => s + c.qty, 0);
-  const grandTotal = cart.reduce((s, c) => s + c.price * c.qty, 0) * 1.23;
+
+  // ── Reset the working bill ──────────────────────────────────────────────────
+  function resetBill() {
+    setCart([]);
+    setActiveOrderId(null);
+    setPayState("open");
+    setIsParcel(false);
+    setEditMode(false);
+  }
+
+  // ── Table selection: load that table's pending kitchen-sent bill (self-heals
+  //    a stale 'sent' order lingering on a cleared table) ──────────────────────
+  async function handleTableChange(tableId: string) {
+    setSelectedTable(tableId);
+    setActiveOrderId(null);
+    setPayState("open");
+    setEditMode(false);
+    setIsParcel(false);
+    if (!tableId) { setCart([]); return; }
+    try {
+      const orders = await ordersApi.list({ table_id: tableId });
+      const sent = orders.find(o => o.status === "sent");
+      const tableStatus = tables.find(t => t.id === tableId)?.status;
+      if (sent && tableStatus === "empty") {
+        try { await ordersApi.settleTable(tableId); } catch { /* best effort */ }
+        setCart([]);
+        return;
+      }
+      if (!sent) { setCart([]); return; } // fresh table → build a new order
+      const full = await ordersApi.get(sent.id);
+      const nextCart: CartItem[] = (full.items ?? []).map(it => ({
+        id: it.menu_item_id,
+        name: it.name ?? "Item",
+        price: Number(it.price ?? 0),
+        qty: it.qty,
+        emoji: menu.find(m => m.id === it.menu_item_id)?.symbol ?? "○",
+        orderItemId: it.id,
+      }));
+      setCart(nextCart);
+      setActiveOrderId(full.id);
+      setIsParcel(full.order_type === "parcel");
+      setPayState("sent");
+    } catch (e) {
+      toast.error("Couldn't load bill", (e as Error).message);
+    }
+  }
+
+  // ── Add a menu item: persists to a live bill, else builds the local cart ─────
+  async function addProduct(item: ApiMenuItem) {
+    if (!activeOrderId || busy) return;
+    const idx = cart.findIndex(c => c.id === item.id && c.orderItemId);
+    if (idx >= 0) { await updateQty(cart[idx].id, 1); return; }
+    setBusy(true);
+    try {
+      const created = await ordersApi.addItem(activeOrderId, { menu_item_id: item.id, qty: 1, mods: [] });
+      setCart(cs => [...cs, { id: item.id, name: item.name, price: item.price, qty: 1, emoji: item.symbol, orderItemId: created.id, addedNow: true }]);
+    } catch (e) {
+      toast.error("Couldn't add item", (e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function addLocal(item: ApiMenuItem) {
+    setCart(prev => {
+      const ex = prev.find(c => c.id === item.id && !c.orderItemId);
+      if (ex) return prev.map(c => (c === ex ? { ...c, qty: c.qty + 1 } : c));
+      return [...prev, { id: item.id, name: item.name, price: item.price, qty: 1, emoji: item.symbol }];
+    });
+  }
+
+  const addToCart = (item: ApiMenuItem) => { if (canEditBill) void addProduct(item); else addLocal(item); };
+
+  // ── Quantity / removal: persist when the line is backed by an order item ─────
+  async function updateQty(id: string, delta: number) {
+    const idx = cart.findIndex(c => c.id === id);
+    if (idx < 0) return;
+    const item = cart[idx];
+    if (item.orderItemId && activeOrderId) {
+      const newQty = item.qty + delta;
+      if (newQty < 1) {
+        const prev = cart;
+        setCart(cs => cs.filter((_, i) => i !== idx));
+        try { await ordersApi.deleteItem(activeOrderId, item.orderItemId); }
+        catch (e) { setCart(prev); toast.error("Remove failed", (e as Error).message); }
+        return;
+      }
+      const prev = cart;
+      setCart(cs => cs.map((c, i) => (i === idx ? { ...c, qty: newQty } : c)));
+      try { await ordersApi.updateItem(activeOrderId, item.orderItemId, { qty: newQty }); }
+      catch (e) { setCart(prev); toast.error("Update failed", (e as Error).message); }
+    } else {
+      setCart(cs => cs.map(c => (c.id === id ? { ...c, qty: Math.max(0, c.qty + delta) } : c)).filter(c => c.qty > 0));
+    }
+  }
+
+  // ── Parcel: persists on a live bill, otherwise a local flag for the new order ─
+  async function toggleParcel() {
+    if (canEditBill && activeOrderId) {
+      const next = !isParcel;
+      setIsParcel(next);
+      try { await ordersApi.update(activeOrderId, { order_type: next ? "parcel" : "dine_in" }); }
+      catch (e) { setIsParcel(!next); toast.error("Couldn't update parcel", (e as Error).message); }
+    } else {
+      setIsParcel(p => !p);
+    }
+  }
+
+  // ── Charge: settle an existing bill, or create+send+settle a fresh walk-in ───
+  async function handleCharge(method: "card" | "cash") {
+    if (!cart.length) { toast.error("Cart is empty", `Add items before ${method === "card" ? "charging" : "payment"}`); return; }
+    if (!selectedTable) { toast.error("No table selected", "Pick a table for this bill"); return; }
+    setBusy(true);
+    try {
+      if (canEditBill && activeOrderId) {
+        // Existing kitchen-sent bill → settle the whole table atomically.
+        await ordersApi.settleTable(selectedTable);
+      } else {
+        // Fresh cart → fire to kitchen (with print) then settle as a paid sale.
+        await ordersApi.quickSend({
+          table_id: selectedTable,
+          parcel: isParcel,
+          enqueue_print: true,
+          items: cart.map(c => ({ menu_item_id: c.id, qty: c.qty, mods: [] })),
+        });
+        await ordersApi.settleTable(selectedTable);
+      }
+      if (method === "card") setCharged(true);
+      const tName = tables.find(t => t.id === selectedTable)?.name ?? "";
+      toast.success(
+        `${cur}${grandTotal.toFixed(0)} ${method === "card" ? "charged" : "received"} · ${tName}`,
+        `${itemCount} item${itemCount !== 1 ? "s" : ""} · ${method === "card" ? "Card" : "Cash"} payment`,
+      );
+      window.dispatchEvent(new Event("CAFYZ_ORDER_SENT"));
+      setTimeout(() => { setCharged(false); resetBill(); setShowMobileCart(false); }, method === "card" ? 1600 : 1100);
+      await refreshPending();
+    } catch (e) {
+      toast.error("Payment failed", (e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const kitchenPrinterName = restaurant?.kitchen_printer?.name ?? null;
+  const cashierPrinterName = restaurant?.cashier_printer?.name ?? null;
 
   const cartProps = {
-    cart, selectedTable, tables, isParcel, editMode, breakdownOpen, showPrinter, charged,
-    onTableChange: setSelectedTable,
-    onParcelToggle: () => setIsParcel(p => !p),
+    cart, selectedTable, tables, isParcel, editMode, breakdownOpen, showPrinter, charged, busy,
+    cur, subtotal, service, tax, grandTotal, serviceRate, taxRate, taxLabel,
+    kitchenPrinter: kitchenPrinterName, cashierPrinter: cashierPrinterName,
+    onTableChange: handleTableChange,
+    onParcelToggle: () => void toggleParcel(),
     onEditToggle: () => setEditMode(e => !e),
     onBreakdownToggle: () => setBreakdownOpen(o => !o),
     onPrinterToggle: () => setShowPrinter(p => !p),
-    onUpdateQty: updateQty,
-    onClear: () => setCart([]),
-    onCharge: handleCharge,
-    onCash: handleCash,
+    onUpdateQty: (id: string, d: number) => void updateQty(id, d),
+    onClear: resetBill,
+    onCharge: () => void handleCharge("card"),
+    onCash: () => void handleCharge("cash"),
   };
 
   return (
@@ -324,22 +494,27 @@ export function POS() {
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         {/* Pending bills strip */}
         <div className="flex gap-2 px-3 pt-3 pb-2 overflow-x-auto scrollbar-hide flex-shrink-0">
-          {pendingBills.map(b => (
-            <button key={b.table} onClick={() => setSelectedTable(b.table)}
+          {pending.length === 0 && (
+            <div className="flex items-center px-3 py-2 flex-shrink-0" style={{ minHeight: 48 }}>
+              <span style={{ color: "#6b82a0", fontSize: "0.73rem" }}>No pending table bills</span>
+            </div>
+          )}
+          {pending.map(b => (
+            <button key={b.id} onClick={() => { if (b.table_id) void handleTableChange(b.table_id); }}
               className="flex items-center gap-2.5 rounded-xl px-3 py-2 flex-shrink-0 transition-all"
               style={{
-                background: selectedTable === b.table ? "rgba(30,127,255,0.12)" : "#0d1326",
-                border: `1px solid ${selectedTable === b.table ? "rgba(30,127,255,0.35)" : "rgba(30,127,255,0.1)"}`,
+                background: selectedTable === b.table_id ? "rgba(30,127,255,0.12)" : "#0d1326",
+                border: `1px solid ${selectedTable === b.table_id ? "rgba(30,127,255,0.35)" : "rgba(30,127,255,0.1)"}`,
                 minHeight: 48,
               }}>
               <div>
-                <p style={{ color: "#e8eef8", fontSize: "0.78rem", fontWeight: 700, fontFamily: "var(--font-display)" }}>{b.table}</p>
-                <p style={{ color: "#6b82a0", fontSize: "0.67rem" }}>{b.items} items · {b.since}</p>
+                <p style={{ color: "#e8eef8", fontSize: "0.78rem", fontWeight: 700, fontFamily: "var(--font-display)" }}>{b.table_name}</p>
+                <p style={{ color: "#6b82a0", fontSize: "0.67rem" }}>{b.items} item{b.items !== 1 ? "s" : ""} · {b.since}</p>
               </div>
-              <span style={{ color: "#1e7fff", fontFamily: "var(--font-mono)", fontWeight: 700, fontSize: "0.82rem" }}>₹{b.total}</span>
+              <span style={{ color: "#1e7fff", fontFamily: "var(--font-mono)", fontWeight: 700, fontSize: "0.82rem" }}>{cur}{b.total.toFixed(0)}</span>
             </button>
           ))}
-          <button className="flex items-center gap-1.5 rounded-xl px-3 py-2 flex-shrink-0"
+          <button onClick={() => { setSelectedTable(""); resetBill(); }} className="flex items-center gap-1.5 rounded-xl px-3 py-2 flex-shrink-0"
             style={{ background: "#0d1326", border: "1px dashed rgba(30,127,255,0.2)", minHeight: 48 }}>
             <Plus size={13} style={{ color: "#6b82a0" }} />
             <span style={{ color: "#6b82a0", fontSize: "0.73rem" }}>New</span>
@@ -356,13 +531,13 @@ export function POS() {
               style={{ color: "#e8eef8" }} />
           </div>
           <div className="flex gap-1.5 overflow-x-auto scrollbar-hide pb-0.5">
-            {categories.map(c => (
-              <button key={c} onClick={() => setActiveCat(c)}
+            {catTabs.map(c => (
+              <button key={c.id} onClick={() => setActiveCat(c.id)}
                 className="px-3 py-1.5 rounded-full text-xs whitespace-nowrap flex-shrink-0 font-medium transition-all"
-                style={activeCat === c
+                style={activeCat === c.id
                   ? { background: "linear-gradient(135deg, #1e7fff, #00c6ff)", color: "#fff" }
                   : { background: "#0d1326", color: "#6b82a0", border: "1px solid rgba(30,127,255,0.1)" }}>
-                {c}
+                {c.label}
               </button>
             ))}
           </div>
@@ -381,13 +556,13 @@ export function POS() {
                     border: `1px solid ${inCart ? "rgba(30,127,255,0.25)" : "rgba(30,127,255,0.08)"}`,
                     minHeight: 100,
                   }}>
-                  {item.popular && (
+                  {item.is_popular ? (
                     <span className="absolute top-2 right-2 text-xs px-1.5 py-0.5 rounded-full"
                       style={{ background: "rgba(245,158,11,0.15)", color: "#f59e0b", fontSize: "0.58rem" }}>★</span>
-                  )}
-                  <div className="text-2xl mb-1.5">{item.emoji}</div>
+                  ) : null}
+                  <div className="text-2xl mb-1.5">{item.symbol}</div>
                   <p style={{ color: "#e8eef8", fontSize: "0.78rem", fontWeight: 600, lineHeight: 1.3 }}>{item.name}</p>
-                  <p style={{ color: "#1e7fff", fontFamily: "var(--font-mono)", fontWeight: 700, fontSize: "0.85rem", marginTop: 3 }}>₹{item.price}</p>
+                  <p style={{ color: "#1e7fff", fontFamily: "var(--font-mono)", fontWeight: 700, fontSize: "0.85rem", marginTop: 3 }}>{cur}{item.price}</p>
                   {inCart && (
                     <div className="absolute bottom-2 right-2 w-5 h-5 rounded-full flex items-center justify-center"
                       style={{ background: "#1e7fff" }}>
@@ -397,6 +572,13 @@ export function POS() {
                 </motion.button>
               );
             })}
+            {filtered.length === 0 && (
+              <div className="col-span-full flex items-center justify-center h-32">
+                <p style={{ color: "#6b82a0", fontSize: "0.8rem" }}>
+                  {search ? `No results for "${search}"` : "No items in this category"}
+                </p>
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -425,7 +607,7 @@ export function POS() {
             {itemCount > 0 && (
               <span style={{ background: "#fff", color: "#1e7fff", fontFamily: "var(--font-mono)", fontWeight: 800, fontSize: "0.75rem" }}
                 className="px-2 py-0.5 rounded-full">
-                ₹{grandTotal.toFixed(0)}
+                {cur}{grandTotal.toFixed(0)}
               </span>
             )}
           </motion.button>
