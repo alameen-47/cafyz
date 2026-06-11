@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Plus, Edit2, Trash2, Shield, Eye, EyeOff, ChevronDown, ChevronUp, Check, X } from "lucide-react";
 import { toast } from "./Toast";
+import { usersApi, type ApiUser } from "../../services/api";
 
 type Role = "owner" | "manager" | "cashier" | "waiter" | "kitchen";
 type Access = "none" | "view" | "edit";
@@ -29,15 +30,6 @@ const roleColors: Record<Role, string> = {
   owner: "#a855f7", manager: "#1e7fff", cashier: "#22d3ee", waiter: "#00c6ff", kitchen: "#f59e0b",
 };
 
-const users: StaffUser[] = [
-  { id: "u1", name: "Alex Kumar", email: "alex@cafyz.com", role: "owner", pin: "1234", active: true },
-  { id: "u2", name: "Ravi Sharma", email: "ravi@cafyz.com", role: "waiter", pin: "5678", active: true },
-  { id: "u3", name: "Priya Nair", email: "priya@cafyz.com", role: "waiter", pin: "2345", active: true },
-  { id: "u4", name: "Sam Wilson", email: "sam@cafyz.com", role: "cashier", pin: "9012", active: true },
-  { id: "u5", name: "Deepa Rao", email: "deepa@cafyz.com", role: "kitchen", pin: "3456", active: true },
-  { id: "u6", name: "Mia Chen", email: "mia@cafyz.com", role: "waiter", pin: "7890", active: false },
-];
-
 const accessCycle: Access[] = ["none", "view", "edit"];
 const accessColors: Record<Access, { color: string; bg: string }> = {
   none: { color: "#6b82a0", bg: "rgba(107,130,160,0.08)" },
@@ -46,8 +38,7 @@ const accessColors: Record<Access, { color: string; bg: string }> = {
 };
 
 export function Roles() {
-  const [staffUsers, setStaffUsers] = useState(users);
-  const [selectedUser, setSelectedUser] = useState<string | null>(null);
+  const [staffUsers, setStaffUsers] = useState<StaffUser[]>([]);
   const [showAddForm, setShowAddForm] = useState(false);
   const [showMatrix, setShowMatrix] = useState(false);
   const [selectedRole, setSelectedRole] = useState<Role>("manager");
@@ -55,10 +46,52 @@ export function Roles() {
   const [showPin, setShowPin] = useState(false);
   const [newUser, setNewUser] = useState({ name: "", email: "", role: "waiter" as Role, password: "", pin: "" });
 
+  const load = useCallback(async () => {
+    try {
+      const us = await usersApi.list();
+      setStaffUsers(us.map((u: ApiUser) => ({
+        id: u.id, name: u.name, email: u.email, role: u.role as Role, pin: "", active: u.status === "active",
+      })));
+    } catch (e) {
+      toast.error("Couldn't load users", (e as Error).message);
+    }
+  }, []);
+  useEffect(() => { void load(); }, [load]);
+
   const toggleAccess = (role: Role, screen: string) => {
     const cur = matrix[role][screen];
     const next = accessCycle[(accessCycle.indexOf(cur) + 1) % 3];
     setMatrix(m => ({ ...m, [role]: { ...m[role], [screen]: next } }));
+  };
+
+  const removeUser = async (u: StaffUser) => {
+    if (u.role === "owner") { toast.error("Can't remove owner", "The owner account cannot be deleted"); return; }
+    try {
+      await usersApi.delete(u.id);
+      setStaffUsers(prev => prev.filter(x => x.id !== u.id));
+      toast.success("User removed", `${u.name} has been removed`);
+    } catch (e) {
+      toast.error("Couldn't remove user", (e as Error).message);
+    }
+  };
+
+  const addUser = async () => {
+    if (!newUser.name || !newUser.email) { toast.error("Missing fields", "Please fill in name and email"); return; }
+    try {
+      await usersApi.create({
+        name: newUser.name.trim(),
+        email: newUser.email.trim().toLowerCase(),
+        role: newUser.role,
+        password: newUser.password.length >= 6 ? newUser.password : undefined,
+        pin: newUser.pin.length === 4 ? newUser.pin : undefined,
+      });
+      setShowAddForm(false);
+      toast.success("Team member added", `${newUser.name} can now sign in as ${newUser.role}`);
+      setNewUser({ name: "", email: "", role: "waiter", password: "", pin: "" });
+      await load();
+    } catch (e) {
+      toast.error("Couldn't add member", (e as Error).message);
+    }
   };
 
   return (
@@ -129,7 +162,7 @@ export function Roles() {
                 <Edit2 size={13} />
               </button>
               <button
-                onClick={() => { const u = staffUsers.find(x => x.id === user.id); setStaffUsers(u => u.filter(x => x.id !== user.id)); toast.success("User removed", `${u?.name} has been removed`); }}
+                onClick={() => removeUser(user)}
                 className="p-1.5 rounded-lg hover:bg-[rgba(255,59,92,0.08)] text-[#6b82a0] hover:text-[#ff3b5c] transition-all">
                 <Trash2 size={13} />
               </button>
@@ -238,7 +271,7 @@ export function Roles() {
                   <select value={newUser.role} onChange={e => setNewUser(u => ({ ...u, role: e.target.value as Role }))}
                     className="w-full rounded-xl px-3 py-2.5 text-sm outline-none"
                     style={{ background: "#111b35", color: "#e8eef8", border: "1px solid rgba(30,127,255,0.12)" }}>
-                    {(Object.keys(roleColors) as Role[]).map(r => <option key={r} value={r} className="capitalize">{r}</option>)}
+                    {(Object.keys(roleColors) as Role[]).filter(r => r !== "owner").map(r => <option key={r} value={r} className="capitalize">{r}</option>)}
                   </select>
                 </div>
                 <div className="grid grid-cols-2 gap-3">
@@ -269,16 +302,7 @@ export function Roles() {
                   Cancel
                 </button>
                 <button
-                  onClick={() => {
-                    if (newUser.name && newUser.email) {
-                      setStaffUsers(u => [...u, { id: `u${u.length+1}`, ...newUser, active: true }]);
-                      setShowAddForm(false);
-                      toast.success("Team member added", `${newUser.name} can now sign in as ${newUser.role}`);
-                      setNewUser({ name: "", email: "", role: "waiter", password: "", pin: "" });
-                    } else {
-                      toast.error("Missing fields", "Please fill in name and email");
-                    }
-                  }}
+                  onClick={addUser}
                   className="flex-1 py-2.5 rounded-xl text-sm font-semibold flex items-center justify-center gap-2"
                   style={{ background: "linear-gradient(135deg, #1e7fff, #00c6ff)", color: "#fff" }}>
                   <Check size={15} /> Add Member

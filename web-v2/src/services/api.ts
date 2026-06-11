@@ -530,7 +530,7 @@ export interface ApiSoldItemsResponse {
 
 // ── Payload Types ─────────────────────────────────────────────────────────────
 export interface CreateUserPayload {
-  name: string; email: string; phone: string; role: string; password?: string; pin?: string;
+  name: string; email: string; phone?: string; role: string; password?: string; pin?: string;
   access_json?: string | Record<string, 'none' | 'view' | 'edit'>;
   status?: string; start_time?: string; initials?: string;
 }
