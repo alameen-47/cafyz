@@ -53,7 +53,17 @@ export default function App() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [showPublicMenu, setShowPublicMenu] = useState(false);
 
-  // Public customer-facing QR menu
+  // Public customer-facing QR menu — reachable via the /m/:id deep link with no
+  // login (the QR a guest scans), or via the in-app preview toggle.
+  const isPublicMenuRoute = /^\/m\/[^/]+/.test(window.location.pathname);
+  if (isPublicMenuRoute) {
+    return (
+      <>
+        <Toaster position="bottom-right" richColors closeButton />
+        <PublicMenu />
+      </>
+    );
+  }
   if (showPublicMenu) {
     return (
       <>

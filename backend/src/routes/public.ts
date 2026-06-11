@@ -12,15 +12,24 @@ const router = Router();
  */
 router.get('/menu/:restaurantId', async (req, res, next) => {
   try {
-    const rid = req.params.restaurantId as string;
+    const param = req.params.restaurantId as string;
     const db = getDb();
 
-    const [restRows, itemRows, catRows] = await Promise.all([
-      db.execute({
-        sql: `SELECT id, name, logo_url, currency_code, city, country, receipt_footer
-              FROM restaurants WHERE id=?`,
-        args: [rid],
-      }),
+    // Accept either the restaurant id or its slug so QR/deep-link URLs can be
+    // human-friendly (/m/maison-1968d0) instead of raw UUIDs.
+    const restRows = await db.execute({
+      sql: `SELECT id, name, logo_url, currency_code, city, country, receipt_footer
+            FROM restaurants WHERE id=? OR slug=? LIMIT 1`,
+      args: [param, param],
+    });
+    if (!restRows.rows.length) {
+      res.status(404).json({ error: 'Restaurant not found' });
+      return;
+    }
+    const r = restRows.rows[0] as Record<string, unknown>;
+    const rid = String(r.id);
+
+    const [itemRows, catRows] = await Promise.all([
       db.execute({
         sql: `SELECT id, name, category, price, description, image_url, is_popular
               FROM menu_items
@@ -34,13 +43,6 @@ router.get('/menu/:restaurantId', async (req, res, next) => {
         args: [rid],
       }),
     ]);
-
-    if (!restRows.rows.length) {
-      res.status(404).json({ error: 'Restaurant not found' });
-      return;
-    }
-
-    const r = restRows.rows[0] as Record<string, unknown>;
     // Cacheable for a minute — the menu changes rarely and this is hit per scan.
     res.set('Cache-Control', 'public, max-age=60');
     res.json({

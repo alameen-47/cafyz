@@ -235,10 +235,12 @@ export function Profile() {
               {`${window.location.host}/m/${slug || "your-restaurant"}`}
             </p>
             <div className="flex gap-2">
-              <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold" style={{ background: "rgba(30,127,255,0.1)", color: "#1e7fff" }}>
+              <button onClick={() => slug && window.open(`/m/${slug}`, "_blank")}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold" style={{ background: "rgba(30,127,255,0.1)", color: "#1e7fff" }}>
                 <Download size={12} /> Download
               </button>
-              <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold" style={{ background: "rgba(30,127,255,0.06)", color: "#6b82a0" }}>
+              <button onClick={() => slug && window.open(`/m/${slug}`, "_blank")}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold" style={{ background: "rgba(30,127,255,0.06)", color: "#6b82a0" }}>
                 <ExternalLink size={12} /> Open
               </button>
             </div>
