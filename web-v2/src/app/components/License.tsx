@@ -1,7 +1,9 @@
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { motion } from "motion/react";
 import { Shield, Check, X, Key, Zap, Crown, Star, ArrowRight, Clock } from "lucide-react";
 import { toast } from "./Toast";
+import { licensesApi, type ApiSubscriptionStatus } from "../../services/api";
+import { useAuth } from "../auth";
 
 const plans = [
   {
@@ -38,38 +40,62 @@ const plans = [
 ];
 
 export function License() {
-  const [currentPlan] = useState("pro");
+  const { user } = useAuth();
+  const [status, setStatus] = useState<ApiSubscriptionStatus | null>(null);
   const [licenseKey, setLicenseKey] = useState("");
   const [activating, setActivating] = useState(false);
   const [activated, setActivated] = useState(false);
-  const trialDaysLeft = 4;
 
-  const activate = () => {
+  const load = useCallback(async () => {
+    try { setStatus(await licensesApi.mine()); } catch { /* keep last */ }
+  }, []);
+  useEffect(() => { void load(); }, [load]);
+
+  const currentPlan = status?.plan ?? user?.plan ?? "basic";
+  const trialDaysLeft = status?.trial_days_left ?? null;
+  const planDef = plans.find(p => p.id === currentPlan) ?? plans[0];
+  const PlanIcon = planDef.icon;
+  const renewLabel = status?.license?.expires_at
+    ? `Renews ${new Date(status.license.expires_at).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" })}`
+    : "Active · no expiry";
+
+  const activate = async () => {
+    if (!licenseKey) return;
     setActivating(true);
-    setTimeout(() => { setActivating(false); setActivated(true); toast.success("License activated!", "Your plan has been upgraded successfully"); }, 1500);
+    try {
+      const res = await licensesApi.activate(licenseKey.trim());
+      setActivated(true);
+      toast.success("License activated!", `Your plan is now ${res.plan}`);
+      await load();
+      setTimeout(() => setActivated(false), 2500);
+    } catch (e) {
+      toast.error("Activation failed", (e as Error).message);
+    } finally {
+      setActivating(false);
+    }
   };
 
   return (
     <div className="p-3 sm:p-4 md:p-6 space-y-4 md:space-y-6 max-w-4xl w-full">
-      {/* Trial banner */}
-      <motion.div
-        initial={{ opacity: 0, y: -8 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="flex items-center gap-3 px-4 py-3 rounded-2xl"
-        style={{ background: "rgba(30,127,255,0.08)", border: "1px solid rgba(30,127,255,0.2)" }}
-      >
-        <Clock size={18} style={{ color: "#1e7fff", flexShrink: 0 }} />
-        <div className="flex-1">
-          <p style={{ color: "#e8eef8", fontSize: "0.85rem", fontWeight: 600 }}>
-            Trial expires in <span style={{ color: "#1e7fff", fontFamily: "var(--font-mono)", fontWeight: 800 }}>{trialDaysLeft} days</span>
-          </p>
-          <p style={{ color: "#6b82a0", fontSize: "0.75rem" }}>Upgrade now to keep access to all Pro features.</p>
-        </div>
-        <button className="px-4 py-2 rounded-xl text-sm font-semibold flex-shrink-0"
-          style={{ background: "linear-gradient(135deg, #1e7fff, #00c6ff)", color: "#fff" }}>
-          Upgrade Now
-        </button>
-      </motion.div>
+      {/* Trial banner — only when on a time-limited trial/license */}
+      {trialDaysLeft != null && (
+        <motion.div
+          initial={{ opacity: 0, y: -8 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="flex items-center gap-3 px-4 py-3 rounded-2xl"
+          style={{ background: status?.trial_expired ? "rgba(255,59,92,0.08)" : "rgba(30,127,255,0.08)", border: `1px solid ${status?.trial_expired ? "rgba(255,59,92,0.2)" : "rgba(30,127,255,0.2)"}` }}
+        >
+          <Clock size={18} style={{ color: status?.trial_expired ? "#ff3b5c" : "#1e7fff", flexShrink: 0 }} />
+          <div className="flex-1">
+            <p style={{ color: "#e8eef8", fontSize: "0.85rem", fontWeight: 600 }}>
+              {status?.trial_expired
+                ? <>Your license has <span style={{ color: "#ff3b5c", fontWeight: 800 }}>expired</span></>
+                : <>License expires in <span style={{ color: "#1e7fff", fontFamily: "var(--font-mono)", fontWeight: 800 }}>{trialDaysLeft} day{trialDaysLeft === 1 ? "" : "s"}</span></>}
+            </p>
+            <p style={{ color: "#6b82a0", fontSize: "0.75rem" }}>Enter a license key below to keep full access.</p>
+          </div>
+        </motion.div>
+      )}
 
       {/* Current plan */}
       <div className="rounded-2xl p-5" style={{ background: "#0d1326", border: "1px solid rgba(30,127,255,0.15)" }}>
@@ -78,12 +104,12 @@ export function License() {
           <span className="text-xs px-2.5 py-1 rounded-full" style={{ background: "rgba(30,127,255,0.12)", color: "#1e7fff" }}>Active</span>
         </div>
         <div className="flex items-center gap-4">
-          <div className="w-12 h-12 rounded-xl flex items-center justify-center" style={{ background: "rgba(30,127,255,0.12)" }}>
-            <Zap size={22} style={{ color: "#1e7fff" }} />
+          <div className="w-12 h-12 rounded-xl flex items-center justify-center" style={{ background: `${planDef.color}1f` }}>
+            <PlanIcon size={22} style={{ color: planDef.color }} />
           </div>
           <div>
-            <p style={{ color: "#e8eef8", fontFamily: "var(--font-display)", fontWeight: 700, fontSize: "1.1rem" }}>Pro Plan</p>
-            <p style={{ color: "#6b82a0", fontSize: "0.8rem" }}>Renews on Jul 11, 2026 · ₹2,499/mo</p>
+            <p style={{ color: "#e8eef8", fontFamily: "var(--font-display)", fontWeight: 700, fontSize: "1.1rem" }}>{planDef.name} Plan</p>
+            <p style={{ color: "#6b82a0", fontSize: "0.8rem" }}>{renewLabel}</p>
           </div>
         </div>
       </div>
