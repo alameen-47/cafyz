@@ -14,6 +14,7 @@ import { LicensePanel } from './panels/LicensePanel';
 import { FounderPanel } from './panels/FounderPanel';
 import { RegisterPanel } from './panels/RegisterPanel';
 import { GetAccountPanel } from './panels/GetAccountPanel';
+import { PublicMenuPanel } from './panels/PublicMenuPanel';
 import { UpgradeModal } from './panels/UpgradeModal';
 import { useAuth } from './context/AuthContext';
 import type { Screen } from '@shared/types';
@@ -87,6 +88,9 @@ export default function App() {
       <Route path="/login"       element={<LoginPanel />} />
       <Route path="/register"    element={<RegisterPanel />} />
       <Route path="/get-account" element={<GetAccountPanel />} />
+      {/* Public customer menu — no auth, reached by scanning the restaurant QR */}
+      <Route path="/m/:restaurantId" element={<PublicMenuPanel />} />
+      <Route path="/menu/:restaurantId" element={<PublicMenuPanel />} />
 
       {/* Founder shell — outside normal ShellLayout */}
       <Route path="/founder" element={

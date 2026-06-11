@@ -75,6 +75,17 @@ export const globalLimiter = rateLimit({
   skip: (req) => req.path === '/health',
 });
 
+// Public (no-auth) endpoints — e.g. the customer QR menu. Generous per-IP cap so
+// a busy restaurant's shared WiFi (many diners behind one NAT) is never blocked.
+export const publicLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: isTestEnv ? 100000 : 1500,
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: keyFromIp,
+  message: limiterError('Too many requests. Please retry shortly.'),
+});
+
 export const authIpLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: isTestEnv ? 100000 : 40,

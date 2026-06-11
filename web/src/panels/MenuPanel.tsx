@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, type Dispatch, type SetStateAction } from 
 import { menuApi, menuCategoriesApi, ordersApi, tablesApi, type ApiMenuItem, type ApiMenuCategory, type ApiTable } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { MenuItemImage } from '../components/MenuItemImage';
+import { QrMenuCard } from '../components/QrMenuCard';
 import {
   buildMenuCategoryTabs,
   categoryLabelMap,
@@ -702,6 +703,10 @@ export function MenuPanel() {
           </div>
         )}
       </div>
+
+      {canEdit && !formOpen && !panelOpen && user?.restaurant_id && (
+        <QrMenuCard restaurantId={user.restaurant_id} restaurantName={user.restaurant_name} />
+      )}
 
       {panelOpen && (
         <CategoryManagePanel

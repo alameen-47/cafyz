@@ -155,6 +155,32 @@ export const usersApi = {
 };
 
 // ── Menu ──────────────────────────────────────────────────────────────────────
+// ── Public customer menu (no auth) ─────────────────────────────────────────────
+export interface PublicMenuItem {
+  id: string; name: string; category: string; price: number;
+  description: string; image_url?: string | null; is_popular: number;
+}
+export interface PublicMenuResponse {
+  restaurant: {
+    id: string; name: string; logo_url?: string | null; currency_code: string;
+    city?: string | null; country?: string | null; tagline?: string | null;
+  };
+  categories: { slug: string; label: string; sort_order: number }[];
+  items: PublicMenuItem[];
+}
+
+export const publicApi = {
+  // Fetched by the public /m/:restaurantId page — never attaches a token.
+  menu: async (restaurantId: string): Promise<PublicMenuResponse> => {
+    const res = await fetch(`${BASE}/api/public/menu/${encodeURIComponent(restaurantId)}`);
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      throw new Error((body as { error?: string }).error || 'This menu is unavailable.');
+    }
+    return res.json() as Promise<PublicMenuResponse>;
+  },
+};
+
 export const menuApi = {
   list:   (category?: string) =>
     get<ApiMenuItem[]>(`/api/menu${category && category !== 'all' ? `?category=${encodeURIComponent(category)}` : ''}`),

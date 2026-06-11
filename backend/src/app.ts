@@ -28,7 +28,9 @@ import {
   inquiryLimiter,
   mutationLimiter,
   otpLimiter,
+  publicLimiter,
 } from './middleware/rateLimits.js';
+import publicRoutes from './routes/public.js';
 import { errorHandler, notFound } from './middleware/errorHandler.js';
 
 const app = express();
@@ -60,6 +62,10 @@ app.use(cors({
   },
   credentials: true,
 }));
+// ── Public (no-auth) routes — customer QR menu. Mounted before the global
+//    limiter so diners on a shared restaurant WiFi aren't blocked by the anon cap.
+app.use('/api/public', publicLimiter, publicRoutes);
+
 app.use(globalLimiter);
 
 // ── Compression ─────────────────────────────────────────────────────────────────
