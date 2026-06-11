@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { motion } from "motion/react";
 import { Plus, Phone, Mail, Star, Clock, CheckCircle, XCircle, Coffee } from "lucide-react";
 import { toast } from "./Toast";
+import { usersApi, tablesApi, ordersApi, type ApiUser } from "../../services/api";
 
 type StaffStatus = "on-shift" | "on-break" | "off-duty";
 
@@ -12,23 +13,12 @@ interface StaffMember {
   status: StaffStatus;
   shift: string;
   tablesAssigned: string[];
-  rating: number;
+  rating: number | null;
   ordersToday: number;
   phone: string;
   email: string;
   avatar: string;
 }
-
-const staff: StaffMember[] = [
-  { id: "s1", name: "Ravi Sharma", role: "Head Waiter", status: "on-shift", shift: "4pm – 12am", tablesAssigned: ["T-02", "T-05", "T-07"], rating: 4.9, ordersToday: 34, phone: "+91 98765 43210", email: "ravi@cafyz.com", avatar: "RS" },
-  { id: "s2", name: "Priya Nair", role: "Waiter", status: "on-shift", shift: "4pm – 12am", tablesAssigned: ["T-11", "T-12"], rating: 4.7, ordersToday: 28, phone: "+91 98765 43211", email: "priya@cafyz.com", avatar: "PN" },
-  { id: "s3", name: "Sam Wilson", role: "Waiter", status: "on-break", shift: "12pm – 8pm", tablesAssigned: ["T-03", "T-20"], rating: 4.5, ordersToday: 22, phone: "+91 98765 43212", email: "sam@cafyz.com", avatar: "SW" },
-  { id: "s4", name: "Mia Chen", role: "Waiter", status: "on-shift", shift: "6pm – 2am", tablesAssigned: ["T-06", "T-09", "T-22"], rating: 4.8, ordersToday: 26, phone: "+91 98765 43213", email: "mia@cafyz.com", avatar: "MC" },
-  { id: "s5", name: "Arjun Patel", role: "Bartender", status: "on-shift", shift: "4pm – 2am", tablesAssigned: [], rating: 4.6, ordersToday: 42, phone: "+91 98765 43214", email: "arjun@cafyz.com", avatar: "AP" },
-  { id: "s6", name: "Deepa Rao", role: "Chef", status: "on-shift", shift: "2pm – 10pm", tablesAssigned: [], rating: 4.9, ordersToday: 0, phone: "+91 98765 43215", email: "deepa@cafyz.com", avatar: "DR" },
-  { id: "s7", name: "Tom Baker", role: "Sous Chef", status: "on-break", shift: "3pm – 11pm", tablesAssigned: [], rating: 4.7, ordersToday: 0, phone: "+91 98765 43216", email: "tom@cafyz.com", avatar: "TB" },
-  { id: "s8", name: "Lisa Park", role: "Hostess", status: "off-duty", shift: "10am – 6pm", tablesAssigned: [], rating: 4.6, ordersToday: 15, phone: "+91 98765 43217", email: "lisa@cafyz.com", avatar: "LP" },
-];
 
 const statusConfig: Record<StaffStatus, { color: string; bg: string; icon: React.ElementType; label: string }> = {
   "on-shift": { color: "#22c55e", bg: "rgba(34,197,94,0.1)", icon: CheckCircle, label: "On Shift" },
@@ -36,14 +26,14 @@ const statusConfig: Record<StaffStatus, { color: string; bg: string; icon: React
   "off-duty": { color: "#6b82a0", bg: "rgba(107,130,160,0.1)", icon: XCircle, label: "Off Duty" },
 };
 
-const roleColors: Record<string, string> = {
-  "Head Waiter": "#1e7fff",
-  "Waiter": "#00c6ff",
-  "Bartender": "#a855f7",
-  "Chef": "#f59e0b",
-  "Sous Chef": "#f97316",
-  "Hostess": "#22d3ee",
+// Backend roles → display label + accent colour.
+const ROLE_LABEL: Record<string, string> = {
+  owner: "Owner", manager: "Manager", cashier: "Cashier", waiter: "Waiter", kitchen: "Kitchen", founder: "Founder",
 };
+const roleColors: Record<string, string> = {
+  Owner: "#1e7fff", Manager: "#a855f7", Cashier: "#22d3ee", Waiter: "#00c6ff", Kitchen: "#f59e0b", Founder: "#f97316",
+};
+const STATUS_MAP: Record<string, StaffStatus> = { active: "on-shift", break: "on-break", off: "off-duty" };
 
 const avatarColors = [
   "linear-gradient(135deg, #1e7fff, #00c6ff)",
@@ -55,13 +45,50 @@ const avatarColors = [
 ];
 
 export function Staff() {
+  const [members, setMembers] = useState<StaffMember[]>([]);
   const [selected, setSelected] = useState<StaffMember | null>(null);
   const [filterRole, setFilterRole] = useState("All");
 
+  const load = useCallback(async () => {
+    try {
+      const [users, tables, orders] = await Promise.all([
+        usersApi.list(),
+        tablesApi.list().catch(() => []),
+        ordersApi.list().catch(() => []),
+      ]);
+      const tablesBySrv = new Map<string, string[]>();
+      tables.forEach(t => {
+        if (t.server_id) tablesBySrv.set(t.server_id, [...(tablesBySrv.get(t.server_id) ?? []), t.name]);
+      });
+      const ordersBySrv = new Map<string, number>();
+      orders.forEach(o => { if (o.server_id) ordersBySrv.set(o.server_id, (ordersBySrv.get(o.server_id) ?? 0) + 1); });
+      setMembers(users.map((u: ApiUser) => {
+        const role = ROLE_LABEL[u.role] ?? u.role;
+        return {
+          id: u.id,
+          name: u.name,
+          role,
+          status: STATUS_MAP[u.status] ?? "off-duty",
+          shift: u.start_time && u.start_time !== "—" ? u.start_time : "—",
+          tablesAssigned: tablesBySrv.get(u.id) ?? [],
+          rating: null,
+          ordersToday: ordersBySrv.get(u.id) ?? 0,
+          phone: u.phone ?? "—",
+          email: u.email,
+          avatar: u.initials || (u.name || "?").slice(0, 2).toUpperCase(),
+        };
+      }));
+    } catch (e) {
+      toast.error("Couldn't load staff", (e as Error).message);
+    }
+  }, []);
+  useEffect(() => { void load(); }, [load]);
+
   const handleAddStaff = () => {
-    toast.info("Add Staff", "Staff creation form coming soon — use Roles & Access for now");
+    toast.info("Add Staff", "Create staff in Roles & Access — they appear here once added");
   };
 
+  const staff = members;
   const roles = ["All", ...Array.from(new Set(staff.map(s => s.role)))];
   const filtered = filterRole === "All" ? staff : staff.filter(s => s.role === filterRole);
 
@@ -157,7 +184,7 @@ export function Staff() {
                 <div className="rounded-lg p-2 text-center" style={{ background: "rgba(30,127,255,0.06)" }}>
                   <div className="flex items-center justify-center gap-1">
                     <Star size={10} fill="#f59e0b" stroke="none" />
-                    <span style={{ color: "#f59e0b", fontFamily: "var(--font-mono)", fontWeight: 700, fontSize: "0.9rem" }}>{member.rating}</span>
+                    <span style={{ color: "#f59e0b", fontFamily: "var(--font-mono)", fontWeight: 700, fontSize: "0.9rem" }}>{member.rating ?? "—"}</span>
                   </div>
                   <div style={{ color: "#6b82a0", fontSize: "0.65rem" }}>Rating</div>
                 </div>

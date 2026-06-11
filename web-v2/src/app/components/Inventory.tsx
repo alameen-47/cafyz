@@ -1,34 +1,19 @@
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { motion } from "motion/react";
 import { Plus, Search, AlertTriangle, Package, TrendingDown, CheckCircle2 } from "lucide-react";
+import { toast } from "./Toast";
+import { inventoryApi, type ApiInventoryItem } from "../../services/api";
 
 type StockLevel = "critical" | "low" | "ok" | "surplus";
 
 interface InventoryItem {
   id: string; name: string; category: string; unit: string;
   currentQty: number; minQty: number; maxQty: number;
-  unitCost: number; supplier: string; lastRestocked: string;
+  unitCost: number | null; supplier: string; lastRestocked: string;
 }
 
-const inventoryItems: InventoryItem[] = [
-  { id: "i1",  name: "Basmati Rice",    category: "Grains",    unit: "kg", currentQty: 2,   minQty: 10, maxQty: 50, unitCost: 120,  supplier: "GrainMart",   lastRestocked: "Jun 5" },
-  { id: "i2",  name: "Chicken Breast",  category: "Meat",      unit: "kg", currentQty: 8,   minQty: 10, maxQty: 30, unitCost: 280,  supplier: "FreshMeat",   lastRestocked: "Jun 10" },
-  { id: "i3",  name: "Olive Oil",       category: "Oils",      unit: "L",  currentQty: 0.5, minQty: 5,  maxQty: 20, unitCost: 650,  supplier: "Bella Oils",  lastRestocked: "May 28" },
-  { id: "i4",  name: "Tomatoes",        category: "Vegetables",unit: "kg", currentQty: 12,  minQty: 8,  maxQty: 25, unitCost: 45,   supplier: "FarmFresh",   lastRestocked: "Jun 11" },
-  { id: "i5",  name: "Mozzarella",      category: "Dairy",     unit: "kg", currentQty: 6,   minQty: 5,  maxQty: 15, unitCost: 420,  supplier: "Dairy Direct",lastRestocked: "Jun 9" },
-  { id: "i6",  name: "Salmon Fillet",   category: "Seafood",   unit: "kg", currentQty: 4,   minQty: 5,  maxQty: 15, unitCost: 950,  supplier: "Ocean Fresh", lastRestocked: "Jun 10" },
-  { id: "i7",  name: "Butter",          category: "Dairy",     unit: "kg", currentQty: 15,  minQty: 5,  maxQty: 20, unitCost: 180,  supplier: "Dairy Direct",lastRestocked: "Jun 8" },
-  { id: "i8",  name: "Flour",           category: "Grains",    unit: "kg", currentQty: 32,  minQty: 10, maxQty: 40, unitCost: 55,   supplier: "GrainMart",   lastRestocked: "Jun 3" },
-  { id: "i9",  name: "Heavy Cream",     category: "Dairy",     unit: "L",  currentQty: 8,   minQty: 6,  maxQty: 20, unitCost: 220,  supplier: "Dairy Direct",lastRestocked: "Jun 9" },
-  { id: "i10", name: "Paneer",          category: "Dairy",     unit: "kg", currentQty: 5,   minQty: 4,  maxQty: 12, unitCost: 310,  supplier: "FarmFresh",   lastRestocked: "Jun 10" },
-  { id: "i11", name: "Espresso Beans",  category: "Beverages", unit: "kg", currentQty: 3,   minQty: 2,  maxQty: 10, unitCost: 850,  supplier: "CaféBeans",   lastRestocked: "Jun 7" },
-  { id: "i12", name: "Ribeye Beef",     category: "Meat",      unit: "kg", currentQty: 6,   minQty: 5,  maxQty: 20, unitCost: 1200, supplier: "PrimeCuts",   lastRestocked: "Jun 10" },
-];
-
-const categories = ["All", "Grains", "Meat", "Seafood", "Dairy", "Vegetables", "Oils", "Beverages"];
-
 function getStockLevel(item: InventoryItem): StockLevel {
-  const pct = item.currentQty / item.minQty;
+  const pct = item.currentQty / (item.minQty || 1);
   if (pct < 0.5) return "critical";
   if (pct < 1)   return "low";
   if (item.currentQty > item.maxQty * 0.85) return "surplus";
@@ -45,6 +30,30 @@ const stockConfig: Record<StockLevel, { color: string; bg: string; label: string
 export function Inventory() {
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("All");
+  const [inventoryItems, setInventoryItems] = useState<InventoryItem[]>([]);
+
+  const load = useCallback(async () => {
+    try {
+      const rows = await inventoryApi.list();
+      setInventoryItems(rows.map((r: ApiInventoryItem) => ({
+        id: r.id,
+        name: r.name,
+        category: "General",
+        unit: r.unit,
+        currentQty: r.current,
+        minQty: r.par,
+        maxQty: Math.max(r.par, r.current) * 2 || 1,
+        unitCost: null,        // backend has no cost field
+        supplier: "",          // backend has no supplier field
+        lastRestocked: "",
+      })));
+    } catch (e) {
+      toast.error("Couldn't load inventory", (e as Error).message);
+    }
+  }, []);
+  useEffect(() => { void load(); }, [load]);
+
+  const categories = ["All", ...Array.from(new Set(inventoryItems.map(i => i.category)))];
 
   const filtered = inventoryItems
     .filter(item =>
@@ -115,7 +124,7 @@ export function Inventory() {
           <div className="col-span-5 sm:col-span-4">Item</div>
           <div className="col-span-3 hidden sm:block">Category</div>
           <div className="col-span-4 sm:col-span-3">Stock</div>
-          <div className="col-span-3 hidden md:block">Cost</div>
+          <div className="col-span-3 hidden md:block">Par level</div>
           <div className="col-span-3 sm:col-span-2 md:col-span-1 text-right sm:text-left">Action</div>
         </div>
 
@@ -131,7 +140,7 @@ export function Inventory() {
                 className="grid grid-cols-12 gap-2 px-3 sm:px-4 py-3 items-center hover:bg-[rgba(30,127,255,0.02)] transition-all">
                 <div className="col-span-5 sm:col-span-4 min-w-0">
                   <p style={{ color: "#e8eef8", fontSize: "0.82rem", fontWeight: 500 }} className="truncate">{item.name}</p>
-                  <p style={{ color: "#6b82a0", fontSize: "0.67rem" }} className="truncate">{item.supplier}</p>
+                  {item.supplier && <p style={{ color: "#6b82a0", fontSize: "0.67rem" }} className="truncate">{item.supplier}</p>}
                 </div>
                 <div className="col-span-3 hidden sm:block">
                   <span className="text-xs px-2 py-0.5 rounded-full"
@@ -157,7 +166,7 @@ export function Inventory() {
                 </div>
                 <div className="col-span-3 hidden md:block">
                   <span style={{ color: "#a8bdd4", fontFamily: "var(--font-mono)", fontSize: "0.78rem" }}>
-                    ₹{item.unitCost}/{item.unit}
+                    {item.maxQty ? `par ${item.minQty}${item.unit}` : "—"}
                   </span>
                 </div>
                 <div className="col-span-3 sm:col-span-2 md:col-span-1 flex justify-end sm:justify-start">
