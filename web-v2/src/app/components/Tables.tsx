@@ -1,11 +1,14 @@
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { motion } from "motion/react";
 import { Users, Clock, Plus, Utensils } from "lucide-react";
+import { tablesApi, usersApi, ordersApi, reservationsApi, type ApiTable, type ApiReservation, type ApiUser } from "../../services/api";
+import { toast } from "./Toast";
 
 type TableStatus = "available" | "occupied" | "reserved" | "cleaning";
 
 interface TableData {
-  id: string;
+  id: string;          // real table id (for API calls)
+  name: string;        // display label, e.g. "T1"
   seats: number;
   status: TableStatus;
   guests?: number;
@@ -13,6 +16,46 @@ interface TableData {
   since?: string;
   order?: string;
   reservation?: string;
+}
+
+// Backend statuses ↔ the floor-plan's status vocabulary.
+const STATUS_FWD: Record<string, TableStatus> = {
+  empty: "available", occupied: "occupied", paying: "occupied",
+  reserved: "reserved", attention: "cleaning",
+};
+const STATUS_REV: Record<TableStatus, string> = {
+  available: "empty", occupied: "occupied", reserved: "reserved", cleaning: "attention",
+};
+
+function fmtResTime(t?: string): string {
+  if (!t) return "";
+  const d = new Date(t.includes("T") ? t : t.replace(" ", "T"));
+  if (isNaN(d.getTime())) return t;
+  return d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+}
+
+function mapTable(
+  t: ApiTable,
+  nameById: Map<string, string>,
+  orderByTable: Map<string, string>,
+  resvByTable: Map<string, ApiReservation>,
+): TableData {
+  const status = STATUS_FWD[t.status] ?? "available";
+  const order = orderByTable.get(t.id);
+  const resv = resvByTable.get(t.id);
+  return {
+    id: t.id,
+    name: t.name,
+    seats: t.capacity,
+    status,
+    guests: status === "occupied" && t.covers ? t.covers : undefined,
+    waiter: t.server_id ? nameById.get(t.server_id) : undefined,
+    since: status === "occupied" && t.elapsed_min ? `${t.elapsed_min}m` : undefined,
+    order: order ? "#" + order.slice(0, 4).toUpperCase() : undefined,
+    reservation: status === "reserved"
+      ? (resv ? `${fmtResTime(resv.res_time)} · ${resv.guest_name} · ${resv.covers} guests` : "Reserved")
+      : undefined,
+  };
 }
 
 const initialTables: TableData[] = [
@@ -77,7 +120,7 @@ function TableCard({ table, onClick }: { table: TableData; onClick: () => void }
         </span>
       </div>
       <div style={{ fontFamily: "var(--font-display)", fontWeight: 700, color: "#e8eef8", fontSize: "1rem" }} className="mb-1">
-        {table.id}
+        {table.name}
       </div>
       <div className="flex items-center gap-1 mb-2" style={{ color: "#6b82a0", fontSize: "0.72rem" }}>
         <Users size={11} />
@@ -100,9 +143,36 @@ function TableCard({ table, onClick }: { table: TableData; onClick: () => void }
 }
 
 export function Tables() {
-  const [tables, setTables] = useState(initialTables);
+  const [tables, setTables] = useState<TableData[]>([]);
   const [selected, setSelected] = useState<TableData | null>(null);
   const [filterStatus, setFilterStatus] = useState<TableStatus | "all">("all");
+
+  // Live floor plan: tables joined with their server, active order, reservation.
+  const load = useCallback(async () => {
+    try {
+      const [ts, users, sentOrders, resv] = await Promise.all([
+        tablesApi.list(),
+        usersApi.list().catch(() => [] as ApiUser[]),
+        ordersApi.list({ status: "sent" }).catch(() => []),
+        reservationsApi.list().catch(() => [] as ApiReservation[]),
+      ]);
+      const nameById = new Map(users.map(u => [u.id, u.name]));
+      const orderByTable = new Map<string, string>();
+      sentOrders.forEach(o => { if (o.table_id) orderByTable.set(o.table_id, o.id); });
+      const resvByTable = new Map<string, ApiReservation>();
+      resv.forEach(r => {
+        if (r.table_id && r.status !== "cancelled" && r.status !== "seated" && r.status !== "no_show" && !resvByTable.has(r.table_id)) {
+          resvByTable.set(r.table_id, r);
+        }
+      });
+      setTables(ts.map(t => mapTable(t, nameById, orderByTable, resvByTable)));
+    } catch { /* keep last snapshot on transient errors */ }
+  }, []);
+  useEffect(() => {
+    void load();
+    const id = window.setInterval(() => void load(), 8000);
+    return () => window.clearInterval(id);
+  }, [load]);
 
   const statusCounts = Object.fromEntries(
     (["available", "occupied", "reserved", "cleaning"] as TableStatus[]).map(s => [s, tables.filter(t => t.status === s).length])
@@ -110,9 +180,16 @@ export function Tables() {
 
   const filtered = filterStatus === "all" ? tables : tables.filter(t => t.status === filterStatus);
 
-  const handleStatusChange = (id: string, status: TableStatus) => {
+  const handleStatusChange = async (id: string, status: TableStatus) => {
     setTables(prev => prev.map(t => t.id === id ? { ...t, status, guests: status !== "occupied" ? undefined : t.guests } : t));
     setSelected(null);
+    try {
+      await tablesApi.updateStatus(id, { status: STATUS_REV[status], ...(status !== "occupied" ? { covers: 0 } : {}) });
+      void load();
+    } catch (e) {
+      toast.error("Couldn't update table", (e as Error).message);
+      void load();
+    }
   };
 
   return (
@@ -169,7 +246,7 @@ export function Tables() {
             onClick={e => e.stopPropagation()}
           >
             <div className="flex items-center justify-between">
-              <h3 style={{ fontFamily: "var(--font-display)", color: "#e8eef8", fontWeight: 700 }}>{selected.id}</h3>
+              <h3 style={{ fontFamily: "var(--font-display)", color: "#e8eef8", fontWeight: 700 }}>{selected.name}</h3>
               <span
                 className="text-xs px-2.5 py-1 rounded-full"
                 style={{ background: statusConfig[selected.status].bg, color: statusConfig[selected.status].color }}
