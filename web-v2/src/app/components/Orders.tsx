@@ -1,20 +1,40 @@
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Plus, Clock, CheckCircle2, ChefHat, Truck, Filter, Search } from "lucide-react";
 import { toast } from "./Toast";
+import { ordersApi, kdsApi, usersApi } from "../../services/api";
+import { getCurrencySymbol } from "../../utils/currency";
 
-const allOrders = [
-  { id: "#4821", table: "T-05", waiter: "Ravi",  items: [{ name: "Butter Chicken", qty: 1, price: 18 }, { name: "Garlic Naan", qty: 2, price: 4 }],   total: 26, status: "served",   time: "2m",  priority: false },
-  { id: "#4820", table: "T-12", waiter: "Priya", items: [{ name: "Margherita Pizza", qty: 1, price: 16 }, { name: "Coke", qty: 2, price: 4 }],          total: 24, status: "preparing",time: "5m",  priority: true },
-  { id: "#4819", table: "T-03", waiter: "Sam",   items: [{ name: "Grilled Salmon", qty: 1, price: 28 }, { name: "Red Wine", qty: 2, price: 15 }],       total: 58, status: "preparing",time: "8m",  priority: false },
-  { id: "#4818", table: "T-07", waiter: "Ravi",  items: [{ name: "Ribeye Steak", qty: 1, price: 45 }, { name: "Fries", qty: 1, price: 8 }, { name: "Beer", qty: 2, price: 9 }], total: 71, status: "ready", time: "11m", priority: false },
-  { id: "#4817", table: "T-09", waiter: "Mia",   items: [{ name: "Veg Biryani", qty: 2, price: 14 }, { name: "Raita", qty: 1, price: 4 }],              total: 32, status: "served",   time: "14m", priority: false },
-  { id: "#4816", table: "T-02", waiter: "Sam",   items: [{ name: "Caesar Salad", qty: 1, price: 12 }, { name: "Tiramisu", qty: 2, price: 9 }],          total: 30, status: "pending",  time: "1m",  priority: true },
-  { id: "#4815", table: "T-11", waiter: "Priya", items: [{ name: "Paneer Tikka", qty: 2, price: 16 }, { name: "Lassi", qty: 2, price: 5 }],             total: 42, status: "pending",  time: "3m",  priority: false },
-  { id: "#4814", table: "T-06", waiter: "Mia",   items: [{ name: "Fish & Chips", qty: 1, price: 22 }, { name: "Water", qty: 1, price: 4 }],             total: 26, status: "preparing",time: "6m",  priority: false },
-];
+type UiStatus = "pending" | "preparing" | "ready" | "served";
+type OrderRow = {
+  id: string;        // display "#XXXX"
+  oid: string;       // real order id
+  tid?: string;      // backing KDS ticket id (used to advance kitchen progress)
+  table: string; waiter: string;
+  items: { name: string; qty: number; price: number }[];
+  total: number; status: UiStatus; time: string; priority: boolean;
+};
 
 const statuses = ["all", "pending", "preparing", "ready", "served"];
+
+// Order payment status + kitchen-ticket status → the board's vocabulary.
+function uiStatus(orderStatus: string, ticketStatus?: string): UiStatus {
+  if (orderStatus === "paid" || orderStatus === "comped") return "served";
+  switch (ticketStatus) {
+    case "prep": return "preparing";
+    case "ready": return "ready";
+    case "delivered": return "served";
+    default: return "pending"; // new ticket / freshly sent
+  }
+}
+function relTime(iso?: string): string {
+  if (!iso) return "";
+  const t = new Date(iso.includes("T") ? iso : iso.replace(" ", "T") + "Z").getTime();
+  const mins = Math.max(0, Math.round((Date.now() - t) / 60000));
+  if (mins < 1) return "just now";
+  if (mins < 60) return `${mins}m`;
+  return `${Math.floor(mins / 60)}h ${mins % 60}m`;
+}
 
 const statusConfig: Record<string, { color: string; bg: string; icon: React.ElementType; label: string }> = {
   pending:   { color: "#f59e0b", bg: "rgba(245,158,11,0.12)",  icon: Clock,         label: "Pending" },
@@ -23,7 +43,7 @@ const statusConfig: Record<string, { color: string; bg: string; icon: React.Elem
   served:    { color: "#22c55e", bg: "rgba(34,197,94,0.12)",   icon: Truck,         label: "Served" },
 };
 
-function OrderCard({ order, onStatusChange }: { order: typeof allOrders[0]; onStatusChange: (id: string, s: string) => void }) {
+function OrderCard({ order, cur, onAdvance }: { order: OrderRow; cur: string; onAdvance: (o: OrderRow) => void }) {
   const cfg = statusConfig[order.status];
   const Icon = cfg.icon;
   const nextStatus: Record<string, string> = { pending: "preparing", preparing: "ready", ready: "served" };
@@ -69,7 +89,7 @@ function OrderCard({ order, onStatusChange }: { order: typeof allOrders[0]; onSt
             <span style={{ color: "#a8bdd4", fontSize: "0.75rem" }}>
               <span style={{ color: "#1e7fff", fontFamily: "var(--font-mono)" }}>×{item.qty}</span> {item.name}
             </span>
-            <span style={{ color: "#6b82a0", fontSize: "0.72rem", fontFamily: "var(--font-mono)" }}>₹{item.price * item.qty}</span>
+            <span style={{ color: "#6b82a0", fontSize: "0.72rem", fontFamily: "var(--font-mono)" }}>{cur}{item.price * item.qty}</span>
           </div>
         ))}
       </div>
@@ -81,10 +101,10 @@ function OrderCard({ order, onStatusChange }: { order: typeof allOrders[0]; onSt
           <span style={{ color: cfg.color, fontSize: "0.7rem", fontWeight: 600 }}>{cfg.label}</span>
         </div>
         <div className="flex items-center gap-2">
-          <span style={{ color: "#e8eef8", fontFamily: "var(--font-mono)", fontWeight: 700, fontSize: "0.88rem" }}>₹{order.total}</span>
+          <span style={{ color: "#e8eef8", fontFamily: "var(--font-mono)", fontWeight: 700, fontSize: "0.88rem" }}>{cur}{order.total}</span>
           {nextStatus[order.status] && (
             <motion.button whileTap={{ scale: 0.94 }}
-              onClick={() => onStatusChange(order.id, nextStatus[order.status])}
+              onClick={() => onAdvance(order)}
               className="px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all"
               style={{ background: "linear-gradient(135deg, #1e7fff, #00c6ff)", color: "#fff", minHeight: 32 }}>
               {nextStatus[order.status] === "preparing" ? "Accept" : nextStatus[order.status] === "ready" ? "Ready" : "Served"}
@@ -99,21 +119,71 @@ function OrderCard({ order, onStatusChange }: { order: typeof allOrders[0]; onSt
 export function Orders() {
   const [filter, setFilter] = useState("all");
   const [search, setSearch] = useState("");
-  const [orders, setOrders] = useState(allOrders);
+  const [orders, setOrders] = useState<OrderRow[]>([]);
+  const cur = getCurrencySymbol();
 
-  const handleStatusChange = (id: string, status: string) => {
-    const order = orders.find(o => o.id === id);
-    setOrders(prev => prev.map(o => o.id === id ? { ...o, status } : o));
+  // Live orders: every non-voided order, enriched with items, total, server,
+  // and its kitchen-ticket progress. Polled every 5s.
+  const load = useCallback(async () => {
+    try {
+      const [list, tickets, users] = await Promise.all([
+        ordersApi.list(),
+        kdsApi.list().catch(() => []),
+        usersApi.list().catch(() => []),
+      ]);
+      const nameById = new Map(users.map(u => [u.id, u.name]));
+      const ticketByOrder = new Map(tickets.map(t => [t.order_id, t]));
+      const active = list.filter(o => o.status !== "voided")
+        .sort((a, b) => (b.created_at || "").localeCompare(a.created_at || ""));
+      const detailed = await Promise.all(active.map(o => ordersApi.get(o.id).catch(() => null)));
+      const rows: OrderRow[] = active.map((o, i) => {
+        const items = (detailed[i]?.items ?? []).map(it => ({ name: it.name ?? "Item", qty: it.qty, price: Number(it.price ?? 0) }));
+        const ticket = ticketByOrder.get(o.id);
+        return {
+          id: "#" + o.id.slice(0, 4).toUpperCase(),
+          oid: o.id,
+          tid: ticket?.id,
+          table: o.table_name || "—",
+          waiter: o.server_id ? (nameById.get(o.server_id) ?? "") : "",
+          items,
+          total: items.reduce((s, it) => s + it.price * it.qty, 0),
+          status: uiStatus(o.status, ticket?.status),
+          time: relTime(o.created_at),
+          priority: ticket?.vip === 1,
+        };
+      });
+      setOrders(rows);
+    } catch { /* keep last snapshot */ }
+  }, []);
+  useEffect(() => {
+    void load();
+    const id = window.setInterval(() => void load(), 5000);
+    return () => window.clearInterval(id);
+  }, [load]);
+
+  // Advance an order's kitchen ticket: pending→preparing→ready→served.
+  const handleAdvance = async (order: OrderRow) => {
+    const next = ({ pending: "preparing", preparing: "ready", ready: "served" } as Record<string, UiStatus>)[order.status];
+    if (!next) return;
+    if (!order.tid) { toast.error("No kitchen ticket", `${order.id} has no active kitchen ticket`); return; }
+    setOrders(prev => prev.map(o => o.oid === order.oid ? { ...o, status: next } : o));
     const labels: Record<string, string> = { preparing: "Sent to kitchen", ready: "Order is ready", served: "Order served" };
     const icons: Record<string, "success" | "info"> = { preparing: "info", ready: "success", served: "success" };
-    if (order && labels[status]) {
-      toast[icons[status] || "info"](`${order.id} · ${labels[status]}`, `${order.table} · ₹${order.total}`);
+    try {
+      if (next === "preparing") await kdsApi.fire(order.tid);
+      else if (next === "ready") await kdsApi.ready(order.tid);
+      else if (next === "served") await kdsApi.delivered(order.tid);
+      toast[icons[next] || "info"](`${order.id} · ${labels[next]}`, `${order.table} · ${cur}${order.total}`);
+      void load();
+    } catch (e) {
+      toast.error("Couldn't update order", (e as Error).message);
+      void load();
     }
   };
 
   const filtered = orders.filter(o =>
     (filter === "all" || o.status === filter) &&
-    (search === "" || o.id.includes(search) || o.table.toLowerCase().includes(search.toLowerCase()))
+    (search === "" || o.id.toLowerCase().includes(search.toLowerCase()) || o.table.toLowerCase().includes(search.toLowerCase()))
   );
 
   const counts = Object.fromEntries(statuses.slice(1).map(s => [s, orders.filter(o => o.status === s).length]));
@@ -173,7 +243,7 @@ export function Orders() {
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
         <AnimatePresence>
           {filtered.map(order => (
-            <OrderCard key={order.id} order={order} onStatusChange={handleStatusChange} />
+            <OrderCard key={order.oid} order={order} cur={cur} onAdvance={handleAdvance} />
           ))}
           {filtered.length === 0 && (
             <div key="empty" className="col-span-full flex flex-col items-center justify-center py-16 gap-3">
