@@ -16,6 +16,16 @@ export interface AuthUser {
   plan: Plan;
 }
 
+export interface SignupData {
+  restaurant_name: string;
+  owner_name: string;
+  email: string;
+  phone: string;
+  password: string;
+  plan?: string;
+  timezone?: string;
+}
+
 interface AuthCtx {
   user: AuthUser | null;
   loading: boolean;
@@ -23,6 +33,7 @@ interface AuthCtx {
   loginPin: (email: string, pin: string) => Promise<void>;
   requestOtp: (phone: string) => Promise<{ dev_otp?: string; message: string }>;
   verifyOtp: (phone: string, otp: string) => Promise<void>;
+  signup: (data: SignupData) => Promise<void>;
   logout: () => void;
 }
 
@@ -98,6 +109,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await complete(d);
   };
 
+  // Free-trial / new-account signup: create the restaurant + owner, then sign in.
+  const signup = async (data: SignupData) => {
+    const email = data.email.trim().toLowerCase();
+    await authApi.onboarding({
+      restaurant_name: data.restaurant_name.trim(),
+      owner_name: data.owner_name.trim(),
+      email,
+      phone: data.phone.trim(),
+      password: data.password,
+      plan: data.plan,
+      timezone: data.timezone,
+    });
+    const d = await authApi.login(email, data.password, deviceId());
+    await complete(d);
+  };
+
   function logout() {
     localStorage.removeItem('cafyz_token');
     localStorage.removeItem('cafyz_user');
@@ -105,7 +132,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <Ctx.Provider value={{ user, loading, loginEmail, loginPin, requestOtp, verifyOtp, logout }}>
+    <Ctx.Provider value={{ user, loading, loginEmail, loginPin, requestOtp, verifyOtp, signup, logout }}>
       {children}
     </Ctx.Provider>
   );

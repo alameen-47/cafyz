@@ -1,11 +1,11 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { Eye, EyeOff, Shield, ArrowRight, Phone, Lock, Mail, Delete, ChevronRight, Star } from "lucide-react";
+import { Eye, EyeOff, Shield, ArrowRight, Phone, Lock, Mail, Delete, ChevronRight, Star, Store, User } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "../auth";
 
 type AuthMethod = "password" | "pin" | "otp";
-type AuthState = "login" | "forgot" | "reset" | "otp-verify";
+type AuthState = "login" | "forgot" | "reset" | "otp-verify" | "signup";
 
 const stats = [
   { label: "Restaurants", value: "2,400+" },
@@ -61,7 +61,7 @@ function PinPad({ onSubmit }: { onSubmit: (pin: string) => void }) {
 }
 
 export function LoginScreen({ onLogin }: { onLogin?: () => void }) {
-  const { loginEmail, loginPin, requestOtp, verifyOtp } = useAuth();
+  const { loginEmail, loginPin, requestOtp, verifyOtp, signup } = useAuth();
   const [method, setMethod] = useState<AuthMethod>("password");
   const [authState, setAuthState] = useState<AuthState>("login");
   const [showPass, setShowPass] = useState(false);
@@ -73,7 +73,30 @@ export function LoginScreen({ onLogin }: { onLogin?: () => void }) {
   const [loading, setLoading] = useState(false);
   const [forgotEmail, setForgotEmail] = useState("");
 
+  // Free-trial signup form
+  const [su, setSu] = useState({ restaurant: "", owner: "", email: "", phone: "", password: "" });
+  const setSuField = (k: keyof typeof su, v: string) => setSu(s => ({ ...s, [k]: v }));
+
   function errMsg(e: unknown) { return e instanceof Error ? e.message : "Something went wrong"; }
+
+  // Create a new restaurant account (free trial), then sign in.
+  const submitSignup = async () => {
+    if (!su.restaurant.trim()) { toast.error("Restaurant name is required"); return; }
+    if (!su.owner.trim()) { toast.error("Your name is required"); return; }
+    if (!su.email.trim()) { toast.error("Email is required"); return; }
+    if (!su.phone.trim()) { toast.error("Phone is required", { description: "Use international format, e.g. +971500000000" }); return; }
+    if (su.password.length < 8) { toast.error("Password must be at least 8 characters"); return; }
+    setLoading(true);
+    try {
+      await signup({ restaurant_name: su.restaurant, owner_name: su.owner, email: su.email, phone: su.phone, password: su.password, plan: "premium", timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC" });
+      toast.success("Welcome to Cafyz!", { description: "Your free trial is ready" });
+      onLogin?.();
+    } catch (e) {
+      toast.error(errMsg(e));
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Real backend login (email + password)
   const submitPassword = async () => {
@@ -288,7 +311,59 @@ export function LoginScreen({ onLogin }: { onLogin?: () => void }) {
 
                 <p style={{ color: "#6b82a0", fontSize: "0.8rem", textAlign: "center" }}>
                   New to Cafyz?{" "}
-                  <button style={{ color: "#1e7fff", fontWeight: 600 }}>Start free trial →</button>
+                  <button onClick={() => setAuthState("signup")} style={{ color: "#1e7fff", fontWeight: 600 }}>Start free trial →</button>
+                </p>
+              </motion.div>
+            )}
+
+            {authState === "signup" && (
+              <motion.div key="signup" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -16 }} className="space-y-4">
+                <div>
+                  <button onClick={() => setAuthState("login")} style={{ color: "#6b82a0", fontSize: "0.8rem" }}>← Back to sign in</button>
+                  <h2 style={{ fontFamily: "var(--font-display)", fontWeight: 700, color: "#e8eef8", fontSize: "1.6rem", marginTop: 10 }}>Start your free trial</h2>
+                  <p style={{ color: "#6b82a0", fontSize: "0.85rem", marginTop: 4 }}>Create your restaurant account — no card required</p>
+                </div>
+
+                {[
+                  { k: "restaurant" as const, label: "Restaurant name", icon: Store, type: "text", ph: "The Spice Garden" },
+                  { k: "owner" as const, label: "Your name", icon: User, type: "text", ph: "Alex Kumar" },
+                  { k: "email" as const, label: "Email address", icon: Mail, type: "email", ph: "alex@restaurant.com" },
+                  { k: "phone" as const, label: "Phone (international)", icon: Phone, type: "tel", ph: "+971 50 000 0000" },
+                ].map(f => {
+                  const Icon = f.icon;
+                  return (
+                    <div key={f.k}>
+                      <label style={{ color: "#a8bdd4", fontSize: "0.8rem", display: "block", marginBottom: 6 }}>{f.label}</label>
+                      <div className="flex items-center gap-2 rounded-xl px-3 py-3" style={{ background: "#0d1326", border: "1px solid rgba(30,127,255,0.15)" }}>
+                        <Icon size={15} style={{ color: "#6b82a0", flexShrink: 0 }} />
+                        <input type={f.type} placeholder={f.ph} value={su[f.k]} onChange={e => setSuField(f.k, e.target.value)}
+                          className="flex-1 bg-transparent outline-none text-sm placeholder:text-[#6b82a0]" style={{ color: "#e8eef8" }} />
+                      </div>
+                    </div>
+                  );
+                })}
+
+                <div>
+                  <label style={{ color: "#a8bdd4", fontSize: "0.8rem", display: "block", marginBottom: 6 }}>Password</label>
+                  <div className="flex items-center gap-2 rounded-xl px-3 py-3" style={{ background: "#0d1326", border: "1px solid rgba(30,127,255,0.15)" }}>
+                    <Lock size={15} style={{ color: "#6b82a0", flexShrink: 0 }} />
+                    <input type={showPass ? "text" : "password"} placeholder="At least 8 characters" value={su.password} onChange={e => setSuField("password", e.target.value)}
+                      className="flex-1 bg-transparent outline-none text-sm placeholder:text-[#6b82a0]" style={{ color: "#e8eef8" }} />
+                    <button onClick={() => setShowPass(s => !s)} style={{ color: "#6b82a0" }}>
+                      {showPass ? <EyeOff size={15} /> : <Eye size={15} />}
+                    </button>
+                  </div>
+                </div>
+
+                <motion.button whileTap={{ scale: 0.97 }} onClick={submitSignup} disabled={loading}
+                  className="w-full py-3 rounded-xl text-sm font-semibold flex items-center justify-center gap-2 transition-all hover:opacity-90"
+                  style={{ background: "linear-gradient(135deg, #1e7fff, #00c6ff)", color: "#fff", opacity: loading ? 0.7 : 1 }}>
+                  {loading ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <>Create account &amp; start trial <ArrowRight size={16} /></>}
+                </motion.button>
+
+                <p style={{ color: "#6b82a0", fontSize: "0.72rem", textAlign: "center" }}>
+                  Already have an account?{" "}
+                  <button onClick={() => setAuthState("login")} style={{ color: "#1e7fff", fontWeight: 600 }}>Sign in</button>
                 </p>
               </motion.div>
             )}
