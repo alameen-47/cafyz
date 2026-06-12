@@ -11,6 +11,7 @@ import {
   type ApiMenuItem, type ApiMenuCategory, type ApiTable, type ApiRestaurant,
 } from "../../services/api";
 import { getCurrencySymbol } from "../../utils/currency";
+import { useAppNav } from "../nav";
 
 // A cart line carries the menu item id (id), and — once the bill is a live
 // kitchen-sent order — its backing order_item id so edits persist server-side.
@@ -72,6 +73,7 @@ function PrinterPopover({ onClose, kitchen, cashier }: { onClose: () => void; ki
 function CartPanel({
   cart, selectedTable, tables, isParcel, editMode, breakdownOpen, showPrinter, charged, busy,
   cur, subtotal, service, tax, grandTotal, serviceRate, taxRate, taxLabel, kitchenPrinter, cashierPrinter,
+  sendable, onSend,
   onTableChange, onParcelToggle, onEditToggle, onBreakdownToggle, onPrinterToggle,
   onUpdateQty, onClear, onCharge, onCash, onClose,
   isMobile,
@@ -80,6 +82,7 @@ function CartPanel({
   editMode: boolean; breakdownOpen: boolean; showPrinter: boolean; charged: boolean; busy: boolean;
   cur: string; subtotal: number; service: number; tax: number; grandTotal: number;
   serviceRate: number; taxRate: number; taxLabel: string; kitchenPrinter?: string | null; cashierPrinter?: string | null;
+  sendable: boolean; onSend: () => void;
   onTableChange: (t: string) => void; onParcelToggle: () => void; onEditToggle: () => void;
   onBreakdownToggle: () => void; onPrinterToggle: () => void;
   onUpdateQty: (id: string, d: number) => void; onClear: () => void;
@@ -215,6 +218,15 @@ function CartPanel({
           </span>
         </div>
 
+        {/* Dine-in: place the order for this table (fires kitchen ticket, no payment yet) */}
+        {sendable && (
+          <motion.button whileTap={{ scale: 0.97 }} disabled={busy} onClick={onSend}
+            className="w-full py-3 rounded-xl text-sm font-semibold flex items-center justify-center gap-2"
+            style={{ background: "linear-gradient(135deg, #ff6b35, #f59e0b)", color: "#fff", opacity: busy ? 0.6 : 1 }}>
+            <ReceiptText size={15} /> Send to Kitchen
+          </motion.button>
+        )}
+
         <div className="flex gap-2 relative">
           <motion.button whileTap={{ scale: 0.95 }} disabled={busy} onClick={onCharge}
             className="flex-1 py-3 rounded-xl text-sm font-semibold flex items-center justify-center gap-2"
@@ -262,6 +274,7 @@ export function POS() {
   const [charged, setCharged] = useState(false);
   const [busy, setBusy] = useState(false);
   const [showMobileCart, setShowMobileCart] = useState(false);
+  const { posTableId, clearPosTable } = useAppNav();
 
   // ── Initial load: menu, categories, tables, restaurant settings ────────────
   useEffect(() => {
@@ -339,7 +352,7 @@ export function POS() {
 
   // ── Table selection: load that table's pending kitchen-sent bill (self-heals
   //    a stale 'sent' order lingering on a cleared table) ──────────────────────
-  async function handleTableChange(tableId: string) {
+  async function handleTableChange(tableId: string, opts?: { skipHeal?: boolean }) {
     setSelectedTable(tableId);
     setActiveOrderId(null);
     setPayState("open");
@@ -350,7 +363,10 @@ export function POS() {
       const orders = await ordersApi.list({ table_id: tableId });
       const sent = orders.find(o => o.status === "sent");
       const tableStatus = tables.find(t => t.id === tableId)?.status;
-      if (sent && tableStatus === "empty") {
+      // Self-heal a stale 'sent' order lingering on a cleared table — but never
+      // when we just placed the order (skipHeal), and never when the local table
+      // snapshot is unknown (avoid settling a fresh order on a stale 'empty').
+      if (sent && tableStatus === "empty" && !opts?.skipHeal) {
         try { await ordersApi.settleTable(tableId); } catch { /* best effort */ }
         setCart([]);
         return;
@@ -373,6 +389,14 @@ export function POS() {
       toast.error("Couldn't load bill", (e as Error).message);
     }
   }
+
+  // ── Table Map "Take Order": when arriving with a pre-chosen table, select it ─
+  useEffect(() => {
+    if (!posTableId) return;
+    void handleTableChange(posTableId);
+    clearPosTable();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [posTableId]);
 
   // ── Add a menu item: persists to a live bill, else builds the local cart ─────
   async function addProduct(item: ApiMenuItem) {
@@ -470,13 +494,43 @@ export function POS() {
     }
   }
 
+  // ── Send to Kitchen: place a fresh dine-in order for this table (no payment).
+  //    The table becomes occupied with a pending bill you can charge later. ─────
+  async function sendToKitchen() {
+    if (!cart.length) { toast.error("Cart is empty", "Add items before sending"); return; }
+    if (!selectedTable) { toast.error("No table selected", "Pick a table for this order"); return; }
+    setBusy(true);
+    try {
+      await ordersApi.quickSend({
+        table_id: selectedTable,
+        parcel: isParcel,
+        enqueue_print: true,
+        items: cart.map(c => ({ menu_item_id: c.id, qty: c.qty, mods: [] })),
+      });
+      const tName = tables.find(t => t.id === selectedTable)?.name ?? "";
+      toast.success(`Order sent to kitchen · ${tName}`, `${itemCount} item${itemCount !== 1 ? "s" : ""} placed for the table`);
+      window.dispatchEvent(new Event("CAFYZ_ORDER_SENT"));
+      await refreshPending();
+      await handleTableChange(selectedTable, { skipHeal: true }); // reload the just-placed bill
+    } catch (e) {
+      toast.error("Couldn't send order", (e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
   const kitchenPrinterName = restaurant?.kitchen_printer?.name ?? null;
   const cashierPrinterName = restaurant?.cashier_printer?.name ?? null;
+
+  // A fresh (not-yet-sent) cart on a chosen table can be sent to the kitchen.
+  const sendable = !canEditBill && cart.length > 0 && !!selectedTable;
 
   const cartProps = {
     cart, selectedTable, tables, isParcel, editMode, breakdownOpen, showPrinter, charged, busy,
     cur, subtotal, service, tax, grandTotal, serviceRate, taxRate, taxLabel,
     kitchenPrinter: kitchenPrinterName, cashierPrinter: cashierPrinterName,
+    sendable,
+    onSend: () => void sendToKitchen(),
     onTableChange: handleTableChange,
     onParcelToggle: () => void toggleParcel(),
     onEditToggle: () => setEditMode(e => !e),

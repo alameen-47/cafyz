@@ -21,6 +21,7 @@ import { Reservations } from "./components/Reservations";
 import { FounderConsole } from "./components/FounderConsole";
 import { PublicMenu } from "./components/PublicMenu";
 import { useAuth } from "./auth";
+import { NavContext } from "./nav";
 import "../styles/fonts.css";
 
 type Role = "owner" | "manager" | "cashier" | "waiter" | "kitchen" | "founder";
@@ -52,6 +53,11 @@ export default function App() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [showPublicMenu, setShowPublicMenu] = useState(false);
+  const [posTableId, setPosTableId] = useState<string | null>(null);
+
+  // "Select table → take order": Table Map calls this to jump to the POS with the
+  // chosen table pre-selected (POS reads posTableId and loads that table's bill).
+  const goToTableOrder = (tableId: string) => { setPosTableId(tableId); setActivePage("pos"); };
 
   // Public customer-facing QR menu — reachable via the /m/:id deep link with no
   // login (the QR a guest scans), or via the in-app preview toggle.
@@ -100,6 +106,7 @@ export default function App() {
   const isFullHeight = fullHeightPages.has(activePage);
 
   return (
+    <NavContext.Provider value={{ goToTableOrder, posTableId, clearPosTable: () => setPosTableId(null) }}>
     <div
       className="flex h-screen w-full overflow-hidden"
       style={{ background: "#06091a", fontFamily: "var(--font-body)" }}
@@ -167,5 +174,6 @@ export default function App() {
       {/* ── AI Assistant floating widget ── */}
       <AIAssistantWidget />
     </div>
+    </NavContext.Provider>
   );
 }

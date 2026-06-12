@@ -3,6 +3,7 @@ import { motion } from "motion/react";
 import { Users, Clock, Plus, Utensils } from "lucide-react";
 import { tablesApi, usersApi, ordersApi, reservationsApi, type ApiTable, type ApiReservation, type ApiUser } from "../../services/api";
 import { toast } from "./Toast";
+import { useAppNav } from "../nav";
 
 type TableStatus = "available" | "occupied" | "reserved" | "cleaning";
 
@@ -143,6 +144,7 @@ function TableCard({ table, onClick }: { table: TableData; onClick: () => void }
 }
 
 export function Tables() {
+  const nav = useAppNav();
   const [tables, setTables] = useState<TableData[]>([]);
   const [selected, setSelected] = useState<TableData | null>(null);
   const [filterStatus, setFilterStatus] = useState<TableStatus | "all">("all");
@@ -261,7 +263,17 @@ export function Tables() {
               {selected.since && <p><span style={{ color: "#a8bdd4" }}>Since:</span> {selected.since}</p>}
               {selected.reservation && <p><span style={{ color: "#a8bdd4" }}>Reservation:</span> {selected.reservation}</p>}
             </div>
-            <div className="grid grid-cols-2 gap-2 pt-2">
+            {/* Primary action: take / view this table's order in the POS */}
+            <button
+              onClick={() => { nav.goToTableOrder(selected.id); setSelected(null); }}
+              className="w-full py-2.5 rounded-xl text-sm font-semibold flex items-center justify-center gap-2"
+              style={{ background: "linear-gradient(135deg, #1e7fff, #00c6ff)", color: "#fff" }}
+            >
+              <Utensils size={15} /> {selected.status === "occupied" ? "View / Edit Order" : "Take Order"}
+            </button>
+
+            <p style={{ color: "#6b82a0", fontSize: "0.68rem", textTransform: "uppercase", letterSpacing: "0.05em", marginTop: 4 }}>Set status</p>
+            <div className="grid grid-cols-2 gap-2">
               {(["available", "occupied", "reserved", "cleaning"] as TableStatus[]).map(s => (
                 <button
                   key={s}
