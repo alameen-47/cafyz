@@ -47,14 +47,19 @@ function reminderHtml(args: {
   const urgency = args.daysLeft <= 1
     ? 'Your Cafyz trial expires very soon.'
     : `Your Cafyz trial expires in ${args.daysLeft} days.`;
-  return `<p>Hi ${args.name},</p>
+  return `<div style="font-family:system-ui,Segoe UI,Roboto,sans-serif;color:#0f172a">
+    <p>Hi ${args.name},</p>
     <p>${urgency}</p>
     <p><b>Restaurant:</b> ${args.restaurantName}<br/>
        <b>Plan:</b> ${args.plan.toUpperCase()}<br/>
        <b>Trial ends:</b> ${new Date(args.trialEndsAt).toUTCString()}</p>
-    <p>To avoid interruption for all staff, purchase your subscription now:</p>
-    <p><a href="${PURCHASE_URL}">${PURCHASE_URL}</a></p>
-    <p>Thanks,<br/>Cafyz Team</p>`;
+    <p>Keep your team running without interruption — renew your subscription:</p>
+    <p style="margin:22px 0">
+      <a href="${PURCHASE_URL}" style="background:#1e7fff;color:#fff;text-decoration:none;padding:12px 28px;border-radius:10px;font-weight:600;display:inline-block">Renew subscription →</a>
+    </p>
+    <p style="color:#64748b;font-size:13px">Or open this link: <a href="${PURCHASE_URL}">${PURCHASE_URL}</a></p>
+    <p>Thanks,<br/>Cafyz Team</p>
+  </div>`;
 }
 
 async function alreadySent(restaurantId: string, userId: string, date: string, slot: Slot): Promise<boolean> {
@@ -93,7 +98,7 @@ async function runTick() {
     const expiresAt = String(row.expires_at ?? '');
     if (!expiresAt) continue;
     const left = daysLeft(expiresAt);
-    if (left > 2 || left <= 0) continue;
+    if (left > 3 || left <= 0) continue; // remind from 3 days before expiry
 
     const tz = String(row.timezone || 'UTC');
     let nowLocal;
@@ -109,9 +114,9 @@ async function runTick() {
       sql: `SELECT id,name,email,role
             FROM users
             WHERE restaurant_id=?
-              AND role IN ('manager','cashier')
+              AND role IN ('owner','manager')
               AND status='active'
-            ORDER BY CASE role WHEN 'manager' THEN 0 ELSE 1 END, created_at ASC`,
+            ORDER BY CASE role WHEN 'owner' THEN 0 WHEN 'manager' THEN 1 ELSE 2 END, created_at ASC`,
       args: [String(row.restaurant_id)],
     });
 

@@ -5,7 +5,7 @@ import { toast } from "./Toast";
 import {
   founderApi, licensesApi,
   type ApiFounderStats, type ApiFounderRestaurant, type ApiFounderInquiry,
-  type ApiLicenseKey, type ApiPlanConfig,
+  type ApiLicenseKey, type ApiPlanConfig, type ApiLicensePurchaseRequest,
 } from "../../services/api";
 
 const tabs = ["Overview", "Restaurants", "Trial Requests", "License Keys", "Plan Config"];
@@ -20,20 +20,34 @@ export function FounderConsole() {
   const [stats, setStats] = useState<ApiFounderStats | null>(null);
   const [rests, setRests] = useState<ApiFounderRestaurant[]>([]);
   const [inquiries, setInquiries] = useState<ApiFounderInquiry[]>([]);
+  const [licReqs, setLicReqs] = useState<ApiLicensePurchaseRequest[]>([]);
   const [keys, setKeys] = useState<ApiLicenseKey[]>([]);
   const [planCfg, setPlanCfg] = useState<ApiPlanConfig[]>([]);
   const [busy, setBusy] = useState(false);
 
   const load = useCallback(async () => {
-    const [s, r, inq, k, pc] = await Promise.all([
+    const [s, r, inq, lr, k, pc] = await Promise.all([
       founderApi.stats().catch(() => null),
       founderApi.restaurants().catch(() => []),
       founderApi.inquiries().catch(() => []),
+      founderApi.licenseRequests().catch(() => []),
       licensesApi.list().catch(() => []),
       founderApi.planConfig().catch(() => []),
     ]);
-    setStats(s); setRests(r); setInquiries(inq); setKeys(k); setPlanCfg(pc);
+    setStats(s); setRests(r); setInquiries(inq); setLicReqs(lr); setKeys(k); setPlanCfg(pc);
   }, []);
+
+  // Fulfill a renewal/purchase request → mints a key and emails it to the manager.
+  const fulfillRequest = async (id: string) => {
+    setBusy(true);
+    try {
+      const res = await founderApi.fulfillLicenseRequest(id);
+      toast.success("Request fulfilled", `Key ${res.key_code} emailed to the manager`);
+      await load();
+    } catch (e) {
+      toast.error("Couldn't fulfill request", (e as Error).message);
+    } finally { setBusy(false); }
+  };
   useEffect(() => { void load(); }, [load]);
 
   const priceByPlan = (plan: string) => planCfg.find(p => p.plan === plan)?.price_monthly ?? FALLBACK_PRICE[plan] ?? 0;
@@ -180,7 +194,31 @@ export function FounderConsole() {
       {/* Trial Requests */}
       {activeTab === "Trial Requests" && (
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-3">
-          {inquiries.length === 0 && <div className="rounded-2xl py-10 text-center" style={{ background: "#0d1326", border: "1px solid rgba(30,127,255,0.1)", color: "#6b82a0", fontSize: "0.82rem" }}>No trial requests</div>}
+          {/* Renewal / purchase requests from existing restaurants → Fulfill to email a key */}
+          {licReqs.filter(r => r.status === "pending").length > 0 && (
+            <div className="space-y-2">
+              <p style={{ color: "#a855f7", fontSize: "0.7rem", fontWeight: 700, letterSpacing: "0.05em", textTransform: "uppercase" }}>Renewal / Purchase Requests</p>
+              {licReqs.filter(r => r.status === "pending").map(req => (
+                <div key={req.id} className="rounded-2xl p-4 flex flex-wrap items-center gap-4"
+                  style={{ background: "#0d1326", border: "1px solid rgba(168,85,247,0.25)" }}>
+                  <div className="flex-1 min-w-0">
+                    <p style={{ color: "#e8eef8", fontWeight: 600, fontSize: "0.9rem" }}>{req.restaurant_name ?? "Restaurant"}</p>
+                    <p style={{ color: "#6b82a0", fontSize: "0.75rem" }}>{req.email}</p>
+                    <div className="flex items-center gap-2 mt-1">
+                      <span className="text-xs px-2 py-0.5 rounded-full capitalize" style={{ background: `${planColors[req.plan]}15`, color: planColors[req.plan] }}>{req.plan}</span>
+                      <span style={{ color: "#6b82a0", fontSize: "0.72rem" }}>{shortDate(req.created_at)}</span>
+                    </div>
+                  </div>
+                  <button disabled={busy} onClick={() => fulfillRequest(req.id)}
+                    className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold flex-shrink-0"
+                    style={{ background: "rgba(34,197,94,0.12)", color: "#22c55e" }}>
+                    <Key size={12} /> Fulfill & email key
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+          {inquiries.length === 0 && licReqs.filter(r => r.status === "pending").length === 0 && <div className="rounded-2xl py-10 text-center" style={{ background: "#0d1326", border: "1px solid rgba(30,127,255,0.1)", color: "#6b82a0", fontSize: "0.82rem" }}>No pending requests</div>}
           {inquiries.map((req, i) => (
             <motion.div key={req.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}
               className="rounded-2xl p-4 flex flex-wrap items-center gap-4"

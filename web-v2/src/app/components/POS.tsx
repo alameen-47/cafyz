@@ -32,38 +32,39 @@ function relSince(iso?: string): string {
 function PrinterPopover({ onClose, kitchen, cashier }: { onClose: () => void; kitchen?: string | null; cashier?: string | null }) {
   return (
     <motion.div
-      initial={{ opacity: 0, scale: 0.95, y: -8 }}
+      initial={{ opacity: 0, scale: 0.96, y: -6 }}
       animate={{ opacity: 1, scale: 1, y: 0 }}
-      exit={{ opacity: 0, scale: 0.95 }}
-      className="absolute bottom-14 right-0 w-72 rounded-2xl p-4 z-50 space-y-4"
-      style={{ background: "#0d1326", border: "1px solid rgba(30,127,255,0.2)", boxShadow: "0 8px 32px rgba(0,0,0,0.5)" }}
+      exit={{ opacity: 0, scale: 0.96 }}
+      className="absolute bottom-14 right-0 w-60 rounded-xl p-2.5 z-50"
+      style={{ background: "#0d1326", border: "1px solid rgba(30,127,255,0.2)", boxShadow: "0 10px 30px rgba(0,0,0,0.5)" }}
     >
-      <div className="flex items-center justify-between">
-        <h4 style={{ color: "#e8eef8", fontFamily: "var(--font-display)", fontWeight: 600, fontSize: "0.9rem" }}>Printer Settings</h4>
-        <button onClick={onClose} className="p-1" style={{ color: "#6b82a0" }}><X size={16} /></button>
+      <div className="flex items-center justify-between px-1 pb-2">
+        <div className="flex items-center gap-1.5">
+          <Printer size={13} style={{ color: "#1e7fff" }} />
+          <span style={{ color: "#e8eef8", fontFamily: "var(--font-display)", fontWeight: 600, fontSize: "0.8rem" }}>Printers</span>
+        </div>
+        <button onClick={onClose} className="p-0.5" style={{ color: "#6b82a0" }}><X size={14} /></button>
       </div>
-      <div className="space-y-2">
+
+      <div className="space-y-1.5">
         {[
-          { Icon: Bluetooth, label: "Bluetooth Printer", sub: "Pair from a mobile device", active: false },
-          { Icon: Usb,       label: "USB Printer",       sub: cashier ? `${cashier} · Connected` : "Connect a receipt printer", active: !!cashier },
-          { Icon: Wifi,      label: "Network Printer",   sub: kitchen ? `Kitchen · ${kitchen}` : "Configure on a device", active: !!kitchen },
-        ].map(({ Icon, label, sub, active }) => (
-          <div key={label} className="flex items-center gap-3 p-3 rounded-xl"
+          { Icon: ReceiptText, role: "Kitchen", name: kitchen },
+          { Icon: CreditCard, role: "Cashier", name: cashier },
+        ].map(({ Icon, role, name }) => (
+          <div key={role} className="flex items-center gap-2 px-2 py-1.5 rounded-lg"
             style={{ background: "rgba(30,127,255,0.05)", border: "1px solid rgba(30,127,255,0.08)" }}>
-            <Icon size={15} style={{ color: "#1e7fff", flexShrink: 0 }} />
+            <Icon size={14} style={{ color: "#1e7fff", flexShrink: 0 }} />
             <div className="flex-1 min-w-0">
-              <p style={{ color: "#e8eef8", fontSize: "0.78rem", fontWeight: 500 }}>{label}</p>
-              <p style={{ color: "#6b82a0", fontSize: "0.68rem" }}>{sub}</p>
+              <p style={{ color: "#6b82a0", fontSize: "0.6rem", textTransform: "uppercase", letterSpacing: "0.04em" }}>{role}</p>
+              <p style={{ color: name ? "#e8eef8" : "#6b82a0", fontSize: "0.72rem", fontWeight: 500 }} className="truncate">{name || "Not configured"}</p>
             </div>
-            <button className="px-2.5 py-1 rounded-lg text-xs font-semibold flex-shrink-0"
-              style={active ? { background: "rgba(34,197,94,0.1)", color: "#22c55e" } : { background: "rgba(30,127,255,0.1)", color: "#1e7fff" }}>
-              {active ? "Default" : "Connect"}
-            </button>
+            <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: name ? "#22c55e" : "#6b82a0" }} />
           </div>
         ))}
       </div>
-      <p style={{ color: "#6b82a0", fontSize: "0.66rem", lineHeight: 1.5 }}>
-        Kitchen tickets print automatically when a bill is charged. Pair printers from the mobile app for on-device printing.
+
+      <p style={{ color: "#6b82a0", fontSize: "0.62rem", lineHeight: 1.45, marginTop: 8, paddingInline: 2 }}>
+        Tickets auto-print on charge. Pair printers in the mobile app.
       </p>
     </motion.div>
   );

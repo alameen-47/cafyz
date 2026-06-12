@@ -6,6 +6,7 @@ import { requireAuth, signToken, type AuthRequest } from '../middleware/auth.js'
 import { requireRole } from '../middleware/rbac.js';
 import { uid } from '../utils.js';
 import { isValidPhoneE164, normalizePhone } from '../services/sms.js';
+import { trialEndsAt, TRIAL_DAYS } from '../config/site.js';
 
 const router = Router();
 
@@ -157,9 +158,11 @@ router.post('/onboarding', async (req, res, next) => {
 
     const restId = uid();
     const slug = data.restaurant_name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+    // New sign-ups start on a full-featured trial plan (default premium).
+    const trialPlan = (data.plan as 'basic' | 'pro' | 'premium') || 'premium';
     await db.execute({
       sql: `INSERT INTO restaurants(id,name,slug,plan,timezone) VALUES(?,?,?,?,?)`,
-      args: [restId, data.restaurant_name, `${slug}-${restId.slice(0,6)}`, data.plan??'basic', data.timezone??'UTC'],
+      args: [restId, data.restaurant_name, `${slug}-${restId.slice(0,6)}`, trialPlan, data.timezone??'UTC'],
     });
 
     const ownerId = uid();
@@ -168,6 +171,13 @@ router.post('/onboarding', async (req, res, next) => {
     await db.execute({
       sql: `INSERT INTO users(id,restaurant_id,name,initials,email,phone,password_hash,role,status,start_time) VALUES(?,?,?,?,?,?,?,?,?,?)`,
       args: [ownerId, restId, data.owner_name, initials, emailNorm, phoneNorm, pwHash, 'owner', 'active', '—'],
+    });
+
+    // Start a TRIAL_DAYS free trial: an activated, time-limited license. Once it
+    // expires, requireActiveSubscription blocks gated routes until renewal.
+    await db.execute({
+      sql: `INSERT INTO license_keys(id,key_code,plan,restaurant_id,activated_at,expires_at,note) VALUES(?,?,?,?,?,?,?)`,
+      args: [uid(), `TRIAL-${uid().replace(/-/g, '').slice(0, 12).toUpperCase()}`, trialPlan, restId, new Date().toISOString(), trialEndsAt(), `Auto ${TRIAL_DAYS}-day trial`],
     });
 
     const restaurant = await db.execute({ sql: 'SELECT * FROM restaurants WHERE id=?', args: [restId] });

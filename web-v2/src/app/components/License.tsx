@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { motion } from "motion/react";
 import { Shield, Check, X, Key, Zap, Crown, Star, ArrowRight, Clock } from "lucide-react";
 import { toast } from "./Toast";
-import { licensesApi, type ApiSubscriptionStatus } from "../../services/api";
+import { licensesApi, type ApiSubscriptionStatus, type ApiLicensePurchaseRequest } from "../../services/api";
 import { useAuth } from "../auth";
 
 const plans = [
@@ -42,14 +42,36 @@ const plans = [
 export function License() {
   const { user } = useAuth();
   const [status, setStatus] = useState<ApiSubscriptionStatus | null>(null);
+  const [pendingReq, setPendingReq] = useState<ApiLicensePurchaseRequest | null>(null);
   const [licenseKey, setLicenseKey] = useState("");
   const [activating, setActivating] = useState(false);
   const [activated, setActivated] = useState(false);
+  const [requesting, setRequesting] = useState(false);
 
   const load = useCallback(async () => {
     try { setStatus(await licensesApi.mine()); } catch { /* keep last */ }
+    try {
+      const reqs = await licensesApi.myPurchaseRequests();
+      setPendingReq(reqs.find(r => r.status === "pending") ?? null);
+    } catch { /* ignore */ }
   }, []);
   useEffect(() => { void load(); }, [load]);
+
+  // Ask the founder to issue/renew a license — they get an email, then fulfill it
+  // (a key is emailed back to you, which you activate below). Your data is kept.
+  const requestRenewal = async (plan: string) => {
+    if (pendingReq) { toast.info("Request already pending", "The Cafyz team will email your key shortly"); return; }
+    setRequesting(true);
+    try {
+      await licensesApi.requestPurchase({ plan });
+      toast.success("Renewal requested", "We've emailed the Cafyz team — your license key will arrive by email");
+      await load();
+    } catch (e) {
+      toast.error("Couldn't send request", (e as Error).message);
+    } finally {
+      setRequesting(false);
+    }
+  };
 
   const currentPlan = status?.plan ?? user?.plan ?? "basic";
   const trialDaysLeft = status?.trial_days_left ?? null;
@@ -89,11 +111,22 @@ export function License() {
           <div className="flex-1">
             <p style={{ color: "#e8eef8", fontSize: "0.85rem", fontWeight: 600 }}>
               {status?.trial_expired
-                ? <>Your license has <span style={{ color: "#ff3b5c", fontWeight: 800 }}>expired</span></>
-                : <>License expires in <span style={{ color: "#1e7fff", fontFamily: "var(--font-mono)", fontWeight: 800 }}>{trialDaysLeft} day{trialDaysLeft === 1 ? "" : "s"}</span></>}
+                ? <>Your trial has <span style={{ color: "#ff3b5c", fontWeight: 800 }}>expired</span></>
+                : <>Trial expires in <span style={{ color: "#1e7fff", fontFamily: "var(--font-mono)", fontWeight: 800 }}>{trialDaysLeft} day{trialDaysLeft === 1 ? "" : "s"}</span></>}
             </p>
-            <p style={{ color: "#6b82a0", fontSize: "0.75rem" }}>Enter a license key below to keep full access.</p>
+            <p style={{ color: "#6b82a0", fontSize: "0.75rem" }}>
+              {pendingReq ? "Renewal requested — your license key will arrive by email." : "Request a renewal, then activate the key we email you. Your data is kept."}
+            </p>
           </div>
+          {pendingReq ? (
+            <span className="text-xs px-3 py-2 rounded-xl flex-shrink-0" style={{ background: "rgba(245,158,11,0.12)", color: "#f59e0b", fontWeight: 600 }}>Request pending</span>
+          ) : (
+            <button onClick={() => requestRenewal(currentPlan)} disabled={requesting}
+              className="px-4 py-2 rounded-xl text-sm font-semibold flex-shrink-0"
+              style={{ background: "linear-gradient(135deg, #1e7fff, #00c6ff)", color: "#fff", opacity: requesting ? 0.6 : 1 }}>
+              {requesting ? "Requesting…" : "Renew now"}
+            </button>
+          )}
         </motion.div>
       )}
 
@@ -166,13 +199,15 @@ export function License() {
                   ))}
                 </ul>
                 <button
+                  onClick={() => { if (!isActive) requestRenewal(plan.id); }}
+                  disabled={isActive || requesting || !!pendingReq}
                   className="mt-4 w-full py-2.5 rounded-xl text-sm font-semibold flex items-center justify-center gap-2 transition-all"
                   style={isActive
                     ? { background: `${plan.color}12`, color: plan.color, border: `1px solid ${plan.color}25` }
-                    : { background: `${plan.color}10`, color: plan.color, border: `1px solid ${plan.color}20` }
+                    : { background: `${plan.color}10`, color: plan.color, border: `1px solid ${plan.color}20`, opacity: (requesting || pendingReq) ? 0.6 : 1 }
                   }
                 >
-                  {isActive ? "Current Plan" : <>Upgrade <ArrowRight size={14} /></>}
+                  {isActive ? "Current Plan" : pendingReq ? "Request pending" : <>Request {plan.name} <ArrowRight size={14} /></>}
                 </button>
               </motion.div>
             );
