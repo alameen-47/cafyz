@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from "motion/react";
 import { Eye, EyeOff, Shield, ArrowRight, Phone, Lock, Mail, Delete, ChevronRight, Star, Store, User } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "../auth";
+import { authApi } from "../../services/api";
 
 type AuthMethod = "password" | "pin" | "otp";
 type AuthState = "login" | "forgot" | "reset" | "otp-verify" | "signup";
@@ -63,7 +64,13 @@ function PinPad({ onSubmit }: { onSubmit: (pin: string) => void }) {
 export function LoginScreen({ onLogin }: { onLogin?: () => void }) {
   const { loginEmail, loginPin, requestOtp, verifyOtp, signup } = useAuth();
   const [method, setMethod] = useState<AuthMethod>("password");
-  const [authState, setAuthState] = useState<AuthState>("login");
+  // If arriving from the reset email link (/login?mode=reset&token=…), mount
+  // straight into the reset form — initialise here (not in an effect) so the
+  // AnimatePresence renders it directly with no login→reset transition stall.
+  const [authState, setAuthState] = useState<AuthState>(() => {
+    const p = new URLSearchParams(window.location.search);
+    return p.get("mode") === "reset" && p.get("token") ? "reset" : "login";
+  });
   const [showPass, setShowPass] = useState(false);
   const [email, setEmail] = useState("");
   const [pinEmail, setPinEmail] = useState("");
@@ -72,6 +79,11 @@ export function LoginScreen({ onLogin }: { onLogin?: () => void }) {
   const [otp, setOtp] = useState(["","","","","",""]);
   const [loading, setLoading] = useState(false);
   const [forgotEmail, setForgotEmail] = useState("");
+  const [resetToken, setResetToken] = useState<string | null>(() => {
+    const p = new URLSearchParams(window.location.search);
+    return p.get("mode") === "reset" ? p.get("token") : null;
+  });
+  const [newPw, setNewPw] = useState("");
 
   // Free-trial signup form
   const [su, setSu] = useState({ restaurant: "", owner: "", email: "", phone: "", password: "" });
@@ -144,6 +156,33 @@ export function LoginScreen({ onLogin }: { onLogin?: () => void }) {
     const next = [...otp]; next[i] = v;
     setOtp(next);
     if (v && i < 5) (document.getElementById(`otp-${i+1}`) as HTMLInputElement)?.focus();
+  };
+
+  // Forgot password — request a reset link by email.
+  const submitForgot = async () => {
+    if (!forgotEmail.trim()) { toast.error("Enter your email address"); return; }
+    setLoading(true);
+    try {
+      const r = await authApi.forgotPassword(forgotEmail.trim());
+      toast.success("Check your email", { description: r.message || "If that address is registered, a reset link is on its way." });
+      setAuthState("login");
+    } catch (e) { toast.error(errMsg(e)); }
+    finally { setLoading(false); }
+  };
+
+  // Reset password — set a new password using the emailed token.
+  const submitReset = async () => {
+    if (newPw.length < 8) { toast.error("Password must be at least 8 characters"); return; }
+    if (!resetToken) { toast.error("Invalid or expired reset link", { description: "Request a new link from “Forgot password?”" }); return; }
+    setLoading(true);
+    try {
+      await authApi.resetPassword(resetToken, newPw);
+      toast.success("Password updated", { description: "Sign in with your new password." });
+      window.history.replaceState({}, "", window.location.pathname); // drop ?token from the URL
+      setResetToken(null); setNewPw("");
+      setAuthState("login");
+    } catch (e) { toast.error(errMsg(e)); }
+    finally { setLoading(false); }
   };
 
   return (
@@ -405,14 +444,40 @@ export function LoginScreen({ onLogin }: { onLogin?: () => void }) {
                   <label style={{ color: "#a8bdd4", fontSize: "0.8rem", display: "block", marginBottom: 6 }}>Email address</label>
                   <div className="flex items-center gap-2 rounded-xl px-3 py-3" style={{ background: "#0d1326", border: "1px solid rgba(30,127,255,0.15)" }}>
                     <Mail size={15} style={{ color: "#6b82a0" }} />
-                    <input type="email" placeholder="alex@restaurant.com"
+                    <input type="email" placeholder="alex@restaurant.com" value={forgotEmail} onChange={e => setForgotEmail(e.target.value)}
                       className="flex-1 bg-transparent outline-none text-sm placeholder:text-[#6b82a0]" style={{ color: "#e8eef8" }} />
                   </div>
                 </div>
-                <button onClick={() => setAuthState("login")}
-                  className="w-full py-3 rounded-xl text-sm font-semibold"
-                  style={{ background: "linear-gradient(135deg, #1e7fff, #00c6ff)", color: "#fff" }}>
-                  Send Reset Link
+                <button onClick={submitForgot} disabled={loading}
+                  className="w-full py-3 rounded-xl text-sm font-semibold flex items-center justify-center gap-2"
+                  style={{ background: "linear-gradient(135deg, #1e7fff, #00c6ff)", color: "#fff", opacity: loading ? 0.7 : 1 }}>
+                  {loading ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : "Send Reset Link"}
+                </button>
+              </motion.div>
+            )}
+
+            {authState === "reset" && (
+              <motion.div key="reset" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-6">
+                <div>
+                  <button onClick={() => setAuthState("login")} style={{ color: "#6b82a0", fontSize: "0.8rem" }}>← Back to sign in</button>
+                  <h2 style={{ fontFamily: "var(--font-display)", fontWeight: 700, color: "#e8eef8", fontSize: "1.6rem", marginTop: 8 }}>Set a new password</h2>
+                  <p style={{ color: "#6b82a0", fontSize: "0.85rem", marginTop: 4 }}>Choose a new password for your account.</p>
+                </div>
+                <div>
+                  <label style={{ color: "#a8bdd4", fontSize: "0.8rem", display: "block", marginBottom: 6 }}>New password</label>
+                  <div className="flex items-center gap-2 rounded-xl px-3 py-3" style={{ background: "#0d1326", border: "1px solid rgba(30,127,255,0.15)" }}>
+                    <Lock size={15} style={{ color: "#6b82a0" }} />
+                    <input type={showPass ? "text" : "password"} placeholder="At least 8 characters" value={newPw} onChange={e => setNewPw(e.target.value)}
+                      className="flex-1 bg-transparent outline-none text-sm placeholder:text-[#6b82a0]" style={{ color: "#e8eef8" }} />
+                    <button onClick={() => setShowPass(s => !s)} style={{ color: "#6b82a0" }}>
+                      {showPass ? <EyeOff size={15} /> : <Eye size={15} />}
+                    </button>
+                  </div>
+                </div>
+                <button onClick={submitReset} disabled={loading}
+                  className="w-full py-3 rounded-xl text-sm font-semibold flex items-center justify-center gap-2"
+                  style={{ background: "linear-gradient(135deg, #1e7fff, #00c6ff)", color: "#fff", opacity: loading ? 0.7 : 1 }}>
+                  {loading ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <>Update password <ArrowRight size={16} /></>}
                 </button>
               </motion.div>
             )}
