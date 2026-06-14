@@ -18,7 +18,7 @@ router.get('/menu/:restaurantId', async (req, res, next) => {
     // Accept either the restaurant id or its slug so QR/deep-link URLs can be
     // human-friendly (/m/maison-1968d0) instead of raw UUIDs.
     const restRows = await db.execute({
-      sql: `SELECT id, name, logo_url, currency_code, city, country, receipt_footer
+      sql: `SELECT id, name, logo_url, currency_code, city, country, tagline
             FROM restaurants WHERE id=? OR slug=? LIMIT 1`,
       args: [param, param],
     });
@@ -53,7 +53,7 @@ router.get('/menu/:restaurantId', async (req, res, next) => {
         currency_code: String(r.currency_code ?? 'USD'),
         city: r.city ?? null,
         country: r.country ?? null,
-        tagline: r.receipt_footer ?? null,
+        tagline: r.tagline ?? null,
       },
       categories: catRows.rows,
       items: itemRows.rows,

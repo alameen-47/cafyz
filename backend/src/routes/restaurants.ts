@@ -66,6 +66,7 @@ const optionalPercent = z.preprocess((v) => {
 
 const UpdateRestaurantSchema = z.object({
   name:          z.preprocess((v) => trimString(v), z.string().min(1)).optional(),
+  tagline:       optionalText(120),
   timezone:      optionalText(80),
   logo_url:      LogoUrlSchema.optional(),
   contact_phone: optionalText(40),
@@ -211,6 +212,7 @@ router.put('/me', requireAuth, requireRole('owner', 'manager', 'cashier', 'kitch
 
     const sets: string[] = []; const args: any[] = [];
     if (data.name          !== undefined) { sets.push('name=?');          args.push(data.name); }
+    if (data.tagline       !== undefined) { sets.push('tagline=?');       args.push(data.tagline || null); }
     if (data.timezone      !== undefined) { sets.push('timezone=?');      args.push(data.timezone); }
     if (data.logo_url      !== undefined) { sets.push('logo_url=?');      args.push(data.logo_url || null); }
     if (data.contact_phone !== undefined) { sets.push('contact_phone=?'); args.push(data.contact_phone || null); }

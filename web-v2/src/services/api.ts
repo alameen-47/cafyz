@@ -130,7 +130,7 @@ export const authApi = {
 export const restaurantApi = {
   me:       ()                                              => get<ApiRestaurant>('/api/restaurants/me'),
   update:   (d: {
-    name?: string; timezone?: string; logo_url?: string;
+    name?: string; tagline?: string; timezone?: string; logo_url?: string;
     contact_phone?: string; contact_email?: string;
     address_line1?: string; address_line2?: string;
     city?: string; country?: string; postal_code?: string;
@@ -143,6 +143,9 @@ export const restaurantApi = {
     cashier_printer?: { role?: 'cashier'; channel: 'bluetooth' | 'usb'; name: string } | null;
   }) => put<ApiRestaurant>('/api/restaurants/me', d),
   branches: ()                                             => get<ApiRestaurant[]>('/api/restaurants/branches'),
+  // Logo upload reuses the tenant-scoped Cloudinary endpoint; the returned URL
+  // is stored on the restaurant via update({ logo_url }).
+  uploadLogo: (file: File) => menuApi.uploadImage(file),
 };
 
 // ── Users ─────────────────────────────────────────────────────────────────────
@@ -397,7 +400,7 @@ export interface ApiUser {
 }
 
 export interface ApiRestaurant {
-  id: string; name: string; slug: string; plan: string;
+  id: string; name: string; slug: string; plan: string; tagline?: string;
   parent_id?: string; timezone: string; created_at: string;
   logo_url?: string; contact_phone?: string; contact_email?: string;
   address_line1?: string; address_line2?: string; city?: string;
