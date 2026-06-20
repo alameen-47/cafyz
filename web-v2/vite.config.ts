@@ -1,8 +1,10 @@
 import { defineConfig } from 'vite'
 import path from 'path'
+import { fileURLToPath } from 'url'
 import tailwindcss from '@tailwindcss/vite'
 import react from '@vitejs/plugin-react'
 
+const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
 function figmaAssetResolver() {
   return {
@@ -16,7 +18,10 @@ function figmaAssetResolver() {
   }
 }
 
-export default defineConfig({
+export default defineConfig(({ mode }) => ({
+  root: __dirname,
+  // Relative asset paths are required for Capacitor's file:// / https://localhost shell.
+  base: mode === 'capacitor' ? './' : '/',
   plugins: [
     figmaAssetResolver(),
     // The React and Tailwind plugins are both required for Make, even if
@@ -40,4 +45,4 @@ export default defineConfig({
 
   // File types to support raw imports. Never add .css, .tsx, or .ts files to this.
   assetsInclude: ['**/*.svg', '**/*.csv'],
-})
+}))

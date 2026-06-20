@@ -72,7 +72,7 @@ elif [[ "${REGEN_ICONS:-}" == "1" ]]; then
 else
   echo "==> Using existing launcher icons in cap-android/ and cap-ios/"
 fi
-VITE_API_URL="$API_URL" VITE_APP_URL="$APP_URL" npx vite build --config web/vite.config.ts --mode capacitor
+VITE_API_URL="$API_URL" VITE_APP_URL="$APP_URL" npx vite build --config web-v2/vite.config.ts --mode capacitor
 
 echo "==> Syncing Capacitor (Android + iOS)"
 npx cap sync

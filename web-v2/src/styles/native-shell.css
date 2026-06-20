@@ -1,0 +1,20 @@
+/* Capacitor native shell — full-bleed layout with safe-area insets */
+html.cap-native,
+body.cap-native,
+body.cap-native #root {
+  min-height: 100dvh;
+  min-height: -webkit-fill-available;
+  background: #06091a;
+}
+
+body.cap-native .app-screen {
+  min-height: 100dvh;
+  min-height: -webkit-fill-available;
+  height: 100dvh;
+  height: -webkit-fill-available;
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  padding-left: env(safe-area-inset-left, 0px);
+  padding-right: env(safe-area-inset-right, 0px);
+  box-sizing: border-box;
+}

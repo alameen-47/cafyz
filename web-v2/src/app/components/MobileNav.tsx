@@ -17,11 +17,13 @@ interface MobileNavProps {
 export function MobileNav({ active, onNavigate }: MobileNavProps) {
   return (
     <nav
-      className="lg:hidden fixed bottom-0 left-0 right-0 z-40 flex items-center justify-around px-1 py-1.5"
+      className="lg:hidden fixed bottom-0 left-0 right-0 z-40 flex items-center justify-around px-1"
       style={{
         background: "rgba(8,12,30,0.97)",
         backdropFilter: "blur(20px)",
         borderTop: "1px solid rgba(30,127,255,0.12)",
+        paddingTop: "0.375rem",
+        paddingBottom: "max(0.375rem, env(safe-area-inset-bottom, 0px))",
       }}
     >
       {mobileNavItems.map(item => {

@@ -3,7 +3,7 @@ import type { CapacitorConfig } from '@capacitor/cli';
 const config: CapacitorConfig = {
   appId: 'com.cafyz.app',
   appName: 'Cafyz',
-  webDir: 'web/dist',
+  webDir: 'web-v2/dist',
   android: { path: 'cap-android' },
   ios: { path: 'cap-ios' },
   server: {
@@ -13,12 +13,13 @@ const config: CapacitorConfig = {
   plugins: {
     SplashScreen: {
       launchAutoHide: true,
-      backgroundColor: '#07060F',
+      backgroundColor: '#06091a',
       showSpinner: false,
     },
     StatusBar: {
       style: 'DARK',
-      backgroundColor: '#07060F',
+      backgroundColor: '#06091a',
+      overlaysWebView: true,
     },
     BluetoothLe: {
       displayStrings: {

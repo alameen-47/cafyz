@@ -84,7 +84,7 @@ export default function App() {
   // Restore-session spinner
   if (loading) {
     return (
-      <div className="flex h-screen w-full items-center justify-center" style={{ background: "#06091a" }}>
+      <div className="flex app-screen w-full items-center justify-center" style={{ background: "#06091a" }}>
         <div className="w-8 h-8 border-2 border-white/20 border-t-[#1e7fff] rounded-full animate-spin" />
       </div>
     );
@@ -108,7 +108,7 @@ export default function App() {
   return (
     <NavContext.Provider value={{ goToTableOrder, posTableId, clearPosTable: () => setPosTableId(null) }}>
     <div
-      className="flex h-screen w-full overflow-hidden"
+      className="flex app-screen w-full overflow-hidden"
       style={{ background: "#06091a", fontFamily: "var(--font-body)" }}
     >
       {/* ── Toast provider ── */}

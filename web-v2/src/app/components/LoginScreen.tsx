@@ -186,7 +186,7 @@ export function LoginScreen({ onLogin }: { onLogin?: () => void }) {
   };
 
   return (
-    <div className="min-h-screen flex" style={{ background: "#06091a" }}>
+    <div className="app-screen flex" style={{ background: "#06091a" }}>
       {/* Left hero panel — desktop only */}
       <div
         className="hidden lg:flex flex-col justify-between w-[480px] flex-shrink-0 p-10"
