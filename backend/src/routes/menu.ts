@@ -16,6 +16,7 @@ const ImageUrlSchema = z.union([
   z.string().url().max(2048),
   z.literal(''),
   z.null(),
+  z.string().regex(/^data:image\/(png|jpeg|jpg|webp|gif);base64,/, 'Invalid image data URL'),
 ]).optional();
 
 const ItemSchema = z.object({

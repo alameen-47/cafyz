@@ -1,0 +1,94 @@
+.printer-help-wrap {
+  position: relative;
+  display: inline-flex;
+  align-self: flex-start;
+}
+
+.printer-help-trigger {
+  width: 24px;
+  height: 24px;
+  border-radius: 999px;
+  border: 0.5px solid var(--gold-line2);
+  background: var(--bg2);
+  color: var(--text2);
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.printer-help-trigger:hover {
+  color: var(--text1);
+  border-color: var(--gold);
+}
+
+.printer-help-popover {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  z-index: 70;
+  width: min(460px, calc(100vw - 40px));
+}
+
+.printer-help-banner {
+  padding: 12px 14px;
+  border-radius: var(--radius-md);
+  border: 0.5px solid rgba(250, 204, 21, 0.45);
+  background: rgba(250, 204, 21, 0.08);
+  font-size: 11px;
+  line-height: 1.45;
+  color: var(--text1);
+}
+
+.printer-help-title {
+  font-weight: 700;
+  color: #facc15;
+  margin: 0 0 8px;
+  font-size: 12px;
+}
+
+.printer-help-list {
+  margin: 0;
+  padding-left: 18px;
+  color: var(--text2);
+}
+
+.printer-help-list li {
+  margin-bottom: 4px;
+}
+
+.printer-help-list li:last-child {
+  margin-bottom: 0;
+}
+
+.printer-help-open-chrome {
+  display: inline-block;
+  margin-top: 10px;
+  font-weight: 600;
+  color: var(--gold);
+  font-size: 12px;
+}
+
+.printer-help-banner--ios {
+  border-color: rgba(232, 69, 69, 0.45);
+  background: rgba(232, 69, 69, 0.08);
+}
+
+.printer-help-banner--ios .printer-help-title {
+  color: var(--danger);
+}
+
+.printer-help-lead {
+  margin: 0 0 10px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text1);
+  font-weight: 500;
+}
+
+[data-theme='light'] .printer-help-banner--ios {
+  background: rgba(204, 31, 31, 0.06);
+  border-color: rgba(204, 31, 31, 0.3);
+}

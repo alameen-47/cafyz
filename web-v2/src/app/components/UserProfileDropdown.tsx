@@ -8,6 +8,9 @@ interface UserProfileDropdownProps {
   onLogout: () => void;
   role: string;
   plan: string;
+  userName?: string;
+  userEmail?: string;
+  userInitials?: string;
 }
 
 const planColors: Record<string, string> = { basic: "#6b82a0", pro: "#1e7fff", premium: "#a855f7" };
@@ -16,7 +19,8 @@ const roleColors: Record<string, string> = {
   waiter: "#00c6ff", kitchen: "#f59e0b", founder: "#ff3b5c",
 };
 
-export function UserProfileDropdown({ open, onClose, onNavigate, onLogout, role, plan }: UserProfileDropdownProps) {
+export function UserProfileDropdown({ open, onClose, onNavigate, onLogout, role, plan, userName = "User", userEmail = "", userInitials = "?" }: UserProfileDropdownProps) {
+  const initials = (userInitials || userName.split(" ").map(n => n[0]).join("")).slice(0, 2).toUpperCase();
   const menuItems = [
     { icon: User,     label: "My Profile",        action: () => onNavigate("profile") },
     { icon: Settings, label: "Restaurant Settings",action: () => onNavigate("profile") },
@@ -45,11 +49,11 @@ export function UserProfileDropdown({ open, onClose, onNavigate, onLogout, role,
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-xl flex items-center justify-center"
                   style={{ background: "linear-gradient(135deg, #1e7fff, #00c6ff)", boxShadow: "0 0 12px rgba(30,127,255,0.35)" }}>
-                  <span style={{ color: "#fff", fontWeight: 800, fontSize: "0.8rem" }}>AK</span>
+                  <span style={{ color: "#fff", fontWeight: 800, fontSize: "0.8rem" }}>{initials}</span>
                 </div>
                 <div>
-                  <p style={{ color: "#e8eef8", fontWeight: 700, fontSize: "0.88rem" }}>Alex Kumar</p>
-                  <p style={{ color: "#6b82a0", fontSize: "0.7rem" }}>alex@cafyz.com</p>
+                  <p style={{ color: "#e8eef8", fontWeight: 700, fontSize: "0.88rem" }}>{userName}</p>
+                  <p style={{ color: "#6b82a0", fontSize: "0.7rem" }}>{userEmail || "—"}</p>
                   <div className="flex items-center gap-2 mt-1">
                     <span className="text-xs px-1.5 py-0.5 rounded-full capitalize"
                       style={{ background: `${roleColors[role] || "#1e7fff"}15`, color: roleColors[role] || "#1e7fff" }}>

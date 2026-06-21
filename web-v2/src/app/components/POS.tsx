@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import {
-  Search, Plus, Minus, Trash2, Printer, ChevronDown, ChevronUp,
+  Search, Plus, Minus, Printer, ChevronDown, ChevronUp,
   CreditCard, Banknote, X, Check, Wifi, Bluetooth, Usb,
   ReceiptText, ShoppingCart,
 } from "lucide-react";
@@ -11,14 +11,15 @@ import {
   type ApiMenuItem, type ApiMenuCategory, type ApiTable, type ApiRestaurant,
 } from "../../services/api";
 import { getCurrencySymbol } from "../../utils/currency";
+import { getRestaurantLogo, syncRestaurantLogoCacheAsync } from "../../services/restaurantLogoStorage";
+import { print, type ReceiptData } from "../../services/PrintService";
 import { useAppNav } from "../nav";
+import { useAuth } from "../auth";
+import { PrinterSetupPanel } from "./PrinterSetupPanel";
 
-// A cart line carries the menu item id (id), and — once the bill is a live
-// kitchen-sent order — its backing order_item id so edits persist server-side.
 interface CartItem { id: string; name: string; price: number; qty: number; emoji: string; orderItemId?: string; addedNow?: boolean }
 type PaymentState = "open" | "sent" | "card" | "cash" | "comped";
 
-// Relative "since" label for the pending-bills strip.
 function relSince(iso?: string): string {
   if (!iso) return "";
   const t = new Date(iso.includes("T") ? iso : iso.replace(" ", "T") + "Z").getTime();
@@ -29,224 +30,294 @@ function relSince(iso?: string): string {
   return `${h}h ${mins % 60}m`;
 }
 
-function PrinterPopover({ onClose, kitchen, cashier }: { onClose: () => void; kitchen?: string | null; cashier?: string | null }) {
-  return (
-    <motion.div
-      initial={{ opacity: 0, scale: 0.96, y: -6 }}
-      animate={{ opacity: 1, scale: 1, y: 0 }}
-      exit={{ opacity: 0, scale: 0.96 }}
-      className="absolute bottom-14 right-0 w-60 rounded-xl p-2.5 z-50"
-      style={{ background: "#0d1326", border: "1px solid rgba(30,127,255,0.2)", boxShadow: "0 10px 30px rgba(0,0,0,0.5)" }}
-    >
-      <div className="flex items-center justify-between px-1 pb-2">
-        <div className="flex items-center gap-1.5">
-          <Printer size={13} style={{ color: "#1e7fff" }} />
-          <span style={{ color: "#e8eef8", fontFamily: "var(--font-display)", fontWeight: 600, fontSize: "0.8rem" }}>Printers</span>
-        </div>
-        <button onClick={onClose} className="p-0.5" style={{ color: "#6b82a0" }}><X size={14} /></button>
-      </div>
+// ── Cart Panel (shared between desktop sidebar & mobile sheet) ───────────────
+type BillStatus = "empty" | "building" | "kitchen" | "paid";
 
-      <div className="space-y-1.5">
-        {[
-          { Icon: ReceiptText, role: "Kitchen", name: kitchen },
-          { Icon: CreditCard, role: "Cashier", name: cashier },
-        ].map(({ Icon, role, name }) => (
-          <div key={role} className="flex items-center gap-2 px-2 py-1.5 rounded-lg"
-            style={{ background: "rgba(30,127,255,0.05)", border: "1px solid rgba(30,127,255,0.08)" }}>
-            <Icon size={14} style={{ color: "#1e7fff", flexShrink: 0 }} />
-            <div className="flex-1 min-w-0">
-              <p style={{ color: "#6b82a0", fontSize: "0.6rem", textTransform: "uppercase", letterSpacing: "0.04em" }}>{role}</p>
-              <p style={{ color: name ? "#e8eef8" : "#6b82a0", fontSize: "0.72rem", fontWeight: 500 }} className="truncate">{name || "Not configured"}</p>
-            </div>
-            <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: name ? "#22c55e" : "#6b82a0" }} />
-          </div>
-        ))}
-      </div>
-
-      <p style={{ color: "#6b82a0", fontSize: "0.62rem", lineHeight: 1.45, marginTop: 8, paddingInline: 2 }}>
-        Tickets auto-print on charge. Pair printers in the mobile app.
-      </p>
-    </motion.div>
-  );
+function formatMoney(cur: string, amount: number) {
+  const rounded = Number.isInteger(amount) ? amount.toFixed(0) : amount.toFixed(2);
+  return `${cur}${rounded}`;
 }
 
-// ── Cart Panel (shared between desktop sidebar & mobile sheet) ───────────────
 function CartPanel({
-  cart, selectedTable, tables, isParcel, editMode, breakdownOpen, showPrinter, charged, busy,
-  cur, subtotal, service, tax, grandTotal, serviceRate, taxRate, taxLabel, kitchenPrinter, cashierPrinter,
+  cart, selectedTable, tables, tableName, billStatus, isParcel, editMode, breakdownOpen, showPrinter, charged, busy,
+  cur, subtotal, service, tax, grandTotal, serviceRate, taxRate, taxLabel,
+  kitchenPrinter, cashierPrinter, restaurantName, restaurantId, logoUrl,
   sendable, onSend,
   onTableChange, onParcelToggle, onEditToggle, onBreakdownToggle, onPrinterToggle,
-  onUpdateQty, onClear, onCharge, onCash, onClose,
+  onUpdateQty, onClear, onCharge, onCash, onClose, onRestaurantUpdate,
   isMobile,
 }: {
-  cart: CartItem[]; selectedTable: string; tables: ApiTable[]; isParcel: boolean;
-  editMode: boolean; breakdownOpen: boolean; showPrinter: boolean; charged: boolean; busy: boolean;
+  cart: CartItem[]; selectedTable: string; tables: ApiTable[]; tableName: string; billStatus: BillStatus;
+  isParcel: boolean; editMode: boolean; breakdownOpen: boolean; showPrinter: boolean; charged: boolean; busy: boolean;
   cur: string; subtotal: number; service: number; tax: number; grandTotal: number;
   serviceRate: number; taxRate: number; taxLabel: string; kitchenPrinter?: string | null; cashierPrinter?: string | null;
+  restaurantName?: string; restaurantId?: string; logoUrl?: string | null;
   sendable: boolean; onSend: () => void;
   onTableChange: (t: string) => void; onParcelToggle: () => void; onEditToggle: () => void;
   onBreakdownToggle: () => void; onPrinterToggle: () => void;
   onUpdateQty: (id: string, d: number) => void; onClear: () => void;
   onCharge: () => void; onCash: () => void; onClose?: () => void;
+  onRestaurantUpdate: (r: ApiRestaurant) => void;
   isMobile?: boolean;
 }) {
   const itemCount = cart.reduce((s, c) => s + c.qty, 0);
+  const hasFees = service > 0 || tax > 0;
+  const canPay = cart.length > 0 && !!selectedTable && billStatus !== "paid";
+
+  const statusMeta: Record<BillStatus, { label: string; color: string; bg: string }> = {
+    empty: { label: "Select a table to start", color: "#6b82a0", bg: "rgba(107,130,160,0.1)" },
+    building: { label: "New order — not sent yet", color: "#f59e0b", bg: "rgba(245,158,11,0.12)" },
+    kitchen: { label: "In kitchen — ready to pay", color: "#22c55e", bg: "rgba(34,197,94,0.12)" },
+    paid: { label: "Payment complete", color: "#1e7fff", bg: "rgba(30,127,255,0.12)" },
+  };
+  const status = statusMeta[billStatus];
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full min-h-0">
       {/* Header */}
-      <div className="flex-shrink-0 p-4 space-y-3 border-b" style={{ borderColor: "rgba(30,127,255,0.1)" }}>
-        {isMobile && (
-          <div className="flex items-center justify-between mb-1">
-            <h3 style={{ color: "#e8eef8", fontFamily: "var(--font-display)", fontWeight: 700, fontSize: "1rem" }}>
-              Order Bill
-            </h3>
-            <button onClick={onClose} className="p-2 rounded-xl" style={{ background: "rgba(30,127,255,0.08)", color: "#6b82a0" }}>
-              <X size={16} />
-            </button>
+      <div className="flex-shrink-0 px-3 sm:px-4 pt-3 sm:pt-4 pb-3 space-y-3 border-b" style={{ borderColor: "rgba(30,127,255,0.1)" }}>
+        <div className="flex items-start justify-between gap-2">
+          <div className="min-w-0 flex-1">
+            {isMobile ? (
+              <h3 style={{ color: "#e8eef8", fontFamily: "var(--font-display)", fontWeight: 700, fontSize: "1.05rem" }}>
+                Order Bill
+              </h3>
+            ) : (
+              <h3 style={{ color: "#e8eef8", fontFamily: "var(--font-display)", fontWeight: 700, fontSize: "0.95rem" }}>
+                Current Bill
+              </h3>
+            )}
+            {tableName ? (
+              <p style={{ color: "#1e7fff", fontSize: "0.82rem", fontWeight: 600, marginTop: 2 }}>{tableName}</p>
+            ) : (
+              <p style={{ color: "#6b82a0", fontSize: "0.75rem", marginTop: 2 }}>No table selected</p>
+            )}
           </div>
-        )}
-        <div className="flex items-center gap-2">
-          <div className="flex-1">
+          {isMobile && onClose && (
+            <button onClick={onClose} aria-label="Close bill"
+              className="p-2 rounded-xl flex-shrink-0 min-w-[44px] min-h-[44px] flex items-center justify-center"
+              style={{ background: "rgba(30,127,255,0.08)", color: "#6b82a0" }}>
+              <X size={18} />
+            </button>
+          )}
+        </div>
+
+        <div className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg w-fit max-w-full"
+          style={{ background: status.bg }}>
+          <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: status.color }} />
+          <span style={{ color: status.color, fontSize: "0.72rem", fontWeight: 600 }}>{status.label}</span>
+          {isParcel && (
+            <span className="ml-1 px-1.5 py-0.5 rounded text-xs flex-shrink-0"
+              style={{ background: "rgba(0,198,255,0.15)", color: "#00c6ff" }}>Parcel</span>
+          )}
+        </div>
+
+        <div className="grid grid-cols-[1fr_auto] gap-2 items-end">
+          <div>
             <label style={{ color: "#6b82a0", fontSize: "0.68rem", display: "block", marginBottom: 4 }}>Table</label>
             <select value={selectedTable} onChange={e => onTableChange(e.target.value)}
-              className="w-full rounded-xl px-3 py-2.5 text-sm outline-none"
+              className="w-full rounded-xl px-3 py-2.5 text-sm outline-none min-h-[44px]"
               style={{ background: "#0d1326", color: "#e8eef8", border: "1px solid rgba(30,127,255,0.15)", fontFamily: "var(--font-mono)" }}>
-              <option value="">Select table…</option>
+              <option value="">Choose table…</option>
               {tables.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
             </select>
           </div>
-          <div className="flex flex-col items-center gap-1 flex-shrink-0">
-            <label style={{ color: "#6b82a0", fontSize: "0.68rem" }}>Parcel</label>
-            <button onClick={onParcelToggle} className="w-11 h-6 rounded-full relative transition-all"
+          <div className="flex flex-col items-center pb-1">
+            <label style={{ color: "#6b82a0", fontSize: "0.68rem", marginBottom: 4 }}>Takeaway</label>
+            <button type="button" onClick={onParcelToggle} aria-pressed={isParcel}
+              className="w-12 h-7 rounded-full relative transition-all min-h-[44px] flex items-center"
               style={{ background: isParcel ? "#1e7fff" : "rgba(30,127,255,0.12)" }}>
-              <div className="w-4 h-4 rounded-full bg-white absolute top-1 transition-all"
-                style={{ left: isParcel ? "calc(100% - 20px)" : 4 }} />
-            </button>
-          </div>
-        </div>
-        <div className="flex items-center justify-between">
-          <span style={{ color: "#6b82a0", fontSize: "0.73rem" }}>
-            {itemCount} item{itemCount !== 1 ? "s" : ""}
-            {isParcel && <span className="ml-2 px-2 py-0.5 rounded-full text-xs" style={{ background: "rgba(0,198,255,0.1)", color: "#00c6ff" }}>📦 Parcel</span>}
-          </span>
-          <div className="flex gap-1">
-            <button onClick={onEditToggle} className="px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all"
-              style={editMode ? { background: "rgba(245,158,11,0.12)", color: "#f59e0b" } : { background: "rgba(30,127,255,0.06)", color: "#6b82a0" }}>
-              Edit Bill
-            </button>
-            <button onClick={onClear} className="px-2.5 py-1.5 rounded-lg text-xs font-medium"
-              style={{ background: "rgba(255,59,92,0.08)", color: "#ff3b5c" }}>
-              Clear
+              <div className="w-5 h-5 rounded-full bg-white absolute transition-all shadow-sm"
+                style={{ left: isParcel ? "calc(100% - 22px)" : 4, top: "50%", transform: "translateY(-50%)" }} />
             </button>
           </div>
         </div>
       </div>
 
-      {/* Cart items */}
-      <div className="flex-1 overflow-y-auto p-3 space-y-2 scrollbar-hide">
-        <AnimatePresence>
-          {cart.length === 0 && (
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
-              className="flex flex-col items-center justify-center h-32 gap-2">
-              <ReceiptText size={24} style={{ color: "#6b82a0" }} />
-              <p style={{ color: "#6b82a0", fontSize: "0.78rem" }}>No items — tap menu to add</p>
-            </motion.div>
-          )}
-          {cart.map(item => (
-            <motion.div key={item.orderItemId ?? item.id} initial={{ opacity: 0, x: 12 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -12 }}
-              className="flex items-center gap-2 p-2.5 rounded-xl"
-              style={{ background: item.addedNow ? "rgba(0,198,255,0.07)" : "rgba(30,127,255,0.04)", border: `1px solid ${item.addedNow ? "rgba(0,198,255,0.25)" : "rgba(30,127,255,0.08)"}` }}>
-              <span className="text-xl flex-shrink-0">{item.emoji}</span>
-              <div className="flex-1 min-w-0">
-                <p style={{ color: "#e8eef8", fontSize: "0.78rem", fontWeight: 500 }} className="truncate">{item.name}</p>
-                <p style={{ color: "#1e7fff", fontFamily: "var(--font-mono)", fontSize: "0.72rem" }}>{cur}{(item.price * item.qty)}</p>
-              </div>
-              {editMode ? (
-                <div className="flex items-center gap-1 flex-shrink-0">
-                  <button disabled={busy} onClick={() => onUpdateQty(item.id, -1)}
-                    className="w-7 h-7 rounded-lg flex items-center justify-center"
-                    style={{ background: "rgba(255,59,92,0.1)" }}>
-                    <Minus size={12} style={{ color: "#ff3b5c" }} />
-                  </button>
-                  <span style={{ color: "#e8eef8", fontFamily: "var(--font-mono)", fontWeight: 700, fontSize: "0.85rem", minWidth: 18, textAlign: "center" }}>
-                    {item.qty}
-                  </span>
-                  <button disabled={busy} onClick={() => onUpdateQty(item.id, 1)}
-                    className="w-7 h-7 rounded-lg flex items-center justify-center"
-                    style={{ background: "rgba(30,127,255,0.1)" }}>
-                    <Plus size={12} style={{ color: "#1e7fff" }} />
-                  </button>
-                  <button disabled={busy} onClick={() => onUpdateQty(item.id, -item.qty)}
-                    className="w-7 h-7 rounded-lg flex items-center justify-center ml-0.5"
-                    style={{ background: "rgba(255,59,92,0.08)" }}>
-                    <Trash2 size={12} style={{ color: "#ff3b5c" }} />
-                  </button>
-                </div>
-              ) : (
-                <span style={{ color: "#a8bdd4", fontFamily: "var(--font-mono)", fontSize: "0.8rem", fontWeight: 600, flexShrink: 0 }}>×{item.qty}</span>
-              )}
-            </motion.div>
-          ))}
-        </AnimatePresence>
+      {/* Line items */}
+      <div className="flex-1 overflow-y-auto min-h-0 px-3 sm:px-4 py-3 scrollbar-hide">
+        {cart.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-10 px-4 text-center gap-3 rounded-xl"
+            style={{ border: "1px dashed rgba(30,127,255,0.12)" }}>
+            <ReceiptText size={28} style={{ color: "#6b82a0" }} />
+            <div>
+              <p style={{ color: "#a8bdd4", fontSize: "0.85rem", fontWeight: 600 }}>Bill is empty</p>
+              <p style={{ color: "#6b82a0", fontSize: "0.75rem", marginTop: 4 }}>Tap menu items to add them here</p>
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-1">
+            <div className="grid grid-cols-[2rem_1fr_auto] gap-2 px-1 pb-1.5 border-b"
+              style={{ borderColor: "rgba(30,127,255,0.08)", color: "#6b82a0", fontSize: "0.65rem", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.04em" }}>
+              <span>Qty</span>
+              <span>Item</span>
+              <span className="text-right">Amount</span>
+            </div>
+            <AnimatePresence initial={false}>
+              {cart.map(item => (
+                <motion.div key={item.orderItemId ?? item.id}
+                  initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, height: 0 }}
+                  className="grid grid-cols-[2rem_1fr_auto] gap-2 items-center py-2.5 px-1 rounded-lg"
+                  style={{
+                    background: item.addedNow ? "rgba(0,198,255,0.06)" : "transparent",
+                    borderBottom: "1px solid rgba(30,127,255,0.06)",
+                  }}>
+                  <div className="flex flex-col items-center gap-0.5">
+                    {editMode ? (
+                      <div className="flex flex-col items-center gap-0.5">
+                        <button disabled={busy} onClick={() => onUpdateQty(item.id, 1)}
+                          className="w-7 h-7 rounded-md flex items-center justify-center"
+                          style={{ background: "rgba(30,127,255,0.1)" }}>
+                          <Plus size={12} style={{ color: "#1e7fff" }} />
+                        </button>
+                        <span style={{ color: "#e8eef8", fontFamily: "var(--font-mono)", fontWeight: 700, fontSize: "0.8rem" }}>{item.qty}</span>
+                        <button disabled={busy} onClick={() => onUpdateQty(item.id, -1)}
+                          className="w-7 h-7 rounded-md flex items-center justify-center"
+                          style={{ background: "rgba(255,59,92,0.1)" }}>
+                          <Minus size={12} style={{ color: "#ff3b5c" }} />
+                        </button>
+                      </div>
+                    ) : (
+                      <span style={{ color: "#e8eef8", fontFamily: "var(--font-mono)", fontWeight: 700, fontSize: "0.85rem" }}>{item.qty}</span>
+                    )}
+                  </div>
+                  <div className="min-w-0">
+                    <p style={{ color: "#e8eef8", fontSize: "0.82rem", fontWeight: 500, lineHeight: 1.3 }} className="truncate">
+                      <span className="mr-1.5" aria-hidden>{item.emoji}</span>{item.name}
+                    </p>
+                    <p style={{ color: "#6b82a0", fontSize: "0.68rem", marginTop: 2 }}>
+                      {formatMoney(cur, item.price)} each
+                    </p>
+                  </div>
+                  <div className="text-right flex flex-col items-end gap-1">
+                    <span style={{ color: "#e8eef8", fontFamily: "var(--font-mono)", fontWeight: 700, fontSize: "0.82rem" }}>
+                      {formatMoney(cur, item.price * item.qty)}
+                    </span>
+                    {editMode && (
+                      <button disabled={busy} onClick={() => onUpdateQty(item.id, -item.qty)}
+                        className="text-xs px-1.5 py-0.5 rounded"
+                        style={{ color: "#ff3b5c", background: "rgba(255,59,92,0.08)" }}>
+                        Remove
+                      </button>
+                    )}
+                  </div>
+                </motion.div>
+              ))}
+            </AnimatePresence>
+            <p style={{ color: "#6b82a0", fontSize: "0.72rem", paddingTop: 8 }}>
+              {itemCount} item{itemCount !== 1 ? "s" : ""} on this bill
+            </p>
+          </div>
+        )}
       </div>
 
       {/* Totals + actions */}
-      <div className="flex-shrink-0 p-3 space-y-3 border-t" style={{ borderColor: "rgba(30,127,255,0.1)" }}>
-        <button onClick={onBreakdownToggle} className="w-full flex items-center justify-between px-1">
-          <span style={{ color: "#6b82a0", fontSize: "0.73rem" }}>Price breakdown</span>
-          {breakdownOpen ? <ChevronUp size={14} style={{ color: "#6b82a0" }} /> : <ChevronDown size={14} style={{ color: "#6b82a0" }} />}
-        </button>
-        <AnimatePresence>
-          {breakdownOpen && (
-            <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }}
-              className="overflow-hidden space-y-1.5">
-              {[["Subtotal", subtotal], [`Service (${serviceRate}%)`, service], [`${taxLabel} (${taxRate}%)`, tax]].map(([l, v]) => (
-                <div key={l as string} className="flex justify-between">
-                  <span style={{ color: "#6b82a0", fontSize: "0.72rem" }}>{l}</span>
-                  <span style={{ color: "#a8bdd4", fontFamily: "var(--font-mono)", fontSize: "0.72rem" }}>{cur}{(v as number).toFixed(0)}</span>
-                </div>
-              ))}
-            </motion.div>
+      <div className="flex-shrink-0 px-3 sm:px-4 py-3 space-y-3 border-t safe-area-pb"
+        style={{ borderColor: "rgba(30,127,255,0.1)", background: "rgba(6,9,26,0.6)" }}>
+
+        <div className="space-y-1.5">
+          <div className="flex justify-between items-center">
+            <span style={{ color: "#a8bdd4", fontSize: "0.8rem" }}>Subtotal</span>
+            <span style={{ color: "#e8eef8", fontFamily: "var(--font-mono)", fontSize: "0.85rem", fontWeight: 600 }}>
+              {formatMoney(cur, subtotal)}
+            </span>
+          </div>
+          {hasFees && (
+            <>
+              <button type="button" onClick={onBreakdownToggle}
+                className="w-full flex items-center justify-between py-0.5">
+                <span style={{ color: "#6b82a0", fontSize: "0.72rem" }}>
+                  {breakdownOpen ? "Hide" : "Show"} fees & tax
+                </span>
+                {breakdownOpen ? <ChevronUp size={14} style={{ color: "#6b82a0" }} /> : <ChevronDown size={14} style={{ color: "#6b82a0" }} />}
+              </button>
+              <AnimatePresence initial={false}>
+                {breakdownOpen && (
+                  <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }}
+                    className="overflow-hidden space-y-1 pl-1">
+                    {serviceRate > 0 && (
+                      <div className="flex justify-between">
+                        <span style={{ color: "#6b82a0", fontSize: "0.72rem" }}>Service ({serviceRate}%)</span>
+                        <span style={{ color: "#a8bdd4", fontFamily: "var(--font-mono)", fontSize: "0.72rem" }}>{formatMoney(cur, service)}</span>
+                      </div>
+                    )}
+                    {taxRate > 0 && (
+                      <div className="flex justify-between">
+                        <span style={{ color: "#6b82a0", fontSize: "0.72rem" }}>{taxLabel} ({taxRate}%)</span>
+                        <span style={{ color: "#a8bdd4", fontFamily: "var(--font-mono)", fontSize: "0.72rem" }}>{formatMoney(cur, tax)}</span>
+                      </div>
+                    )}
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </>
           )}
-        </AnimatePresence>
+        </div>
 
         <div className="flex items-center justify-between px-3 py-3 rounded-xl"
-          style={{ background: "rgba(30,127,255,0.08)", border: "1px solid rgba(30,127,255,0.15)" }}>
-          <span style={{ color: "#a8bdd4", fontWeight: 600, fontSize: "0.88rem" }}>Grand Total</span>
-          <span style={{ color: "#fff", fontFamily: "var(--font-mono)", fontWeight: 800, fontSize: "1.4rem" }}>
-            {cur}{grandTotal.toFixed(0)}
+          style={{ background: "linear-gradient(135deg, rgba(30,127,255,0.15), rgba(0,198,255,0.08))", border: "1px solid rgba(30,127,255,0.2)" }}>
+          <span style={{ color: "#e8eef8", fontWeight: 700, fontSize: isMobile ? "0.95rem" : "0.88rem" }}>Total to pay</span>
+          <span style={{ color: "#fff", fontFamily: "var(--font-mono)", fontWeight: 800, fontSize: isMobile ? "1.5rem" : "1.35rem" }}>
+            {formatMoney(cur, grandTotal)}
           </span>
         </div>
 
-        {/* Dine-in: place the order for this table (fires kitchen ticket, no payment yet) */}
         {sendable && (
-          <motion.button whileTap={{ scale: 0.97 }} disabled={busy} onClick={onSend}
-            className="w-full py-3 rounded-xl text-sm font-semibold flex items-center justify-center gap-2"
+          <motion.button whileTap={{ scale: 0.98 }} disabled={busy} onClick={onSend}
+            className="w-full py-3.5 rounded-xl text-sm font-semibold flex items-center justify-center gap-2 min-h-[48px]"
             style={{ background: "linear-gradient(135deg, #ff6b35, #f59e0b)", color: "#fff", opacity: busy ? 0.6 : 1 }}>
-            <ReceiptText size={15} /> Send to Kitchen
+            <ReceiptText size={16} /> Send to kitchen
           </motion.button>
         )}
 
-        <div className="flex gap-2 relative">
-          <motion.button whileTap={{ scale: 0.95 }} disabled={busy} onClick={onCharge}
-            className="flex-1 py-3 rounded-xl text-sm font-semibold flex items-center justify-center gap-2"
-            style={{ background: "linear-gradient(135deg, #1e7fff, #00c6ff)", color: "#fff", opacity: busy ? 0.6 : 1 }}>
-            {charged ? <><Check size={15} /> Charged!</> : <><CreditCard size={15} /> Charge</>}
-          </motion.button>
-          <motion.button whileTap={{ scale: 0.95 }} disabled={busy} onClick={onCash}
-            className="flex-1 py-3 rounded-xl text-sm font-semibold flex items-center justify-center gap-2"
-            style={{ background: "rgba(34,197,94,0.1)", color: "#22c55e", border: "1px solid rgba(34,197,94,0.2)", opacity: busy ? 0.6 : 1 }}>
-            <Banknote size={15} /> Cash
-          </motion.button>
-          <button onClick={onPrinterToggle}
-            className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0"
-            style={{ background: "rgba(30,127,255,0.08)", border: "1px solid rgba(30,127,255,0.15)" }}>
-            <Printer size={16} style={{ color: "#1e7fff" }} />
-          </button>
-          <AnimatePresence>
-            {showPrinter && <PrinterPopover onClose={onPrinterToggle} kitchen={kitchenPrinter} cashier={cashierPrinter} />}
-          </AnimatePresence>
+        <AnimatePresence>
+          {showPrinter && isMobile && (
+            <PrinterSetupPanel compact onClose={onPrinterToggle} kitchen={kitchenPrinter} cashier={cashierPrinter}
+              onRestaurantUpdate={onRestaurantUpdate} restaurantName={restaurantName} restaurantId={restaurantId} logoUrl={logoUrl} />
+          )}
+        </AnimatePresence>
+
+        <div className={`grid gap-2 ${canPay ? "grid-cols-2" : "grid-cols-1"}`}>
+          {canPay && (
+            <>
+              <motion.button whileTap={{ scale: 0.98 }} disabled={busy || charged} onClick={onCharge}
+                className="py-3.5 rounded-xl text-sm font-semibold flex flex-col items-center justify-center gap-0.5 min-h-[52px]"
+                style={{ background: "linear-gradient(135deg, #1e7fff, #00c6ff)", color: "#fff", opacity: busy || charged ? 0.6 : 1 }}>
+                {charged ? <><Check size={18} /> <span>Paid</span></> : <><CreditCard size={18} /> <span>Card</span></>}
+              </motion.button>
+              <motion.button whileTap={{ scale: 0.98 }} disabled={busy || charged} onClick={onCash}
+                className="py-3.5 rounded-xl text-sm font-semibold flex flex-col items-center justify-center gap-0.5 min-h-[52px]"
+                style={{ background: "rgba(34,197,94,0.12)", color: "#22c55e", border: "1px solid rgba(34,197,94,0.25)", opacity: busy || charged ? 0.6 : 1 }}>
+                <Banknote size={18} /> <span>Cash</span>
+              </motion.button>
+            </>
+          )}
+        </div>
+
+        <div className="flex items-center justify-between gap-2 pt-1">
+          <div className="flex gap-1.5 flex-wrap">
+            <button type="button" onClick={onEditToggle}
+              className="px-3 py-2 rounded-lg text-xs font-medium min-h-[40px]"
+              style={editMode ? { background: "rgba(245,158,11,0.15)", color: "#f59e0b" } : { background: "rgba(30,127,255,0.06)", color: "#a8bdd4" }}>
+              {editMode ? "Done editing" : "Edit items"}
+            </button>
+            <button type="button" onClick={onClear} disabled={cart.length === 0}
+              className="px-3 py-2 rounded-lg text-xs font-medium min-h-[40px] disabled:opacity-40"
+              style={{ background: "rgba(255,59,92,0.08)", color: "#ff3b5c" }}>
+              Clear bill
+            </button>
+          </div>
+          <div className="relative flex-shrink-0">
+            <button type="button" onClick={onPrinterToggle} aria-label="Printer settings"
+              className="w-11 h-11 rounded-xl flex items-center justify-center"
+              style={{ background: "rgba(30,127,255,0.08)", border: "1px solid rgba(30,127,255,0.15)" }}>
+              <Printer size={17} style={{ color: "#1e7fff" }} />
+            </button>
+            {!isMobile && showPrinter && (
+              <PrinterSetupPanel onClose={onPrinterToggle} kitchen={kitchenPrinter} cashier={cashierPrinter}
+                onRestaurantUpdate={onRestaurantUpdate} restaurantName={restaurantName} restaurantId={restaurantId} logoUrl={logoUrl} />
+            )}
+          </div>
         </div>
       </div>
     </div>
@@ -256,6 +327,7 @@ function CartPanel({
 type PendingBill = { id: string; table_id?: string; table_name: string; items: number; total: number; since: string };
 
 export function POS() {
+  const { user } = useAuth();
   const [menu, setMenu] = useState<ApiMenuItem[]>([]);
   const [categories, setCategories] = useState<ApiMenuCategory[]>([]);
   const [tables, setTables] = useState<ApiTable[]>([]);
@@ -269,7 +341,7 @@ export function POS() {
   const [activeOrderId, setActiveOrderId] = useState<string | null>(null);
   const [payState, setPayState] = useState<PaymentState>("open");
   const [isParcel, setIsParcel] = useState(false);
-  const [breakdownOpen, setBreakdownOpen] = useState(true);
+  const [breakdownOpen, setBreakdownOpen] = useState(false);
   const [showPrinter, setShowPrinter] = useState(false);
   const [editMode, setEditMode] = useState(false);
   const [charged, setCharged] = useState(false);
@@ -286,6 +358,7 @@ export function POS() {
         setActiveCat("all");
         setTables(t);
         setRestaurant(r);
+        void syncRestaurantLogoCacheAsync(r);
       })
       .catch(() => { /* render empty on failure */ });
   }, []);
@@ -460,6 +533,52 @@ export function POS() {
     }
   }
 
+  // ── Customer receipt (logo + totals) after payment ─────────────────────────
+  function buildReceiptData(payMethod: string): ReceiptData {
+    const address = [restaurant?.address_line1, restaurant?.address_line2, restaurant?.city, restaurant?.postal_code, restaurant?.country]
+      .filter(Boolean).join(", ");
+    const tableObj = tables.find(t => t.id === selectedTable);
+    return {
+      restaurantName: restaurant?.name || user?.restaurant_name || "Restaurant",
+      currencySymbol: cur,
+      logoUrl: getRestaurantLogo(user?.restaurant_id ?? restaurant?.id, restaurant?.logo_url),
+      addressLine: address || undefined,
+      phone: restaurant?.contact_phone || undefined,
+      taxId: restaurant?.tax_id || undefined,
+      tableName: tableObj?.name ?? tableName,
+      serverName: user?.name,
+      covers: tableObj?.covers || undefined,
+      items: cart.map(c => ({ name: c.name, qty: c.qty, price: c.price })),
+      subtotal,
+      service,
+      tax,
+      total: grandTotal,
+      serviceRate,
+      taxRate,
+      taxLabel,
+      taxIncluded,
+      payMethod,
+    };
+  }
+
+  async function printCustomerReceipt(payMethod: string) {
+    try {
+      const cashierChannel = restaurant?.cashier_printer?.channel;
+      const method = await print(
+        buildReceiptData(payMethod),
+        undefined,
+        32,
+        user?.restaurant_id ?? restaurant?.id,
+        cashierChannel ? { channel: cashierChannel } : undefined,
+      );
+      if (method === "dialog") {
+        toast.success("Receipt ready", "Use the print dialog to finish.");
+      }
+    } catch (e) {
+      toast.error("Receipt print failed", (e as Error).message);
+    }
+  }
+
   // ── Charge: settle an existing bill, or create+send+settle a fresh walk-in ───
   async function handleCharge(method: "card" | "cash") {
     if (!cart.length) { toast.error("Cart is empty", `Add items before ${method === "card" ? "charging" : "payment"}`); return; }
@@ -485,6 +604,7 @@ export function POS() {
         `${cur}${grandTotal.toFixed(0)} ${method === "card" ? "charged" : "received"} · ${tName}`,
         `${itemCount} item${itemCount !== 1 ? "s" : ""} · ${method === "card" ? "Card" : "Cash"} payment`,
       );
+      void printCustomerReceipt(method === "card" ? "Card" : "Cash");
       window.dispatchEvent(new Event("CAFYZ_ORDER_SENT"));
       setTimeout(() => { setCharged(false); resetBill(); setShowMobileCart(false); }, method === "card" ? 1600 : 1100);
       await refreshPending();
@@ -525,11 +645,16 @@ export function POS() {
 
   // A fresh (not-yet-sent) cart on a chosen table can be sent to the kitchen.
   const sendable = !canEditBill && cart.length > 0 && !!selectedTable;
+  const tableName = tables.find(t => t.id === selectedTable)?.name ?? "";
+  const billStatus: BillStatus = isPaid ? "paid" : canEditBill ? "kitchen" : !selectedTable ? "empty" : "building";
 
   const cartProps = {
-    cart, selectedTable, tables, isParcel, editMode, breakdownOpen, showPrinter, charged, busy,
+    cart, selectedTable, tables, tableName, billStatus, isParcel, editMode, breakdownOpen, showPrinter, charged, busy,
     cur, subtotal, service, tax, grandTotal, serviceRate, taxRate, taxLabel,
     kitchenPrinter: kitchenPrinterName, cashierPrinter: cashierPrinterName,
+    restaurantName: restaurant?.name ?? 'Cafyz',
+    restaurantId: restaurant?.id,
+    logoUrl: getRestaurantLogo(restaurant?.id, restaurant?.logo_url) ?? null,
     sendable,
     onSend: () => void sendToKitchen(),
     onTableChange: handleTableChange,
@@ -541,38 +666,43 @@ export function POS() {
     onClear: resetBill,
     onCharge: () => void handleCharge("card"),
     onCash: () => void handleCharge("cash"),
+    onRestaurantUpdate: setRestaurant,
   };
 
   return (
     <div className="flex h-full overflow-hidden relative">
       {/* ── Left: menu panel ── */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-        {/* Pending bills strip */}
+        {/* Open bills */}
         <div className="flex gap-2 px-3 pt-3 pb-2 overflow-x-auto scrollbar-hide flex-shrink-0">
-          {pending.length === 0 && (
-            <div className="flex items-center px-3 py-2 flex-shrink-0" style={{ minHeight: 48 }}>
-              <span style={{ color: "#6b82a0", fontSize: "0.73rem" }}>No pending table bills</span>
+          {pending.length === 0 ? (
+            <div className="flex items-center px-3 py-2.5 rounded-xl flex-shrink-0"
+              style={{ background: "#0d1326", border: "1px dashed rgba(30,127,255,0.12)", minHeight: 52 }}>
+              <span style={{ color: "#6b82a0", fontSize: "0.75rem" }}>No open table bills</span>
             </div>
+          ) : (
+            pending.map(b => (
+              <button key={b.id} type="button" onClick={() => { if (b.table_id) void handleTableChange(b.table_id); }}
+                className="flex items-center gap-3 rounded-xl px-3 py-2.5 flex-shrink-0 transition-all min-h-[52px]"
+                style={{
+                  background: selectedTable === b.table_id ? "rgba(30,127,255,0.14)" : "#0d1326",
+                  border: `1px solid ${selectedTable === b.table_id ? "rgba(30,127,255,0.4)" : "rgba(30,127,255,0.1)"}`,
+                }}>
+                <div className="text-left min-w-0">
+                  <p style={{ color: "#e8eef8", fontSize: "0.8rem", fontWeight: 700 }}>{b.table_name}</p>
+                  <p style={{ color: "#6b82a0", fontSize: "0.68rem" }}>{b.items} item{b.items !== 1 ? "s" : ""} · {b.since}</p>
+                </div>
+                <span style={{ color: "#1e7fff", fontFamily: "var(--font-mono)", fontWeight: 800, fontSize: "0.88rem", flexShrink: 0 }}>
+                  {cur}{b.total.toFixed(0)}
+                </span>
+              </button>
+            ))
           )}
-          {pending.map(b => (
-            <button key={b.id} onClick={() => { if (b.table_id) void handleTableChange(b.table_id); }}
-              className="flex items-center gap-2.5 rounded-xl px-3 py-2 flex-shrink-0 transition-all"
-              style={{
-                background: selectedTable === b.table_id ? "rgba(30,127,255,0.12)" : "#0d1326",
-                border: `1px solid ${selectedTable === b.table_id ? "rgba(30,127,255,0.35)" : "rgba(30,127,255,0.1)"}`,
-                minHeight: 48,
-              }}>
-              <div>
-                <p style={{ color: "#e8eef8", fontSize: "0.78rem", fontWeight: 700, fontFamily: "var(--font-display)" }}>{b.table_name}</p>
-                <p style={{ color: "#6b82a0", fontSize: "0.67rem" }}>{b.items} item{b.items !== 1 ? "s" : ""} · {b.since}</p>
-              </div>
-              <span style={{ color: "#1e7fff", fontFamily: "var(--font-mono)", fontWeight: 700, fontSize: "0.82rem" }}>{cur}{b.total.toFixed(0)}</span>
-            </button>
-          ))}
-          <button onClick={() => { setSelectedTable(""); resetBill(); }} className="flex items-center gap-1.5 rounded-xl px-3 py-2 flex-shrink-0"
-            style={{ background: "#0d1326", border: "1px dashed rgba(30,127,255,0.2)", minHeight: 48 }}>
-            <Plus size={13} style={{ color: "#6b82a0" }} />
-            <span style={{ color: "#6b82a0", fontSize: "0.73rem" }}>New</span>
+          <button type="button" onClick={() => { setSelectedTable(""); resetBill(); }}
+            className="flex items-center gap-1.5 rounded-xl px-3 py-2.5 flex-shrink-0 min-h-[52px]"
+            style={{ background: "#0d1326", border: "1px dashed rgba(30,127,255,0.2)" }}>
+            <Plus size={14} style={{ color: "#1e7fff" }} />
+            <span style={{ color: "#a8bdd4", fontSize: "0.75rem", fontWeight: 600 }}>New bill</span>
           </button>
         </div>
 
@@ -652,16 +782,21 @@ export function POS() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 16 }}
             onClick={() => setShowMobileCart(true)}
-            className="lg:hidden fixed bottom-24 right-4 z-30 flex items-center gap-2.5 px-4 py-3 rounded-2xl shadow-2xl"
+            className="lg:hidden fixed bottom-24 right-4 z-30 flex items-center gap-2 px-4 py-3 rounded-2xl shadow-2xl min-h-[52px]"
             style={{ background: "linear-gradient(135deg, #1e7fff, #00c6ff)", boxShadow: "0 8px 24px rgba(30,127,255,0.4)" }}
           >
-            <ShoppingCart size={18} className="text-white" />
-            <span style={{ color: "#fff", fontWeight: 700, fontSize: "0.85rem" }}>
-              {itemCount > 0 ? `${itemCount} items` : "Cart"}
-            </span>
+            <ShoppingCart size={18} className="text-white flex-shrink-0" />
+            <div className="text-left">
+              <p style={{ color: "#fff", fontWeight: 700, fontSize: "0.8rem", lineHeight: 1.2 }}>
+                {itemCount > 0 ? "View bill" : "Open bill"}
+              </p>
+              {itemCount > 0 && (
+                <p style={{ color: "rgba(255,255,255,0.85)", fontSize: "0.68rem" }}>{itemCount} item{itemCount !== 1 ? "s" : ""}</p>
+              )}
+            </div>
             {itemCount > 0 && (
-              <span style={{ background: "#fff", color: "#1e7fff", fontFamily: "var(--font-mono)", fontWeight: 800, fontSize: "0.75rem" }}
-                className="px-2 py-0.5 rounded-full">
+              <span style={{ background: "#fff", color: "#1e7fff", fontFamily: "var(--font-mono)", fontWeight: 800, fontSize: "0.8rem" }}
+                className="px-2.5 py-1 rounded-full flex-shrink-0">
                 {cur}{grandTotal.toFixed(0)}
               </span>
             )}
@@ -680,7 +815,7 @@ export function POS() {
               initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }}
               transition={{ type: "spring", damping: 30, stiffness: 300 }}
               className="lg:hidden fixed bottom-0 left-0 right-0 z-50 rounded-t-3xl overflow-hidden flex flex-col"
-              style={{ background: "#080c1e", border: "1px solid rgba(30,127,255,0.15)", maxHeight: "90vh" }}
+              style={{ background: "#080c1e", border: "1px solid rgba(30,127,255,0.15)", maxHeight: "92dvh" }}
             >
               {/* Drag handle */}
               <div className="flex justify-center pt-3 pb-1 flex-shrink-0">

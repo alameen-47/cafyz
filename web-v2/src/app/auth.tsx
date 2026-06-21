@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 import { authApi, restaurantApi, type LoginResponse } from '../services/api';
 import { setActiveCurrencyCode } from '../utils/currency';
+import { syncRestaurantLogoCacheAsync } from '../services/restaurantLogoStorage';
 
 export type Role = 'owner' | 'manager' | 'cashier' | 'waiter' | 'kitchen' | 'founder';
 export type Plan = 'basic' | 'pro' | 'premium';
@@ -72,7 +73,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Re-establish the active currency/plan from the restaurant record so every
       // screen formats money correctly after a hard reload (login already does this).
       restaurantApi.me()
-        .then(r => { if (r.currency_code) setActiveCurrencyCode(r.currency_code); })
+        .then(r => {
+          if (r.currency_code) setActiveCurrencyCode(r.currency_code);
+          void syncRestaurantLogoCacheAsync(r);
+        })
         .catch(() => { /* keep defaults if offline / session expired */ });
     }
     setLoading(false);
@@ -86,6 +90,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const r = await restaurantApi.me();
       if (r.plan) plan = r.plan as Plan;
       setActiveCurrencyCode(r.currency_code);
+      void syncRestaurantLogoCacheAsync(r);
     } catch { /* keep login-response plan */ }
     const u: AuthUser = { ...baseUser(d), plan };
     localStorage.setItem('cafyz_user', JSON.stringify(u));

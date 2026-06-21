@@ -4,12 +4,14 @@ import { createContext, useContext } from "react";
 // pre-loaded for a specific table ("select table → take order").
 export interface AppNav {
   goToTableOrder: (tableId: string) => void;
+  goToPos: () => void;
   posTableId: string | null;
   clearPosTable: () => void;
 }
 
 export const NavContext = createContext<AppNav>({
   goToTableOrder: () => {},
+  goToPos: () => {},
   posTableId: null,
   clearPosTable: () => {},
 });

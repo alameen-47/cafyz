@@ -1,16 +1,28 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { Plus, Search, Edit2, Trash2, Star, ToggleLeft, ToggleRight, X, Save, ImageIcon, Check } from "lucide-react";
+import { Plus, Search, Edit2, Trash2, Star, ToggleLeft, ToggleRight, X, Save, ImageIcon, Check, Camera, Loader2 } from "lucide-react";
 import { toast } from "./Toast";
 import { ConfirmModal } from "./ConfirmModal";
 import { menuApi, menuCategoriesApi, dashboardApi, type ApiMenuItem, type ApiMenuCategory } from "../../services/api";
+import { uploadMenuItemImage } from "../../services/menuImageUpload";
+import { MENU_IMAGE_ACCEPT } from "../../utils/menuImage";
 import { getCurrencySymbol } from "../../utils/currency";
 
 const FALLBACK_IMG = "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=300&h=200&fit=crop";
+const VEG_SYMBOL = "🟢";
+const NON_VEG_SYMBOL = "🔴";
+
+function vegFromSymbol(symbol?: string): boolean {
+  return symbol !== NON_VEG_SYMBOL;
+}
+
+function symbolForVeg(veg: boolean): string {
+  return veg ? VEG_SYMBOL : NON_VEG_SYMBOL;
+}
 
 interface MenuItem {
   id: string; name: string; category: string; price: number; description: string;
-  rating?: number; orders: number; available: boolean; tag?: string;
+  rating?: number; orders: number; available: boolean; isPopular?: boolean;
   image: string; veg?: boolean;
 }
 
@@ -45,13 +57,16 @@ function ItemModal({ item, itemCategories, onSave, onClose }: {
     category: item?.category || itemCategories[0] || "Mains",
     price: item?.price?.toString() || "",
     description: item?.description || "",
-    tag: item?.tag || "",
+    isPopular: item?.isPopular ?? false,
     veg: item?.veg ?? true,
     available: item?.available ?? true,
     image: item?.image || "",
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
+  const [imageUploading, setImageUploading] = useState(false);
+  const [imageUploadError, setImageUploadError] = useState("");
+  const fileRef = useRef<HTMLInputElement>(null);
 
   const validate = () => {
     const e: Record<string, string> = {};
@@ -62,13 +77,30 @@ function ItemModal({ item, itemCategories, onSave, onClose }: {
     return Object.keys(e).length === 0;
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!validate()) return;
     setSaving(true);
-    setTimeout(() => {
-      onSave({ ...form, price: Number(form.price) });
+    try {
+      await Promise.resolve(onSave({ ...form, price: Number(form.price) }));
+    } finally {
       setSaving(false);
-    }, 600);
+    }
+  };
+
+  const handlePickImage = async (file: File) => {
+    setImageUploading(true);
+    setImageUploadError("");
+    try {
+      const url = await uploadMenuItemImage(file);
+      setForm(f => ({ ...f, image: url }));
+      toast.success("Photo uploaded", "Image will appear on the menu and POS");
+    } catch (e) {
+      const msg = (e as Error).message;
+      setImageUploadError(msg);
+      toast.error("Upload failed", msg);
+    } finally {
+      setImageUploading(false);
+    }
   };
 
   const setField = (field: string, v: string) => { setForm(f => ({ ...f, [field]: v })); setErrors(er => ({ ...er, [field]: "" })); };
@@ -96,7 +128,13 @@ function ItemModal({ item, itemCategories, onSave, onClose }: {
 
         {/* Form */}
         <div className="flex-1 overflow-y-auto scrollbar-hide p-5 space-y-4">
-          {/* Image preview */}
+          {/* Image preview + upload */}
+          <input ref={fileRef} type="file" accept={MENU_IMAGE_ACCEPT} className="hidden"
+            onChange={e => {
+              const file = e.target.files?.[0];
+              e.target.value = "";
+              if (file) void handlePickImage(file);
+            }} />
           <div className="rounded-2xl overflow-hidden h-36 relative flex items-center justify-center"
             style={{ background: "#111b35", border: "1px dashed rgba(30,127,255,0.2)" }}>
             {form.image ? (
@@ -104,11 +142,34 @@ function ItemModal({ item, itemCategories, onSave, onClose }: {
             ) : (
               <div className="flex flex-col items-center gap-2">
                 <ImageIcon size={28} style={{ color: "#6b82a0" }} />
-                <p style={{ color: "#6b82a0", fontSize: "0.75rem" }}>Enter image URL below</p>
+                <p style={{ color: "#6b82a0", fontSize: "0.75rem" }}>Upload a photo for this item</p>
+              </div>
+            )}
+            {imageUploading && (
+              <div className="absolute inset-0 flex items-center justify-center" style={{ background: "rgba(6,9,26,0.65)" }}>
+                <Loader2 size={28} className="animate-spin" style={{ color: "#1e7fff" }} />
               </div>
             )}
           </div>
-          <Field label="Image URL (optional)" value={form.image} onChange={v => setField("image", v)} placeholder="https://images.unsplash.com/..." />
+          <div className="flex flex-wrap gap-2">
+            <button type="button" disabled={saving || imageUploading}
+              onClick={() => fileRef.current?.click()}
+              className="flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-semibold"
+              style={{ background: "rgba(30,127,255,0.1)", color: "#1e7fff", border: "1px solid rgba(30,127,255,0.2)" }}>
+              <Camera size={14} /> {form.image ? "Change photo" : "Upload photo"}
+            </button>
+            {form.image && (
+              <button type="button" disabled={saving || imageUploading}
+                onClick={() => { setForm(f => ({ ...f, image: "" })); setImageUploadError(""); }}
+                className="px-3 py-2 rounded-xl text-sm font-semibold"
+                style={{ background: "rgba(255,59,92,0.08)", color: "#ff3b5c", border: "1px solid rgba(255,59,92,0.15)" }}>
+                Remove
+              </button>
+            )}
+          </div>
+          {imageUploadError && <p style={{ color: "#ff3b5c", fontSize: "0.72rem" }}>{imageUploadError}</p>}
+          <p style={{ color: "#6b82a0", fontSize: "0.68rem" }}>JPEG, PNG, WebP, or GIF · max 5 MB</p>
+          <Field label="Or paste image URL (optional)" value={form.image} onChange={v => setField("image", v)} placeholder="https://…" />
 
           <div className="grid grid-cols-2 gap-3">
             <div className="col-span-2"><Field label="Item Name *" value={form.name} onChange={v => setField("name", v)} error={errors.name} placeholder="Butter Chicken" /></div>
@@ -132,7 +193,15 @@ function ItemModal({ item, itemCategories, onSave, onClose }: {
             {errors.description && <p style={{ color: "#ff3b5c", fontSize: "0.68rem", marginTop: 3 }}>{errors.description}</p>}
           </div>
 
-          <Field label="Tag (optional)" value={form.tag} onChange={v => setField("tag", v)} placeholder="Bestseller · Chef's Pick · Popular · New" />
+          <div className="rounded-xl p-3 flex items-center justify-between" style={{ background: "#111b35", border: "1px solid rgba(30,127,255,0.08)" }}>
+            <span style={{ color: "#a8bdd4", fontSize: "0.82rem" }}>Mark as popular</span>
+            <button type="button" onClick={() => setForm(f => ({ ...f, isPopular: !f.isPopular }))}
+              className="rounded-full relative transition-all"
+              style={{ background: form.isPopular ? "#f59e0b" : "rgba(30,127,255,0.12)", width: 40, height: 22 }}>
+              <div className="w-4 h-4 rounded-full bg-white absolute top-1 transition-all"
+                style={{ left: form.isPopular ? "calc(100% - 18px)" : 2 }} />
+            </button>
+          </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div className="rounded-xl p-3 flex items-center justify-between" style={{ background: "#111b35", border: "1px solid rgba(30,127,255,0.08)" }}>
@@ -182,6 +251,8 @@ export function MenuPage() {
   const [cats, setCats] = useState<ApiMenuCategory[]>([]);
   const [modalItem, setModalItem] = useState<Partial<MenuItem> | null | false>(false); // false=closed, null=new, MenuItem=edit
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
+  const [newCategory, setNewCategory] = useState("");
+  const [showCategoryForm, setShowCategoryForm] = useState(false);
 
   const cur = getCurrencySymbol();
   const slugByLabel = new Map(cats.map(c => [c.label, c.slug]));
@@ -195,8 +266,9 @@ export function MenuPage() {
     price: m.price,
     description: m.description ?? "",
     available: m.is_available === 1,
-    tag: m.is_popular ? "Popular" : undefined,
-    image: m.image_url || FALLBACK_IMG,
+    isPopular: m.is_popular === 1,
+    image: m.image_url ?? "",
+    veg: vegFromSymbol(m.symbol),
     orders: soldQty.get(m.id) ?? 0,
   }), []);
 
@@ -243,8 +315,9 @@ export function MenuPage() {
       category: slugByLabel.get(data.category ?? "") ?? cats[0]?.slug ?? "mains",
       price: Number(data.price) || 0,
       description: data.description ?? "",
-      image_url: data.image || null,
-      is_popular: !!(data.tag && data.tag.trim()),
+      image_url: data.image?.trim() ? data.image.trim() : null,
+      is_popular: !!data.isPopular,
+      symbol: symbolForVeg(data.veg ?? true),
       is_available: data.available ?? true,
     };
     try {
@@ -276,6 +349,45 @@ export function MenuPage() {
     }
   };
 
+  const addCategory = async () => {
+    const label = newCategory.trim();
+    if (!label) { toast.error("Category name required"); return; }
+    try {
+      await menuCategoriesApi.create({ label });
+      toast.success("Category added", label);
+      setNewCategory("");
+      setShowCategoryForm(false);
+      await load();
+    } catch (e) {
+      toast.error("Couldn't add category", (e as Error).message);
+    }
+  };
+
+  const renameCategory = async (cat: ApiMenuCategory) => {
+    const label = window.prompt(`Rename category "${cat.label}"`, cat.label)?.trim();
+    if (!label || label === cat.label) return;
+    try {
+      await menuCategoriesApi.update(cat.id, { label });
+      toast.success("Category renamed", label);
+      if (activeCategory === cat.label) setActiveCategory(label);
+      await load();
+    } catch (e) {
+      toast.error("Couldn't rename category", (e as Error).message);
+    }
+  };
+
+  const removeCategory = async (cat: ApiMenuCategory) => {
+    if (!window.confirm(`Delete category "${cat.label}"? Items keep their slug until reassigned.`)) return;
+    try {
+      await menuCategoriesApi.delete(cat.id);
+      toast.success("Category removed", cat.label);
+      if (activeCategory === cat.label) setActiveCategory("All");
+      await load();
+    } catch (e) {
+      toast.error("Couldn't delete category", (e as Error).message);
+    }
+  };
+
   const filtered = items.filter(item =>
     (activeCategory === "All" || item.category === activeCategory) &&
     (search === "" || item.name.toLowerCase().includes(search.toLowerCase()))
@@ -293,6 +405,12 @@ export function MenuPage() {
             style={{ color: "#e8eef8" }} />
         </div>
         <motion.button whileTap={{ scale: 0.95 }}
+          onClick={() => setShowCategoryForm(v => !v)}
+          className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold flex-shrink-0"
+          style={{ background: "rgba(30,127,255,0.08)", color: "#1e7fff", border: "1px solid rgba(30,127,255,0.15)" }}>
+          <Plus size={16} /> Category
+        </motion.button>
+        <motion.button whileTap={{ scale: 0.95 }}
           onClick={() => setModalItem(null)}
           className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold flex-shrink-0"
           style={{ background: "linear-gradient(135deg, #1e7fff, #00c6ff)", color: "white" }}>
@@ -300,16 +418,51 @@ export function MenuPage() {
         </motion.button>
       </div>
 
+      {showCategoryForm && (
+        <div className="flex flex-col sm:flex-row gap-2 items-stretch sm:items-center rounded-xl p-3"
+          style={{ background: "#0d1326", border: "1px solid rgba(30,127,255,0.1)" }}>
+          <input type="text" placeholder="New category name" value={newCategory}
+            onChange={e => setNewCategory(e.target.value)}
+            className="flex-1 rounded-xl px-3 py-2 text-sm outline-none placeholder:text-[#6b82a0]"
+            style={{ background: "#111b35", color: "#e8eef8", border: "1px solid rgba(30,127,255,0.12)" }} />
+          <button onClick={() => void addCategory()}
+            className="px-4 py-2 rounded-xl text-sm font-semibold"
+            style={{ background: "linear-gradient(135deg, #1e7fff, #00c6ff)", color: "#fff" }}>
+            Add Category
+          </button>
+        </div>
+      )}
+
       {/* Category pills */}
       <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
         {categories.map(cat => (
-          <button key={cat} onClick={() => setActiveCategory(cat)}
-            className="px-4 py-2 rounded-full text-sm whitespace-nowrap transition-all font-medium flex-shrink-0"
-            style={activeCategory === cat
-              ? { background: "linear-gradient(135deg, #1e7fff, #00c6ff)", color: "white" }
-              : { background: "#0d1326", color: "#6b82a0", border: "1px solid rgba(30,127,255,0.1)" }}>
-            {cat}
-          </button>
+          <div key={cat} className="flex items-center gap-1 flex-shrink-0">
+            <button onClick={() => setActiveCategory(cat)}
+              className="px-4 py-2 rounded-full text-sm whitespace-nowrap transition-all font-medium"
+              style={activeCategory === cat
+                ? { background: "linear-gradient(135deg, #1e7fff, #00c6ff)", color: "white" }
+                : { background: "#0d1326", color: "#6b82a0", border: "1px solid rgba(30,127,255,0.1)" }}>
+              {cat}
+            </button>
+            {cat !== "All" && (() => {
+              const row = cats.find(c => c.label === cat);
+              if (!row) return null;
+              return (
+                <>
+                  <button onClick={() => void renameCategory(row)} title={`Rename ${cat}`}
+                    className="w-7 h-7 rounded-full flex items-center justify-center"
+                    style={{ background: "rgba(30,127,255,0.08)", color: "#1e7fff" }}>
+                    <Edit2 size={12} />
+                  </button>
+                  <button onClick={() => void removeCategory(row)} title={`Delete ${cat}`}
+                    className="w-7 h-7 rounded-full flex items-center justify-center"
+                    style={{ background: "rgba(255,59,92,0.08)", color: "#ff3b5c" }}>
+                    ×
+                  </button>
+                </>
+              );
+            })()}
+          </div>
         ))}
       </div>
 
@@ -335,13 +488,13 @@ export function MenuPage() {
                 }}>
                 {/* Image */}
                 <div className="relative h-36 overflow-hidden" style={{ background: "#111b35" }}>
-                  <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
+                  <img src={item.image || FALLBACK_IMG} alt={item.name} className="w-full h-full object-cover" />
                   <div className="absolute inset-0" style={{ background: "linear-gradient(to top, rgba(13,19,38,0.65) 0%, transparent 55%)" }} />
                   <div className="absolute top-2 left-2 flex items-center gap-1.5">
-                    {item.tag && (
+                    {item.isPopular && (
                       <span className="text-xs px-2 py-0.5 rounded-full font-semibold"
                         style={{ background: "rgba(30,127,255,0.85)", color: "white", backdropFilter: "blur(4px)" }}>
-                        {item.tag}
+                        Popular
                       </span>
                     )}
                     {item.veg !== undefined && (

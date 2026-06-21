@@ -1,26 +1,25 @@
 import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { Plus, Calendar, Clock, Users, Phone, StickyNote, Check, X, Crown } from "lucide-react";
+import { Plus, Calendar, Users, StickyNote, Check, X, Crown, Edit2, Trash2, Armchair } from "lucide-react";
 import { toast } from "./Toast";
 import { reservationsApi, tablesApi, type ApiReservation, type ApiTable } from "../../services/api";
 
-type ResStatus = "confirmed" | "pending" | "seated" | "cancelled" | "completed";
+type ResStatus = "confirmed" | "seated" | "cancelled" | "completed";
 
 interface Reservation {
   id: string;
   guest: string;
-  phone: string;
   covers: number;
   date: string;
   time: string;
   table: string;
+  tableId: string;
   note: string;
   status: ResStatus;
 }
 
 const statusConfig: Record<ResStatus, { color: string; bg: string; label: string }> = {
   confirmed: { color: "#22c55e", bg: "rgba(34,197,94,0.1)", label: "Confirmed" },
-  pending: { color: "#f59e0b", bg: "rgba(245,158,11,0.1)", label: "Pending" },
   seated: { color: "#1e7fff", bg: "rgba(30,127,255,0.1)", label: "Seated" },
   cancelled: { color: "#ff3b5c", bg: "rgba(255,59,92,0.1)", label: "Cancelled" },
   completed: { color: "#6b82a0", bg: "rgba(107,130,160,0.1)", label: "No-show" },
@@ -43,8 +42,9 @@ export function Reservations() {
   const [items, setItems] = useState<Reservation[]>([]);
   const [tableOpts, setTableOpts] = useState<ApiTable[]>([]);
   const [showForm, setShowForm] = useState(false);
+  const [editRes, setEditRes] = useState<Reservation | null>(null);
   const [filterDate, setFilterDate] = useState("");
-  const [newRes, setNewRes] = useState({ guest: "", phone: "", covers: 2, date: "", time: "19:00", table: "", note: "" });
+  const [newRes, setNewRes] = useState({ guest: "", covers: 2, date: "", time: "19:00", table: "", note: "" });
 
   const load = useCallback(async () => {
     try {
@@ -56,10 +56,10 @@ export function Reservations() {
         return {
           id: r.id,
           guest: r.guest_name,
-          phone: "",
           covers: r.covers,
           date, time,
           table: r.table_name || (r.table_id ? nameById.get(r.table_id) ?? "—" : "—"),
+          tableId: r.table_id ?? "",
           note: r.note ?? "",
           status: ST_FWD[r.status] ?? "confirmed",
         };
@@ -75,7 +75,7 @@ export function Reservations() {
   const updateStatus = async (id: string, status: ResStatus) => {
     const res = items.find(r => r.id === id);
     setItems(prev => prev.map(r => r.id === id ? { ...r, status } : r));
-    if (status === "confirmed") toast.success("Reservation confirmed", `${res?.guest} · ${res?.time} · ${res?.table}`);
+    if (status === "seated") toast.success("Guest seated", `${res?.guest} · ${res?.table}`);
     if (status === "cancelled") toast.error("Reservation cancelled", `${res?.guest}'s booking has been cancelled`);
     try {
       await reservationsApi.update(id, { status: ST_REV[status] ?? "confirmed" });
@@ -86,25 +86,45 @@ export function Reservations() {
     }
   };
 
-  const createReservation = async () => {
-    if (!newRes.guest.trim()) { toast.error("Guest name required", "Enter a name for the reservation"); return; }
-    const date = newRes.date || new Date().toISOString().slice(0, 10);
+  const deleteReservation = async (res: Reservation) => {
+    if (!window.confirm(`Delete reservation for ${res.guest}?`)) return;
     try {
-      await reservationsApi.create({
-        guest_name: newRes.guest.trim(),
-        covers: newRes.covers,
-        res_time: `${date}T${newRes.time}:00`,
-        note: newRes.note || undefined,
-        table_id: newRes.table || undefined,
-      });
-      toast.success("Reservation created", `${newRes.guest} · ${date} at ${newRes.time}`);
-      setShowForm(false);
-      setNewRes({ guest: "", phone: "", covers: 2, date: "", time: "19:00", table: "", note: "" });
+      await reservationsApi.delete(res.id);
+      toast.success("Reservation deleted", res.guest);
       await load();
     } catch (e) {
-      toast.error("Couldn't create reservation", (e as Error).message);
+      toast.error("Couldn't delete reservation", (e as Error).message);
     }
   };
+
+  const saveReservation = async (draft: typeof newRes, id?: string) => {
+    if (!draft.guest.trim()) { toast.error("Guest name required", "Enter a name for the reservation"); return; }
+    const date = draft.date || new Date().toISOString().slice(0, 10);
+    const payload = {
+      guest_name: draft.guest.trim(),
+      covers: draft.covers,
+      res_time: `${date}T${draft.time}:00`,
+      note: draft.note || undefined,
+      table_id: draft.table || undefined,
+    };
+    try {
+      if (id) {
+        await reservationsApi.update(id, payload);
+        toast.success("Reservation updated", `${draft.guest} · ${date} at ${draft.time}`);
+        setEditRes(null);
+      } else {
+        await reservationsApi.create(payload);
+        toast.success("Reservation created", `${draft.guest} · ${date} at ${draft.time}`);
+        setShowForm(false);
+        setNewRes({ guest: "", covers: 2, date: "", time: "19:00", table: "", note: "" });
+      }
+      await load();
+    } catch (e) {
+      toast.error(id ? "Couldn't update reservation" : "Couldn't create reservation", (e as Error).message);
+    }
+  };
+
+  const createReservation = () => void saveReservation(newRes);
 
   return (
     <div className="p-3 sm:p-4 md:p-6 space-y-4">
@@ -140,7 +160,7 @@ export function Reservations() {
         {[
           { label: "Today's Reservations", value: filtered.length, color: "#1e7fff" },
           { label: "Confirmed", value: filtered.filter(r => r.status === "confirmed").length, color: "#22c55e" },
-          { label: "Pending", value: filtered.filter(r => r.status === "pending").length, color: "#f59e0b" },
+          { label: "Seated", value: filtered.filter(r => r.status === "seated").length, color: "#1e7fff" },
           { label: "Total Covers", value: filtered.reduce((s,r) => s + r.covers, 0), color: "#00c6ff" },
         ].map(s => (
           <div key={s.label} className="rounded-2xl p-4" style={{ background: "#0d1326", border: "1px solid rgba(30,127,255,0.1)" }}>
@@ -182,11 +202,6 @@ export function Reservations() {
                     <span className="flex items-center gap-1" style={{ color: "#6b82a0", fontSize: "0.75rem" }}>
                       <Users size={11} /> {res.covers} covers
                     </span>
-                    {res.phone && (
-                      <span className="flex items-center gap-1" style={{ color: "#6b82a0", fontSize: "0.75rem" }}>
-                        <Phone size={11} /> {res.phone}
-                      </span>
-                    )}
                     {res.note && (
                       <span className="flex items-center gap-1" style={{ color: "#f59e0b", fontSize: "0.72rem" }}>
                         <StickyNote size={11} /> {res.note}
@@ -196,22 +211,34 @@ export function Reservations() {
                 </div>
 
                 {/* Status + actions */}
-                <div className="flex items-center gap-2 flex-shrink-0">
+                <div className="flex items-center gap-2 flex-shrink-0 flex-wrap justify-end">
                   <span className="text-xs px-2.5 py-1 rounded-full font-medium" style={{ background: cfg.bg, color: cfg.color }}>{cfg.label}</span>
-                  {res.status === "pending" && (
-                    <button onClick={() => updateStatus(res.id, "confirmed")}
+                  {res.status === "confirmed" && (
+                    <button onClick={() => updateStatus(res.id, "seated")} title="Mark seated"
                       className="w-7 h-7 rounded-lg flex items-center justify-center"
-                      style={{ background: "rgba(34,197,94,0.1)" }}>
-                      <Check size={13} style={{ color: "#22c55e" }} />
+                      style={{ background: "rgba(30,127,255,0.1)" }}>
+                      <Armchair size={13} style={{ color: "#1e7fff" }} />
                     </button>
                   )}
                   {res.status !== "cancelled" && res.status !== "completed" && (
-                    <button onClick={() => updateStatus(res.id, "cancelled")}
-                      className="w-7 h-7 rounded-lg flex items-center justify-center"
-                      style={{ background: "rgba(255,59,92,0.08)" }}>
-                      <X size={13} style={{ color: "#ff3b5c" }} />
-                    </button>
+                    <>
+                      <button onClick={() => setEditRes(res)} title="Edit"
+                        className="w-7 h-7 rounded-lg flex items-center justify-center"
+                        style={{ background: "rgba(30,127,255,0.08)" }}>
+                        <Edit2 size={13} style={{ color: "#1e7fff" }} />
+                      </button>
+                      <button onClick={() => updateStatus(res.id, "cancelled")} title="Cancel"
+                        className="w-7 h-7 rounded-lg flex items-center justify-center"
+                        style={{ background: "rgba(255,59,92,0.08)" }}>
+                        <X size={13} style={{ color: "#ff3b5c" }} />
+                      </button>
+                    </>
                   )}
+                  <button onClick={() => void deleteReservation(res)} title="Delete"
+                    className="w-7 h-7 rounded-lg flex items-center justify-center"
+                    style={{ background: "rgba(107,130,160,0.1)" }}>
+                    <Trash2 size={13} style={{ color: "#6b82a0" }} />
+                  </button>
                 </div>
               </motion.div>
             );
@@ -238,15 +265,13 @@ export function Reservations() {
                 <button onClick={() => setShowForm(false)} style={{ color: "#6b82a0" }}><X size={18} /></button>
               </div>
               <div className="space-y-3">
-                {[{ label: "Guest Name", field: "guest", placeholder: "Arjun Mehta" }, { label: "Phone", field: "phone", placeholder: "+91 ..." }].map(f => (
-                  <div key={f.field}>
-                    <label style={{ color: "#a8bdd4", fontSize: "0.78rem", display: "block", marginBottom: 4 }}>{f.label}</label>
-                    <input type="text" placeholder={f.placeholder} value={(newRes as any)[f.field]}
-                      onChange={e => setNewRes(r => ({ ...r, [f.field]: e.target.value }))}
-                      className="w-full rounded-xl px-3 py-2.5 text-sm outline-none placeholder:text-[#6b82a0]"
-                      style={{ background: "#111b35", color: "#e8eef8", border: "1px solid rgba(30,127,255,0.12)" }} />
-                  </div>
-                ))}
+                <div>
+                  <label style={{ color: "#a8bdd4", fontSize: "0.78rem", display: "block", marginBottom: 4 }}>Guest Name</label>
+                  <input type="text" placeholder="Arjun Mehta" value={newRes.guest}
+                    onChange={e => setNewRes(r => ({ ...r, guest: e.target.value }))}
+                    className="w-full rounded-xl px-3 py-2.5 text-sm outline-none placeholder:text-[#6b82a0]"
+                    style={{ background: "#111b35", color: "#e8eef8", border: "1px solid rgba(30,127,255,0.12)" }} />
+                </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label style={{ color: "#a8bdd4", fontSize: "0.78rem", display: "block", marginBottom: 4 }}>Date</label>
@@ -296,6 +321,98 @@ export function Reservations() {
                   className="flex-1 py-2.5 rounded-xl text-sm font-semibold flex items-center justify-center gap-2"
                   style={{ background: "linear-gradient(135deg, #1e7fff, #00c6ff)", color: "#fff" }}>
                   <Check size={15} /> Confirm
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {editRes && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
+            style={{ background: "rgba(6,9,26,0.85)", backdropFilter: "blur(8px)" }}
+            onClick={() => setEditRes(null)}>
+            <motion.div
+              initial={{ opacity: 0, scale: 0.92 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.92 }}
+              className="w-full max-w-md rounded-2xl p-5 space-y-4"
+              style={{ background: "#0d1326", border: "1px solid rgba(30,127,255,0.2)" }}
+              onClick={e => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between">
+                <h3 style={{ fontFamily: "var(--font-display)", color: "#e8eef8", fontWeight: 700 }}>Edit Reservation</h3>
+                <button onClick={() => setEditRes(null)} style={{ color: "#6b82a0" }}><X size={18} /></button>
+              </div>
+              <div className="space-y-3">
+                <div>
+                  <label style={{ color: "#a8bdd4", fontSize: "0.78rem", display: "block", marginBottom: 4 }}>Guest Name</label>
+                  <input type="text" value={editRes.guest}
+                    onChange={e => setEditRes(r => r ? { ...r, guest: e.target.value } : r)}
+                    className="w-full rounded-xl px-3 py-2.5 text-sm outline-none"
+                    style={{ background: "#111b35", color: "#e8eef8", border: "1px solid rgba(30,127,255,0.12)" }} />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label style={{ color: "#a8bdd4", fontSize: "0.78rem", display: "block", marginBottom: 4 }}>Date</label>
+                    <input type="date" value={editRes.date}
+                      onChange={e => setEditRes(r => r ? { ...r, date: e.target.value } : r)}
+                      className="w-full rounded-xl px-3 py-2.5 text-sm outline-none"
+                      style={{ background: "#111b35", color: "#e8eef8", border: "1px solid rgba(30,127,255,0.12)" }} />
+                  </div>
+                  <div>
+                    <label style={{ color: "#a8bdd4", fontSize: "0.78rem", display: "block", marginBottom: 4 }}>Time</label>
+                    <select value={editRes.time}
+                      onChange={e => setEditRes(r => r ? { ...r, time: e.target.value } : r)}
+                      className="w-full rounded-xl px-3 py-2.5 text-sm outline-none"
+                      style={{ background: "#111b35", color: "#e8eef8", border: "1px solid rgba(30,127,255,0.12)" }}>
+                      {timeSlots.map(t => <option key={t}>{t}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label style={{ color: "#a8bdd4", fontSize: "0.78rem", display: "block", marginBottom: 4 }}>Covers</label>
+                    <input type="number" min={1} max={20} value={editRes.covers}
+                      onChange={e => setEditRes(r => r ? { ...r, covers: +e.target.value } : r)}
+                      className="w-full rounded-xl px-3 py-2.5 text-sm outline-none"
+                      style={{ background: "#111b35", color: "#e8eef8", border: "1px solid rgba(30,127,255,0.12)" }} />
+                  </div>
+                  <div>
+                    <label style={{ color: "#a8bdd4", fontSize: "0.78rem", display: "block", marginBottom: 4 }}>Table</label>
+                    <select value={editRes.tableId}
+                      onChange={e => setEditRes(r => r ? { ...r, tableId: e.target.value } : r)}
+                      className="w-full rounded-xl px-3 py-2.5 text-sm outline-none"
+                      style={{ background: "#111b35", color: "#e8eef8", border: "1px solid rgba(30,127,255,0.12)" }}>
+                      <option value="">No table</option>
+                      {tableOpts.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+                    </select>
+                  </div>
+                </div>
+                <div>
+                  <label style={{ color: "#a8bdd4", fontSize: "0.78rem", display: "block", marginBottom: 4 }}>Note</label>
+                  <input type="text" value={editRes.note}
+                    onChange={e => setEditRes(r => r ? { ...r, note: e.target.value } : r)}
+                    className="w-full rounded-xl px-3 py-2.5 text-sm outline-none"
+                    style={{ background: "#111b35", color: "#e8eef8", border: "1px solid rgba(30,127,255,0.12)" }} />
+                </div>
+              </div>
+              <div className="flex gap-2 pt-1">
+                <button onClick={() => setEditRes(null)} className="flex-1 py-2.5 rounded-xl text-sm font-semibold"
+                  style={{ background: "rgba(30,127,255,0.06)", color: "#6b82a0", border: "1px solid rgba(30,127,255,0.1)" }}>
+                  Cancel
+                </button>
+                <button
+                  onClick={() => editRes && void saveReservation({
+                    guest: editRes.guest,
+                    covers: editRes.covers,
+                    date: editRes.date,
+                    time: editRes.time,
+                    table: editRes.tableId,
+                    note: editRes.note,
+                  }, editRes.id)}
+                  className="flex-1 py-2.5 rounded-xl text-sm font-semibold flex items-center justify-center gap-2"
+                  style={{ background: "linear-gradient(135deg, #1e7fff, #00c6ff)", color: "#fff" }}>
+                  <Check size={15} /> Save
                 </button>
               </div>
             </motion.div>

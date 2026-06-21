@@ -7,23 +7,10 @@ import {
   CreditCard, UserCog, QrCode, MonitorSpeaker, Crown, Zap
 } from "lucide-react";
 
-type Role = "owner" | "manager" | "cashier" | "waiter" | "kitchen" | "founder";
-type Plan = "basic" | "pro" | "premium";
-
-const roleNavMap: Record<Role, string[]> = {
-  owner: ["dashboard", "pos", "orders", "tables", "menu", "kds", "staff", "analytics", "inventory", "reservations", "roles", "profile", "license"],
-  manager: ["dashboard", "pos", "orders", "tables", "menu", "kds", "staff", "analytics", "inventory", "reservations", "profile"],
-  cashier: ["pos", "orders", "tables"],
-  waiter: ["orders", "tables", "menu"],
-  kitchen: ["kds"],
-  founder: ["dashboard", "pos", "orders", "tables", "menu", "kds", "staff", "analytics", "inventory", "reservations", "roles", "profile", "license", "founder"],
-};
-
-const planGateMap: Record<string, Plan> = {
-  reservations: "premium",
-  analytics: "pro",
-  kds: "pro",
-};
+import type { Plan, Role } from "../auth";
+import type { PageId } from "../../config/access";
+import { planMeetsRequirement, requiredPlanForPage } from "../../config/access";
+import { usePlanConfig } from "../PlanConfigProvider";
 
 const navItems = [
   { id: "dashboard", label: "Dashboard", icon: LayoutDashboard, group: "main" },
@@ -62,15 +49,21 @@ interface SidebarProps {
   onMobileClose: () => void;
   role?: Role;
   plan?: Plan;
+  permittedPages?: PageId[];
+  onUpgrade?: (requiredPlan: Plan, page: PageId) => void;
   onLogout?: () => void;
+  userName?: string;
+  userInitials?: string;
 }
 
 export function Sidebar({
   active, onNavigate, collapsed, onToggle, mobileOpen, onMobileClose,
-  role = "owner", plan = "pro", onLogout
+  role = "owner", plan = "pro", permittedPages = [], onUpgrade, onLogout,
+  userName = "User", userInitials = "U",
 }: SidebarProps) {
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
-  const allowedPages = roleNavMap[role];
+  usePlanConfig(); // re-render when founder updates plan gates/prices
+  const allowedPages = permittedPages;
 
   const handleNav = (id: string) => {
     onNavigate(id);
@@ -139,14 +132,16 @@ export function Sidebar({
                   {groupItems.map(item => {
                     const Icon = item.icon;
                     const isActive = active === item.id;
-                    const reqPlan = planGateMap[item.id];
-                    const planOrder: Plan[] = ["basic", "pro", "premium"];
-                    const isLocked = reqPlan && planOrder.indexOf(plan) < planOrder.indexOf(reqPlan);
+                    const reqPlan = requiredPlanForPage(item.id as PageId);
+                    const isLocked = reqPlan && !planMeetsRequirement(plan, reqPlan);
 
                     return (
                       <button
                         key={item.id}
-                        onClick={() => !isLocked && handleNav(item.id)}
+                        onClick={() => {
+                          if (isLocked && reqPlan) onUpgrade?.(reqPlan, item.id as PageId);
+                          else handleNav(item.id);
+                        }}
                         className="w-full flex items-center gap-3 rounded-xl px-3 py-2 transition-all duration-200 relative group"
                         style={isActive
                           ? { background: "linear-gradient(135deg, rgba(30,127,255,0.18) 0%, rgba(0,198,255,0.06) 100%)", boxShadow: "inset 0 0 0 1px rgba(30,127,255,0.22)" }
@@ -207,12 +202,12 @@ export function Sidebar({
           <div className="flex items-center gap-2 px-1 py-1">
             <div className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0"
               style={{ background: `${roleColors[role]}20`, boxShadow: `0 0 10px ${roleColors[role]}25` }}>
-              <span style={{ color: roleColors[role], fontWeight: 700, fontSize: "0.7rem" }}>AK</span>
+              <span style={{ color: roleColors[role], fontWeight: 700, fontSize: "0.7rem" }}>{userInitials}</span>
             </div>
             <AnimatePresence>
               {!collapsed && (
                 <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex-1 min-w-0">
-                  <p style={{ color: "#e8eef8", fontSize: "0.78rem", fontWeight: 600 }} className="truncate">Alex Kumar</p>
+                  <p style={{ color: "#e8eef8", fontSize: "0.78rem", fontWeight: 600 }} className="truncate">{userName}</p>
                   <p style={{ color: roleColors[role], fontSize: "0.65rem", textTransform: "capitalize" }}>{role}</p>
                 </motion.div>
               )}

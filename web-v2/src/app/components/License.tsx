@@ -1,46 +1,36 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { motion } from "motion/react";
-import { Shield, Check, X, Key, Zap, Crown, Star, ArrowRight, Clock } from "lucide-react";
+import { Shield, Check, X, Key, Zap, Crown, ArrowRight, Clock } from "lucide-react";
 import { toast } from "./Toast";
 import { licensesApi, type ApiSubscriptionStatus, type ApiLicensePurchaseRequest } from "../../services/api";
 import { useAuth } from "../auth";
+import { usePlanConfig } from "../PlanConfigProvider";
+import { formatBillingSuffix, formatPlanPrice, panelLabelsFromConfig } from "../../services/planConfigStore";
 
-const plans = [
-  {
-    id: "basic",
-    name: "Basic",
-    price: 999,
-    period: "mo",
-    color: "#6b82a0",
-    icon: Shield,
-    features: ["1 Restaurant", "POS & Tables", "Basic Menu", "Staff Management", "Email Support"],
-    locked: ["KDS", "Reservations", "Analytics", "Multi-branch", "API Access"],
+const PLAN_STYLE: Record<string, { color: string; icon: typeof Shield; popular?: boolean }> = {
+  basic: { color: "#6b82a0", icon: Shield },
+  pro: { color: "#1e7fff", icon: Zap, popular: true },
+  premium: { color: "#a855f7", icon: Crown },
+};
+
+const FALLBACK_FEATURES: Record<string, { features: string[]; locked: string[] }> = {
+  basic: {
+    features: ["POS & Tables", "Menu Management", "Staff Management", "Email Support"],
+    locked: ["KDS", "Analytics", "Inventory", "Reservations"],
   },
-  {
-    id: "pro",
-    name: "Pro",
-    price: 2499,
-    period: "mo",
-    color: "#1e7fff",
-    icon: Zap,
-    popular: true,
-    features: ["1 Restaurant", "Full POS & KDS", "Menu & Inventory", "Analytics & Reports", "Reservations", "Priority Support"],
-    locked: ["Multi-branch", "White Label", "Dedicated Manager"],
+  pro: {
+    features: ["Full POS & KDS", "Menu & Inventory", "Analytics & Reports", "Staff & Roles", "Priority Support"],
+    locked: ["Multi-branch", "Reservations", "Dedicated Manager"],
   },
-  {
-    id: "premium",
-    name: "Premium",
-    price: 5999,
-    period: "mo",
-    color: "#a855f7",
-    icon: Crown,
-    features: ["Unlimited Branches", "Full Feature Access", "White Label Option", "Dedicated Account Manager", "Custom Integrations", "24/7 Phone Support", "SLA Guarantee"],
+  premium: {
+    features: ["Unlimited Branches", "Full Feature Access", "Reservations", "Dedicated Account Manager", "24/7 Support"],
     locked: [],
   },
-];
+};
 
 export function License() {
   const { user } = useAuth();
+  const { plans: planConfigs } = usePlanConfig();
   const [status, setStatus] = useState<ApiSubscriptionStatus | null>(null);
   const [pendingReq, setPendingReq] = useState<ApiLicensePurchaseRequest | null>(null);
   const [licenseKey, setLicenseKey] = useState("");
@@ -75,6 +65,29 @@ export function License() {
 
   const currentPlan = status?.plan ?? user?.plan ?? "basic";
   const trialDaysLeft = status?.trial_days_left ?? null;
+
+  const plans = useMemo(() => {
+    const ids = ["basic", "pro", "premium"];
+    return ids.map(id => {
+      const cfg = planConfigs.find(p => p.plan === id);
+      const style = PLAN_STYLE[id] ?? PLAN_STYLE.basic;
+      const fallback = FALLBACK_FEATURES[id] ?? { features: [], locked: [] };
+      const panelFeatures = cfg ? panelLabelsFromConfig(cfg) : [];
+      return {
+        id,
+        name: cfg?.label ?? id.charAt(0).toUpperCase() + id.slice(1),
+        priceLabel: cfg ? formatPlanPrice(cfg) : "—",
+        period: cfg ? formatBillingSuffix(cfg).replace(/^\//, "") : "mo",
+        description: cfg?.description ?? "",
+        color: style.color,
+        icon: style.icon,
+        popular: style.popular,
+        features: panelFeatures.length ? panelFeatures : fallback.features,
+        locked: panelFeatures.length ? [] : fallback.locked,
+      };
+    });
+  }, [planConfigs]);
+
   const planDef = plans.find(p => p.id === currentPlan) ?? plans[0];
   const PlanIcon = planDef.icon;
   const renewLabel = status?.license?.expires_at
@@ -142,6 +155,7 @@ export function License() {
           </div>
           <div>
             <p style={{ color: "#e8eef8", fontFamily: "var(--font-display)", fontWeight: 700, fontSize: "1.1rem" }}>{planDef.name} Plan</p>
+            {planDef.description && <p style={{ color: "#6b82a0", fontSize: "0.75rem" }}>{planDef.description}</p>}
             <p style={{ color: "#6b82a0", fontSize: "0.8rem" }}>{renewLabel}</p>
           </div>
         </div>
@@ -181,9 +195,12 @@ export function License() {
                   <span style={{ color: "#e8eef8", fontFamily: "var(--font-display)", fontWeight: 700, fontSize: "0.95rem" }}>{plan.name}</span>
                 </div>
                 <div className="mb-4">
-                  <span style={{ color: plan.color, fontFamily: "var(--font-mono)", fontWeight: 800, fontSize: "1.6rem" }}>₹{plan.price.toLocaleString()}</span>
+                  <span style={{ color: plan.color, fontFamily: "var(--font-mono)", fontWeight: 800, fontSize: "1.6rem" }}>{plan.priceLabel}</span>
                   <span style={{ color: "#6b82a0", fontSize: "0.75rem" }}>/{plan.period}</span>
                 </div>
+                {plan.description && (
+                  <p style={{ color: "#6b82a0", fontSize: "0.72rem", marginBottom: 10 }}>{plan.description}</p>
+                )}
                 <ul className="space-y-2 flex-1">
                   {plan.features.map(f => (
                     <li key={f} className="flex items-center gap-2">

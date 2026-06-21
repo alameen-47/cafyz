@@ -4,6 +4,7 @@ import { Plus, Clock, CheckCircle2, ChefHat, Truck, Filter, Search } from "lucid
 import { toast } from "./Toast";
 import { ordersApi, kdsApi, usersApi } from "../../services/api";
 import { getCurrencySymbol } from "../../utils/currency";
+import { useAppNav } from "../nav";
 
 type UiStatus = "pending" | "preparing" | "ready" | "served";
 type OrderRow = {
@@ -117,6 +118,7 @@ function OrderCard({ order, cur, onAdvance }: { order: OrderRow; cur: string; on
 }
 
 export function Orders() {
+  const { goToPos } = useAppNav();
   const [filter, setFilter] = useState("all");
   const [search, setSearch] = useState("");
   const [orders, setOrders] = useState<OrderRow[]>([]);
@@ -230,7 +232,7 @@ export function Orders() {
               </button>
             ))}
           </div>
-          <motion.button whileTap={{ scale: 0.95 }}
+          <motion.button whileTap={{ scale: 0.95 }} onClick={goToPos}
             className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-semibold flex-shrink-0"
             style={{ background: "linear-gradient(135deg, #1e7fff, #00c6ff)", color: "#fff" }}>
             <Plus size={16} />

@@ -219,10 +219,21 @@ export function Tables() {
           Floor Plan · {filtered.length} tables
         </h3>
         <button
+          onClick={async () => {
+            const name = window.prompt("Table name (e.g. T-12)?");
+            if (!name?.trim()) return;
+            const capacity = Number(window.prompt("Seats?", "4") ?? "4");
+            const zone = window.prompt("Zone (optional)?", "Main") ?? "Main";
+            try {
+              await tablesApi.create({ name: name.trim(), zone, capacity });
+              toast.success("Table added", name.trim());
+              void load();
+            } catch (e) { toast.error("Failed", (e as Error).message); }
+          }}
           className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold"
-          style={{ background: "linear-gradient(135deg, #1e7fff, #00c6ff)", color: "white" }}
+          style={{ background: "rgba(30,127,255,0.12)", color: "#1e7fff", border: "1px solid rgba(30,127,255,0.2)" }}
         >
-          <Plus size={16} /> Add Reservation
+          <Plus size={16} /> Add Table
         </button>
       </div>
 
@@ -263,6 +274,24 @@ export function Tables() {
               {selected.since && <p><span style={{ color: "#a8bdd4" }}>Since:</span> {selected.since}</p>}
               {selected.reservation && <p><span style={{ color: "#a8bdd4" }}>Reservation:</span> {selected.reservation}</p>}
             </div>
+            <button
+              onClick={async () => {
+                const name = window.prompt("Table name", selected.name)?.trim();
+                if (!name) return;
+                const capacity = Number(window.prompt("Seats", String(selected.seats)) ?? String(selected.seats));
+                if (!Number.isFinite(capacity) || capacity < 1) { toast.error("Invalid capacity"); return; }
+                try {
+                  await tablesApi.update(selected.id, { name, capacity });
+                  toast.success("Table updated", name);
+                  setSelected(prev => prev ? { ...prev, name, seats: capacity } : prev);
+                  void load();
+                } catch (e) { toast.error("Update failed", (e as Error).message); }
+              }}
+              className="w-full py-2 rounded-xl text-xs font-semibold"
+              style={{ background: "rgba(30,127,255,0.08)", color: "#1e7fff", border: "1px solid rgba(30,127,255,0.15)" }}
+            >
+              Edit name / capacity
+            </button>
             {/* Primary action: take / view this table's order in the POS */}
             <button
               onClick={() => { nav.goToTableOrder(selected.id); setSelected(null); }}
@@ -290,6 +319,21 @@ export function Tables() {
                 </button>
               ))}
             </div>
+            <button
+              onClick={async () => {
+                if (!window.confirm(`Delete ${selected.name}?`)) return;
+                try {
+                  await tablesApi.delete(selected.id);
+                  toast.success("Table removed", selected.name);
+                  setSelected(null);
+                  void load();
+                } catch (e) { toast.error("Delete failed", (e as Error).message); }
+              }}
+              className="w-full py-2 rounded-xl text-xs font-medium"
+              style={{ background: "rgba(255,59,92,0.08)", color: "#ff3b5c" }}
+            >
+              Delete table
+            </button>
           </motion.div>
         </div>
       )}

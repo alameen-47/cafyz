@@ -1,20 +1,52 @@
-/* Capacitor native shell — full-bleed layout with safe-area insets */
+/* Capacitor native shell — layout respects OS status + navigation bars */
+:root {
+  --cap-status-bar-height: 0px;
+}
+
 html.cap-native,
 body.cap-native,
 body.cap-native #root {
+  height: 100%;
+  min-height: 100%;
   min-height: 100dvh;
-  min-height: -webkit-fill-available;
   background: #06091a;
+  overflow: hidden;
 }
 
 body.cap-native .app-screen {
+  height: 100%;
+  min-height: 100%;
   min-height: 100dvh;
-  min-height: -webkit-fill-available;
-  height: 100dvh;
-  height: -webkit-fill-available;
-  padding-top: env(safe-area-inset-top, 0px);
-  padding-bottom: env(safe-area-inset-bottom, 0px);
-  padding-left: env(safe-area-inset-left, 0px);
-  padding-right: env(safe-area-inset-right, 0px);
   box-sizing: border-box;
+  overflow: hidden;
+}
+
+/* Top inset only when status bar overlays the WebView (see nativeSafeArea.ts) */
+body.cap-native .app-top-bar,
+body.cap-native .app-native-inset-top {
+  padding-top: var(--cap-status-bar-height, 0px);
+  box-sizing: border-box;
+}
+
+/* Bottom tab bar sits above the OS nav bar; pad scrollable main content on phones */
+@media (max-width: 1023px) {
+  body.cap-native .app-main-scroll {
+    padding-bottom: calc(4.75rem + env(safe-area-inset-bottom, 0px));
+  }
+
+  body.cap-native .app-main-full {
+    padding-bottom: calc(4.75rem + env(safe-area-inset-bottom, 0px));
+  }
+}
+
+body.cap-native .app-mobile-nav {
+  padding-bottom: max(0.5rem, env(safe-area-inset-bottom, 0px));
+}
+
+body.cap-native .app-main-spacer {
+  display: none;
+}
+
+.safe-area-pb {
+  padding-bottom: max(0.75rem, env(safe-area-inset-bottom, 0px));
 }

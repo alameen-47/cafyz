@@ -19,7 +19,7 @@ const config: CapacitorConfig = {
     StatusBar: {
       style: 'DARK',
       backgroundColor: '#06091a',
-      overlaysWebView: true,
+      overlaysWebView: false,
     },
     BluetoothLe: {
       displayStrings: {

@@ -15,6 +15,7 @@
     "web-v2:build:native": "vite build --config web-v2/vite.config.ts --mode capacitor",
     "gen-icons": "node scripts/gen-icons.mjs",
     "cap:sync": "npm run web-v2:build:native && npx cap sync",
+    "cap:android:usb": "bash scripts/cap-run-usb-android.sh",
     "cap:android": "npx cap open android",
     "cap:ios": "npx cap open ios",
     "native:build": "bash scripts/build-native.sh all",

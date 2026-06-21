@@ -1,16 +1,23 @@
 import { useState, useEffect, useCallback } from "react";
 import { motion } from "motion/react";
-import { Shield, Key, Zap, TrendingUp, Check, X, Copy, RefreshCw, Globe, Building2, CreditCard } from "lucide-react";
+import { Shield, Key, Zap, TrendingUp, Check, X, Copy, RefreshCw, Globe, Building2, CreditCard, Trash2 } from "lucide-react";
 import { toast } from "./Toast";
 import {
   founderApi, licensesApi,
   type ApiFounderStats, type ApiFounderRestaurant, type ApiFounderInquiry,
   type ApiLicenseKey, type ApiPlanConfig, type ApiLicensePurchaseRequest,
 } from "../../services/api";
+import { notifyPlanConfigUpdated, parsePanelsJson, refreshPlanConfigs } from "../../services/planConfigStore";
 
 const tabs = ["Overview", "Restaurants", "Trial Requests", "License Keys", "Plan Config"];
 const planColors: Record<string, string> = { basic: "#6b82a0", pro: "#1e7fff", premium: "#a855f7" };
-const FALLBACK_PRICE: Record<string, number> = { basic: 999, pro: 2499, premium: 5999 };
+const FALLBACK_PRICE: Record<string, number> = { basic: 49, pro: 99, premium: 199 };
+const ALL_PANELS = ["pos", "menu", "waiter", "kds", "manager", "inventory", "staff", "reports", "roles", "reservations", "license"];
+const PANEL_LABELS: Record<string, string> = {
+  pos: "POS", menu: "Menu", waiter: "Tables / Waiter", kds: "KDS", manager: "Dashboard",
+  inventory: "Inventory", staff: "Staff", reports: "Reports", roles: "Roles", reservations: "Reservations", license: "License",
+};
+const CURRENCY_OPTIONS = ["$", "€", "£", "₹", "AED", "SAR"];
 const shortDate = (iso?: string) => iso ? new Date(iso).toLocaleDateString(undefined, { day: "numeric", month: "short" }) : "—";
 
 export function FounderConsole() {
@@ -70,6 +77,29 @@ export function FounderConsole() {
     } finally { setBusy(false); }
   };
 
+  const changePlan = async (restaurantId: string, plan: string) => {
+    setBusy(true);
+    try {
+      await founderApi.setPlan(restaurantId, plan);
+      toast.success("Plan updated", `Restaurant moved to ${plan}`);
+      await load();
+    } catch (e) {
+      toast.error("Couldn't change plan", (e as Error).message);
+    } finally { setBusy(false); }
+  };
+
+  const removeRestaurant = async (restaurantId: string, name: string) => {
+    if (!window.confirm(`Delete "${name}" and all its data? This cannot be undone.`)) return;
+    setBusy(true);
+    try {
+      await founderApi.deleteRestaurant(restaurantId);
+      toast.success("Restaurant deleted", name);
+      await load();
+    } catch (e) {
+      toast.error("Couldn't delete restaurant", (e as Error).message);
+    } finally { setBusy(false); }
+  };
+
   const generateKey = async (plan: string) => {
     setBusy(true);
     try {
@@ -80,6 +110,26 @@ export function FounderConsole() {
     } catch (e) {
       toast.error("Couldn't generate key", (e as Error).message);
     } finally { setBusy(false); }
+  };
+
+  const savePlanField = async (plan: string, patch: Partial<ApiPlanConfig>) => {
+    try {
+      await founderApi.updatePlanConfig(plan, patch);
+      await refreshPlanConfigs(true);
+      notifyPlanConfigUpdated();
+      toast.success("Plan updated", `${plan} saved — live on web & mobile`);
+      await load();
+    } catch (err) {
+      toast.error("Couldn't update plan", (err as Error).message);
+    }
+  };
+
+  const togglePanel = async (plan: string, panel: string, enabled: boolean) => {
+    const cfg = planCfg.find(p => p.plan === plan);
+    if (!cfg) return;
+    const panels = new Set(parsePanelsJson(cfg.panels_json));
+    if (enabled) panels.add(panel); else panels.delete(panel);
+    await savePlanField(plan, { panels_json: JSON.stringify([...panels]) });
   };
 
   const totalRestaurants = (stats?.restaurants_by_plan ?? []).reduce((s, p) => s + p.count, 0) || rests.length;
@@ -161,6 +211,7 @@ export function FounderConsole() {
             <div className="col-span-2 hidden md:block">Timezone</div>
             <div className="col-span-2 hidden md:block">Users</div>
             <div className="col-span-2">Status</div>
+            <div className="col-span-12 sm:col-span-2">Actions</div>
           </div>
           {rests.length === 0 && <div className="px-4 py-8 text-center" style={{ color: "#6b82a0", fontSize: "0.82rem" }}>No restaurants</div>}
           {rests.map((r, i) => (
@@ -185,6 +236,26 @@ export function FounderConsole() {
                   style={r.active_key ? { background: "rgba(34,197,94,0.1)", color: "#22c55e" } : { background: "rgba(245,158,11,0.1)", color: "#f59e0b" }}>
                   {r.active_key ? "Licensed" : "No license"}
                 </span>
+              </div>
+              <div className="col-span-12 sm:col-span-2 flex flex-wrap items-center gap-2 mt-1 sm:mt-0">
+                <select
+                  defaultValue={r.plan}
+                  disabled={busy}
+                  onChange={e => void changePlan(r.id, e.target.value)}
+                  className="text-xs rounded-lg px-2 py-1 outline-none capitalize"
+                  style={{ background: "#111b35", color: "#e8eef8", border: "1px solid rgba(30,127,255,0.15)" }}
+                >
+                  {["basic", "pro", "premium"].map(p => <option key={p} value={p}>{p}</option>)}
+                </select>
+                <button
+                  disabled={busy}
+                  onClick={() => void removeRestaurant(r.id, r.name)}
+                  className="p-1.5 rounded-lg transition-all hover:bg-[rgba(255,59,92,0.1)]"
+                  title="Delete restaurant"
+                  style={{ color: "#ff3b5c" }}
+                >
+                  <Trash2 size={14} />
+                </button>
               </div>
             </motion.div>
           ))}
@@ -296,27 +367,44 @@ export function FounderConsole() {
         </motion.div>
       )}
 
-      {/* Plan Config */}
+      {/* Plan Config — prices, labels, and feature gates sync to all clients */}
       {activeTab === "Plan Config" && (
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
+          <p style={{ color: "#6b82a0", fontSize: "0.8rem" }}>
+            Changes here update the License page, upgrade prompts, signup inquiry, and feature locks on web and mobile within about a minute.
+          </p>
           {["basic", "pro", "premium"].map(plan => {
             const cfg = planCfg.find(p => p.plan === plan);
+            const panels = parsePanelsJson(cfg?.panels_json);
             return (
-              <div key={plan} className="rounded-2xl p-5 space-y-3" style={{ background: "#0d1326", border: "1px solid rgba(30,127,255,0.1)" }}>
+              <div key={plan} className="rounded-2xl p-5 space-y-4" style={{ background: "#0d1326", border: "1px solid rgba(30,127,255,0.1)" }}>
                 <div className="flex items-center gap-2">
                   <CreditCard size={16} style={{ color: planColors[plan] }} />
-                  <h3 style={{ color: "#e8eef8", fontFamily: "var(--font-display)", fontWeight: 600, textTransform: "capitalize" }}>{plan} Plan</h3>
+                  <h3 style={{ color: "#e8eef8", fontFamily: "var(--font-display)", fontWeight: 600, textTransform: "capitalize" }}>{cfg?.label ?? plan} Plan</h3>
                 </div>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
-                    <label style={{ color: "#6b82a0", fontSize: "0.72rem", display: "block", marginBottom: 4 }}>Monthly Price ({cfg?.currency_symbol ?? "₹"})</label>
+                    <label style={{ color: "#6b82a0", fontSize: "0.72rem", display: "block", marginBottom: 4 }}>Display name</label>
+                    <input type="text" defaultValue={cfg?.label ?? plan}
+                      onBlur={e => { if (cfg && e.target.value.trim() && e.target.value !== cfg.label) void savePlanField(plan, { label: e.target.value.trim() }); }}
+                      className="w-full rounded-xl px-3 py-2 text-sm outline-none capitalize"
+                      style={{ background: "#111b35", color: "#e8eef8", border: "1px solid rgba(30,127,255,0.1)" }} />
+                  </div>
+                  <div>
+                    <label style={{ color: "#6b82a0", fontSize: "0.72rem", display: "block", marginBottom: 4 }}>Currency</label>
+                    <select defaultValue={cfg?.currency_symbol ?? "$"}
+                      onChange={e => { if (cfg) void savePlanField(plan, { currency_symbol: e.target.value }); }}
+                      className="w-full rounded-xl px-3 py-2 text-sm outline-none"
+                      style={{ background: "#111b35", color: "#e8eef8", border: "1px solid rgba(30,127,255,0.1)" }}>
+                      {CURRENCY_OPTIONS.map(sym => <option key={sym} value={sym}>{sym}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label style={{ color: "#6b82a0", fontSize: "0.72rem", display: "block", marginBottom: 4 }}>Price ({cfg?.currency_symbol ?? "$"})</label>
                     <input type="number" defaultValue={cfg?.price_monthly ?? FALLBACK_PRICE[plan]}
-                      onBlur={async e => {
+                      onBlur={e => {
                         const price = Number(e.target.value);
-                        if (cfg && price !== cfg.price_monthly) {
-                          try { await founderApi.updatePlanConfig(plan, { price_monthly: price }); toast.success("Plan price updated", `${plan}: ${price}`); await load(); }
-                          catch (err) { toast.error("Couldn't update plan", (err as Error).message); }
-                        }
+                        if (cfg && price !== cfg.price_monthly) void savePlanField(plan, { price_monthly: price });
                       }}
                       className="w-full rounded-xl px-3 py-2 text-sm outline-none"
                       style={{ background: "#111b35", color: "#e8eef8", border: "1px solid rgba(30,127,255,0.1)", fontFamily: "var(--font-mono)" }} />
@@ -326,6 +414,31 @@ export function FounderConsole() {
                     <input type="text" readOnly value={cfg ? `${cfg.billing_interval_count} ${cfg.billing_interval_unit}` : "1 month"}
                       className="w-full rounded-xl px-3 py-2 text-sm outline-none"
                       style={{ background: "#111b35", color: "#6b82a0", border: "1px solid rgba(30,127,255,0.1)", fontFamily: "var(--font-mono)" }} />
+                  </div>
+                </div>
+                <div>
+                  <label style={{ color: "#6b82a0", fontSize: "0.72rem", display: "block", marginBottom: 4 }}>Description (shown on License page)</label>
+                  <textarea defaultValue={cfg?.description ?? ""} rows={2}
+                    onBlur={e => { if (cfg && e.target.value !== (cfg.description ?? "")) void savePlanField(plan, { description: e.target.value }); }}
+                    className="w-full rounded-xl px-3 py-2 text-sm outline-none resize-none"
+                    style={{ background: "#111b35", color: "#e8eef8", border: "1px solid rgba(30,127,255,0.1)" }} />
+                </div>
+                <div>
+                  <label style={{ color: "#6b82a0", fontSize: "0.72rem", display: "block", marginBottom: 8 }}>Included features</label>
+                  <div className="flex flex-wrap gap-2">
+                    {ALL_PANELS.map(panel => {
+                      const on = panels.includes(panel);
+                      return (
+                        <button key={panel} type="button" disabled={busy}
+                          onClick={() => { setBusy(true); void togglePanel(plan, panel, !on).finally(() => setBusy(false)); }}
+                          className="text-xs px-2.5 py-1.5 rounded-lg font-medium transition-all"
+                          style={on
+                            ? { background: `${planColors[plan]}18`, color: planColors[plan], border: `1px solid ${planColors[plan]}35` }
+                            : { background: "rgba(255,255,255,0.04)", color: "#6b82a0", border: "1px solid rgba(255,255,255,0.06)" }}>
+                          {PANEL_LABELS[panel] ?? panel}
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
               </div>

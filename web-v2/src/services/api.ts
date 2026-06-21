@@ -1,17 +1,30 @@
 // ─── Cafyz API Client ────────────────────────────────────────────────────────
 // Tenant-scoped HTTP client. JWT is stored in localStorage and attached to
 // every request. On 401 the session is cleared and the user is redirected.
+import { Capacitor } from '@capacitor/core';
 import { toastBus } from './toastBus';
 import { setActiveCurrencyCode } from '../utils/currency';
 import { setActiveLanguageCode } from '../utils/language';
 
 // In dev, relative URLs go through the Vite proxy (→ localhost:4000).
-// In production, set VITE_API_URL to the backend origin (e.g. https://api.cafyz.io).
+// Native USB/emulator dev uses http://localhost:4000 with `adb reverse tcp:4000 tcp:4000`.
+// Production native builds use VITE_NATIVE_API_URL (Render) unless VITE_API_URL is set.
 const ENV = (import.meta as any).env ?? {};
 const ENV_BASE = String(ENV.VITE_API_URL ?? '').trim();
 const IS_DEV = Boolean(ENV.DEV);
 const DEFAULT_RENDER_BASE = String(ENV.VITE_NATIVE_API_URL ?? 'https://cafyz.onrender.com').trim();
-const BASE = ENV_BASE || (IS_DEV ? '' : DEFAULT_RENDER_BASE);
+
+function resolveApiBase(): string {
+  const explicit = ENV_BASE.replace(/\/$/, '');
+  if (explicit) return explicit;
+  if (IS_DEV && Capacitor.isNativePlatform()) {
+    return 'http://localhost:4000';
+  }
+  if (IS_DEV) return '';
+  return DEFAULT_RENDER_BASE.replace(/\/$/, '');
+}
+
+const BASE = resolveApiBase();
 let sessionToastShown = false;
 
 async function request<T = unknown>(
@@ -110,7 +123,7 @@ export const authApi = {
   pin: (email: string, pin: string, device_id: string) =>
     post<LoginResponse>('/api/auth/pin', { email, pin, device_id }),
   forgotPassword: (email: string) =>
-    post<{ ok: boolean; message: string }>('/api/auth/forgot-password', { email }),
+    post<{ ok: boolean; message: string; dev_reset_url?: string }>('/api/auth/forgot-password', { email }),
   resetPassword: (token: string, password: string) =>
     post<{ ok: boolean; message: string }>('/api/auth/reset-password', { token, password }),
   me: () => get<ApiUser>('/api/auth/me'),
@@ -228,6 +241,8 @@ export const menuCategoriesApi = {
 // ── Tables ────────────────────────────────────────────────────────────────────
 export const tablesApi = {
   list:         ()                                                             => get<ApiTable[]>('/api/tables'),
+  update:       (id: string, d: Partial<{ name: string; zone: string; capacity: number; status: string }>) =>
+    put<ApiTable>(`/api/tables/${id}`, d),
   updateStatus: (id: string, d: { status: string; course?: string; covers?: number; elapsed_min?: number }) =>
     patch<ApiTable>(`/api/tables/${id}/status`, d),
   create:       (d: { name: string; zone: string; capacity: number })          => post<ApiTable>('/api/tables', d),
@@ -325,6 +340,11 @@ export const dashboardApi = {
     get<ApiRevenueResponse>(`/api/dashboard/revenue${revenueQueryString(q)}`),
   soldItems: (q?: RevenueQueryParams) =>
     get<ApiSoldItemsResponse>(`/api/dashboard/sold-items${revenueQueryString(q)}`),
+};
+
+// ── Public plans (founder-controlled pricing + feature gates) ─────────────────
+export const plansApi = {
+  list: () => get<ApiPlanConfig[]>('/api/public/plans'),
 };
 
 // ── Licenses ──────────────────────────────────────────────────────────────────

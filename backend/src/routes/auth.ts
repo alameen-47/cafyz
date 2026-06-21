@@ -4,7 +4,7 @@ import { createHash, randomBytes } from 'crypto';
 import { z } from 'zod';
 import { getDb } from '../db.js';
 import { signToken, requireAuth, type AuthRequest } from '../middleware/auth.js';
-import { APP_URL } from '../config/site.js';
+import { resetPasswordUrl } from '../config/site.js';
 import { isEmailConfigured, sendMailReliable, smtpFrom } from '../services/email.js';
 import { isValidPhoneE164, normalizePhone, sendOtpSms } from '../services/sms.js';
 
@@ -338,7 +338,7 @@ router.post('/forgot-password', async (req, res, next) => {
     });
 
     if (isEmailConfigured()) {
-      const resetUrl = `${APP_URL}/login?mode=reset&token=${encodeURIComponent(tokenRaw)}`;
+      const resetUrl = resetPasswordUrl(tokenRaw);
       const recipient = String(user.email ?? emailNorm);
       const name = String(user.name ?? 'there');
       await sendMailReliable({
@@ -348,11 +348,18 @@ router.post('/forgot-password', async (req, res, next) => {
         html: `<p>Hello ${name},</p>
                <p>You requested a password reset for your Cafyz account.</p>
                <p><a href="${resetUrl}">Reset password</a></p>
+               <p>Or copy this link: ${resetUrl}</p>
                <p>This link expires in ${RESET_TOKEN_TTL_MINUTES} minutes.</p>`,
       });
     }
 
-    res.json({ ok: true, message: GENERIC_RESET_MSG });
+    const resetUrl = resetPasswordUrl(tokenRaw);
+    const exposeDevLink = process.env.NODE_ENV !== 'production' || !isEmailConfigured();
+    res.json({
+      ok: true,
+      message: GENERIC_RESET_MSG,
+      ...(exposeDevLink ? { dev_reset_url: resetUrl } : {}),
+    });
   } catch (e) { next(e); }
 });
 

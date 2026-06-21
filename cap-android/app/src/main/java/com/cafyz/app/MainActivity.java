@@ -9,9 +9,9 @@ public class MainActivity extends BridgeActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        // Draw edge-to-edge so the WebView fills the screen (no white system-bar gaps).
-        WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
-        getWindow().setStatusBarColor(Color.TRANSPARENT);
+        // Keep status + navigation bars reserved — WebView content stays below/above system UI.
+        WindowCompat.setDecorFitsSystemWindows(getWindow(), true);
+        getWindow().setStatusBarColor(Color.parseColor("#06091a"));
         getWindow().setNavigationBarColor(Color.parseColor("#06091a"));
     }
 }

@@ -1,42 +1,100 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { Bell, X, CheckCircle2, AlertTriangle, Package, ShoppingBag, Users, Check } from "lucide-react";
+import { Bell, X, CheckCircle2, AlertTriangle, Package, ShoppingBag, Check } from "lucide-react";
+import { dashboardApi, inventoryApi, ordersApi } from "../../services/api";
 
 interface Notification {
   id: string;
-  type: "order" | "alert" | "stock" | "staff" | "system";
+  type: "order" | "alert" | "stock" | "system";
   title: string;
   body: string;
   time: string;
   read: boolean;
 }
 
-const initialNotifications: Notification[] = [
-  { id: "n1", type: "order",  title: "New Order — T-04",     body: "Paneer Tikka ×2, Biryani ×1, Mango Lassi ×2",   time: "just now", read: false },
-  { id: "n2", type: "alert",  title: "Table T-07 needs attention", body: "Table has been occupied for 2h 10m with no bill request", time: "3m ago",   read: false },
-  { id: "n3", type: "stock",  title: "Low stock alert",       body: "Basmati Rice below par level — 2kg remaining",  time: "8m ago",   read: false },
-  { id: "n4", type: "staff",  title: "Sam Wilson clocked in", body: "Shift starting · Assigned T-03, T-20",          time: "22m ago",  read: true },
-  { id: "n5", type: "order",  title: "Order #4818 paid",      body: "T-07 · ₹71 · Card payment · Ravi",             time: "31m ago",  read: true },
-  { id: "n6", type: "stock",  title: "Olive Oil critically low", body: "Only 500ml remaining — par level is 5L",     time: "45m ago",  read: true },
-  { id: "n7", type: "system", title: "Daily report ready",    body: "Revenue ₹52,840 · 342 orders · 18/24 tables",  time: "1h ago",   read: true },
-];
-
 const typeConfig = {
   order:  { icon: ShoppingBag, color: "#1e7fff",  bg: "rgba(30,127,255,0.1)" },
   alert:  { icon: AlertTriangle, color: "#f59e0b", bg: "rgba(245,158,11,0.1)" },
   stock:  { icon: Package,      color: "#ff3b5c",  bg: "rgba(255,59,92,0.1)" },
-  staff:  { icon: Users,        color: "#22d3ee",  bg: "rgba(34,211,238,0.1)" },
   system: { icon: CheckCircle2, color: "#22c55e",  bg: "rgba(34,197,94,0.1)" },
 };
+
+function relTime(iso?: string): string {
+  if (!iso) return "recently";
+  const diff = Date.now() - new Date(iso).getTime();
+  const mins = Math.floor(diff / 60_000);
+  if (mins < 1) return "just now";
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  return new Date(iso).toLocaleDateString();
+}
 
 interface NotificationDropdownProps {
   open: boolean;
   onClose: () => void;
+  onUnreadChange?: (count: number) => void;
 }
 
-export function NotificationDropdown({ open, onClose }: NotificationDropdownProps) {
-  const [notes, setNotes] = useState(initialNotifications);
+export function NotificationDropdown({ open, onClose, onUnreadChange }: NotificationDropdownProps) {
+  const [notes, setNotes] = useState<Notification[]>([]);
+  const [loading, setLoading] = useState(false);
   const unreadCount = notes.filter(n => !n.read).length;
+
+  useEffect(() => {
+    onUnreadChange?.(unreadCount);
+  }, [unreadCount, onUnreadChange]);
+
+  useEffect(() => {
+    if (!open) return;
+    let alive = true;
+    setLoading(true);
+    void (async () => {
+      try {
+        const [orders, inventory, stats] = await Promise.all([
+          ordersApi.list().catch(() => []),
+          inventoryApi.list().catch(() => []),
+          dashboardApi.stats().catch(() => null),
+        ]);
+        if (!alive) return;
+        const built: Notification[] = [];
+        for (const o of orders.slice(0, 5)) {
+          built.push({
+            id: `order-${o.id}`,
+            type: "order",
+            title: `Order ${o.status.replace(/_/g, " ")} — ${o.table_name ?? "Takeaway"}`,
+            body: `${o.items?.length ?? 0} items · ${o.covers ?? 0} covers`,
+            time: relTime(o.updated_at ?? o.created_at),
+            read: o.status === "paid" || o.status === "voided" || o.status === "comped",
+          });
+        }
+        for (const item of inventory.filter(i => i.current <= i.par).slice(0, 5)) {
+          built.push({
+            id: `stock-${item.id}`,
+            type: "stock",
+            title: item.current <= item.par * 0.25 ? "Critical stock" : "Low stock",
+            body: `${item.name}: ${item.current}${item.unit} remaining (par ${item.par}${item.unit})`,
+            time: relTime(item.updated_at),
+            read: false,
+          });
+        }
+        if (stats) {
+          built.push({
+            id: "stats-today",
+            type: "system",
+            title: "Today's snapshot",
+            body: `${stats.orders_today} orders · ${stats.tables_occupied}/${stats.tables_total} tables occupied · ${stats.inventory_low} low-stock items`,
+            time: "today",
+            read: true,
+          });
+        }
+        setNotes(built.slice(0, 12));
+      } finally {
+        if (alive) setLoading(false);
+      }
+    })();
+    return () => { alive = false; };
+  }, [open]);
 
   const markAllRead = () => setNotes(n => n.map(x => ({ ...x, read: true })));
   const markRead = (id: string) => setNotes(n => n.map(x => x.id === id ? { ...x, read: true } : x));
@@ -46,10 +104,7 @@ export function NotificationDropdown({ open, onClose }: NotificationDropdownProp
     <AnimatePresence>
       {open && (
         <>
-          {/* Backdrop */}
           <div className="fixed inset-0 z-40" onClick={onClose} />
-
-          {/* Panel */}
           <motion.div
             initial={{ opacity: 0, scale: 0.95, y: -8 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -61,7 +116,6 @@ export function NotificationDropdown({ open, onClose }: NotificationDropdownProp
               border: "1px solid rgba(30,127,255,0.18)",
               boxShadow: "0 16px 48px rgba(0,0,0,0.6)",
             }}>
-            {/* Header */}
             <div className="flex items-center justify-between px-4 py-3 border-b" style={{ borderColor: "rgba(30,127,255,0.1)" }}>
               <div className="flex items-center gap-2">
                 <Bell size={15} style={{ color: "#1e7fff" }} />
@@ -90,9 +144,12 @@ export function NotificationDropdown({ open, onClose }: NotificationDropdownProp
               </div>
             </div>
 
-            {/* List */}
             <div className="overflow-y-auto scrollbar-hide" style={{ maxHeight: 380 }}>
-              {notes.length === 0 ? (
+              {loading ? (
+                <div className="flex items-center justify-center py-12">
+                  <div className="w-6 h-6 border-2 border-white/20 border-t-[#1e7fff] rounded-full animate-spin" />
+                </div>
+              ) : notes.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-12 gap-2">
                   <Check size={28} style={{ color: "#22c55e" }} />
                   <p style={{ color: "#6b82a0", fontSize: "0.82rem" }}>All caught up!</p>
@@ -105,7 +162,7 @@ export function NotificationDropdown({ open, onClose }: NotificationDropdownProp
                     <motion.div key={note.id} layout
                       initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
                       onClick={() => markRead(note.id)}
-                      className="flex items-start gap-3 px-4 py-3 cursor-pointer transition-all hover:bg-[rgba(30,127,255,0.04)] border-b"
+                      className="group flex items-start gap-3 px-4 py-3 cursor-pointer transition-all hover:bg-[rgba(30,127,255,0.04)] border-b"
                       style={{
                         borderColor: "rgba(30,127,255,0.06)",
                         background: note.read ? "transparent" : "rgba(30,127,255,0.03)",
@@ -135,13 +192,6 @@ export function NotificationDropdown({ open, onClose }: NotificationDropdownProp
                   );
                 })
               )}
-            </div>
-
-            {/* Footer */}
-            <div className="px-4 py-2.5 border-t text-center" style={{ borderColor: "rgba(30,127,255,0.1)" }}>
-              <button style={{ color: "#1e7fff", fontSize: "0.78rem", fontWeight: 600 }}>
-                View all notifications →
-              </button>
             </div>
           </motion.div>
         </>

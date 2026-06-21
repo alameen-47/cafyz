@@ -147,7 +147,10 @@ const columns: { key: KDSStatus; label: string; color: string; icon: React.Eleme
 export function KDS() {
   const [tickets, setTickets] = useState<ApiKdsTicket[]>([]);
   const [stationFilter, setStationFilter] = useState("All");
-  const [autoPrint, setAutoPrint] = useState(true);
+  const [autoPrint, setAutoPrint] = useState(() => localStorage.getItem("cafyz_kds_auto_print") !== "0");
+  useEffect(() => {
+    localStorage.setItem("cafyz_kds_auto_print", autoPrint ? "1" : "0");
+  }, [autoPrint]);
   const [activeCol, setActiveCol] = useState<KDSStatus>("new"); // mobile tab
 
   // Live board: poll kitchen tickets every 5s.

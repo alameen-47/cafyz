@@ -1,12 +1,14 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Eye, EyeOff, Shield, ArrowRight, Phone, Lock, Mail, Delete, ChevronRight, Star, Store, User } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "../auth";
-import { authApi } from "../../services/api";
+import { authApi, inquiryApi, type ApiPlanConfig } from "../../services/api";
+import { usePlanConfig } from "../PlanConfigProvider";
+import { formatPlanPrice, formatBillingSuffix } from "../../services/planConfigStore";
 
 type AuthMethod = "password" | "pin" | "otp";
-type AuthState = "login" | "forgot" | "reset" | "otp-verify" | "signup";
+type AuthState = "login" | "forgot" | "reset" | "otp-verify" | "signup" | "inquiry";
 
 const stats = [
   { label: "Restaurants", value: "2,400+" },
@@ -62,6 +64,7 @@ function PinPad({ onSubmit }: { onSubmit: (pin: string) => void }) {
 }
 
 export function LoginScreen({ onLogin }: { onLogin?: () => void }) {
+  const { plans: planConfigs } = usePlanConfig();
   const { loginEmail, loginPin, requestOtp, verifyOtp, signup } = useAuth();
   const [method, setMethod] = useState<AuthMethod>("password");
   // If arriving from the reset email link (/login?mode=reset&token=…), mount
@@ -85,9 +88,22 @@ export function LoginScreen({ onLogin }: { onLogin?: () => void }) {
   });
   const [newPw, setNewPw] = useState("");
 
+  // Consume ?mode=reset&token= from email links; strip token from the address bar.
+  useEffect(() => {
+    const p = new URLSearchParams(window.location.search);
+    const token = p.get("token");
+    if (p.get("mode") === "reset" && token) {
+      setAuthState("reset");
+      setResetToken(token);
+      window.history.replaceState({}, "", window.location.pathname || "/");
+    }
+  }, []);
+
   // Free-trial signup form
   const [su, setSu] = useState({ restaurant: "", owner: "", email: "", phone: "", password: "" });
+  const [inq, setInq] = useState({ name: "", restaurant: "", email: "", plan: "pro", message: "" });
   const setSuField = (k: keyof typeof su, v: string) => setSu(s => ({ ...s, [k]: v }));
+  const setInqField = (k: keyof typeof inq, v: string) => setInq(s => ({ ...s, [k]: v }));
 
   function errMsg(e: unknown) { return e instanceof Error ? e.message : "Something went wrong"; }
 
@@ -103,6 +119,29 @@ export function LoginScreen({ onLogin }: { onLogin?: () => void }) {
       await signup({ restaurant_name: su.restaurant, owner_name: su.owner, email: su.email, phone: su.phone, password: su.password, plan: "premium", timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC" });
       toast.success("Welcome to Cafyz!", { description: "Your free trial is ready" });
       onLogin?.();
+    } catch (e) {
+      toast.error(errMsg(e));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const submitInquiry = async () => {
+    if (!inq.name.trim() || !inq.restaurant.trim() || !inq.email.trim()) {
+      toast.error("Name, restaurant, and email are required");
+      return;
+    }
+    setLoading(true);
+    try {
+      const res = await inquiryApi.submit({
+        name: inq.name.trim(),
+        restaurant_name: inq.restaurant.trim(),
+        email: inq.email.trim().toLowerCase(),
+        plan: inq.plan,
+        message: inq.message.trim() || undefined,
+      });
+      toast.success("Request sent", res.message || "We'll email you when your account is ready");
+      setAuthState("login");
     } catch (e) {
       toast.error(errMsg(e));
     } finally {
@@ -164,6 +203,11 @@ export function LoginScreen({ onLogin }: { onLogin?: () => void }) {
     setLoading(true);
     try {
       const r = await authApi.forgotPassword(forgotEmail.trim());
+      if (r.dev_reset_url) {
+        toast.success("Reset link ready", { description: "Opening the password reset page…" });
+        window.location.assign(r.dev_reset_url);
+        return;
+      }
       toast.success("Check your email", { description: r.message || "If that address is registered, a reset link is on its way." });
       setAuthState("login");
     } catch (e) { toast.error(errMsg(e)); }
@@ -186,7 +230,7 @@ export function LoginScreen({ onLogin }: { onLogin?: () => void }) {
   };
 
   return (
-    <div className="app-screen flex" style={{ background: "#06091a" }}>
+    <div className="app-screen app-native-inset-top flex" style={{ background: "#06091a" }}>
       {/* Left hero panel — desktop only */}
       <div
         className="hidden lg:flex flex-col justify-between w-[480px] flex-shrink-0 p-10"
@@ -351,6 +395,8 @@ export function LoginScreen({ onLogin }: { onLogin?: () => void }) {
                 <p style={{ color: "#6b82a0", fontSize: "0.8rem", textAlign: "center" }}>
                   New to Cafyz?{" "}
                   <button onClick={() => setAuthState("signup")} style={{ color: "#1e7fff", fontWeight: 600 }}>Start free trial →</button>
+                  {" · "}
+                  <button onClick={() => setAuthState("inquiry")} style={{ color: "#a855f7", fontWeight: 600 }}>Request access</button>
                 </p>
               </motion.div>
             )}
@@ -404,6 +450,61 @@ export function LoginScreen({ onLogin }: { onLogin?: () => void }) {
                   Already have an account?{" "}
                   <button onClick={() => setAuthState("login")} style={{ color: "#1e7fff", fontWeight: 600 }}>Sign in</button>
                 </p>
+              </motion.div>
+            )}
+
+            {authState === "inquiry" && (
+              <motion.div key="inquiry" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -16 }} className="space-y-4">
+                <div>
+                  <button onClick={() => setAuthState("login")} style={{ color: "#6b82a0", fontSize: "0.8rem" }}>← Back to sign in</button>
+                  <h2 style={{ fontFamily: "var(--font-display)", fontWeight: 700, color: "#e8eef8", fontSize: "1.6rem", marginTop: 10 }}>Request an account</h2>
+                  <p style={{ color: "#6b82a0", fontSize: "0.85rem", marginTop: 4 }}>For managed onboarding — our team will review and email your login details.</p>
+                </div>
+                {[
+                  { k: "name" as const, label: "Your name", icon: User, type: "text", ph: "Alex Kumar" },
+                  { k: "restaurant" as const, label: "Restaurant name", icon: Store, type: "text", ph: "The Spice Garden" },
+                  { k: "email" as const, label: "Work email", icon: Mail, type: "email", ph: "alex@restaurant.com" },
+                ].map(f => {
+                  const Icon = f.icon;
+                  return (
+                    <div key={f.k}>
+                      <label style={{ color: "#a8bdd4", fontSize: "0.8rem", display: "block", marginBottom: 6 }}>{f.label}</label>
+                      <div className="flex items-center gap-2 rounded-xl px-3 py-3" style={{ background: "#0d1326", border: "1px solid rgba(30,127,255,0.15)" }}>
+                        <Icon size={15} style={{ color: "#6b82a0", flexShrink: 0 }} />
+                        <input type={f.type} placeholder={f.ph} value={inq[f.k]} onChange={e => setInqField(f.k, e.target.value)}
+                          className="flex-1 bg-transparent outline-none text-sm placeholder:text-[#6b82a0]" style={{ color: "#e8eef8" }} />
+                      </div>
+                    </div>
+                  );
+                })}
+                <div>
+                  <label style={{ color: "#a8bdd4", fontSize: "0.8rem", display: "block", marginBottom: 6 }}>Preferred plan</label>
+                  <select value={inq.plan} onChange={e => setInqField("plan", e.target.value)}
+                    className="w-full rounded-xl px-3 py-3 text-sm outline-none"
+                    style={{ background: "#0d1326", color: "#e8eef8", border: "1px solid rgba(30,127,255,0.15)" }}>
+                    {(planConfigs.length ? planConfigs : [
+                      { plan: "basic", label: "Basic", price_monthly: 0, currency_symbol: "$", billing_interval_unit: "month" as const, billing_interval_count: 1 },
+                      { plan: "pro", label: "Pro", price_monthly: 0, currency_symbol: "$", billing_interval_unit: "month" as const, billing_interval_count: 1 },
+                      { plan: "premium", label: "Premium", price_monthly: 0, currency_symbol: "$", billing_interval_unit: "month" as const, billing_interval_count: 1 },
+                    ] as ApiPlanConfig[]).map(p => (
+                      <option key={p.plan} value={p.plan}>
+                        {p.label ?? p.plan}{p.price_monthly ? ` — ${formatPlanPrice(p)}${formatBillingSuffix(p)}` : ""}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label style={{ color: "#a8bdd4", fontSize: "0.8rem", display: "block", marginBottom: 6 }}>Notes (optional)</label>
+                  <textarea value={inq.message} onChange={e => setInqField("message", e.target.value)} rows={3}
+                    placeholder="Number of locations, go-live date, etc."
+                    className="w-full rounded-xl px-3 py-3 text-sm outline-none placeholder:text-[#6b82a0] resize-none"
+                    style={{ background: "#0d1326", color: "#e8eef8", border: "1px solid rgba(30,127,255,0.15)" }} />
+                </div>
+                <motion.button whileTap={{ scale: 0.97 }} onClick={submitInquiry} disabled={loading}
+                  className="w-full py-3 rounded-xl text-sm font-semibold flex items-center justify-center gap-2"
+                  style={{ background: "linear-gradient(135deg, #a855f7, #1e7fff)", color: "#fff", opacity: loading ? 0.7 : 1 }}>
+                  {loading ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <>Submit request <ArrowRight size={16} /></>}
+                </motion.button>
               </motion.div>
             )}
 

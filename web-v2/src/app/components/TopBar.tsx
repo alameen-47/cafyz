@@ -27,6 +27,9 @@ interface TopBarProps {
   onLogout: () => void;
   role: string;
   plan: string;
+  userName?: string;
+  userEmail?: string;
+  userInitials?: string;
 }
 
 function useClock() {
@@ -42,20 +45,23 @@ function useClock() {
   return time;
 }
 
-export function TopBar({ active, onMobileMenuOpen, onNavigate, onLogout, role, plan }: TopBarProps) {
+export function TopBar({ active, onMobileMenuOpen, onNavigate, onLogout, role, plan, userName = "there", userEmail = "", userInitials = "?" }: TopBarProps) {
   const [searchFocused, setSearchFocused] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
+  const [unreadNotifs, setUnreadNotifs] = useState(0);
   const notifRef = useRef<HTMLDivElement>(null);
   const profileRef = useRef<HTMLDivElement>(null);
   const time = useClock();
+  const initials = (userInitials || userName.split(" ").map(n => n[0]).join("")).slice(0, 2).toUpperCase();
+
   const page = pageLabels[active] || pageLabels.dashboard;
 
   // Close dropdowns on outside click handled inside each component
 
   return (
     <header
-      className="sticky top-0 z-30 flex items-center gap-2 sm:gap-3 px-3 sm:px-4 md:px-6 border-b"
+      className="app-top-bar sticky top-0 z-30 flex items-center gap-2 sm:gap-3 px-3 sm:px-4 md:px-6 border-b"
       style={{
         background: "rgba(6,9,26,0.92)",
         backdropFilter: "blur(20px)",
@@ -76,7 +82,7 @@ export function TopBar({ active, onMobileMenuOpen, onNavigate, onLogout, role, p
           {page.title}
         </h1>
         <p className="truncate hidden sm:block" style={{ color: "#6b82a0", fontSize: "0.67rem" }}>
-          {page.subtitle}
+          {active === "dashboard" ? `Welcome back, ${userName.split(" ")[0]}` : page.subtitle}
         </p>
       </div>
 
@@ -111,10 +117,12 @@ export function TopBar({ active, onMobileMenuOpen, onNavigate, onLogout, role, p
           className="relative flex items-center justify-center w-9 h-9 rounded-xl transition-all hover:bg-[rgba(30,127,255,0.08)] active:scale-95"
           style={{ color: notifOpen ? "#1e7fff" : "#6b82a0" }}>
           <Bell size={17} />
-          <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full"
-            style={{ background: "#ff3b5c", boxShadow: "0 0 6px rgba(255,59,92,0.7)" }} />
+          {unreadNotifs > 0 && (
+            <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full"
+              style={{ background: "#ff3b5c", boxShadow: "0 0 6px rgba(255,59,92,0.7)" }} />
+          )}
         </button>
-        <NotificationDropdown open={notifOpen} onClose={() => setNotifOpen(false)} />
+        <NotificationDropdown open={notifOpen} onClose={() => setNotifOpen(false)} onUnreadChange={setUnreadNotifs} />
       </div>
 
       {/* Avatar / profile */}
@@ -124,10 +132,10 @@ export function TopBar({ active, onMobileMenuOpen, onNavigate, onLogout, role, p
           className="flex items-center gap-2 rounded-xl px-1.5 py-1 transition-all hover:bg-[rgba(30,127,255,0.06)] active:scale-95">
           <div className="w-8 h-8 rounded-full flex items-center justify-center"
             style={{ background: "linear-gradient(135deg, #1e7fff, #00c6ff)", boxShadow: "0 0 10px rgba(30,127,255,0.35)" }}>
-            <span style={{ color: "#fff", fontSize: "0.65rem", fontWeight: 800 }}>AK</span>
+            <span style={{ color: "#fff", fontSize: "0.65rem", fontWeight: 800 }}>{initials}</span>
           </div>
           <div className="hidden md:block text-left">
-            <p style={{ color: "#e8eef8", fontSize: "0.78rem", fontWeight: 600, lineHeight: 1.2 }}>Alex Kumar</p>
+            <p style={{ color: "#e8eef8", fontSize: "0.78rem", fontWeight: 600, lineHeight: 1.2 }}>{userName}</p>
             <p style={{ color: "#6b82a0", fontSize: "0.62rem", textTransform: "capitalize" }}>{role}</p>
           </div>
           <ChevronDown size={13} className="hidden md:block" style={{ color: "#6b82a0", transform: profileOpen ? "rotate(180deg)" : "rotate(0)", transition: "transform 0.2s" }} />
@@ -139,6 +147,9 @@ export function TopBar({ active, onMobileMenuOpen, onNavigate, onLogout, role, p
           onLogout={onLogout}
           role={role}
           plan={plan}
+          userName={userName}
+          userEmail={userEmail}
+          userInitials={initials}
         />
       </div>
     </header>

@@ -61,4 +61,22 @@ router.get('/menu/:restaurantId', async (req, res, next) => {
   } catch (e) { next(e); }
 });
 
+/**
+ * Public plan catalog — prices, labels, and feature gates set by the founder.
+ * No auth required so signup, license, and upgrade screens stay in sync on web + mobile.
+ *
+ * GET /api/public/plans
+ */
+router.get('/plans', async (_req, res, next) => {
+  try {
+    const rows = await getDb().execute(
+      `SELECT plan, panels_json, label, description, price_monthly,
+              currency_symbol, billing_interval_unit, billing_interval_count, updated_at
+       FROM plan_config ORDER BY price_monthly ASC`,
+    );
+    res.set('Cache-Control', 'public, max-age=60');
+    res.json(rows.rows);
+  } catch (e) { next(e); }
+});
+
 export default router;

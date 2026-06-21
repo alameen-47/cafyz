@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
-import { motion } from "motion/react";
-import { Plus, Search, AlertTriangle, Package, TrendingDown, CheckCircle2 } from "lucide-react";
+import { motion, AnimatePresence } from "motion/react";
+import { Plus, Search, AlertTriangle, Package, TrendingDown, CheckCircle2, Edit2, Trash2, X, Save } from "lucide-react";
 import { toast } from "./Toast";
 import { inventoryApi, type ApiInventoryItem } from "../../services/api";
 
@@ -11,6 +11,12 @@ interface InventoryItem {
   currentQty: number; minQty: number; maxQty: number;
   unitCost: number | null; supplier: string; lastRestocked: string;
 }
+
+interface ItemForm {
+  name: string; par: string; current: string; unit: string;
+}
+
+const UNITS = ["kg", "L", "pcs", "g", "ml"];
 
 function getStockLevel(item: InventoryItem): StockLevel {
   const pct = item.currentQty / (item.minQty || 1);
@@ -27,31 +33,89 @@ const stockConfig: Record<StockLevel, { color: string; bg: string; label: string
   surplus:  { color: "#1e7fff", bg: "rgba(30,127,255,0.1)",   label: "Surplus",   icon: Package },
 };
 
+function mapRow(r: ApiInventoryItem): InventoryItem {
+  return {
+    id: r.id,
+    name: r.name,
+    category: "General",
+    unit: r.unit,
+    currentQty: r.current,
+    minQty: r.par,
+    maxQty: Math.max(r.par, r.current) * 2 || 1,
+    unitCost: null,
+    supplier: "",
+    lastRestocked: "",
+  };
+}
+
 export function Inventory() {
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("All");
   const [inventoryItems, setInventoryItems] = useState<InventoryItem[]>([]);
+  const [modal, setModal] = useState<{ mode: "create" | "edit"; item?: InventoryItem } | null>(null);
+  const [form, setForm] = useState<ItemForm>({ name: "", par: "10", current: "0", unit: "kg" });
+  const [saving, setSaving] = useState(false);
 
   const load = useCallback(async () => {
     try {
       const rows = await inventoryApi.list();
-      setInventoryItems(rows.map((r: ApiInventoryItem) => ({
-        id: r.id,
-        name: r.name,
-        category: "General",
-        unit: r.unit,
-        currentQty: r.current,
-        minQty: r.par,
-        maxQty: Math.max(r.par, r.current) * 2 || 1,
-        unitCost: null,        // backend has no cost field
-        supplier: "",          // backend has no supplier field
-        lastRestocked: "",
-      })));
+      setInventoryItems(rows.map(mapRow));
     } catch (e) {
       toast.error("Couldn't load inventory", (e as Error).message);
     }
   }, []);
   useEffect(() => { void load(); }, [load]);
+
+  const openCreate = () => {
+    setForm({ name: "", par: "10", current: "0", unit: "kg" });
+    setModal({ mode: "create" });
+  };
+
+  const openEdit = (item: InventoryItem) => {
+    setForm({
+      name: item.name,
+      par: String(item.minQty),
+      current: String(item.currentQty),
+      unit: item.unit || "kg",
+    });
+    setModal({ mode: "edit", item });
+  };
+
+  const saveItem = async () => {
+    const name = form.name.trim();
+    const par = Number(form.par);
+    const current = Number(form.current);
+    if (!name) { toast.error("Name required"); return; }
+    if (!Number.isFinite(par) || par < 0) { toast.error("Enter a valid par level"); return; }
+    if (!Number.isFinite(current) || current < 0) { toast.error("Enter a valid stock quantity"); return; }
+    setSaving(true);
+    try {
+      if (modal?.mode === "edit" && modal.item) {
+        await inventoryApi.update(modal.item.id, { name, par, current, unit: form.unit });
+        toast.success("Item updated", name);
+      } else {
+        await inventoryApi.create({ name, par, current, unit: form.unit });
+        toast.success("Item added", name);
+      }
+      setModal(null);
+      await load();
+    } catch (e) {
+      toast.error("Save failed", (e as Error).message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const deleteItem = async (item: InventoryItem) => {
+    if (!window.confirm(`Delete "${item.name}" from inventory?`)) return;
+    try {
+      await inventoryApi.delete(item.id);
+      toast.success("Item removed", item.name);
+      await load();
+    } catch (e) {
+      toast.error("Delete failed", (e as Error).message);
+    }
+  };
 
   const categories = ["All", ...Array.from(new Set(inventoryItems.map(i => i.category)))];
 
@@ -108,27 +172,25 @@ export function Inventory() {
               </button>
             ))}
           </div>
-          <button className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-semibold flex-shrink-0"
+          <button onClick={openCreate} className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-semibold flex-shrink-0"
             style={{ background: "linear-gradient(135deg, #1e7fff, #00c6ff)", color: "#fff" }}>
             <Plus size={15} />
-            <span className="hidden sm:inline">Restock</span>
+            <span className="hidden sm:inline">Add item</span>
           </button>
         </div>
       </div>
 
       {/* Table */}
       <div className="rounded-2xl overflow-hidden" style={{ background: "#0d1326", border: "1px solid rgba(30,127,255,0.1)" }}>
-        {/* Header */}
         <div className="grid grid-cols-12 gap-2 px-3 sm:px-4 py-3 text-xs font-semibold uppercase tracking-wider border-b"
           style={{ color: "#6b82a0", borderColor: "rgba(30,127,255,0.08)", fontFamily: "var(--font-mono)" }}>
           <div className="col-span-5 sm:col-span-4">Item</div>
           <div className="col-span-3 hidden sm:block">Category</div>
           <div className="col-span-4 sm:col-span-3">Stock</div>
           <div className="col-span-3 hidden md:block">Par level</div>
-          <div className="col-span-3 sm:col-span-2 md:col-span-1 text-right sm:text-left">Action</div>
+          <div className="col-span-3 sm:col-span-2 md:col-span-2 text-right sm:text-left">Actions</div>
         </div>
 
-        {/* Rows */}
         <div className="divide-y divide-[rgba(30,127,255,0.05)]">
           {filtered.map((item, i) => {
             const level = getStockLevel(item);
@@ -140,7 +202,6 @@ export function Inventory() {
                 className="grid grid-cols-12 gap-2 px-3 sm:px-4 py-3 items-center hover:bg-[rgba(30,127,255,0.02)] transition-all">
                 <div className="col-span-5 sm:col-span-4 min-w-0">
                   <p style={{ color: "#e8eef8", fontSize: "0.82rem", fontWeight: 500 }} className="truncate">{item.name}</p>
-                  {item.supplier && <p style={{ color: "#6b82a0", fontSize: "0.67rem" }} className="truncate">{item.supplier}</p>}
                 </div>
                 <div className="col-span-3 hidden sm:block">
                   <span className="text-xs px-2 py-0.5 rounded-full"
@@ -166,22 +227,101 @@ export function Inventory() {
                 </div>
                 <div className="col-span-3 hidden md:block">
                   <span style={{ color: "#a8bdd4", fontFamily: "var(--font-mono)", fontSize: "0.78rem" }}>
-                    {item.maxQty ? `par ${item.minQty}${item.unit}` : "—"}
+                    par {item.minQty}{item.unit}
                   </span>
                 </div>
-                <div className="col-span-3 sm:col-span-2 md:col-span-1 flex justify-end sm:justify-start">
+                <div className="col-span-3 sm:col-span-2 md:col-span-2 flex justify-end sm:justify-start gap-1 flex-wrap">
                   {(level === "critical" || level === "low") && (
                     <button className="px-2 py-1 rounded-lg text-xs font-semibold"
-                      style={{ background: "rgba(30,127,255,0.12)", color: "#1e7fff" }}>
-                      Order
+                      style={{ background: "rgba(30,127,255,0.12)", color: "#1e7fff" }}
+                      onClick={async () => {
+                        const qty = Number(window.prompt(`Restock ${item.name} — add quantity`, String(Math.max(0, item.minQty - item.currentQty))) ?? "0");
+                        if (!qty || qty <= 0) return;
+                        try {
+                          await inventoryApi.update(item.id, { current: item.currentQty + qty });
+                          toast.success("Stock updated", `${item.name} +${qty}${item.unit}`);
+                          void load();
+                        } catch (e) { toast.error("Update failed", (e as Error).message); }
+                      }}>
+                      Restock
                     </button>
                   )}
+                  <button onClick={() => openEdit(item)} className="p-1.5 rounded-lg hover:bg-[rgba(30,127,255,0.08)]"
+                    style={{ color: "#6b82a0" }} title="Edit">
+                    <Edit2 size={13} />
+                  </button>
+                  <button onClick={() => void deleteItem(item)} className="p-1.5 rounded-lg hover:bg-[rgba(255,59,92,0.08)]"
+                    style={{ color: "#6b82a0" }} title="Delete">
+                    <Trash2 size={13} />
+                  </button>
                 </div>
               </motion.div>
             );
           })}
         </div>
       </div>
+
+      <AnimatePresence>
+        {modal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
+            style={{ background: "rgba(6,9,26,0.85)", backdropFilter: "blur(8px)" }}
+            onClick={() => setModal(null)}>
+            <motion.div
+              initial={{ opacity: 0, scale: 0.92 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.92 }}
+              className="w-full max-w-md rounded-2xl p-5 space-y-4"
+              style={{ background: "#0d1326", border: "1px solid rgba(30,127,255,0.2)" }}
+              onClick={e => e.stopPropagation()}>
+              <div className="flex items-center justify-between">
+                <h3 style={{ fontFamily: "var(--font-display)", color: "#e8eef8", fontWeight: 700 }}>
+                  {modal.mode === "edit" ? "Edit Item" : "Add Item"}
+                </h3>
+                <button onClick={() => setModal(null)} style={{ color: "#6b82a0" }}><X size={18} /></button>
+              </div>
+              <div className="space-y-3">
+                <div>
+                  <label style={{ color: "#a8bdd4", fontSize: "0.78rem", display: "block", marginBottom: 4 }}>Name</label>
+                  <input type="text" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
+                    className="w-full rounded-xl px-3 py-2.5 text-sm outline-none"
+                    style={{ background: "#111b35", color: "#e8eef8", border: "1px solid rgba(30,127,255,0.12)" }} />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label style={{ color: "#a8bdd4", fontSize: "0.78rem", display: "block", marginBottom: 4 }}>Par level</label>
+                    <input type="number" min={0} value={form.par} onChange={e => setForm(f => ({ ...f, par: e.target.value }))}
+                      className="w-full rounded-xl px-3 py-2.5 text-sm outline-none"
+                      style={{ background: "#111b35", color: "#e8eef8", border: "1px solid rgba(30,127,255,0.12)" }} />
+                  </div>
+                  <div>
+                    <label style={{ color: "#a8bdd4", fontSize: "0.78rem", display: "block", marginBottom: 4 }}>Current stock</label>
+                    <input type="number" min={0} value={form.current} onChange={e => setForm(f => ({ ...f, current: e.target.value }))}
+                      className="w-full rounded-xl px-3 py-2.5 text-sm outline-none"
+                      style={{ background: "#111b35", color: "#e8eef8", border: "1px solid rgba(30,127,255,0.12)" }} />
+                  </div>
+                </div>
+                <div>
+                  <label style={{ color: "#a8bdd4", fontSize: "0.78rem", display: "block", marginBottom: 4 }}>Unit</label>
+                  <select value={form.unit} onChange={e => setForm(f => ({ ...f, unit: e.target.value }))}
+                    className="w-full rounded-xl px-3 py-2.5 text-sm outline-none"
+                    style={{ background: "#111b35", color: "#e8eef8", border: "1px solid rgba(30,127,255,0.12)" }}>
+                    {UNITS.map(u => <option key={u} value={u}>{u}</option>)}
+                  </select>
+                </div>
+              </div>
+              <div className="flex gap-2 pt-1">
+                <button onClick={() => setModal(null)} className="flex-1 py-2.5 rounded-xl text-sm font-semibold"
+                  style={{ background: "rgba(30,127,255,0.06)", color: "#6b82a0", border: "1px solid rgba(30,127,255,0.1)" }}>
+                  Cancel
+                </button>
+                <button onClick={() => void saveItem()} disabled={saving}
+                  className="flex-1 py-2.5 rounded-xl text-sm font-semibold flex items-center justify-center gap-2"
+                  style={{ background: "linear-gradient(135deg, #1e7fff, #00c6ff)", color: "#fff", opacity: saving ? 0.7 : 1 }}>
+                  <Save size={15} /> {modal.mode === "edit" ? "Save" : "Add"}
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

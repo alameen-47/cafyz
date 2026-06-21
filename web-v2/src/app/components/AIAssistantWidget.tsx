@@ -46,7 +46,9 @@ function getReply(msg: string): string {
   return replies["default"];
 }
 
-export function AIAssistantWidget() {
+import { supportApi } from "../../services/api";
+
+export function AIAssistantWidget({ screen }: { screen?: string }) {
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>(initialMessages);
   const [input, setInput] = useState("");
@@ -60,7 +62,7 @@ export function AIAssistantWidget() {
     }
   }, [messages, open, minimised]);
 
-  const send = (text?: string) => {
+  const send = async (text?: string) => {
     const msg = text || input.trim();
     if (!msg) return;
     setInput("");
@@ -69,11 +71,15 @@ export function AIAssistantWidget() {
     setMessages(prev => [...prev, userMsg]);
     setTyping(true);
 
-    setTimeout(() => {
+    try {
+      const history = [...messages, userMsg].slice(-6).map(m => ({ role: m.role, text: m.text }));
+      const res = await supportApi.ask({ message: msg, screen, history });
+      setMessages(prev => [...prev, { id: `a${Date.now()}`, role: "assistant", text: res.reply, time: now() }]);
+    } catch (e) {
+      setMessages(prev => [...prev, { id: `a${Date.now()}`, role: "assistant", text: getReply(msg), time: now() }]);
+    } finally {
       setTyping(false);
-      const reply = getReply(msg);
-      setMessages(prev => [...prev, { id: `a${Date.now()}`, role: "assistant", text: reply, time: now() }]);
-    }, 900 + Math.random() * 600);
+    }
   };
 
   return (

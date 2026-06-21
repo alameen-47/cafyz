@@ -6,12 +6,17 @@ import {
 } from "lucide-react";
 import { toast } from "./Toast";
 import { restaurantApi, authApi } from "../../services/api";
+import {
+  uploadRestaurantLogo,
+  removeRestaurantLogoEverywhere,
+  syncRestaurantLogoCacheAsync,
+} from "../../services/restaurantLogoStorage";
 import { setActiveCurrencyCode } from "../../utils/currency";
 import { useAuth } from "../auth";
 
 const CURRENCIES = ["USD", "EUR", "GBP", "AED", "SAR", "INR", "PKR", "BDT", "NGN", "ZAR"];
 const LANGUAGES: [string, string][] = [["en", "English"], ["ar", "Arabic"], ["fr", "French"], ["es", "Spanish"], ["de", "German"], ["hi", "Hindi"], ["ur", "Urdu"]];
-const MAX_LOGO_BYTES = 4 * 1024 * 1024; // 4 MB
+const MAX_LOGO_BYTES = 2 * 1024 * 1024; // 2 MB — matches restaurantLogoStorage
 
 const EMPTY = {
   name: "", tagline: "", email: "", phone: "", website: "", address: "", city: "", state: "", pincode: "",
@@ -83,6 +88,7 @@ export function Profile() {
     restaurantApi.me().then(r => {
       setSlug(r.slug ?? "");
       setLogoUrl(r.logo_url ?? "");
+      void syncRestaurantLogoCacheAsync(r);
       setProfile({
         name: r.name ?? "",
         tagline: r.tagline ?? "",
@@ -148,21 +154,30 @@ export function Profile() {
     }
   };
 
-  // ── Logo upload (Cloudinary) — persists immediately so it shows on QR menu ────
+  // ── Logo upload — Cloudinary when configured, else dithered data URL in DB ────
   const onPickLogo = () => fileRef.current?.click();
 
   const handleLogoFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    e.target.value = ""; // allow re-selecting the same file
+    e.target.value = "";
     if (!file) return;
+    if (!user?.restaurant_id) {
+      toast.error("Restaurant not loaded", "Wait a moment and try again.");
+      return;
+    }
     if (!file.type.startsWith("image/")) { toast.error("Invalid file", "Please choose an image (PNG, JPG, WebP)."); return; }
-    if (file.size > MAX_LOGO_BYTES) { toast.error("Image too large", "Logo must be under 4 MB."); return; }
+    if (file.size > MAX_LOGO_BYTES) { toast.error("Image too large", "Logo must be under 2 MB."); return; }
     setUploadingLogo(true);
     try {
-      const { url } = await restaurantApi.uploadLogo(file);
-      await restaurantApi.update({ logo_url: url });
+      const url = await uploadRestaurantLogo(user.restaurant_id, file);
       setLogoUrl(url);
-      toast.success("Logo updated", "Your new logo is live on the QR menu.");
+      const savedLocally = url.startsWith("data:");
+      toast.success(
+        "Logo updated",
+        savedLocally
+          ? "Logo saved on this device and will print on receipts."
+          : "Your new logo is live on the QR menu and receipts.",
+      );
     } catch (err) {
       toast.error("Upload failed", (err as Error).message);
     } finally {
@@ -171,9 +186,10 @@ export function Profile() {
   };
 
   const handleRemoveLogo = async () => {
+    if (!user?.restaurant_id) return;
     setUploadingLogo(true);
     try {
-      await restaurantApi.update({ logo_url: "" });
+      await removeRestaurantLogoEverywhere(user.restaurant_id);
       setLogoUrl("");
       toast.success("Logo removed", "");
     } catch (err) {
