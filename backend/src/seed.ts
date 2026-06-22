@@ -1,6 +1,6 @@
 import { createClient } from '@libsql/client';
 import bcrypt from 'bcryptjs';
-import 'dotenv/config';
+import './loadEnv.js';
 import { setDb } from './db.js';
 import { runMigrations } from './schema.js';
 import { uid } from './utils.js';

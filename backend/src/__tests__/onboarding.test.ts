@@ -27,7 +27,7 @@ describe('POST /api/restaurants/onboarding', () => {
     expect(res.body).toHaveProperty('token');
     expect(res.body.restaurant.name).toBe('Bistro Test');
     expect(res.body.user.role).toBe('owner');
-    expect(res.body.restaurant.plan).toBe('basic');
+    expect(res.body.restaurant.plan).toBe('premium');
     expect(res.body.restaurant.timezone).toBe('Europe/Paris');
   });
 
@@ -71,7 +71,7 @@ describe('POST /api/restaurants/onboarding', () => {
     expect(res.status).toBe(400);
   });
 
-  it('new restaurant defaults to basic plan', async () => {
+  it('new restaurant defaults to premium trial plan', async () => {
     const res = await request(app)
       .post('/api/restaurants/onboarding')
       .send({
@@ -83,6 +83,6 @@ describe('POST /api/restaurants/onboarding', () => {
       });
 
     expect(res.status).toBe(201);
-    expect(res.body.restaurant.plan).toBe('basic');
+    expect(res.body.restaurant.plan).toBe('premium');
   });
 });

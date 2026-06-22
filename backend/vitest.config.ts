@@ -7,6 +7,7 @@ export default defineConfig({
     testTimeout: 30000,
     sequence: { concurrent: false },
     reporters: ['verbose'],
+    exclude: ['**/node_modules/**', '**/dist/**'],
     env: {
       NODE_ENV: 'test',
       TURSO_URL: ':memory:',

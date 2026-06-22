@@ -1,5 +1,5 @@
 import { createClient, type Client } from '@libsql/client';
-import 'dotenv/config';
+import './loadEnv.js';
 
 let _client: Client | null = null;
 

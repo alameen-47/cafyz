@@ -27,6 +27,24 @@ function resolveApiBase(): string {
 const BASE = resolveApiBase();
 let sessionToastShown = false;
 
+const DEVICE_KEY = 'cafyz_device_id';
+
+/** Stable id for trial-request cooldown + auth device binding. */
+export function getDeviceId(): string {
+  try {
+    let id = localStorage.getItem(DEVICE_KEY);
+    if (!id || id.length < 10) {
+      id = typeof crypto !== 'undefined' && crypto.randomUUID
+        ? crypto.randomUUID()
+        : `dev_${Math.random().toString(16).slice(2)}_${Date.now()}`;
+      localStorage.setItem(DEVICE_KEY, id);
+    }
+    return id;
+  } catch {
+    return `dev_${Math.random().toString(16).slice(2)}_${Date.now()}`;
+  }
+}
+
 async function request<T = unknown>(
   method: string,
   path: string,
@@ -364,7 +382,7 @@ export const licensesApi = {
 // ── Inquiries (public — no auth) ──────────────────────────────────────────────
 export const inquiryApi = {
   submit: (d: { name: string; restaurant_name: string; email: string; plan: string; message?: string }) =>
-    post<{ ok: boolean; message: string }>('/api/inquiries', d),
+    post<{ ok: boolean; message: string; trial_days?: number }>('/api/inquiries', { ...d, device_id: getDeviceId() }),
 };
 
 // ── Founder ───────────────────────────────────────────────────────────────────

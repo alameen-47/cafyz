@@ -2,7 +2,7 @@
  * Send a test email using the configured provider (Resend when EMAIL_PROVIDER=resend).
  * Usage: npm run email:test
  */
-import 'dotenv/config';
+import '../src/loadEnv.js';
 import { ADMIN_EMAIL, isResendConfigured, sendMailReliable } from '../src/services/email.js';
 
 async function main() {

@@ -1,5 +1,5 @@
 import dns from 'node:dns';
-import 'dotenv/config';
+import './loadEnv.js';
 import app from './app.js';
 
 // Render and other cloud hosts often lack working IPv6 routes to Gmail.

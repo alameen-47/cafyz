@@ -86,7 +86,7 @@ function adminHtml(args: {
     </table>
 
     <div style="margin-top:22px;display:flex;gap:10px;flex-wrap:wrap">
-      <a href="${approveUrl}" style="flex:1;min-width:200px;text-align:center;display:inline-block;background:#2ECC8A;color:#04110A;font-size:14px;font-weight:800;text-decoration:none;padding:14px 18px;border-radius:10px;letter-spacing:0.3px">Approve ${TRIAL_DAYS}-Day Trial →</a>
+      <a href="${approveUrl}" style="flex:1;min-width:200px;text-align:center;display:inline-block;background:#2ECC8A;color:#04110A;font-size:14px;font-weight:800;text-decoration:none;padding:14px 18px;border-radius:10px;letter-spacing:0.3px">Agree — Start ${TRIAL_DAYS}-Day Trial →</a>
       <a href="${denyUrl}" style="flex:1;min-width:200px;text-align:center;display:inline-block;background:#ef4444;color:#1b0505;font-size:14px;font-weight:800;text-decoration:none;padding:14px 18px;border-radius:10px;letter-spacing:0.3px">Deny Request</a>
     </div>
     <p style="font-size:12px;color:#5A5A6A;margin-top:12px;word-break:break-all">Approve link: ${approveUrl}</p>
