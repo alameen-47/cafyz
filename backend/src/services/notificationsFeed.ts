@@ -1,3 +1,4 @@
+import type { Row } from '@libsql/client';
 import { getDb } from '../db.js';
 import { rowNumber, rowString } from '../dbRows.js';
 
@@ -60,7 +61,7 @@ export async function buildNotificationsFeed(
                 LIMIT 8`,
           args: [restaurantId],
         })
-      : Promise.resolve({ rows: [] as Record<string, unknown>[] }),
+      : Promise.resolve({ rows: [] as Row[] }),
     role === 'owner' || role === 'manager' || role === 'cashier'
       ? db.execute({
           sql: `SELECT id, name, current, par, unit, updated_at
@@ -70,7 +71,7 @@ export async function buildNotificationsFeed(
                 LIMIT 8`,
           args: [restaurantId],
         })
-      : Promise.resolve({ rows: [] as Record<string, unknown>[] }),
+      : Promise.resolve({ rows: [] as Row[] }),
     role === 'owner' || role === 'manager'
       ? db.execute({
           sql: `SELECT id, guest_name, covers, res_time, status
@@ -82,7 +83,7 @@ export async function buildNotificationsFeed(
                 LIMIT 6`,
           args: [restaurantId],
         })
-      : Promise.resolve({ rows: [] as Record<string, unknown>[] }),
+      : Promise.resolve({ rows: [] as Row[] }),
     db.execute({
       sql: `SELECT
               (SELECT COUNT(*) FROM orders WHERE restaurant_id=? AND date(created_at)=date('now')) AS orders_today,
