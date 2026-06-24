@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
-import { authApi, restaurantApi, type LoginResponse } from '../services/api';
+import { authApi, restaurantApi, licensesApi, type LoginResponse } from '../services/api';
 import { setActiveCurrencyCode } from '../utils/currency';
 import { syncRestaurantLogoCacheAsync } from '../services/restaurantLogoStorage';
 
@@ -36,6 +36,8 @@ interface AuthCtx {
   verifyOtp: (phone: string, otp: string) => Promise<void>;
   signup: (data: SignupData) => Promise<void>;
   logout: () => void;
+  /** Sync plan (and restaurant name) from API after founder approves renewal. */
+  refreshPlan: () => Promise<Plan | null>;
 }
 
 const Ctx = createContext<AuthCtx>(null as unknown as AuthCtx);
@@ -70,12 +72,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const token = localStorage.getItem('cafyz_token');
     if (stored && token) {
       try { setUser(JSON.parse(stored) as AuthUser); } catch { /* ignore */ }
-      // Re-establish the active currency/plan from the restaurant record so every
-      // screen formats money correctly after a hard reload (login already does this).
       restaurantApi.me()
         .then(r => {
           if (r.currency_code) setActiveCurrencyCode(r.currency_code);
           void syncRestaurantLogoCacheAsync(r);
+          setUser(prev => {
+            if (!prev) return prev;
+            const u: AuthUser = {
+              ...prev,
+              plan: (r.plan as Plan) ?? prev.plan,
+              restaurant_name: String(r.name ?? prev.restaurant_name),
+            };
+            localStorage.setItem('cafyz_user', JSON.stringify(u));
+            return u;
+          });
         })
         .catch(() => { /* keep defaults if offline / session expired */ });
     }
@@ -117,7 +127,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Free-trial / new-account signup: create the restaurant + owner, then sign in.
   const signup = async (data: SignupData) => {
     const email = data.email.trim().toLowerCase();
-    await authApi.onboarding({
+    const created = await authApi.onboarding({
       restaurant_name: data.restaurant_name.trim(),
       owner_name: data.owner_name.trim(),
       email,
@@ -126,8 +136,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       plan: data.plan,
       timezone: data.timezone,
     });
-    const d = await authApi.login(email, data.password, deviceId());
-    await complete(d);
+    await complete({
+      token: created.token,
+      restaurant_id: String(created.restaurant.id),
+      restaurant_name: String(created.restaurant.name),
+      restaurant_plan: String(created.restaurant.plan),
+      user: {
+        id: String(created.user.id),
+        name: String(created.user.name),
+        initials: String(created.user.initials ?? ''),
+        email: String(created.user.email),
+        role: String(created.user.role),
+      },
+    } as LoginResponse);
   };
 
   function logout() {
@@ -136,8 +157,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
   }
 
+  async function refreshPlan(): Promise<Plan | null> {
+    let next: Plan | null = null;
+    try {
+      const [r, sub] = await Promise.all([
+        restaurantApi.me(),
+        licensesApi.mine().catch(() => null),
+      ]);
+      setUser(prev => {
+        if (!prev) return prev;
+        const plan = (sub?.plan ?? r.plan ?? prev.plan) as Plan;
+        next = plan;
+        const u: AuthUser = {
+          ...prev,
+          plan,
+          restaurant_name: String(r.name ?? prev.restaurant_name),
+        };
+        localStorage.setItem('cafyz_user', JSON.stringify(u));
+        return u;
+      });
+      if (r.currency_code) setActiveCurrencyCode(r.currency_code);
+      return next;
+    } catch {
+      return null;
+    }
+  }
+
   return (
-    <Ctx.Provider value={{ user, loading, loginEmail, loginPin, requestOtp, verifyOtp, signup, logout }}>
+    <Ctx.Provider value={{ user, loading, loginEmail, loginPin, requestOtp, verifyOtp, signup, logout, refreshPlan }}>
       {children}
     </Ctx.Provider>
   );

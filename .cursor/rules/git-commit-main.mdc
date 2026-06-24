@@ -1,0 +1,14 @@
+---
+description: When the user asks to commit, commit directly on main (no feature branches).
+alwaysApply: true
+---
+
+# Git commits on main
+
+When the user says **commit** (or asks to save/commit changes):
+
+1. Work on **`main`** only — do not create feature branches or worktrees for commits.
+2. Stage relevant changes, commit on `main`, then **`git push origin main`** unless the user explicitly says not to push.
+3. Verify with `git status` after commit and after push.
+
+Do not ask whether to use a branch; default is always `main` + push to live.

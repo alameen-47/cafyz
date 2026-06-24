@@ -1,5 +1,6 @@
-// Central toast helper — wraps sonner with CAFYZ-branded styling
+// Central toast helper — wraps sonner with CAFYZ-branded styling + i18n
 import { toast as sonnerToast } from "sonner";
+import { tt } from "../../i18n/translateToast";
 
 const base = {
   style: {
@@ -16,35 +17,40 @@ const base = {
 
 export const toast = {
   success: (msg: string, desc?: string) =>
-    sonnerToast.success(msg, {
-      description: desc,
+    sonnerToast.success(tt(msg), {
+      description: desc ? tt(desc) : undefined,
       ...base,
       style: { ...base.style, borderColor: "rgba(34,197,94,0.3)" },
     }),
   error: (msg: string, desc?: string) =>
-    sonnerToast.error(msg, {
-      description: desc,
+    sonnerToast.error(tt(msg), {
+      description: desc ? tt(desc) : undefined,
       ...base,
       style: { ...base.style, borderColor: "rgba(255,59,92,0.3)" },
     }),
   info: (msg: string, desc?: string) =>
-    sonnerToast(msg, {
-      description: desc,
+    sonnerToast(tt(msg), {
+      description: desc ? tt(desc) : undefined,
       ...base,
     }),
   warning: (msg: string, desc?: string) =>
-    sonnerToast.warning(msg, {
-      description: desc,
+    sonnerToast.warning(tt(msg), {
+      description: desc ? tt(desc) : undefined,
       ...base,
       style: { ...base.style, borderColor: "rgba(245,158,11,0.3)" },
     }),
   loading: (msg: string) =>
-    sonnerToast.loading(msg, { ...base }),
+    sonnerToast.loading(tt(msg), { ...base }),
   dismiss: (id?: string | number) =>
     sonnerToast.dismiss(id),
   promise: <T,>(
     promise: Promise<T>,
     msgs: { loading: string; success: string; error: string }
   ) =>
-    sonnerToast.promise(promise, { ...msgs, ...base }),
+    sonnerToast.promise(promise, {
+      loading: tt(msgs.loading),
+      success: tt(msgs.success),
+      error: tt(msgs.error),
+      ...base,
+    }),
 };

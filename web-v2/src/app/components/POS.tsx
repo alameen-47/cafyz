@@ -710,6 +710,7 @@ export function POS() {
       taxLabel,
       taxIncluded,
       payMethod,
+      footer: restaurant?.receipt_footer || undefined,
     };
   }
 
@@ -764,6 +765,7 @@ export function POS() {
       );
       void printCustomerReceipt(method === "card" ? "Card" : "Cash");
       window.dispatchEvent(new Event("CAFYZ_ORDER_SENT"));
+      window.dispatchEvent(new Event("CAFYZ_NOTIFICATIONS_REFRESH"));
       setTimeout(() => {
         void (async () => {
           setCharged(false);
@@ -797,6 +799,7 @@ export function POS() {
       const tName = tables.find(t => t.id === selectedTable)?.name ?? "";
       toast.success(`Order sent to kitchen · ${tName}`, `${itemCount} item${itemCount !== 1 ? "s" : ""} placed for the table`);
       window.dispatchEvent(new Event("CAFYZ_ORDER_SENT"));
+      window.dispatchEvent(new Event("CAFYZ_NOTIFICATIONS_REFRESH"));
       await refreshPending();
       await handleTableChange(selectedTable, { skipHeal: true }); // reload the just-placed bill
     } catch (e) {

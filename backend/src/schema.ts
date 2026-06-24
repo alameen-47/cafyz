@@ -253,6 +253,7 @@ export async function runMigrations() {
       plan                TEXT NOT NULL CHECK(plan IN ('basic','pro','premium')),
       status              TEXT NOT NULL DEFAULT 'pending' CHECK(status IN ('pending','fulfilled','cancelled')),
       note                TEXT,
+      token_hash          TEXT,
       license_key_id      TEXT REFERENCES license_keys(id) ON DELETE SET NULL,
       created_at          TEXT NOT NULL DEFAULT (datetime('now')),
       fulfilled_at        TEXT
@@ -285,7 +286,7 @@ export async function runMigrations() {
       if (!msg.includes('duplicate column name')) throw e;
     }
   };
-  await addCol(`ALTER TABLE restaurants ADD COLUMN logo_url TEXT`, 'logo_url');
+  await addCol(`ALTER TABLE license_purchase_requests ADD COLUMN token_hash TEXT`, 'token_hash');
   await addCol(`ALTER TABLE restaurants ADD COLUMN contact_phone TEXT`, 'contact_phone');
   await addCol(`ALTER TABLE restaurants ADD COLUMN contact_email TEXT`, 'contact_email');
   await addCol(`ALTER TABLE restaurants ADD COLUMN address_line1 TEXT`, 'address_line1');
@@ -398,6 +399,24 @@ async function seedAllMenuCategories(db: ReturnType<typeof getDb>) {
       sort_order    INTEGER NOT NULL DEFAULT 0,
       created_at    TEXT NOT NULL DEFAULT (datetime('now')),
       UNIQUE(restaurant_id, slug)
+    );
+
+    CREATE TABLE IF NOT EXISTS push_device_tokens (
+      id            TEXT PRIMARY KEY,
+      user_id       TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      restaurant_id TEXT NOT NULL REFERENCES restaurants(id) ON DELETE CASCADE,
+      token         TEXT NOT NULL,
+      platform      TEXT NOT NULL CHECK(platform IN ('android','ios','web')),
+      created_at    TEXT NOT NULL DEFAULT (datetime('now')),
+      updated_at    TEXT NOT NULL DEFAULT (datetime('now')),
+      UNIQUE(user_id, token)
+    );
+
+    CREATE TABLE IF NOT EXISTS notification_reads (
+      user_id          TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      notification_key TEXT NOT NULL,
+      read_at          TEXT NOT NULL DEFAULT (datetime('now')),
+      PRIMARY KEY (user_id, notification_key)
     );
   `);
 

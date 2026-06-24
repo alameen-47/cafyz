@@ -1,0 +1,21 @@
+diff --git a/node_modules/@kduma-autoid/capacitor-bluetooth-printer/android/src/main/java/dev/duma/capacitor/bluetoothprinter/BluetoothPrinter.java b/node_modules/@kduma-autoid/capacitor-bluetooth-printer/android/src/main/java/dev/duma/capacitor/bluetoothprinter/BluetoothPrinter.java
+index cbb7ecb..682ba8e 100644
+--- a/node_modules/@kduma-autoid/capacitor-bluetooth-printer/android/src/main/java/dev/duma/capacitor/bluetoothprinter/BluetoothPrinter.java
++++ b/node_modules/@kduma-autoid/capacitor-bluetooth-printer/android/src/main/java/dev/duma/capacitor/bluetoothprinter/BluetoothPrinter.java
+@@ -20,6 +20,7 @@ import org.json.JSONException;
+ import org.json.JSONObject;
+ 
+ import java.io.OutputStream;
++import java.nio.charset.StandardCharsets;
+ import java.util.Set;
+ import java.util.UUID;
+ 
+@@ -93,7 +94,7 @@ public class BluetoothPrinter {
+     public void print(String data) throws RuntimeException {
+         try {
+             OutputStream stream = mBluetoothSocket.getOutputStream();
+-            stream.write(data.getBytes());
++            stream.write(data.getBytes(StandardCharsets.ISO_8859_1));
+             stream.flush();
+         } catch (Exception e) {
+             throw new RuntimeException("Could not print", e);

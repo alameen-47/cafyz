@@ -22,14 +22,16 @@ import { FounderConsole } from "./components/FounderConsole";
 import { PublicMenu } from "./components/PublicMenu";
 import { UpgradeModal } from "./components/UpgradeModal";
 import { TrialExpiredModal } from "./components/TrialExpiredModal";
+import { RenewalBanner } from "./components/RenewalBanner";
 import { useAuth, type Plan, type Role } from "./auth";
 import { NavContext } from "./nav";
-import { licensesApi, usersApi, type ApiSubscriptionStatus } from "../services/api";
+import { licensesApi, usersApi, TRIAL_EXPIRED_EVENT, type ApiSubscriptionStatus } from "../services/api";
 import {
   allowedPages, canAccessPage, planMeetsRequirement, requiredPlanForPage, type PageId,
 } from "../config/access";
 import { useKitchenPrintWorker } from "../hooks/useKitchenPrintWorker";
 import { usePlanConfig } from "./PlanConfigProvider";
+import { applyLanguageToDocument, getActiveLanguageCode } from "../i18n";
 import "../styles/fonts.css";
 
 const pages: Record<string, React.ComponentType> = {
@@ -52,7 +54,7 @@ const pages: Record<string, React.ComponentType> = {
 const fullHeightPages = new Set(["pos", "kds"]);
 
 export default function App() {
-  const { user, loading, logout } = useAuth();
+  const { user, loading, logout, refreshPlan } = useAuth();
   usePlanConfig(); // refresh nav gates when founder updates plan structure
   const [activePage, setActivePage] = useState<PageId>("dashboard");
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -66,8 +68,26 @@ export default function App() {
   useKitchenPrintWorker(Boolean(user && user.role !== "founder"));
 
   useEffect(() => {
+    const id = requestAnimationFrame(() => applyLanguageToDocument(getActiveLanguageCode()));
+    return () => cancelAnimationFrame(id);
+  }, [activePage, user?.id]);
+
+  const loadSubscription = useCallback(async () => {
+    if (!user || user.role === "founder") return null;
+    try {
+      const sub = await licensesApi.mine();
+      setSubscription(sub);
+      if (sub.plan && sub.plan !== user.plan) await refreshPlan();
+      return sub;
+    } catch {
+      setSubscription(null);
+      return null;
+    }
+  }, [user, refreshPlan]);
+
+  useEffect(() => {
     if (!user || user.role === "founder") return;
-    void licensesApi.mine().then(setSubscription).catch(() => setSubscription(null));
+    void loadSubscription();
     void usersApi.list().then(list => {
       const me = list.find(u => u.id === user.id);
       if (me?.access_json) {
@@ -78,7 +98,17 @@ export default function App() {
         } catch { /* screen map handled via accessJson */ }
       }
     }).catch(() => {});
-  }, [user?.id, user?.role]);
+    const iv = setInterval(() => { void loadSubscription(); }, 60_000);
+    const onVis = () => { if (document.visibilityState === "visible") void loadSubscription(); };
+    document.addEventListener("visibilitychange", onVis);
+    return () => { clearInterval(iv); document.removeEventListener("visibilitychange", onVis); };
+  }, [user?.id, user?.role, loadSubscription]);
+
+  useEffect(() => {
+    const onTrialExpired = () => { void loadSubscription(); };
+    window.addEventListener(TRIAL_EXPIRED_EVENT, onTrialExpired);
+    return () => window.removeEventListener(TRIAL_EXPIRED_EVENT, onTrialExpired);
+  }, [loadSubscription]);
 
   const role = (user?.role ?? "waiter") as Role;
   const plan = (user?.plan ?? "basic") as Plan;
@@ -131,12 +161,21 @@ export default function App() {
 
   const trialExpired = subscription?.trial_expired && user.role !== "founder";
   const lockedExceptLicense = trialExpired && activePage !== "license";
+  const effectivePlan = (subscription?.plan ?? plan) as Plan;
+  const showRenewalBanner = user.role === "owner" && subscription
+    && (subscription.trial_expired || (subscription.trial_days_left != null && subscription.trial_days_left <= 3));
 
   if (lockedExceptLicense) {
     return (
       <>
         <Toaster position="bottom-right" richColors closeButton />
-        <TrialExpiredModal expiresAt={subscription?.trial_expires_at} onGoLicense={() => setActivePage("license")} />
+        <TrialExpiredModal
+          expiresAt={subscription?.trial_expires_at}
+          founderEmail={subscription?.founder_email}
+          currentPlan={effectivePlan}
+          onGoLicense={() => setActivePage("license")}
+          onRenewalSubmitted={() => { void loadSubscription(); }}
+        />
         <div className="flex app-screen app-native-inset-top w-full overflow-hidden" style={{ background: "#06091a" }}>
           <License />
         </div>
@@ -164,6 +203,16 @@ export default function App() {
           />
         )}
 
+        {showRenewalBanner && !subscription?.trial_expired && (
+          <RenewalBanner
+            subscription={subscription}
+            currentPlan={effectivePlan}
+            role={role}
+            onGoLicense={() => navigate("license")}
+            onRenewalSubmitted={() => { void loadSubscription(); }}
+          />
+        )}
+
         <Sidebar
           active={activePage}
           onNavigate={navigate}
@@ -180,7 +229,7 @@ export default function App() {
           userInitials={user.initials}
         />
 
-        <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+        <div className={`flex-1 flex flex-col min-w-0 overflow-hidden${showRenewalBanner && !subscription?.trial_expired ? " pt-[4.5rem]" : ""}`}>
           <TopBar
             active={activePage}
             onMobileMenuOpen={() => setMobileMenuOpen(true)}

@@ -7,6 +7,7 @@ import { menuApi, menuCategoriesApi, dashboardApi, type ApiMenuItem, type ApiMen
 import { uploadMenuItemImage } from "../../services/menuImageUpload";
 import { MENU_IMAGE_ACCEPT } from "../../utils/menuImage";
 import { getCurrencySymbol } from "../../utils/currency";
+import { notifyMenuChanged } from "../../utils/menuEvents";
 
 const FALLBACK_IMG = "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=300&h=200&fit=crop";
 const VEG_SYMBOL = "🟢";
@@ -307,6 +308,7 @@ export function MenuPage() {
     );
     try {
       await menuApi.update(id, { is_available: !item.available });
+      notifyMenuChanged();
     } catch (e) {
       setItems(prev => prev.map(i => i.id === id ? { ...i, available: item.available } : i));
       toast.error("Couldn't update availability", (e as Error).message);
@@ -335,6 +337,7 @@ export function MenuPage() {
       }
       setModalItem(false);
       await load();
+      notifyMenuChanged();
     } catch (e) {
       toast.error("Couldn't save item", (e as Error).message);
     }
@@ -349,6 +352,7 @@ export function MenuPage() {
       await menuApi.delete(id);
       setItems(prev => prev.filter(i => i.id !== id));
       toast.success("Item removed", `${item?.name} has been deleted from the menu`);
+      notifyMenuChanged();
     } catch (e) {
       toast.error("Couldn't delete item", (e as Error).message);
     }
@@ -363,6 +367,7 @@ export function MenuPage() {
       setNewCategory("");
       setShowCategoryForm(false);
       await load();
+      notifyMenuChanged();
     } catch (e) {
       toast.error("Couldn't add category", (e as Error).message);
     }
@@ -376,6 +381,7 @@ export function MenuPage() {
       toast.success("Category renamed", label);
       if (activeCategory === cat.label) setActiveCategory(label);
       await load();
+      notifyMenuChanged();
     } catch (e) {
       toast.error("Couldn't rename category", (e as Error).message);
     }
@@ -388,6 +394,7 @@ export function MenuPage() {
       toast.success("Category removed", cat.label);
       if (activeCategory === cat.label) setActiveCategory("All");
       await load();
+      notifyMenuChanged();
     } catch (e) {
       toast.error("Couldn't delete category", (e as Error).message);
     }

@@ -199,6 +199,32 @@ describe('Dashboard', () => {
     expect(res.body.from).toBe('2026-05-01');
     expect(res.body.to).toBe('2026-05-31');
   });
+
+  it('GET /api/dashboard/analytics returns bundled analytics payload', async () => {
+    const res = await request(app)
+      .get('/api/dashboard/analytics?period=week')
+      .set('Authorization', `Bearer ${managerToken}`);
+    expect(res.status).toBe(200);
+    expect(res.body).toMatchObject({ period: 'week' });
+    expect(res.body.revenue).toBeDefined();
+    expect(Array.isArray(res.body.revenue.rows)).toBe(true);
+    expect(Array.isArray(res.body.topItems)).toBe(true);
+    expect(Array.isArray(res.body.categories)).toBe(true);
+    expect(Array.isArray(res.body.hours)).toBe(true);
+    expect(res.body.deltas).toMatchObject({
+      revenuePct: expect.any(Number),
+      ordersPct: expect.any(Number),
+    });
+  });
+
+  it('GET /api/notifications returns feed', async () => {
+    const res = await request(app)
+      .get('/api/notifications')
+      .set('Authorization', `Bearer ${managerToken}`);
+    expect(res.status).toBe(200);
+    expect(Array.isArray(res.body.items)).toBe(true);
+    expect(typeof res.body.unread).toBe('number');
+  });
 });
 
 // ── Reservations ──────────────────────────────────────────────────────────────

@@ -5,6 +5,7 @@ import { getDb } from '../db.js';
 import { requireAuth, type AuthRequest } from '../middleware/auth.js';
 import { requireRole } from '../middleware/rbac.js';
 import { uid } from '../utils.js';
+import { sendRestaurantPush } from '../services/push.js';
 
 const router = Router();
 router.use(requireAuth);
@@ -60,6 +61,8 @@ router.get('/tickets', requireRole('owner', 'manager', 'cashier', 'waiter', 'kit
     let sql = `
       SELECT t.id, t.restaurant_id, t.order_id, t.table_name, t.server_name,
              t.covers, t.vip, t.station, t.status, t.created_at, t.updated_at,
+             o.note AS order_note,
+             o.order_type AS order_type,
              i.id      AS i_id,
              i.name    AS i_name,
              i.qty     AS i_qty,
@@ -67,6 +70,7 @@ router.get('/tickets', requireRole('owner', 'manager', 'cashier', 'waiter', 'kit
              i.mods    AS i_mods,
              i.alert   AS i_alert
       FROM kds_tickets t
+      LEFT JOIN orders o ON o.id = t.order_id AND o.restaurant_id = t.restaurant_id
       LEFT JOIN kds_ticket_items i ON i.ticket_id = t.id
       WHERE t.restaurant_id = ?`;
     const args: InValue[] = [rid];
@@ -87,6 +91,8 @@ router.get('/tickets', requireRole('owner', 'manager', 'cashier', 'waiter', 'kit
           table_name: r.table_name, server_name: r.server_name,
           covers: r.covers, vip: r.vip, station: r.station,
           status: r.status, created_at: r.created_at, updated_at: r.updated_at,
+          order_note: r.order_note ?? null,
+          order_type: r.order_type ?? 'dine_in',
           items: [],
         });
       }
@@ -160,6 +166,21 @@ router.post('/tickets', requireRole('owner', 'manager', 'cashier', 'waiter'), as
   } catch (e) { next(e); }
 });
 
+// PATCH /api/kds/tickets/:id/vip
+router.patch('/tickets/:id/vip', requireRole('owner', 'manager'), async (req: AuthRequest, res, next) => {
+  try {
+    const rid = req.user!.restaurant_id;
+    const id = req.params.id as string;
+    const { vip } = z.object({ vip: z.boolean() }).parse(req.body);
+    const result = await getDb().execute({
+      sql: `UPDATE kds_tickets SET vip=?, updated_at=datetime('now') WHERE id=? AND restaurant_id=?`,
+      args: [vip ? 1 : 0, id, rid],
+    });
+    if (!result.rowsAffected) { res.status(404).json({ error: 'Ticket not found' }); return; }
+    res.json({ id, vip: vip ? 1 : 0 });
+  } catch (e) { next(e); }
+});
+
 // PATCH /api/kds/tickets/:id/fire  (new → prep)
 router.patch('/tickets/:id/fire', requireRole('owner', 'manager', 'kitchen'), async (req: AuthRequest, res, next) => {
   try {
@@ -184,6 +205,18 @@ router.patch('/tickets/:id/ready', requireRole('owner', 'manager', 'kitchen'), a
       args: [id, rid],
     });
     if (!result.rowsAffected) { res.status(404).json({ error: 'Ticket not found' }); return; }
+    const ticket = await getDb().execute({
+      sql: 'SELECT table_name FROM kds_tickets WHERE id=? AND restaurant_id=?',
+      args: [id, rid],
+    });
+    const tableName = ticket.rows.length ? String((ticket.rows[0] as Record<string, unknown>).table_name) : 'Table';
+    sendRestaurantPush(rid, {
+      title: `Ready to serve — ${tableName}`,
+      body: 'Kitchen marked this order ready',
+      data: { type: 'kds', ticketId: id, page: 'orders' },
+      roles: ['waiter', 'manager', 'owner', 'cashier'],
+      excludeUserId: req.user!.id,
+    });
     res.json({ id, status: 'ready' });
   } catch (e) { next(e); }
 });

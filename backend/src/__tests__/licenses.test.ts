@@ -8,7 +8,11 @@ import {
   setupTestDb,
   OWNER_EMAIL, OWNER_PASS,
   FOUNDER_EMAIL, FOUNDER_PASS,
+  DEMO_REST,
 } from './setup.js';
+import { getDb } from '../db.js';
+import { sha256Token } from '../services/licensePurchaseFulfillment.js';
+import { uid } from '../utils.js';
 
 let ownerToken  = '';
 let founderToken = '';
@@ -141,5 +145,64 @@ describe('DELETE /api/licenses/:id — founder revokes', () => {
       .delete(`/api/licenses/${id}`)
       .set('Authorization', `Bearer ${founderToken}`);
     expect(res.status).toBe(204);
+  });
+});
+
+describe('Renewal purchase requests', () => {
+  it('owner can request renewal with founder plan pricing', async () => {
+    const res = await request(app)
+      .post('/api/licenses/purchase-request')
+      .set('Authorization', `Bearer ${ownerToken}`)
+      .send({ plan: 'premium', note: 'Please renew' });
+    expect(res.status).toBe(201);
+    expect(res.body.status).toBe('pending');
+    expect(res.body.plan).toBe('premium');
+    expect(res.body).toHaveProperty('founder_email');
+  });
+
+  it('founder can fulfill renewal and upgrade plan', async () => {
+    const pending = await request(app)
+      .get('/api/founder/license-requests')
+      .set('Authorization', `Bearer ${founderToken}`);
+    const req = pending.body.find((r: { status: string }) => r.status === 'pending');
+    expect(req).toBeTruthy();
+
+    const fulfill = await request(app)
+      .post(`/api/founder/license-requests/${req.id}/fulfill`)
+      .set('Authorization', `Bearer ${founderToken}`);
+    expect(fulfill.status).toBe(200);
+    expect(fulfill.body.status).toBe('fulfilled');
+    expect(fulfill.body.plan).toBe('premium');
+
+    const mine = await request(app)
+      .get('/api/licenses/mine')
+      .set('Authorization', `Bearer ${ownerToken}`);
+    expect(mine.body.plan).toBe('premium');
+    expect(mine.body.trial_expired).toBe(false);
+  });
+
+  it('email deny link cancels a pending request', async () => {
+    const token = 'test-deny-token-abc';
+    const id = uid();
+    const owner = await request(app).post('/api/auth/login').send({ email: OWNER_EMAIL, password: OWNER_PASS });
+    const ownerId = owner.body.user.id;
+
+    await getDb().execute({
+      sql: `INSERT INTO license_purchase_requests(id,restaurant_id,requester_user_id,email,plan,status,token_hash)
+            VALUES(?,?,?,?,?,'pending',?)`,
+      args: [id, DEMO_REST, ownerId, OWNER_EMAIL, 'pro', sha256Token(token)],
+    });
+
+    const deny = await request(app).get(
+      `/api/licenses/renewal/action?id=${id}&token=${token}&action=deny`,
+    );
+    expect(deny.status).toBe(200);
+    expect(deny.text).toContain('denied');
+
+    const row = await getDb().execute({
+      sql: `SELECT status FROM license_purchase_requests WHERE id=?`,
+      args: [id],
+    });
+    expect(row.rows[0]?.status).toBe('cancelled');
   });
 });

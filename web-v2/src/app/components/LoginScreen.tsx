@@ -1,11 +1,13 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Eye, EyeOff, Shield, ArrowRight, Phone, Lock, Mail, Delete, ChevronRight, Star, Store, User } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "./Toast";
 import { useAuth } from "../auth";
 import { authApi, inquiryApi, type ApiPlanConfig } from "../../services/api";
 import { usePlanConfig } from "../PlanConfigProvider";
 import { formatPlanPrice, formatBillingSuffix } from "../../services/planConfigStore";
+import { LanguageSwitcher } from "../../i18n/LanguageSwitcher";
+import { useLanguage } from "../../i18n/LanguageProvider";
 
 type AuthMethod = "password" | "pin" | "otp";
 type AuthState = "login" | "forgot" | "reset" | "otp-verify" | "inquiry";
@@ -64,6 +66,7 @@ function PinPad({ onSubmit }: { onSubmit: (pin: string) => void }) {
 }
 
 export function LoginScreen({ onLogin }: { onLogin?: () => void }) {
+  const { t } = useLanguage();
   const { plans: planConfigs } = usePlanConfig();
   const { loginEmail, loginPin, requestOtp, verifyOtp } = useAuth();
   const [method, setMethod] = useState<AuthMethod>("password");
@@ -269,7 +272,10 @@ export function LoginScreen({ onLogin }: { onLogin?: () => void }) {
       </div>
 
       {/* Right form panel */}
-      <div className="flex-1 flex flex-col items-center justify-center p-6 overflow-y-auto">
+      <div className="flex-1 flex flex-col items-center justify-center p-6 overflow-y-auto relative">
+        <div className="absolute top-4 right-4 sm:top-6 sm:right-6 z-10">
+          <LanguageSwitcher variant="login" />
+        </div>
         {/* Mobile logo */}
         <div className="lg:hidden flex items-center gap-3 mb-8">
           <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: "linear-gradient(135deg, #1e7fff, #00c6ff)" }}>
@@ -283,8 +289,8 @@ export function LoginScreen({ onLogin }: { onLogin?: () => void }) {
             {authState === "login" && (
               <motion.div key="login" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -16 }} className="space-y-6">
                 <div>
-                  <h2 style={{ fontFamily: "var(--font-display)", fontWeight: 700, color: "#e8eef8", fontSize: "1.6rem" }}>Welcome back</h2>
-                  <p style={{ color: "#6b82a0", fontSize: "0.85rem", marginTop: 4 }}>Sign in to your Cafyz account</p>
+                  <h2 style={{ fontFamily: "var(--font-display)", fontWeight: 700, color: "#e8eef8", fontSize: "1.6rem" }}>{t("Welcome back")}</h2>
+                  <p style={{ color: "#6b82a0", fontSize: "0.85rem", marginTop: 4 }}>{t("Sign in to your Cafyz account")}</p>
                 </div>
 
                 {/* Auth method tabs */}
@@ -294,7 +300,7 @@ export function LoginScreen({ onLogin }: { onLogin?: () => void }) {
                       className="flex-1 py-2 rounded-lg text-sm capitalize transition-all font-medium"
                       style={method === m ? { background: "linear-gradient(135deg, #1e7fff, #00c6ff)", color: "#fff" } : { color: "#6b82a0" }}
                     >
-                      {m === "password" ? "Email" : m === "pin" ? "PIN" : "OTP"}
+                      {m === "password" ? t("Email") : m === "pin" ? "PIN" : "OTP"}
                     </button>
                   ))}
                 </div>
@@ -302,7 +308,7 @@ export function LoginScreen({ onLogin }: { onLogin?: () => void }) {
                 {method === "password" && (
                   <div className="space-y-3">
                     <div>
-                      <label style={{ color: "#a8bdd4", fontSize: "0.8rem", display: "block", marginBottom: 6 }}>Email address</label>
+                      <label style={{ color: "#a8bdd4", fontSize: "0.8rem", display: "block", marginBottom: 6 }}>{t("Email address")}</label>
                       <div className="flex items-center gap-2 rounded-xl px-3 py-3" style={{ background: "#0d1326", border: "1px solid rgba(30,127,255,0.15)" }}>
                         <Mail size={15} style={{ color: "#6b82a0", flexShrink: 0 }} />
                         <input type="email" placeholder="alex@restaurant.com" value={email} onChange={e => setEmail(e.target.value)}
@@ -311,7 +317,7 @@ export function LoginScreen({ onLogin }: { onLogin?: () => void }) {
                       </div>
                     </div>
                     <div>
-                      <label style={{ color: "#a8bdd4", fontSize: "0.8rem", display: "block", marginBottom: 6 }}>Password</label>
+                      <label style={{ color: "#a8bdd4", fontSize: "0.8rem", display: "block", marginBottom: 6 }}>{t("Password")}</label>
                       <div className="flex items-center gap-2 rounded-xl px-3 py-3" style={{ background: "#0d1326", border: "1px solid rgba(30,127,255,0.15)" }}>
                         <Lock size={15} style={{ color: "#6b82a0", flexShrink: 0 }} />
                         <input type={showPass ? "text" : "password"} placeholder="••••••••" value={password} onChange={e => setPassword(e.target.value)}
@@ -323,7 +329,7 @@ export function LoginScreen({ onLogin }: { onLogin?: () => void }) {
                       </div>
                     </div>
                     <div className="flex justify-end">
-                      <button onClick={() => setAuthState("forgot")} style={{ color: "#1e7fff", fontSize: "0.8rem" }}>Forgot password?</button>
+                      <button onClick={() => setAuthState("forgot")} style={{ color: "#1e7fff", fontSize: "0.8rem" }}>{t("Forgot password?")}</button>
                     </div>
                   </div>
                 )}
@@ -331,7 +337,7 @@ export function LoginScreen({ onLogin }: { onLogin?: () => void }) {
                 {method === "pin" && (
                   <div className="space-y-4">
                     <div>
-                      <label style={{ color: "#a8bdd4", fontSize: "0.8rem", display: "block", marginBottom: 6 }}>Email address</label>
+                      <label style={{ color: "#a8bdd4", fontSize: "0.8rem", display: "block", marginBottom: 6 }}>{t("Email address")}</label>
                       <div className="flex items-center gap-2 rounded-xl px-3 py-3" style={{ background: "#0d1326", border: "1px solid rgba(30,127,255,0.15)" }}>
                         <Mail size={15} style={{ color: "#6b82a0" }} />
                         <input type="email" placeholder="staff@restaurant.com" value={pinEmail} onChange={e => setPinEmail(e.target.value)} className="flex-1 bg-transparent outline-none text-sm placeholder:text-[#6b82a0]" style={{ color: "#e8eef8" }} />
@@ -344,7 +350,7 @@ export function LoginScreen({ onLogin }: { onLogin?: () => void }) {
                 {method === "otp" && (
                   <div className="space-y-4">
                     <div>
-                      <label style={{ color: "#a8bdd4", fontSize: "0.8rem", display: "block", marginBottom: 6 }}>Phone number</label>
+                      <label style={{ color: "#a8bdd4", fontSize: "0.8rem", display: "block", marginBottom: 6 }}>{t("Phone number")}</label>
                       <div className="flex items-center gap-2 rounded-xl px-3 py-3" style={{ background: "#0d1326", border: "1px solid rgba(30,127,255,0.15)" }}>
                         <Phone size={15} style={{ color: "#6b82a0" }} />
                         <input type="tel" placeholder="+91 98765 43210" value={phone} onChange={e => setPhone(e.target.value)}
@@ -355,7 +361,7 @@ export function LoginScreen({ onLogin }: { onLogin?: () => void }) {
                     <button onClick={sendOtp} disabled={loading}
                       className="w-full py-3 rounded-xl text-sm font-semibold transition-all hover:opacity-90 active:scale-98"
                       style={{ background: "linear-gradient(135deg, #1e7fff, #00c6ff)", color: "#fff", opacity: loading ? 0.7 : 1 }}>
-                      {loading ? "Sending…" : "Send OTP"}
+                      {loading ? t("Sending…") : t("Send OTP")}
                     </button>
                   </div>
                 )}
@@ -368,13 +374,13 @@ export function LoginScreen({ onLogin }: { onLogin?: () => void }) {
                     className="w-full py-3 rounded-xl text-sm font-semibold flex items-center justify-center gap-2 transition-all hover:opacity-90"
                     style={{ background: "linear-gradient(135deg, #1e7fff, #00c6ff)", color: "#fff", opacity: loading ? 0.7 : 1 }}
                   >
-                    {loading ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <>Sign In <ArrowRight size={16} /></>}
+                    {loading ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <>{t("Sign In")} <ArrowRight size={16} /></>}
                   </motion.button>
                 )}
 
                 <p style={{ color: "#6b82a0", fontSize: "0.8rem", textAlign: "center" }}>
-                  New to Cafyz?{" "}
-                  <button onClick={() => setAuthState("inquiry")} style={{ color: "#1e7fff", fontWeight: 600 }}>Start free trial →</button>
+                  {t("New to Cafyz?")}{" "}
+                  <button onClick={() => setAuthState("inquiry")} style={{ color: "#1e7fff", fontWeight: 600 }}>{t("Start free trial →")}</button>
                 </p>
               </motion.div>
             )}

@@ -48,8 +48,9 @@ export function getPrinterEnvironment(): PrinterEnvironment {
   if (platform === 'ios') {
     if (isNativeApp()) {
       guidance.push(
-        'Cafyz native app: connect a BLE thermal printer via Bluetooth below.',
-        'Classic Bluetooth-only printers need a BLE model or use AirPrint / “Print via Browser” for Wi‑Fi printers.',
+        'Use a BLE ESC/POS thermal printer (not classic Bluetooth-only models).',
+        'Turn on the printer and put it in pairing mode before tapping Pick Bluetooth printer.',
+        'If the list is empty, pair once in system Bluetooth settings, then try again.',
       );
     } else {
       guidance.push(
@@ -61,8 +62,9 @@ export function getPrinterEnvironment(): PrinterEnvironment {
   } else if (platform === 'android') {
     if (isNativeApp()) {
       guidance.push(
-        'Cafyz native app: connect a BLE thermal printer via Bluetooth below.',
-        'Turn on Bluetooth and Location. Pair the printer in Android Settings if the picker is empty.',
+        'Pair your thermal printer in Android Settings → Bluetooth first.',
+        'Return here and tap your printer under Paired printers.',
+        'If your printer is BLE-only, use Scan for BLE printer instead.',
       );
     } else if (isStandalone) {
       guidance.push(
@@ -125,15 +127,30 @@ export function formatPrinterConnectError(err: unknown, env = getPrinterEnvironm
   }
 
   if (name === 'NotFoundError' || msg.includes('User cancelled')) {
+    if (isNativeApp() && env.platform === 'android') {
+      return 'No BLE printer found. Pair your printer in Android Settings → Bluetooth, then tap it under Paired printers (most thermal printers use classic Bluetooth, not BLE).';
+    }
     return 'No printer selected. Put the printer in pairing mode and try again.';
+  }
+
+  if (msg.includes('No paired printers') || msg.includes('Multiple paired Bluetooth')) {
+    return msg;
+  }
+
+  if (msg.includes('Permission denied') || msg.includes('permission denied')) {
+    return 'Bluetooth permission denied. Open Android Settings → Apps → Cafyz → Permissions and allow Nearby devices / Bluetooth.';
   }
 
   if (name === 'SecurityError' || msg.includes('secure context')) {
     return 'Bluetooth blocked — open https://cafyz.ametronyx.com in Chrome (not an embedded browser).';
   }
 
-  if (name === 'NetworkError' || msg.includes('GATT')) {
-    return 'Could not reach the printer. Move closer, restart the printer, and reconnect in Android Bluetooth settings.';
+  if (name === 'NetworkError' || msg.includes('GATT') || msg.includes('not connected')) {
+    return 'Could not reach the printer. Turn it on, move closer, pair in system settings, then reconnect.';
+  }
+
+  if (msg.includes('writable characteristic')) {
+    return 'Printer found but not writable. Use a BLE ESC/POS thermal printer, not a classic Bluetooth-only model.';
   }
 
   if (!env.bluetoothAvailable) {

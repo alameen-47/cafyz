@@ -1,9 +1,13 @@
 import { Bell, Search, ChevronDown, Menu, Clock, X, UtensilsCrossed, LayoutGrid, ShoppingBag, Users, Package, CalendarCheck } from "lucide-react";
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { NotificationDropdown } from "./NotificationDropdown";
 import { UserProfileDropdown } from "./UserProfileDropdown";
 import { searchApi, type ApiSearchResult } from "../../services/api";
+import { LanguageSwitcher } from "../../i18n/LanguageSwitcher";
+import { useLanguage } from "../../i18n/LanguageProvider";
+import { useNotifications } from "../../hooks/useNotifications";
+import { usePushNotifications } from "../../hooks/usePushNotifications";
 
 const pageLabels: Record<string, { title: string; subtitle: string }> = {
   dashboard:    { title: "Dashboard",          subtitle: "Welcome back, Alex" },
@@ -98,22 +102,40 @@ function useDebounce<T>(value: T, delay: number): T {
 }
 
 export function TopBar({ active, onMobileMenuOpen, onNavigate, onLogout, role, plan, userName = "there", userEmail = "", userInitials = "?" }: TopBarProps) {
+  const { t } = useLanguage();
   const [searchQuery, setSearchQuery] = useState("");
   const [searchFocused, setSearchFocused] = useState(false);
   const [searchResults, setSearchResults] = useState<ApiSearchResult[]>([]);
   const [searchLoading, setSearchLoading] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
-  const [unreadNotifs, setUnreadNotifs] = useState(0);
   const notifRef = useRef<HTMLDivElement>(null);
   const profileRef = useRef<HTMLDivElement>(null);
   const searchRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const notificationsEnabled = role !== "founder";
+  const {
+    items: notifItems,
+    unread: unreadNotifs,
+    loading: notifLoading,
+    error: notifError,
+    refresh: refreshNotifs,
+    markRead,
+    markAllRead,
+    dismissLocal,
+  } = useNotifications(notificationsEnabled);
+  usePushNotifications(notificationsEnabled);
   const time = useClock();
   const initials = (userInitials || userName.split(" ").map(n => n[0]).join("")).slice(0, 2).toUpperCase();
   const debouncedQuery = useDebounce(searchQuery, 280);
 
-  const page = pageLabels[active] || pageLabels.dashboard;
+  const page = useMemo(() => {
+    const base = pageLabels[active] || pageLabels.dashboard;
+    return {
+      title: t(base.title),
+      subtitle: t(base.subtitle),
+    };
+  }, [active, t]);
   const showDropdown = searchFocused && (searchQuery.length >= 2 || searchResults.length > 0);
 
   useEffect(() => {
@@ -175,7 +197,7 @@ export function TopBar({ active, onMobileMenuOpen, onNavigate, onLogout, role, p
           {page.title}
         </h1>
         <p className="truncate hidden sm:block" style={{ color: "#6b82a0", fontSize: "0.67rem" }}>
-          {active === "dashboard" ? `Welcome back, ${userName.split(" ")[0]}` : page.subtitle}
+          {active === "dashboard" ? `${t("Welcome back,")} ${userName.split(" ")[0]}` : page.subtitle}
         </p>
       </div>
 
@@ -202,7 +224,7 @@ export function TopBar({ active, onMobileMenuOpen, onNavigate, onLogout, role, p
           <input
             ref={inputRef}
             type="text"
-            placeholder="Search…"
+            placeholder={t("Search…")}
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
             onFocus={() => setSearchFocused(true)}
@@ -285,6 +307,10 @@ export function TopBar({ active, onMobileMenuOpen, onNavigate, onLogout, role, p
         </AnimatePresence>
       </div>
 
+      {/* Language — compact on mobile, full label on desktop */}
+      <LanguageSwitcher variant="compact" className="flex-shrink-0 sm:hidden" />
+      <LanguageSwitcher variant="header" className="flex-shrink-0 hidden sm:block" />
+
       {/* Notification bell */}
       <div ref={notifRef} className="relative flex-shrink-0">
         <button
@@ -297,7 +323,19 @@ export function TopBar({ active, onMobileMenuOpen, onNavigate, onLogout, role, p
               style={{ background: "#ff3b5c", boxShadow: "0 0 6px rgba(255,59,92,0.7)" }} />
           )}
         </button>
-        <NotificationDropdown open={notifOpen} onClose={() => setNotifOpen(false)} onUnreadChange={setUnreadNotifs} />
+        <NotificationDropdown
+          open={notifOpen}
+          onClose={() => setNotifOpen(false)}
+          items={notifItems}
+          unread={unreadNotifs}
+          loading={notifLoading}
+          error={notifError}
+          onRefresh={() => void refreshNotifs()}
+          onMarkAllRead={() => void markAllRead()}
+          onMarkRead={keys => void markRead(keys)}
+          onDismiss={dismissLocal}
+          onNavigate={onNavigate}
+        />
       </div>
 
       {/* Avatar / profile */}

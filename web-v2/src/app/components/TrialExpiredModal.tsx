@@ -1,35 +1,88 @@
 import { motion } from 'motion/react';
-import { Clock } from 'lucide-react';
+import { Clock, Mail, Loader2 } from 'lucide-react';
+import { useState } from 'react';
+import { toast } from './Toast';
+import { licensesApi } from '../../services/api';
+import type { Plan } from '../auth';
 
 interface Props {
   expiresAt?: string | null;
+  founderEmail?: string | null;
+  currentPlan?: Plan;
   onGoLicense: () => void;
+  onRenewalSubmitted?: () => void;
 }
 
-export function TrialExpiredModal({ expiresAt, onGoLicense }: Props) {
+export function TrialExpiredModal({ expiresAt, founderEmail, currentPlan = 'basic', onGoLicense, onRenewalSubmitted }: Props) {
+  const [requesting, setRequesting] = useState(false);
   const expiryLabel = expiresAt ? new Date(expiresAt).toLocaleDateString() : null;
+  const email = founderEmail ?? 'cafyzofficial@gmail.com';
+
+  const contactRenewal = async () => {
+    setRequesting(true);
+    try {
+      await licensesApi.requestPurchase({ plan: currentPlan });
+      toast.success('Renewal request sent', `Cafyz (${email}) will email you when your renewal is approved.`);
+      onRenewalSubmitted?.();
+    } catch (e) {
+      toast.error("Couldn't send request", (e as Error).message);
+    } finally {
+      setRequesting(false);
+    }
+  };
 
   return (
-    <div className="fixed inset-0 z-[110] flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(10px)' }}>
+    <div className="fixed inset-0 z-[110] flex items-start justify-center p-4 pt-[max(5rem,env(safe-area-inset-top))]" style={{ background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(8px)' }}>
       <motion.div
-        initial={{ opacity: 0, scale: 0.96 }}
-        animate={{ opacity: 1, scale: 1 }}
-        className="w-full max-w-md rounded-2xl p-6 text-center"
-        style={{ background: '#0d1326', border: '1px solid rgba(255,59,92,0.2)' }}
+        initial={{ opacity: 0, y: -16 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="w-full max-w-lg rounded-2xl p-6"
+        style={{ background: '#0d1326', border: '1px solid rgba(255,59,92,0.25)', boxShadow: '0 20px 60px rgba(0,0,0,0.5)' }}
       >
-        <div className="w-12 h-12 rounded-2xl mx-auto mb-4 flex items-center justify-center" style={{ background: 'rgba(255,59,92,0.12)' }}>
-          <Clock size={22} style={{ color: '#ff3b5c' }} />
+        <div className="flex items-start gap-3 mb-4">
+          <div className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: 'rgba(255,59,92,0.12)' }}>
+            <Clock size={22} style={{ color: '#ff3b5c' }} />
+          </div>
+          <div>
+            <h2 style={{ color: '#e8eef8', fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: '1.15rem' }}>
+              Renew your Cafyz subscription
+            </h2>
+            <p style={{ color: '#6b82a0', fontSize: '0.82rem', marginTop: 6, lineHeight: 1.55 }}>
+              Your trial or license ended{expiryLabel ? ` on ${expiryLabel}` : ''}. Contact Cafyz to renew — your restaurant data is safe.
+            </p>
+          </div>
         </div>
-        <h2 style={{ color: '#e8eef8', fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: '1.3rem' }}>
-          Trial expired
-        </h2>
-        <p style={{ color: '#6b82a0', fontSize: '0.85rem', marginTop: 10, lineHeight: 1.55 }}>
-          Your trial has ended{expiryLabel ? ` on ${expiryLabel}` : ''}. Activate a license key to restore POS, kitchen, and manager access.
-        </p>
-        <button onClick={onGoLicense} className="mt-6 w-full py-3 rounded-xl text-sm font-semibold"
-          style={{ background: 'linear-gradient(135deg, #1e7fff, #00c6ff)', color: '#fff' }}>
-          Go to License →
-        </button>
+
+        <div className="rounded-xl px-4 py-3 mb-4" style={{ background: '#111b35', border: '1px solid rgba(30,127,255,0.12)' }}>
+          <p style={{ color: '#a8bdd4', fontSize: '0.8rem', lineHeight: 1.5 }}>
+            Email:{' '}
+            <a href={`mailto:${email}`} style={{ color: '#1e7fff', fontWeight: 600 }}>{email}</a>
+          </p>
+          <p style={{ color: '#6b82a0', fontSize: '0.72rem', marginTop: 6 }}>
+            Tap below to send a renewal request. The founder receives Approve / Deny links by email.
+          </p>
+        </div>
+
+        <div className="flex flex-col sm:flex-row gap-2">
+          <button
+            type="button"
+            onClick={() => void contactRenewal()}
+            disabled={requesting}
+            className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-semibold"
+            style={{ background: 'linear-gradient(135deg, #1e7fff, #00c6ff)', color: '#fff', opacity: requesting ? 0.7 : 1 }}
+          >
+            {requesting ? <Loader2 size={16} className="animate-spin" /> : <Mail size={16} />}
+            {requesting ? 'Sending…' : 'Contact Cafyz to renew'}
+          </button>
+          <button
+            type="button"
+            onClick={onGoLicense}
+            className="flex-1 py-3 rounded-xl text-sm font-semibold"
+            style={{ background: 'rgba(30,127,255,0.1)', color: '#1e7fff', border: '1px solid rgba(30,127,255,0.2)' }}
+          >
+            License & plans
+          </button>
+        </div>
       </motion.div>
     </div>
   );

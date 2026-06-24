@@ -13,11 +13,12 @@ import reservationRoutes from './routes/reservations.js';
 import inventoryRoutes   from './routes/inventory.js';
 import dashboardRoutes   from './routes/dashboard.js';
 import restaurantRoutes  from './routes/restaurants.js';
-import licenseRoutes     from './routes/licenses.js';
+import licenseRoutes, { licenseRenewalAction } from './routes/licenses.js';
 import founderRoutes     from './routes/founder.js';
 import inquiryRoutes     from './routes/inquiries.js';
 import supportRoutes     from './routes/support.js';
 import searchRoutes      from './routes/search.js';
+import notificationRoutes from './routes/notifications.js';
 import { requirePlan }   from './middleware/planGuard.js';
 import { requireAuth }   from './middleware/auth.js';
 import { requireActiveSubscription } from './middleware/subscriptionGuard.js';
@@ -97,11 +98,13 @@ app.use('/api/reservations',     mutationLimiter, requireAuth, requireActiveSubs
 app.use('/api/inventory',        mutationLimiter, requireAuth, requireActiveSubscription, requireSectionAccess('inventory'), requirePlan('pro'),     inventoryRoutes);
 app.use('/api/dashboard',        requireAuth, requireActiveSubscription, requireSectionAccess('manager', 'reports'), dashboardRoutes);
 app.use('/api/restaurants',      mutationLimiter, restaurantRoutes);
+app.get('/api/licenses/renewal/action', licenseRenewalAction);
 app.use('/api/licenses',         mutationLimiter, requireAuth, requireSectionAccess('license'), licenseRoutes);
-app.use('/api/founder',          mutationLimiter, founderRoutes);
+app.use('/api/founder',          mutationLimiter, requireAuth, founderRoutes);
 app.use('/api/inquiries',    inquiryLimiter, inquiryRoutes);
 app.use('/api/support',          mutationLimiter, supportRoutes);
 app.use('/api/search',           requireAuth, requireActiveSubscription, searchRoutes);
+app.use('/api/notifications',    requireAuth, requireActiveSubscription, notificationRoutes);
 
 // ── Error handling ──────────────────────────────────────────────────────────────
 app.use(notFound);

@@ -1,15 +1,58 @@
-@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,400&family=JetBrains+Mono:wght@400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,400&family=JetBrains+Mono:wght@400;500;600&family=Noto+Sans+Devanagari:wght@400;500;600;700&family=Noto+Sans+Kannada:wght@400;500;600;700&display=swap');
 
 :root {
   --font-display: 'Outfit', sans-serif;
   --font-body: 'DM Sans', sans-serif;
   --font-mono: 'JetBrains Mono', monospace;
+  --font-hi: 'Noto Sans Devanagari', 'DM Sans', sans-serif;
+  --font-kn: 'Noto Sans Kannada', 'DM Sans', sans-serif;
+  --ui-font-scale: 1;
+  --ui-line-height: 1.45;
+}
+
+html.lang-hi {
+  --font-body: var(--font-hi);
+  --font-display: var(--font-hi);
+  --ui-font-scale: 1.02;
+  --ui-line-height: 1.55;
+}
+
+html.lang-kn {
+  --font-body: var(--font-kn);
+  --font-display: var(--font-kn);
+  --ui-font-scale: 1.01;
+  --ui-line-height: 1.58;
 }
 
 body {
   font-family: var(--font-body);
+  font-size: calc(1rem * var(--ui-font-scale));
+  line-height: var(--ui-line-height);
 }
 
 h1, h2, h3, h4, h5, h6 {
   font-family: var(--font-display);
+  line-height: calc(var(--ui-line-height) * 0.95);
 }
+
+/* Responsive Indic script sizing — slightly smaller on narrow screens to avoid overflow */
+@media (max-width: 640px) {
+  html.lang-hi,
+  html.lang-kn {
+    --ui-font-scale: 0.96;
+  }
+}
+
+@media (min-width: 1024px) {
+  html.lang-hi {
+    --ui-font-scale: 1.03;
+  }
+  html.lang-kn {
+    --ui-font-scale: 1.02;
+  }
+}
+
+.lang-switcher-label {
+  font-family: var(--font-body);
+}
+

@@ -49,6 +49,7 @@ const PAGE_SCREEN_MAP: Partial<Record<PageId, ScreenId[]>> = {
   roles: ['roles'],
   profile: ['manager'],
   license: ['license'],
+  reservations: ['manager'],
 };
 
 export function defaultRoleScreenAccess(role: string): ScreenAccessMap {

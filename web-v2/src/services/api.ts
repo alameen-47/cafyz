@@ -4,7 +4,7 @@
 import { Capacitor } from '@capacitor/core';
 import { toastBus } from './toastBus';
 import { setActiveCurrencyCode } from '../utils/currency';
-import { setActiveLanguageCode } from '../utils/language';
+import { tt } from '../i18n/translateToast';
 
 // In dev, relative URLs go through the Vite proxy (→ localhost:4000).
 // Native USB/emulator dev uses http://localhost:4000 with `adb reverse tcp:4000 tcp:4000`.
@@ -26,6 +26,9 @@ function resolveApiBase(): string {
 
 const BASE = resolveApiBase();
 let sessionToastShown = false;
+
+/** Dispatched when the API returns 402 TRIAL_EXPIRED — App listens to lock the shell. */
+export const TRIAL_EXPIRED_EVENT = 'cafyz:trial-expired';
 
 const DEVICE_KEY = 'cafyz_device_id';
 
@@ -85,6 +88,14 @@ async function request<T = unknown>(
     throw new Error('Session expired — please sign in again.');
   }
 
+  if (res.status === 402) {
+    const trialPayload = await res.json().catch(() => ({} as { code?: string; error?: string }));
+    if (trialPayload.code === 'TRIAL_EXPIRED') {
+      window.dispatchEvent(new CustomEvent(TRIAL_EXPIRED_EVENT, { detail: trialPayload }));
+    }
+    throw new Error(trialPayload.error ?? 'Subscription expired — renew to continue.');
+  }
+
   if (res.status === 204) return null as T;
 
   const data = await res.json().catch(() => ({ error: res.statusText }));
@@ -94,7 +105,8 @@ async function request<T = unknown>(
       method !== 'GET'
       && !isPrinterAssignmentSync
       && !path.startsWith('/api/kds/print-jobs/claim')
-      && !path.startsWith('/api/kds/print-jobs/');
+      && !path.startsWith('/api/kds/print-jobs/')
+      && !path.startsWith('/api/notifications/');
     if (shouldToastError) toastBus.error(String(message));
     throw new Error(message);
   }
@@ -106,20 +118,20 @@ async function request<T = unknown>(
     // Background KDS print queue calls are polled frequently.
     // Never show automatic success toasts for these non-interactive operations.
     && !path.startsWith('/api/kds/print-jobs/claim')
-    && !path.startsWith('/api/kds/print-jobs/');
+    && !path.startsWith('/api/kds/print-jobs/')
+    && !path.startsWith('/api/notifications/');
   if (shouldToastSuccess) {
     const successMessage = method === 'DELETE'
-      ? 'Removed successfully'
+      ? tt('Removed successfully')
       : method === 'POST'
-      ? 'Saved successfully'
-      : 'Updated successfully';
+      ? tt('Saved successfully')
+      : tt('Updated successfully');
     toastBus.success(successMessage);
   }
   if (path.startsWith('/api/restaurants/me') && data && typeof data === 'object') {
     const maybeCode = (data as { currency_code?: unknown }).currency_code;
     if (typeof maybeCode === 'string') setActiveCurrencyCode(maybeCode);
-    const maybeLang = (data as { language_code?: unknown }).language_code;
-    if (typeof maybeLang === 'string') setActiveLanguageCode(maybeLang);
+    // UI language is chosen by the user (login/header); do not override from restaurant settings.
   }
   return data as T;
 }
@@ -128,7 +140,7 @@ const get  = <T = unknown>(path: string)                    => request<T>('GET',
 const post = <T = unknown>(path: string, body: unknown)     => request<T>('POST',   path, body);
 const put  = <T = unknown>(path: string, body: unknown)     => request<T>('PUT',    path, body);
 const patch= <T = unknown>(path: string, body?: unknown)    => request<T>('PATCH',  path, body);
-const del  =               (path: string)                   => request   ('DELETE', path);
+const del  = <T = unknown>(path: string, body?: unknown)     => request<T>('DELETE', path, body);
 
 // ── Auth ──────────────────────────────────────────────────────────────────────
 export const authApi = {
@@ -205,8 +217,9 @@ export interface PublicMenuResponse {
 
 export const publicApi = {
   // Fetched by the public /m/:restaurantId page — never attaches a token.
-  menu: async (restaurantId: string): Promise<PublicMenuResponse> => {
-    const res = await fetch(`${BASE}/api/public/menu/${encodeURIComponent(restaurantId)}`);
+  menu: async (restaurantId: string, opts?: { fresh?: boolean }): Promise<PublicMenuResponse> => {
+    const bust = opts?.fresh ? `?_=${Date.now()}` : '';
+    const res = await fetch(`${BASE}/api/public/menu/${encodeURIComponent(restaurantId)}${bust}`);
     if (!res.ok) {
       const body = await res.json().catch(() => ({}));
       throw new Error((body as { error?: string }).error || 'This menu is unavailable.');
@@ -280,6 +293,8 @@ export const tablesApi = {
 export const ordersApi = {
   list:         (p?: { status?: string; table_id?: string })                  =>
     get<ApiOrder[]>(`/api/orders${p ? `?${new URLSearchParams(p as Record<string, string>)}` : ''}`),
+  live:         (p?: { active?: boolean })                                      =>
+    get<ApiLiveOrder[]>(`/api/orders/live${p?.active ? '?active=1' : ''}`),
   get:          (id: string)                                                  => get<ApiOrder>(`/api/orders/${id}`),
   create:       (d: { table_id?: string; covers?: number; note?: string })    => post<ApiOrder>('/api/orders', d),
   update:       (id: string, d: { covers?: number; note?: string; order_type?: 'dine_in' | 'parcel' }) =>
@@ -293,6 +308,8 @@ export const ordersApi = {
   // Atomically settle ALL active orders on a table + clear it (prevents leftover bills).
   settleTable:  (tableId: string) => post<{ ok: boolean; settled: number }>('/api/orders/settle-table', { table_id: tableId }),
   updateStatus: (id: string, status: string)                                  => patch<{ id: string; status: string }>(`/api/orders/${id}/status`, { status }),
+  advanceKitchen: (id: string, action: 'fire' | 'ready' | 'delivered')         =>
+    patch<{ order_id: string; ticket_id: string; status: string }>(`/api/orders/${id}/kitchen-progress`, { action }),
   addItem:      (orderId: string, d: { menu_item_id: string; qty: number; mods?: string[] }) =>
     post<ApiOrderItem>(`/api/orders/${orderId}/items`, d),
   updateItem:   (orderId: string, itemId: string, d: { qty?: number; mods?: string[] }) =>
@@ -309,6 +326,7 @@ export const kdsApi = {
   fire:      (id: string)                                                     => patch<{ id: string; status: string }>(`/api/kds/tickets/${id}/fire`),
   ready:     (id: string)                                                     => patch<{ id: string; status: string }>(`/api/kds/tickets/${id}/ready`),
   delivered: (id: string)                                                     => patch<{ id: string; status: string }>(`/api/kds/tickets/${id}/delivered`),
+  setVip:    (id: string, vip: boolean)                                       => patch<{ id: string; vip: number }>(`/api/kds/tickets/${id}/vip`, { vip }),
   claimPrintJob: (device_id?: string)                                         =>
     post<{ job: ApiKitchenPrintJob | null }>('/api/kds/print-jobs/claim', { device_id }),
   claimPrintJobWait: (device_id?: string, wait_ms = 15000)                    =>
@@ -320,7 +338,7 @@ export const kdsApi = {
 
 // ── Reservations ──────────────────────────────────────────────────────────────
 export const reservationsApi = {
-  list:   (p?: { status?: string })  =>
+  list:   (p?: { status?: string; date?: string })  =>
     get<ApiReservation[]>(`/api/reservations${p ? `?${new URLSearchParams(p as Record<string, string>)}` : ''}`),
   create: (d: { guest_name: string; covers: number; res_time: string; note?: string; table_id?: string }) =>
     post<ApiReservation>('/api/reservations', d),
@@ -367,6 +385,38 @@ export const dashboardApi = {
     get<ApiRevenueResponse>(`/api/dashboard/revenue${revenueQueryString(q)}`),
   soldItems: (q?: RevenueQueryParams) =>
     get<ApiSoldItemsResponse>(`/api/dashboard/sold-items${revenueQueryString(q)}`),
+  analytics: (q?: RevenueQueryParams) =>
+    get<ApiAnalyticsResponse>(`/api/dashboard/analytics${revenueQueryString(q)}`),
+};
+
+export type ApiNotificationType = 'order' | 'kds' | 'stock' | 'reservation' | 'system';
+
+export interface ApiNotification {
+  id: string;
+  key: string;
+  type: ApiNotificationType;
+  title: string;
+  body: string;
+  at: string;
+  read: boolean;
+  page?: string;
+  meta?: string;
+}
+
+export interface ApiNotificationsResponse {
+  items: ApiNotification[];
+  unread: number;
+  pushEnabled: boolean;
+}
+
+export const notificationsApi = {
+  list: () => get<ApiNotificationsResponse>('/api/notifications'),
+  markRead: (keys: string[]) => post<{ ok: boolean }>('/api/notifications/read', { keys }),
+  markAllRead: () => post<{ ok: boolean }>('/api/notifications/read-all', {}),
+  registerPushToken: (token: string, platform: 'android' | 'ios' | 'web') =>
+    put<{ ok: boolean; registered: boolean; pushEnabled: boolean }>('/api/notifications/push-token', { token, platform }),
+  unregisterPushToken: (token: string) =>
+    del('/api/notifications/push-token', { token }),
 };
 
 // ── Public plans (founder-controlled pricing + feature gates) ─────────────────
@@ -493,6 +543,16 @@ export interface ApiOrder {
   table_name?: string; created_at: string; updated_at: string; items?: ApiOrderItem[];
 }
 
+export interface ApiLiveOrder extends ApiOrder {
+  server_name?: string | null;
+  ticket_id?: string | null;
+  ticket_status?: 'new' | 'prep' | 'ready' | 'delivered' | null;
+  ticket_vip?: number;
+  ticket_updated_at?: string | null;
+  subtotal?: number;
+  items: ApiOrderItem[];
+}
+
 export interface ApiOrderItem {
   id: string; order_id: string; menu_item_id: string; qty: number;
   mods: string; is_done: number; name?: string; price?: number;
@@ -502,6 +562,8 @@ export interface ApiKdsTicket {
   id: string; restaurant_id: string; order_id: string; table_name: string; server_name: string;
   covers: number; status: 'new' | 'prep' | 'ready' | 'delivered'; vip: number;
   elapsed_min: number; station?: string; created_at: string; updated_at: string;
+  order_note?: string | null;
+  order_type?: 'dine_in' | 'parcel';
   items?: ApiKdsTicketItem[];
 }
 
@@ -583,6 +645,39 @@ export interface ApiSoldItemsResponse {
   dayCount: number;
 }
 
+export interface ApiAnalyticsCategory {
+  category: string;
+  qty_sold: number;
+  revenue: number;
+}
+
+export interface ApiAnalyticsHour {
+  hour: number;
+  label: string;
+  covers: number;
+}
+
+export interface ApiAnalyticsResponse {
+  period: RevenuePeriod;
+  from: string;
+  to: string;
+  periodLabel: string;
+  previous: { from: string; to: string; totalRevenue: number; totalOrders: number };
+  revenue: {
+    rows: ApiRevenueRow[];
+    totalRevenue: number;
+    totalOrders: number;
+    dayCount: number;
+  };
+  topItems: ApiSoldItemRow[];
+  categories: ApiAnalyticsCategory[];
+  totalQty: number;
+  hours: ApiAnalyticsHour[];
+  tables_total: number;
+  tables_occupied: number;
+  deltas: { revenuePct: number; ordersPct: number };
+}
+
 // ── Payload Types ─────────────────────────────────────────────────────────────
 export interface CreateUserPayload {
   name: string; email: string; phone?: string; role: string; password?: string; pin?: string;
@@ -613,6 +708,7 @@ export interface ApiSubscriptionStatus {
   trial_expired?: boolean;
   trial_days_left?: number | null;
   purchase_url?: string;
+  founder_email?: string;
 }
 
 export interface ApiFounderRestaurant {

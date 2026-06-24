@@ -36,11 +36,28 @@ describe('Plan gates — basic plan', () => {
     expect(res.body.required_plan).toBe('pro');
   });
 
-  it('GET /api/dashboard/stats returns 403 for basic plan', async () => {
+  it('GET /api/dashboard/stats returns 200 for basic plan (overview KPIs)', async () => {
     const res = await request(app)
       .get('/api/dashboard/stats')
       .set('Authorization', `Bearer ${basicToken}`);
+    expect(res.status).toBe(200);
+    expect(res.body).toHaveProperty('orders_today');
+  });
+
+  it('GET /api/dashboard/revenue returns 403 for basic plan', async () => {
+    const res = await request(app)
+      .get('/api/dashboard/revenue?period=week')
+      .set('Authorization', `Bearer ${basicToken}`);
     expect(res.status).toBe(403);
+    expect(res.body.required_plan).toBe('pro');
+  });
+
+  it('GET /api/dashboard/analytics returns 403 for basic plan', async () => {
+    const res = await request(app)
+      .get('/api/dashboard/analytics?period=week')
+      .set('Authorization', `Bearer ${basicToken}`);
+    expect(res.status).toBe(403);
+    expect(res.body.required_plan).toBe('pro');
   });
 
   it('GET /api/inventory returns 403 for basic plan', async () => {

@@ -137,8 +137,15 @@ export function Tables() {
       const orderByTable = new Map<string, string>();
       sentOrders.forEach(o => { if (o.table_id) orderByTable.set(o.table_id, o.id); });
       const resvByTable = new Map<string, ApiReservation>();
+      const today = new Date().toISOString().slice(0, 10);
       resv.forEach(r => {
-        if (r.table_id && r.status !== "cancelled" && r.status !== "seated" && r.status !== "no_show" && !resvByTable.has(r.table_id)) {
+        const resDate = r.res_time?.slice(0, 10) ?? "";
+        if (
+          r.table_id
+          && r.status === "confirmed"
+          && resDate >= today
+          && !resvByTable.has(r.table_id)
+        ) {
           resvByTable.set(r.table_id, r);
         }
       });
@@ -147,8 +154,13 @@ export function Tables() {
   }, []);
   useEffect(() => {
     void load();
+    const onResChange = () => void load();
+    window.addEventListener("CAFYZ_RESERVATION_CHANGED", onResChange);
     const id = window.setInterval(() => void load(), 8000);
-    return () => window.clearInterval(id);
+    return () => {
+      window.clearInterval(id);
+      window.removeEventListener("CAFYZ_RESERVATION_CHANGED", onResChange);
+    };
   }, [load]);
 
   const statusCounts = Object.fromEntries(

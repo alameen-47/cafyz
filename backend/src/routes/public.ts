@@ -43,8 +43,8 @@ router.get('/menu/:restaurantId', async (req, res, next) => {
         args: [rid],
       }),
     ]);
-    // Cacheable for a minute — the menu changes rarely and this is hit per scan.
-    res.set('Cache-Control', 'public, max-age=60');
+    // Short cache — menu edits should show up quickly after a scan or refresh.
+    res.set('Cache-Control', 'public, max-age=15, must-revalidate');
     res.json({
       restaurant: {
         id: rid,
@@ -76,6 +76,15 @@ router.get('/plans', async (_req, res, next) => {
     );
     res.set('Cache-Control', 'public, max-age=60');
     res.json(rows.rows);
+  } catch (e) { next(e); }
+});
+
+/** Public founder contact for renewal banners (no secrets). */
+router.get('/support', async (_req, res, next) => {
+  try {
+    const { ADMIN_EMAIL } = await import('../services/email.js');
+    res.set('Cache-Control', 'public, max-age=300');
+    res.json({ founder_email: ADMIN_EMAIL });
   } catch (e) { next(e); }
 });
 

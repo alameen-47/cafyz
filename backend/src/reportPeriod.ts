@@ -68,6 +68,41 @@ export function resolveRevenueWindow(q: RevenueQuery): { from: string; to: strin
   return { from, to, period };
 }
 
+/** Same-length window immediately before `from`–`to` (for period-over-period KPI deltas). */
+export function previousRevenueWindow(
+  q: RevenueQuery,
+  from: string,
+  to: string,
+): { from: string; to: string } {
+  const period = q.period ?? 'range';
+  if (period === 'day') {
+    const d = new Date(`${from}T12:00:00`);
+    d.setDate(d.getDate() - 1);
+    const s = formatDateISO(d);
+    return { from: s, to: s };
+  }
+  if (period === 'week') {
+    const d = new Date(`${from}T12:00:00`);
+    d.setDate(d.getDate() - 7);
+    const b = weekBounds(formatDateISO(d));
+    return { from: b.from, to: b.to };
+  }
+  if (period === 'month') {
+    const [y, m] = from.slice(0, 7).split('-').map(Number);
+    const prevMonth = m === 1 ? `${y - 1}-12` : `${y}-${pad(m - 1)}`;
+    const b = monthBounds(prevMonth);
+    return { from: b.from, to: b.to };
+  }
+  const fromD = new Date(`${from}T12:00:00`);
+  const toD = new Date(`${to}T12:00:00`);
+  const days = Math.max(1, Math.round((toD.getTime() - fromD.getTime()) / 86400000) + 1);
+  const prevTo = new Date(fromD);
+  prevTo.setDate(prevTo.getDate() - 1);
+  const prevFrom = new Date(prevTo);
+  prevFrom.setDate(prevFrom.getDate() - (days - 1));
+  return { from: formatDateISO(prevFrom), to: formatDateISO(prevTo) };
+}
+
 export function periodLabel(q: RevenueQuery, from: string, to: string): string {
   const fmt = (s: string) => new Date(`${s}T12:00:00`).toLocaleDateString('en-GB', {
     weekday: 'short', day: 'numeric', month: 'short', year: 'numeric',

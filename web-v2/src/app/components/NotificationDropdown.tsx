@@ -1,27 +1,35 @@
-import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { Bell, X, CheckCircle2, AlertTriangle, Package, ShoppingBag, Check } from "lucide-react";
-import { dashboardApi, inventoryApi, ordersApi } from "../../services/api";
+import { Bell, X, CheckCircle2, AlertTriangle, Package, ShoppingBag, Check, ChefHat, CalendarCheck } from "lucide-react";
+import type { ApiNotification } from "../../services/api";
 
-interface Notification {
-  id: string;
-  type: "order" | "alert" | "stock" | "system";
-  title: string;
-  body: string;
-  time: string;
-  read: boolean;
+interface NotificationDropdownProps {
+  open: boolean;
+  onClose: () => void;
+  items: ApiNotification[];
+  unread: number;
+  loading: boolean;
+  error?: string;
+  onRefresh: () => void;
+  onMarkAllRead: () => void;
+  onMarkRead: (keys: string[]) => void;
+  onDismiss: (id: string) => void;
+  onNavigate?: (page: string) => void;
 }
 
 const typeConfig = {
-  order:  { icon: ShoppingBag, color: "#1e7fff",  bg: "rgba(30,127,255,0.1)" },
-  alert:  { icon: AlertTriangle, color: "#f59e0b", bg: "rgba(245,158,11,0.1)" },
-  stock:  { icon: Package,      color: "#ff3b5c",  bg: "rgba(255,59,92,0.1)" },
-  system: { icon: CheckCircle2, color: "#22c55e",  bg: "rgba(34,197,94,0.1)" },
+  order:       { icon: ShoppingBag,   color: "#1e7fff",  bg: "rgba(30,127,255,0.1)" },
+  kds:         { icon: ChefHat,       color: "#a855f7",  bg: "rgba(168,85,247,0.1)" },
+  alert:       { icon: AlertTriangle, color: "#f59e0b",  bg: "rgba(245,158,11,0.1)" },
+  stock:       { icon: Package,       color: "#ff3b5c",  bg: "rgba(255,59,92,0.1)" },
+  reservation: { icon: CalendarCheck, color: "#22d3ee", bg: "rgba(34,211,238,0.1)" },
+  system:      { icon: CheckCircle2,  color: "#22c55e",  bg: "rgba(34,197,94,0.1)" },
 };
 
 function relTime(iso?: string): string {
   if (!iso) return "recently";
+  if (iso === "today") return "today";
   const diff = Date.now() - new Date(iso).getTime();
+  if (Number.isNaN(diff)) return iso;
   const mins = Math.floor(diff / 60_000);
   if (mins < 1) return "just now";
   if (mins < 60) return `${mins}m ago`;
@@ -30,75 +38,26 @@ function relTime(iso?: string): string {
   return new Date(iso).toLocaleDateString();
 }
 
-interface NotificationDropdownProps {
-  open: boolean;
-  onClose: () => void;
-  onUnreadChange?: (count: number) => void;
-}
-
-export function NotificationDropdown({ open, onClose, onUnreadChange }: NotificationDropdownProps) {
-  const [notes, setNotes] = useState<Notification[]>([]);
-  const [loading, setLoading] = useState(false);
-  const unreadCount = notes.filter(n => !n.read).length;
-
-  useEffect(() => {
-    onUnreadChange?.(unreadCount);
-  }, [unreadCount, onUnreadChange]);
-
-  useEffect(() => {
-    if (!open) return;
-    let alive = true;
-    setLoading(true);
-    void (async () => {
-      try {
-        const [orders, inventory, stats] = await Promise.all([
-          ordersApi.list().catch(() => []),
-          inventoryApi.list().catch(() => []),
-          dashboardApi.stats().catch(() => null),
-        ]);
-        if (!alive) return;
-        const built: Notification[] = [];
-        for (const o of orders.slice(0, 5)) {
-          built.push({
-            id: `order-${o.id}`,
-            type: "order",
-            title: `Order ${o.status.replace(/_/g, " ")} — ${o.table_name ?? "Takeaway"}`,
-            body: `${o.items?.length ?? 0} items · ${o.covers ?? 0} covers`,
-            time: relTime(o.updated_at ?? o.created_at),
-            read: o.status === "paid" || o.status === "voided" || o.status === "comped",
-          });
-        }
-        for (const item of inventory.filter(i => i.current <= i.par).slice(0, 5)) {
-          built.push({
-            id: `stock-${item.id}`,
-            type: "stock",
-            title: item.current <= item.par * 0.25 ? "Critical stock" : "Low stock",
-            body: `${item.name}: ${item.current}${item.unit} remaining (par ${item.par}${item.unit})`,
-            time: relTime(item.updated_at),
-            read: false,
-          });
-        }
-        if (stats) {
-          built.push({
-            id: "stats-today",
-            type: "system",
-            title: "Today's snapshot",
-            body: `${stats.orders_today} orders · ${stats.tables_occupied}/${stats.tables_total} tables occupied · ${stats.inventory_low} low-stock items`,
-            time: "today",
-            read: true,
-          });
-        }
-        setNotes(built.slice(0, 12));
-      } finally {
-        if (alive) setLoading(false);
-      }
-    })();
-    return () => { alive = false; };
-  }, [open]);
-
-  const markAllRead = () => setNotes(n => n.map(x => ({ ...x, read: true })));
-  const markRead = (id: string) => setNotes(n => n.map(x => x.id === id ? { ...x, read: true } : x));
-  const dismiss = (id: string) => setNotes(n => n.filter(x => x.id !== id));
+export function NotificationDropdown({
+  open,
+  onClose,
+  items,
+  unread,
+  loading,
+  error,
+  onRefresh,
+  onMarkAllRead,
+  onMarkRead,
+  onDismiss,
+  onNavigate,
+}: NotificationDropdownProps) {
+  const handleClick = (note: ApiNotification) => {
+    if (!note.read) onMarkRead([note.key]);
+    if (note.page && onNavigate) {
+      onNavigate(note.page);
+      onClose();
+    }
+  };
 
   return (
     <AnimatePresence>
@@ -122,46 +81,57 @@ export function NotificationDropdown({ open, onClose, onUnreadChange }: Notifica
                 <span style={{ color: "#e8eef8", fontFamily: "var(--font-display)", fontWeight: 700, fontSize: "0.92rem" }}>
                   Notifications
                 </span>
-                {unreadCount > 0 && (
+                {unread > 0 && (
                   <span className="px-1.5 py-0.5 rounded-full text-xs font-bold"
                     style={{ background: "#ff3b5c", color: "#fff", fontFamily: "var(--font-mono)" }}>
-                    {unreadCount}
+                    {unread}
                   </span>
                 )}
               </div>
               <div className="flex items-center gap-2">
-                {unreadCount > 0 && (
-                  <button onClick={markAllRead}
+                <button type="button" onClick={onRefresh}
+                  className="text-xs px-2 py-1 rounded-lg transition-all hover:bg-[rgba(30,127,255,0.08)]"
+                  style={{ color: "#6b82a0" }}>
+                  Refresh
+                </button>
+                {unread > 0 && (
+                  <button type="button" onClick={onMarkAllRead}
                     className="text-xs px-2 py-1 rounded-lg transition-all hover:bg-[rgba(30,127,255,0.08)]"
                     style={{ color: "#1e7fff" }}>
                     Mark all read
                   </button>
                 )}
-                <button onClick={onClose} className="p-1 rounded-lg hover:bg-[rgba(30,127,255,0.08)] transition-all"
+                <button type="button" onClick={onClose} className="p-1 rounded-lg hover:bg-[rgba(30,127,255,0.08)] transition-all"
                   style={{ color: "#6b82a0" }}>
                   <X size={15} />
                 </button>
               </div>
             </div>
 
+            {error && (
+              <div className="px-4 py-2 text-xs" style={{ color: "#f87171", borderBottom: "1px solid rgba(255,59,92,0.15)" }}>
+                {error}
+              </div>
+            )}
+
             <div className="overflow-y-auto scrollbar-hide" style={{ maxHeight: 380 }}>
-              {loading ? (
+              {loading && items.length === 0 ? (
                 <div className="flex items-center justify-center py-12">
                   <div className="w-6 h-6 border-2 border-white/20 border-t-[#1e7fff] rounded-full animate-spin" />
                 </div>
-              ) : notes.length === 0 ? (
+              ) : items.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-12 gap-2">
                   <Check size={28} style={{ color: "#22c55e" }} />
                   <p style={{ color: "#6b82a0", fontSize: "0.82rem" }}>All caught up!</p>
                 </div>
               ) : (
-                notes.map(note => {
-                  const cfg = typeConfig[note.type];
+                items.map(note => {
+                  const cfg = typeConfig[note.type] ?? typeConfig.system;
                   const Icon = cfg.icon;
                   return (
                     <motion.div key={note.id} layout
                       initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                      onClick={() => markRead(note.id)}
+                      onClick={() => handleClick(note)}
                       className="group flex items-start gap-3 px-4 py-3 cursor-pointer transition-all hover:bg-[rgba(30,127,255,0.04)] border-b"
                       style={{
                         borderColor: "rgba(30,127,255,0.06)",
@@ -181,9 +151,9 @@ export function NotificationDropdown({ open, onClose, onUnreadChange }: Notifica
                           )}
                         </div>
                         <p style={{ color: "#6b82a0", fontSize: "0.72rem", marginTop: 2, lineHeight: 1.4 }}>{note.body}</p>
-                        <p style={{ color: "#6b82a0", fontSize: "0.65rem", marginTop: 3 }}>{note.time}</p>
+                        <p style={{ color: "#6b82a0", fontSize: "0.65rem", marginTop: 3 }}>{relTime(note.at)}</p>
                       </div>
-                      <button onClick={e => { e.stopPropagation(); dismiss(note.id); }}
+                      <button type="button" onClick={e => { e.stopPropagation(); onDismiss(note.id); }}
                         className="p-0.5 rounded-md hover:bg-[rgba(255,59,92,0.08)] opacity-0 group-hover:opacity-100 transition-all flex-shrink-0"
                         style={{ color: "#6b82a0" }}>
                         <X size={12} />

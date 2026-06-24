@@ -2,20 +2,81 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { randomBytes } from 'crypto';
 import { getDb } from '../db.js';
+import { APP_URL } from '../config/site.js';
 import { requireAuth, type AuthRequest } from '../middleware/auth.js';
 import { requireRole } from '../middleware/rbac.js';
 import { uid } from '../utils.js';
 import { appPath, trialEndsAt, TRIAL_DAYS } from '../config/site.js';
-import { ADMIN_EMAIL, sendMailReliable, smtpFrom } from '../services/email.js';
+import { ADMIN_EMAIL, sendMailReliable, smtpFrom, founderFrom, founderReplyTo } from '../services/email.js';
+import {
+  denyLicensePurchaseRequest,
+  fulfillLicensePurchaseRequest,
+  generateKeyCode,
+  getPlanConfigSummary,
+  sha256Token,
+  verifyActionToken,
+} from '../services/licensePurchaseFulfillment.js';
+import { escHtml, requestActionHtml } from '../utils/requestActionHtml.js';
 
 const router = Router();
 const LOGIN_URL = appPath('/login');
 const FOUNDER_URL = appPath('/founder');
 
-function generateKeyCode(plan: string): string {
-  const prefix = plan.toUpperCase().slice(0, 3);
-  const rand = randomBytes(4).toString('hex').toUpperCase();
-  return `CAFYZ-${prefix}-${rand}`;
+function renewalBaseUrl(req: AuthRequest | { headers: Record<string, unknown> }): string {
+  if (process.env.NODE_ENV === 'production' && APP_URL) return APP_URL.replace(/\/$/, '');
+  const proto = String(req.headers['x-forwarded-proto'] ?? 'http');
+  const host = String(req.headers['x-forwarded-host'] ?? req.headers.host ?? 'localhost:4000');
+  return `${proto}://${host}`;
+}
+
+// GET /api/licenses/renewal/action — founder approve/deny from email (mounted without auth in app.ts)
+export async function licenseRenewalAction(req: AuthRequest, res: import('express').Response, next: import('express').NextFunction) {
+  try {
+    const id = String(req.query.id ?? '');
+    const token = String(req.query.token ?? '');
+    const action = String(req.query.action ?? '');
+    if (!id || !token || !['approve', 'deny'].includes(action)) {
+      res.status(400).send(requestActionHtml('Invalid link', 'This renewal link is missing required parameters.'));
+      return;
+    }
+
+    const rowRes = await getDb().execute({
+      sql: `SELECT id, status, token_hash FROM license_purchase_requests WHERE id=? LIMIT 1`,
+      args: [id],
+    });
+    const row = rowRes.rows[0] as Record<string, unknown> | undefined;
+    if (!row) {
+      res.status(404).send(requestActionHtml('Not found', 'This renewal request no longer exists.'));
+      return;
+    }
+    if (!verifyActionToken(String(row.token_hash ?? ''), token)) {
+      res.status(403).send(requestActionHtml('Invalid token', 'This confirmation token is not valid.'));
+      return;
+    }
+    if (String(row.status) !== 'pending') {
+      res.status(200).send(requestActionHtml('Already processed', `This request is already <strong>${escHtml(String(row.status))}</strong>.`));
+      return;
+    }
+
+    if (action === 'approve') {
+      try {
+        const result = await fulfillLicensePurchaseRequest(id);
+        res.status(200).send(requestActionHtml(
+          'Renewal approved',
+          `<p>Renewal for <strong>${escHtml(result.restaurantName)}</strong> is approved.</p>
+           <p>Plan: <strong>${escHtml(result.plan.toUpperCase())}</strong><br/>
+           Active until: <strong>${escHtml(new Date(result.expiresAt).toLocaleString())}</strong></p>
+           <p>The owner (${escHtml(result.ownerEmail)}) has been emailed. License is active immediately.</p>`,
+        ));
+      } catch (err) {
+        res.status(500).send(requestActionHtml('Approval failed', escHtml((err as Error).message)));
+      }
+      return;
+    }
+
+    await denyLicensePurchaseRequest(id);
+    res.status(200).send(requestActionHtml('Renewal denied', 'The owner has been notified by email.'));
+  } catch (e) { next(e); }
 }
 
 // POST /api/licenses — founder generates a key
@@ -101,6 +162,7 @@ router.get('/mine', requireAuth, async (req: AuthRequest, res, next) => {
       trial_expired: trialExpired,
       trial_days_left: daysLeft,
       purchase_url: appPath('/license'),
+      founder_email: ADMIN_EMAIL,
     });
   } catch (e) { next(e); }
 });
@@ -154,8 +216,8 @@ router.post('/activate', requireAuth, async (req: AuthRequest, res, next) => {
   } catch (e) { next(e); }
 });
 
-// POST /api/licenses/purchase-request — manager/owner requests a license purchase
-router.post('/purchase-request', requireAuth, requireRole('owner', 'manager'), async (req: AuthRequest, res, next) => {
+// POST /api/licenses/purchase-request — owner requests renewal (emails founder with approve/deny)
+router.post('/purchase-request', requireAuth, requireRole('owner'), async (req: AuthRequest, res, next) => {
   try {
     const data = z.object({
       plan:  z.enum(['basic', 'pro', 'premium']),
@@ -165,37 +227,66 @@ router.post('/purchase-request', requireAuth, requireRole('owner', 'manager'), a
 
     const rid = req.user!.restaurant_id;
     const db = getDb();
-    const email = data.email ?? req.user!.email;
+    const email = (data.email ?? req.user!.email).trim().toLowerCase();
 
     const pending = await db.execute({
       sql: `SELECT id FROM license_purchase_requests WHERE restaurant_id=? AND status='pending' LIMIT 1`,
       args: [rid],
     });
     if (pending.rows.length) {
-      res.status(409).json({ error: 'You already have a pending license request.' });
+      res.status(409).json({ error: 'You already have a pending renewal request.' });
       return;
     }
 
     const rest = await db.execute({ sql: 'SELECT name FROM restaurants WHERE id=?', args: [rid] });
     const restaurantName = String(rest.rows[0]?.name ?? 'Restaurant');
+    const cfg = await getPlanConfigSummary(data.plan);
+    const priceLabel = cfg
+      ? `${cfg.currency_symbol ?? '$'}${cfg.price_monthly}/${cfg.billing_interval_count ?? 1} ${cfg.billing_interval_unit ?? 'month'}`
+      : '';
 
     const id = uid();
+    const token = randomBytes(24).toString('hex');
+    const tokenHash = sha256Token(token);
+
     await db.execute({
-      sql: `INSERT INTO license_purchase_requests(id,restaurant_id,requester_user_id,email,plan,note) VALUES(?,?,?,?,?,?)`,
-      args: [id, rid, req.user!.id, email, data.plan, data.note ?? null],
+      sql: `INSERT INTO license_purchase_requests(id,restaurant_id,requester_user_id,email,plan,note,token_hash) VALUES(?,?,?,?,?,?,?)`,
+      args: [id, rid, req.user!.id, email, data.plan, data.note ?? null, tokenHash],
+    });
+
+    const base = renewalBaseUrl(req);
+    const approveUrl = `${base}/api/licenses/renewal/action?id=${encodeURIComponent(id)}&token=${encodeURIComponent(token)}&action=approve`;
+    const denyUrl = `${base}/api/licenses/renewal/action?id=${encodeURIComponent(id)}&token=${encodeURIComponent(token)}&action=deny`;
+
+    await sendMailReliable({
+      from: founderFrom(),
+      replyTo: email,
+      to: ADMIN_EMAIL,
+      subject: `[Cafyz] Renewal request — ${restaurantName} (${data.plan.toUpperCase()})`,
+      html: `<div style="font-family:system-ui,sans-serif;color:#0f172a;max-width:560px">
+        <p><b>${escHtml(restaurantName)}</b> (owner: <a href="mailto:${escHtml(email)}">${escHtml(email)}</a>) requested renewal.</p>
+        <p><b>Plan:</b> ${data.plan.toUpperCase()}${priceLabel ? ` · ${escHtml(String(priceLabel))}` : ''}<br/>
+        ${cfg?.description ? `<b>Includes:</b> ${escHtml(String(cfg.description))}<br/>` : ''}
+        ${data.note ? `<b>Note:</b> ${escHtml(data.note)}<br/>` : ''}</p>
+        <p style="margin:22px 0;display:flex;gap:10px;flex-wrap:wrap">
+          <a href="${approveUrl}" style="background:#22c55e;color:#fff;text-decoration:none;padding:12px 22px;border-radius:10px;font-weight:700">Approve renewal</a>
+          <a href="${denyUrl}" style="background:#ef4444;color:#fff;text-decoration:none;padding:12px 22px;border-radius:10px;font-weight:700">Deny</a>
+        </p>
+        <p style="font-size:12px;color:#64748b">Or fulfill in <a href="${FOUNDER_URL}">Founder Panel → License Requests</a>.</p>
+      </div>`,
     });
 
     await sendMailReliable({
-      from: smtpFrom(true),
-      to: ADMIN_EMAIL,
-      subject: `[Cafyz] License purchase request — ${restaurantName} (${data.plan.toUpperCase()})`,
-      html: `<p><b>${restaurantName}</b> requested a <b>${data.plan.toUpperCase()}</b> license.</p>
-             <p><b>Contact email:</b> ${email}</p>
-             ${data.note ? `<p><b>Note:</b> ${data.note}</p>` : ''}
-             <p>Fulfill in <a href="${FOUNDER_URL}">Founder Panel → License Requests</a>.</p>`,
+      from: founderFrom(),
+      replyTo: founderReplyTo(),
+      to: email,
+      subject: `[Cafyz] Renewal request received — ${restaurantName}`,
+      html: `<p>We received your renewal request for the <b>${data.plan.toUpperCase()}</b> plan.</p>
+             <p>Cafyz will review it shortly. You'll receive another email once it's approved or if we need more information.</p>
+             <p>Contact: <a href="mailto:${ADMIN_EMAIL}">${ADMIN_EMAIL}</a></p>`,
     });
 
-    res.status(201).json({ id, status: 'pending', plan: data.plan, email });
+    res.status(201).json({ id, status: 'pending', plan: data.plan, email, founder_email: ADMIN_EMAIL });
   } catch (e) { next(e); }
 });
 

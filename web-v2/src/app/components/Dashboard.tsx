@@ -6,10 +6,11 @@ import {
   BarChart3, RefreshCw, UserCheck,
 } from "lucide-react";
 import { toast } from "./Toast";
-import {
-  dashboardApi, ordersApi, menuApi, menuCategoriesApi,
+import { dashboardApi, ordersApi, menuApi, menuCategoriesApi,
   type ApiDashboardStats, type ApiRevenueRow,
 } from "../../services/api";
+import { useAuth } from "../auth";
+import { planMeetsRequirement } from "../../config/access";
 import { formatMoney, getCurrencySymbol } from "../../utils/currency";
 import { useAppNav } from "../nav";
 
@@ -208,6 +209,8 @@ const QUICK_ACTIONS = [
 
 export function Dashboard() {
   const { goToPage, goToPos } = useAppNav();
+  const { user } = useAuth();
+  const hasProAnalytics = planMeetsRequirement(user?.plan ?? "basic", "pro");
   const [revRows, setRevRows] = useState<{ day: string; revenue: number }[]>([]);
   const [weekTotal, setWeekTotal] = useState(0);
   const [todayRevenue, setTodayRevenue] = useState(0);
@@ -224,18 +227,18 @@ export function Dashboard() {
     try {
       const [s, week, today, sold, menu, categories, orders] = await Promise.all([
         dashboardApi.stats(),
-        dashboardApi.revenue({ period: "week" }),
-        dashboardApi.revenue({ period: "day" }),
-        dashboardApi.soldItems({ period: "week" }).catch(() => null),
+        hasProAnalytics ? dashboardApi.revenue({ period: "week" }).catch(() => null) : Promise.resolve(null),
+        hasProAnalytics ? dashboardApi.revenue({ period: "day" }).catch(() => null) : Promise.resolve(null),
+        hasProAnalytics ? dashboardApi.soldItems({ period: "week" }).catch(() => null) : Promise.resolve(null),
         menuApi.list().catch(() => []),
         menuCategoriesApi.list().catch(() => []),
         ordersApi.list().catch(() => []),
       ]);
 
       setStats(s);
-      setTodayRevenue(today.totalRevenue ?? 0);
-      setWeekTotal(week.totalRevenue ?? 0);
-      const filled = fillRevenueRows(week.from, week.to, week.rows ?? []);
+      setTodayRevenue(today?.totalRevenue ?? 0);
+      setWeekTotal(week?.totalRevenue ?? 0);
+      const filled = week ? fillRevenueRows(week.from, week.to, week.rows ?? []) : [];
       setRevRows(filled);
 
       const catLabels = new Map(categories.map(c => [c.slug, c.label]));
@@ -287,7 +290,7 @@ export function Dashboard() {
       setLoading(false);
       setRefreshing(false);
     }
-  }, []);
+  }, [hasProAnalytics]);
 
   useEffect(() => {
     void load();
@@ -414,6 +417,11 @@ export function Dashboard() {
                 cur={cur}
                 color="#1e7fff"
               />
+            ) : !hasProAnalytics ? (
+              <div className="h-40 flex flex-col items-center justify-center gap-2 px-4 text-center">
+                <span style={{ color: "#6b82a0", fontSize: "0.8rem" }}>Revenue charts require the Pro plan</span>
+                <button type="button" onClick={() => goToPage("license")} className="text-xs font-semibold px-3 py-1.5 rounded-lg" style={{ background: "rgba(30,127,255,0.12)", color: "#1e7fff" }}>View plans</button>
+              </div>
             ) : (
               <div className="h-40 flex items-center justify-center"><span style={{ color: "#6b82a0", fontSize: "0.8rem" }}>No paid orders this week yet</span></div>
             )}

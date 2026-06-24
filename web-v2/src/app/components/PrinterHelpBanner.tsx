@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { getPrinterEnvironment } from '../../services/printerEnvironment';
+import { isNativeApp } from '../../services/platformEnv';
 import './PrinterHelpBanner.css';
 
 export function PrinterHelpBanner() {
@@ -7,15 +8,18 @@ export function PrinterHelpBanner() {
   const [open, setOpen] = useState(false);
   const wrapRef = useRef<HTMLDivElement | null>(null);
 
-  if (env.canUseBluetooth && !env.isStandalone) return null;
+  if (env.canUseBluetooth && !env.isStandalone && !isNativeApp()) return null;
 
   const isIos = env.platform === 'ios';
+  const native = isNativeApp();
 
-  const title = isIos
-    ? 'iPhone cannot use Bluetooth receipt printers'
-    : env.isStandalone
-      ? 'Home-screen app — Bluetooth tips'
-      : 'Printer connection help';
+  const title = native
+    ? 'Bluetooth printer tips'
+    : isIos
+      ? 'iPhone cannot use Bluetooth receipt printers'
+      : env.isStandalone
+        ? 'Home-screen app — Bluetooth tips'
+        : 'Printer connection help';
 
   useEffect(() => {
     if (!open) return;

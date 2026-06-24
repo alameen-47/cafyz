@@ -21,6 +21,9 @@ const config: CapacitorConfig = {
       backgroundColor: '#06091a',
       overlaysWebView: false,
     },
+    PushNotifications: {
+      presentationOptions: ['badge', 'sound', 'alert'],
+    },
     BluetoothLe: {
       displayStrings: {
         scanning: 'Scanning for thermal printers…',

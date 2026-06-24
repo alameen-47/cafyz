@@ -4,6 +4,7 @@ import { getDb } from '../db.js';
 import { requireAuth, type AuthRequest } from '../middleware/auth.js';
 import { requireRole } from '../middleware/rbac.js';
 import { uid } from '../utils.js';
+import { sendRestaurantPush } from '../services/push.js';
 
 const router = Router();
 router.use(requireAuth);
@@ -69,6 +70,19 @@ router.put('/:id', requireRole('manager','cashier'), async (req: AuthRequest, re
     args.push(rid);
     await db.execute({ sql: `UPDATE inventory SET ${sets.join(',')} WHERE id=? AND restaurant_id=?`, args });
     const row = await db.execute({ sql: 'SELECT * FROM inventory WHERE id=?', args: [(req.params.id as string)] });
+    const item = row.rows[0] as Record<string, unknown> | undefined;
+    if (item) {
+      const current = Number(item.current) || 0;
+      const par = Number(item.par) || 0;
+      if (par > 0 && current <= par) {
+        sendRestaurantPush(rid, {
+          title: current <= par * 0.25 ? 'Critical stock' : 'Low stock',
+          body: `${String(item.name)}: ${current}${String(item.unit)} left`,
+          data: { type: 'stock', itemId: String(req.params.id), page: 'inventory' },
+          roles: ['manager', 'owner'],
+        });
+      }
+    }
     res.json(row.rows[0]);
   } catch (e) { next(e); }
 });

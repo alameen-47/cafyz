@@ -5,7 +5,8 @@ import { getDb } from '../db.js';
 import { requireAuth, type AuthRequest } from '../middleware/auth.js';
 import { requireRole } from '../middleware/rbac.js';
 import { uid } from '../utils.js';
-import { appPath, trialEndsAt } from '../config/site.js';
+import { fulfillLicensePurchaseRequest, denyLicensePurchaseRequest } from '../services/licensePurchaseFulfillment.js';
+import { appPath } from '../config/site.js';
 import { approveInquiryById } from '../services/inquiryApproval.js';
 import { ADMIN_EMAIL, sendMailReliable, smtpFrom } from '../services/email.js';
 
@@ -199,74 +200,30 @@ router.get('/license-requests', ...onlyFounder, async (_req, res, next) => {
   } catch (e) { next(e); }
 });
 
-// POST /api/founder/license-requests/:id/fulfill — generate key and email customer
+// POST /api/founder/license-requests/:id/fulfill — approve renewal (auto-activate license)
 router.post('/license-requests/:id/fulfill', ...onlyFounder, async (req, res, next) => {
   try {
     const id = String(req.params.id);
-    const db = getDb();
-    const reqRow = await db.execute({
-      sql: `SELECT lpr.*, r.name as restaurant_name FROM license_purchase_requests lpr
-            JOIN restaurants r ON r.id = lpr.restaurant_id WHERE lpr.id=?`,
-      args: [id],
-    });
-    if (!reqRow.rows.length) { res.status(404).json({ error: 'Request not found' }); return; }
-    const purchase = reqRow.rows[0] as Record<string, unknown>;
-    if (String(purchase.status) !== 'pending') {
-      res.status(400).json({ error: 'Request already processed' });
-      return;
-    }
-
-    const plan = String(purchase.plan);
-    const email = String(purchase.email);
-    const licId = uid();
-    const keyCode = generateKeyCode(plan);
-    const expiresAt = trialEndsAt();
-
-    await db.execute({
-      sql: `INSERT INTO license_keys(id,key_code,plan,expires_at,note) VALUES(?,?,?,?,?)`,
-      args: [licId, keyCode, plan, expiresAt, `Purchase request ${id} · ${purchase.restaurant_name}`],
-    });
-
-    await db.execute({
-      sql: `UPDATE license_purchase_requests SET status='fulfilled', license_key_id=?, fulfilled_at=datetime('now') WHERE id=?`,
-      args: [licId, id],
-    });
-
-    await Promise.all([
-      sendMailReliable({
-        from: smtpFrom(true),
-        to: email,
-        replyTo: ADMIN_EMAIL,
-        subject: `[Cafyz] Your ${plan.toUpperCase()} license key`,
-        html: `<p>Your license purchase for <b>${String(purchase.restaurant_name)}</b> is ready.</p>
-               <p style="font-family:monospace;font-size:16px"><b>${keyCode}</b></p>
-               <p>Plan: <b>${plan.toUpperCase()}</b></p>
-               <p>Sign in and activate: <a href="${LOGIN_URL}">${LOGIN_URL}</a></p>`,
-      }),
-      sendMailReliable({
-        from: smtpFrom(true),
-        to: ADMIN_EMAIL,
-        subject: `[Cafyz] License fulfilled — ${purchase.restaurant_name}`,
-        html: `<p>License request fulfilled for ${email}.</p>
-               <p>Key: <code>${keyCode}</code> · Plan: ${plan.toUpperCase()}</p>
-               <p><a href="${FOUNDER_URL}">Founder Panel</a></p>`,
-      }),
-    ]);
-
-    res.json({ id, status: 'fulfilled', key_code: keyCode, license_id: licId });
+    const result = await fulfillLicensePurchaseRequest(id);
+    res.json({ id, status: 'fulfilled', key_code: result.keyCode, license_id: result.licenseId, plan: result.plan });
   } catch (e) { next(e); }
 });
 
-// PATCH /api/founder/license-requests/:id — cancel request
+// PATCH /api/founder/license-requests/:id — cancel/deny request
 router.patch('/license-requests/:id', ...onlyFounder, async (req, res, next) => {
   try {
-    const { status } = z.object({ status: z.enum(['cancelled']) }).parse(req.body);
+    const body = z.object({ status: z.enum(['cancelled', 'denied']) }).parse(req.body);
     const id = String(req.params.id);
+    if (body.status === 'denied') {
+      await denyLicensePurchaseRequest(id);
+      res.json({ id, status: 'cancelled' });
+      return;
+    }
     await getDb().execute({
       sql: `UPDATE license_purchase_requests SET status=? WHERE id=? AND status='pending'`,
-      args: [status, id],
+      args: [body.status, id],
     });
-    res.json({ id, status });
+    res.json({ id, status: body.status });
   } catch (e) { next(e); }
 });
 

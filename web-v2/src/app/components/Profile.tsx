@@ -3,17 +3,27 @@ import { motion } from "motion/react";
 import QRCode from "qrcode";
 import {
   Camera, Save, Globe, DollarSign, FileText, MapPin, Phone, Shield, QrCode,
-  Download, ExternalLink, User, Lock, Link2, Building2, Trash2, Loader2,
+  Download, User, Lock, Link2, Building2, Trash2, Loader2,
+  Printer, ReceiptText, ChefHat, RefreshCw, CheckCircle2, AlertCircle,
 } from "lucide-react";
 import { toast } from "./Toast";
-import { restaurantApi, authApi } from "../../services/api";
+import { restaurantApi, authApi, publicApi, type ApiRestaurant } from "../../services/api";
 import {
   uploadRestaurantLogo,
   removeRestaurantLogoEverywhere,
   syncRestaurantLogoCacheAsync,
 } from "../../services/restaurantLogoStorage";
-import { setActiveCurrencyCode } from "../../utils/currency";
+import { getCurrencySymbol, setActiveCurrencyCode } from "../../utils/currency";
 import { useAuth } from "../auth";
+import { PrinterSetupPanel } from "./PrinterSetupPanel";
+import {
+  autoReconnectBluetooth,
+  printKitchenTicket,
+  printTest,
+  printerStatus,
+} from "../../services/PrintService";
+import { getPublicMenuIdentifier, getPublicMenuUrl } from "../../config/site";
+import { subscribeMenuChanged } from "../../utils/menuEvents";
 
 const CURRENCIES = ["USD", "EUR", "GBP", "AED", "SAR", "INR", "PKR", "BDT", "NGN", "ZAR"];
 const LANGUAGES: [string, string][] = [["en", "English"], ["ar", "Arabic"], ["fr", "French"], ["es", "Spanish"], ["de", "German"], ["hi", "Hindi"], ["ur", "Urdu"]];
@@ -67,11 +77,34 @@ const ROLE_LABEL: Record<string, string> = {
   owner: "Owner", manager: "Manager", cashier: "Cashier", waiter: "Waiter", kitchen: "Kitchen", founder: "Founder",
 };
 
+type PrinterAssignment = { role: 'kitchen' | 'cashier'; channel: 'bluetooth' | 'usb'; name: string };
+
+function profileAddressLine(profile: typeof EMPTY): string {
+  return [profile.address, profile.city].filter(Boolean).join(", ");
+}
+
+function profilePrintTestOpts(profile: typeof EMPTY, logoUrl: string, serverName: string) {
+  return {
+    restaurantName: profile.name || "Restaurant",
+    logoUrl,
+    addressLine: profileAddressLine(profile) || undefined,
+    phone: profile.phone || undefined,
+    taxId: profile.vatNumber || undefined,
+    taxLabel: profile.taxName || "Tax",
+    taxRate: profile.taxRate ? Number(profile.taxRate) : undefined,
+    serviceRate: profile.serviceCharge ? Number(profile.serviceCharge) : undefined,
+    currencySymbol: getCurrencySymbol(profile.currency),
+    footer: profile.receiptFooter || undefined,
+    serverName: serverName || "Staff",
+  };
+}
+
 export function Profile() {
   const { user } = useAuth();
   const [saved, setSaved] = useState(false);
   const [busy, setBusy] = useState(false);
   const [slug, setSlug] = useState("");
+  const [restaurantId, setRestaurantId] = useState("");
   const [profile, setProfile] = useState(EMPTY);
 
   // Logo (Cloudinary URL stored on the restaurant)
@@ -79,11 +112,24 @@ export function Profile() {
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
-  // QR code canvas data URL for the public menu URL
+  // QR code — encodes this restaurant's live public menu URL
   const [qrDataUrl, setQrDataUrl] = useState("");
-  const generateQr = useCallback(async (menuSlug: string) => {
-    if (!menuSlug) return;
-    const url = `${window.location.protocol}//${window.location.host}/m/${menuSlug}`;
+  const [menuSync, setMenuSync] = useState({
+    loading: true,
+    valid: false,
+    itemCount: 0,
+    syncedAt: null as Date | null,
+    error: "",
+  });
+
+  const menuIdentifier = getPublicMenuIdentifier(slug, restaurantId);
+
+  const generateQr = useCallback(async (identifier: string) => {
+    const url = getPublicMenuUrl(identifier);
+    if (!url) {
+      setQrDataUrl("");
+      return;
+    }
     try {
       const dataUrl = await QRCode.toDataURL(url, {
         width: 256, margin: 2,
@@ -93,17 +139,60 @@ export function Profile() {
     } catch { /* non-fatal */ }
   }, []);
 
+  const refreshMenuLink = useCallback(async (identifier?: string) => {
+    const id = identifier || menuIdentifier;
+    if (!id) {
+      setMenuSync({ loading: false, valid: false, itemCount: 0, syncedAt: null, error: "Restaurant not loaded" });
+      return;
+    }
+    setMenuSync(s => ({ ...s, loading: true, error: "" }));
+    try {
+      const data = await publicApi.menu(id, { fresh: true });
+      await generateQr(id);
+      setMenuSync({
+        loading: false,
+        valid: true,
+        itemCount: data.items.length,
+        syncedAt: new Date(),
+        error: "",
+      });
+    } catch (e) {
+      await generateQr(id);
+      setMenuSync({
+        loading: false,
+        valid: false,
+        itemCount: 0,
+        syncedAt: null,
+        error: (e as Error).message,
+      });
+    }
+  }, [generateQr, menuIdentifier]);
+
   // Manager / owner account (the logged-in user) — scoped to this restaurant.
   const [account, setAccount] = useState({ name: "", email: "", phone: "", role: "" });
   const [savingAccount, setSavingAccount] = useState(false);
   const [pw, setPw] = useState({ current: "", next: "", confirm: "" });
   const [savingPw, setSavingPw] = useState(false);
 
+  const [printBusy, setPrintBusy] = useState(false);
+  const [showPrinterModal, setShowPrinterModal] = useState(false);
+  const [kitchenPrinter, setKitchenPrinter] = useState<PrinterAssignment | null>(null);
+  const [cashierPrinter, setCashierPrinter] = useState<PrinterAssignment | null>(null);
+  const [livePrinter, setLivePrinter] = useState(printerStatus());
+
+  const refreshPrinter = useCallback(() => setLivePrinter(printerStatus()), []);
+
+  useEffect(() => {
+    const hint = kitchenPrinter?.name || cashierPrinter?.name;
+    void autoReconnectBluetooth(hint).finally(refreshPrinter);
+  }, [kitchenPrinter?.name, cashierPrinter?.name, refreshPrinter]);
+
   useEffect(() => {
     restaurantApi.me().then(r => {
       const s = r.slug ?? "";
+      setRestaurantId(r.id);
       setSlug(s);
-      void generateQr(s);
+      void refreshMenuLink(getPublicMenuIdentifier(s, r.id));
       setLogoUrl(r.logo_url ?? "");
       void syncRestaurantLogoCacheAsync(r);
       setProfile({
@@ -126,12 +215,25 @@ export function Profile() {
         receiptFooter: r.receipt_footer ?? "",
         vatNumber: r.tax_id ?? "",
       });
+      setKitchenPrinter(r.kitchen_printer ?? null);
+      setCashierPrinter(r.cashier_printer ?? null);
     }).catch(e => toast.error("Couldn't load settings", (e as Error).message));
 
     authApi.me().then(u => {
       setAccount({ name: u.name ?? "", email: u.email ?? "", phone: u.phone ?? "", role: u.role ?? "" });
     }).catch(e => toast.error("Couldn't load your account", (e as Error).message));
   }, []);
+
+  useEffect(() => {
+    if (!menuIdentifier) return;
+    return subscribeMenuChanged(() => { void refreshMenuLink(menuIdentifier); });
+  }, [menuIdentifier, refreshMenuLink]);
+
+  useEffect(() => {
+    if (!menuIdentifier) return;
+    const timer = window.setInterval(() => { void refreshMenuLink(menuIdentifier); }, 30_000);
+    return () => window.clearInterval(timer);
+  }, [menuIdentifier, refreshMenuLink]);
 
   const update = (key: string, val: string) => setProfile(p => ({ ...p, [key]: val }));
 
@@ -162,6 +264,7 @@ export function Profile() {
       });
       setActiveCurrencyCode(profile.currency);
       setSaved(true);
+      void refreshMenuLink();
       toast.success("Profile saved", "Your restaurant settings have been updated");
       setTimeout(() => setSaved(false), 2000);
     } catch (e) {
@@ -190,6 +293,7 @@ export function Profile() {
     try {
       const url = await uploadRestaurantLogo(user.restaurant_id, file);
       setLogoUrl(url);
+      void refreshMenuLink();
       const savedLocally = url.startsWith("data:");
       toast.success(
         "Logo updated",
@@ -210,6 +314,7 @@ export function Profile() {
     try {
       await removeRestaurantLogoEverywhere(user.restaurant_id);
       setLogoUrl("");
+      void refreshMenuLink();
       toast.success("Logo removed", "");
     } catch (err) {
       toast.error("Couldn't remove logo", (err as Error).message);
@@ -261,6 +366,90 @@ export function Profile() {
       toast.error("Couldn't change password", (e as Error).message);
     } finally {
       setSavingPw(false);
+    }
+  };
+
+  const handleRestaurantPrinterUpdate = (r: ApiRestaurant) => {
+    setKitchenPrinter(r.kitchen_printer ?? null);
+    setCashierPrinter(r.cashier_printer ?? null);
+    refreshPrinter();
+  };
+
+  const handlePreviewReceipt = async () => {
+    setPrintBusy(true);
+    try {
+      const method = await printTest(
+        profilePrintTestOpts(profile, logoUrl, account.name),
+        { channel: "dialog" },
+      );
+      toast.success(
+        "Receipt preview opened",
+        method === "dialog" ? "Check layout, logo, tax, and footer in the print dialog." : "",
+      );
+    } catch (e) {
+      toast.error("Preview failed", (e as Error).message);
+    } finally {
+      setPrintBusy(false);
+    }
+  };
+
+  const handlePrintReceipt = async () => {
+    if (!user?.restaurant_id) {
+      toast.error("Restaurant not loaded", "Wait a moment and try again.");
+      return;
+    }
+    setPrintBusy(true);
+    try {
+      const method = await printTest(
+        { ...profilePrintTestOpts(profile, logoUrl, account.name), restaurantId: user.restaurant_id },
+        { channel: "auto" },
+      );
+      refreshPrinter();
+      toast.success(
+        method === "dialog" ? "Receipt preview opened" : "Test receipt sent",
+        method === "dialog"
+          ? "No printer connected — showing browser preview."
+          : livePrinter.name || cashierPrinter?.name || "Printer",
+      );
+    } catch (e) {
+      toast.error("Print test failed", (e as Error).message);
+    } finally {
+      setPrintBusy(false);
+    }
+  };
+
+  const handlePrintKitchen = async () => {
+    if (!user?.restaurant_id) {
+      toast.error("Restaurant not loaded", "Wait a moment and try again.");
+      return;
+    }
+    setPrintBusy(true);
+    try {
+      const method = await printKitchenTicket({
+        restaurantName: profile.name || "Restaurant",
+        logoUrl,
+        ticketId: "TEST",
+        tableName: "TEST",
+        serverName: account.name || "Staff",
+        covers: 2,
+        station: "Grill",
+        items: [
+          { name: "Test burger", qty: 1, mods: ["No onion"], alert: true },
+          { name: "Line test item", qty: 1, alert: true },
+        ],
+        note: "Kitchen printer test — layout and logo check.",
+      }, user.restaurant_id, { channel: "auto", allowDialog: true });
+      refreshPrinter();
+      toast.success(
+        method === "dialog" ? "Kitchen preview opened" : "Kitchen test sent",
+        method === "dialog"
+          ? "No printer connected — showing browser preview."
+          : livePrinter.name || kitchenPrinter?.name || "Printer",
+      );
+    } catch (e) {
+      toast.error("Kitchen test failed", (e as Error).message);
+    } finally {
+      setPrintBusy(false);
     }
   };
 
@@ -452,14 +641,91 @@ export function Profile() {
         </div>
       </Section>
 
-      {/* QR Menu card */}
-      <Section title="Customer QR Menu" icon={QrCode}>
+      {/* Receipt & printer test */}
+      <Section title="Receipt & Printer Test" icon={Printer} subtitle="Uses current settings — save first to persist changes">
+        <p style={{ color: "#a8bdd4", fontSize: "0.78rem", lineHeight: 1.5 }}>
+          Print a sample receipt with your logo, address, tax rates, and footer so you can see exactly how it will look on paper.
+        </p>
+        <div className="rounded-xl px-3 py-2.5 flex flex-wrap items-center gap-x-3 gap-y-1"
+          style={{ background: "#111b35", border: "1px solid rgba(30,127,255,0.12)" }}>
+          <span style={{ color: "#6b82a0", fontSize: "0.72rem" }}>Printer</span>
+          <span style={{ color: livePrinter.type === "none" ? "#fbbf24" : "#22c55e", fontSize: "0.78rem", fontWeight: 600 }}>
+            {livePrinter.type === "none"
+              ? "Not connected — browser preview available"
+              : `Connected · ${livePrinter.name} (${livePrinter.type})`}
+          </span>
+          {(cashierPrinter || kitchenPrinter) && (
+            <span style={{ color: "#6b82a0", fontSize: "0.7rem" }}>
+              {cashierPrinter && `Cashier: ${cashierPrinter.name}`}
+              {cashierPrinter && kitchenPrinter && " · "}
+              {kitchenPrinter && `Kitchen: ${kitchenPrinter.name}`}
+            </span>
+          )}
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={handlePreviewReceipt}
+            disabled={printBusy}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold transition-all"
+            style={{ background: "rgba(30,127,255,0.12)", color: "#1e7fff", border: "1px solid rgba(30,127,255,0.2)", opacity: printBusy ? 0.6 : 1 }}
+          >
+            {printBusy ? <Loader2 size={13} className="animate-spin" /> : <ReceiptText size={13} />}
+            Browser preview
+          </button>
+          <button
+            type="button"
+            onClick={handlePrintReceipt}
+            disabled={printBusy}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold transition-all"
+            style={{ background: "linear-gradient(135deg, #1e7fff, #00c6ff)", color: "#fff", opacity: printBusy ? 0.6 : 1 }}
+          >
+            {printBusy ? <Loader2 size={13} className="animate-spin" /> : <Printer size={13} />}
+            Print test receipt
+          </button>
+          <button
+            type="button"
+            onClick={handlePrintKitchen}
+            disabled={printBusy}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold transition-all"
+            style={{ background: "rgba(30,127,255,0.06)", color: "#a8bdd4", border: "1px solid rgba(30,127,255,0.15)", opacity: printBusy ? 0.6 : 1 }}
+          >
+            {printBusy ? <Loader2 size={13} className="animate-spin" /> : <ChefHat size={13} />}
+            Print kitchen test
+          </button>
+          <button
+            type="button"
+            onClick={() => setShowPrinterModal(true)}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold transition-all"
+            style={{ background: "rgba(30,127,255,0.06)", color: "#6b82a0", border: "1px solid rgba(30,127,255,0.1)" }}
+          >
+            <Printer size={13} /> Configure printers
+          </button>
+        </div>
+      </Section>
+
+      {showPrinterModal && (
+        <PrinterSetupPanel
+          modal
+          onClose={() => { setShowPrinterModal(false); refreshPrinter(); }}
+          kitchen={kitchenPrinter?.name ?? null}
+          cashier={cashierPrinter?.name ?? null}
+          kitchenPrinter={kitchenPrinter}
+          cashierPrinter={cashierPrinter}
+          onRestaurantUpdate={handleRestaurantPrinterUpdate}
+          restaurantName={profile.name}
+          restaurantId={user?.restaurant_id}
+          logoUrl={logoUrl}
+        />
+      )}
+
+      {/* QR Menu card — unique per restaurant, live-synced with menu items */}
+      <Section title="Customer QR Menu" icon={QrCode} subtitle="Linked to your live menu">
         <div className="flex flex-col sm:flex-row items-center sm:items-start gap-5">
-          {/* Real scannable QR code */}
           <div className="flex-shrink-0 rounded-2xl p-3 flex items-center justify-center"
             style={{ background: "#fff", width: 140, height: 140 }}>
             {qrDataUrl
-              ? <img src={qrDataUrl} alt="QR code" className="w-full h-full object-contain" style={{ imageRendering: "pixelated" }} />
+              ? <img src={qrDataUrl} alt="QR code for customer menu" className="w-full h-full object-contain" style={{ imageRendering: "pixelated" }} />
               : (
                 <div className="w-full h-full flex items-center justify-center">
                   <Loader2 size={24} className="animate-spin" style={{ color: "#1e7fff" }} />
@@ -472,32 +738,63 @@ export function Profile() {
                 Scan to view your live menu
               </p>
               <p style={{ color: "#a8bdd4", fontSize: "0.78rem", marginTop: 3 }}>
-                Place this QR code on tables, receipts, or your front door. Customers scan it to browse your current menu in real time.
+                This QR code is unique to <span style={{ color: "#e8eef8" }}>{profile.name || "your restaurant"}</span>.
+                Customers see your current items, prices, and photos — updated whenever you edit the menu.
               </p>
             </div>
-            <p style={{ color: "#6b82a0", fontSize: "0.7rem", fontFamily: "var(--font-mono)", wordBreak: "break-all" }}>
-              {`${window.location.protocol}//${window.location.host}/m/${slug || "your-restaurant"}`}
-            </p>
+
+            <div className="rounded-xl px-3 py-2.5"
+              style={{ background: "#111b35", border: "1px solid rgba(30,127,255,0.12)" }}>
+              <div className="flex flex-wrap items-center gap-2">
+                {menuSync.loading ? (
+                  <span className="flex items-center gap-1.5" style={{ color: "#6b82a0", fontSize: "0.75rem" }}>
+                    <Loader2 size={12} className="animate-spin" /> Checking menu…
+                  </span>
+                ) : menuSync.valid ? (
+                  <span className="flex items-center gap-1.5" style={{ color: "#22c55e", fontSize: "0.75rem", fontWeight: 600 }}>
+                    <CheckCircle2 size={13} /> Valid · {menuSync.itemCount} item{menuSync.itemCount === 1 ? "" : "s"} live
+                  </span>
+                ) : (
+                  <span className="flex items-center gap-1.5" style={{ color: "#fbbf24", fontSize: "0.75rem", fontWeight: 600 }}>
+                    <AlertCircle size={13} /> {menuSync.error || "Menu unavailable"}
+                  </span>
+                )}
+                {menuSync.syncedAt && !menuSync.loading && (
+                  <span style={{ color: "#6b82a0", fontSize: "0.68rem" }}>
+                    Synced {menuSync.syncedAt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                  </span>
+                )}
+                <button
+                  type="button"
+                  onClick={() => void refreshMenuLink()}
+                  disabled={!menuIdentifier || menuSync.loading}
+                  className="ml-auto flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all"
+                  style={{
+                    background: "rgba(30,127,255,0.12)",
+                    color: "#1e7fff",
+                    border: "1px solid rgba(30,127,255,0.2)",
+                    opacity: !menuIdentifier || menuSync.loading ? 0.5 : 1,
+                  }}
+                >
+                  <RefreshCw size={12} className={menuSync.loading ? "animate-spin" : ""} /> Refresh
+                </button>
+              </div>
+            </div>
+
             <div className="flex flex-wrap gap-2 justify-center sm:justify-start">
               <button
+                type="button"
                 onClick={() => {
                   if (!qrDataUrl) return;
                   const a = document.createElement("a");
                   a.href = qrDataUrl;
-                  a.download = `${slug || "menu"}-qr.png`;
+                  a.download = `${slug || restaurantId || "menu"}-qr.png`;
                   a.click();
                 }}
                 disabled={!qrDataUrl}
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all"
                 style={{ background: "rgba(30,127,255,0.12)", color: "#1e7fff", border: "1px solid rgba(30,127,255,0.2)", opacity: qrDataUrl ? 1 : 0.5 }}>
                 <Download size={12} /> Download PNG
-              </button>
-              <button
-                onClick={() => slug && window.open(`/m/${slug}`, "_blank")}
-                disabled={!slug}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all"
-                style={{ background: "rgba(30,127,255,0.06)", color: "#6b82a0", border: "1px solid rgba(30,127,255,0.1)", opacity: slug ? 1 : 0.5 }}>
-                <ExternalLink size={12} /> Preview Menu
               </button>
             </div>
           </div>

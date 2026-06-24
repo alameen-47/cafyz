@@ -1,9 +1,10 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { motion } from "motion/react";
 import { MapPin, Search, Shield } from "lucide-react";
 import { publicApi, type PublicMenuResponse } from "../../services/api";
 import { getCurrencySymbol } from "../../utils/currency";
 import { useAuth } from "../auth";
+import { subscribeMenuChanged } from "../../utils/menuEvents";
 
 function urlRestaurantId(): string | null {
   const m = window.location.pathname.match(/\/m\/([^/?#]+)/);
@@ -20,11 +21,34 @@ export function PublicMenu({ restaurantId }: { restaurantId?: string }) {
 
   const rid = restaurantId || urlRestaurantId() || user?.restaurant_id || "";
 
-  useEffect(() => {
-    if (!rid) { setErr("No restaurant specified."); return; }
+  const loadMenu = useCallback(() => {
+    if (!rid) { setErr("No restaurant specified."); return Promise.resolve(); }
     setErr("");
-    publicApi.menu(rid).then(setData).catch(e => setErr((e as Error).message));
+    return publicApi.menu(rid, { fresh: true }).then(setData).catch(e => setErr((e as Error).message));
   }, [rid]);
+
+  useEffect(() => {
+    void loadMenu();
+  }, [loadMenu]);
+
+  // Keep the customer menu in sync — poll + refresh when tab is focused or menu edits fire.
+  useEffect(() => {
+    if (!rid) return;
+    const timer = window.setInterval(() => { void loadMenu(); }, 20_000);
+    const onFocus = () => { void loadMenu(); };
+    const onVisible = () => {
+      if (document.visibilityState === "visible") void loadMenu();
+    };
+    window.addEventListener("focus", onFocus);
+    document.addEventListener("visibilitychange", onVisible);
+    const unsub = subscribeMenuChanged(() => { void loadMenu(); });
+    return () => {
+      window.clearInterval(timer);
+      window.removeEventListener("focus", onFocus);
+      document.removeEventListener("visibilitychange", onVisible);
+      unsub();
+    };
+  }, [rid, loadMenu]);
 
   const cur = getCurrencySymbol(data?.restaurant.currency_code);
   const labelBySlug = new Map((data?.categories ?? []).map(c => [c.slug, c.label]));

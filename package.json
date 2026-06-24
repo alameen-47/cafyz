@@ -19,7 +19,8 @@
     "native:build": "bash scripts/build-native.sh all",
     "native:android": "bash scripts/build-native.sh android",
     "native:ios": "bash scripts/build-native.sh ios",
-    "lint": "eslint web-v2 capacitor.config.ts scripts"
+    "lint": "eslint web-v2 capacitor.config.ts scripts",
+    "postinstall": "patch-package"
   },
   "dependencies": {
     "@capacitor-community/bluetooth-le": "^8.2.0",
@@ -29,8 +30,10 @@
     "@capacitor/core": "^8.3.4",
     "@capacitor/ios": "^8.3.4",
     "@capacitor/keyboard": "^8.0.3",
+    "@capacitor/push-notifications": "^8.0.2",
     "@capacitor/splash-screen": "^8.0.1",
     "@capacitor/status-bar": "^8.0.2",
+    "@kduma-autoid/capacitor-bluetooth-printer": "^0.2.1",
     "wait-on": "^9.0.10"
   },
   "devDependencies": {
@@ -39,6 +42,7 @@
     "@vitejs/plugin-react": "^4.3.4",
     "concurrently": "^9.2.1",
     "eslint": "^8.19.0",
+    "patch-package": "^8.0.1",
     "prettier": "2.8.8",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",

@@ -5,6 +5,7 @@ import { getDb } from '../db.js';
 import { requireAuth, type AuthRequest } from '../middleware/auth.js';
 import { requireRole } from '../middleware/rbac.js';
 import { uid } from '../utils.js';
+import { sendRestaurantPush } from '../services/push.js';
 
 const router = Router();
 router.use(requireAuth);
@@ -33,6 +34,136 @@ function catToStation(category: string): string {
   };
   return map[category] ?? 'GARDE';
 }
+
+// ── GET /api/orders/live ──────────────────────────────────────────────────────
+// Enriched live board: orders + line items + latest KDS ticket in two queries.
+// Lives under /api/orders so waiters on Basic plan can read kitchen progress
+// without needing the Pro KDS section.
+router.get('/live', requireRole('owner', 'manager', 'cashier', 'waiter', 'kitchen'), async (req: AuthRequest, res, next) => {
+  try {
+    const rid = req.user!.restaurant_id;
+    const activeOnly = req.query.active === '1' || req.query.active === 'true';
+    const db = getDb();
+
+    let sql = `
+      SELECT o.id, o.restaurant_id, o.table_id, o.server_id, o.status, o.covers, o.note, o.order_type,
+             o.created_at, o.updated_at,
+             t.name AS table_name,
+             u.name AS server_name,
+             kt.id AS ticket_id,
+             kt.status AS ticket_status,
+             kt.vip AS ticket_vip,
+             kt.updated_at AS ticket_updated_at
+      FROM orders o
+      LEFT JOIN restaurant_tables t ON t.id = o.table_id
+      LEFT JOIN users u ON u.id = o.server_id
+      LEFT JOIN kds_tickets kt ON kt.id = (
+        SELECT id FROM kds_tickets
+        WHERE order_id = o.id AND restaurant_id = o.restaurant_id
+        ORDER BY created_at DESC LIMIT 1
+      )
+      WHERE o.restaurant_id = ? AND o.status != 'voided'`;
+    const args: InValue[] = [rid];
+    if (activeOnly) sql += " AND o.status IN ('open','sent')";
+    sql += ' ORDER BY o.created_at DESC LIMIT 100';
+
+    const orderRows = await db.execute({ sql, args });
+    const orders = orderRows.rows as Record<string, unknown>[];
+    if (!orders.length) { res.json([]); return; }
+
+    const ids = orders.map(o => String(o.id));
+    const ph = ids.map(() => '?').join(',');
+    const itemRows = await db.execute({
+      sql: `SELECT oi.id, oi.order_id, oi.menu_item_id, oi.qty, oi.mods, oi.is_done,
+                   m.name, m.price
+            FROM order_items oi
+            JOIN menu_items m ON m.id = oi.menu_item_id
+            WHERE oi.order_id IN (${ph})
+            ORDER BY oi.id ASC`,
+      args: ids,
+    });
+
+    const itemsByOrder = new Map<string, Record<string, unknown>[]>();
+    for (const row of itemRows.rows) {
+      const r = row as Record<string, unknown>;
+      const oid = String(r.order_id);
+      if (!itemsByOrder.has(oid)) itemsByOrder.set(oid, []);
+      itemsByOrder.get(oid)!.push(r);
+    }
+
+    res.json(orders.map(o => {
+      const id = String(o.id);
+      const items = itemsByOrder.get(id) ?? [];
+      const subtotal = items.reduce((s, it) => s + Number(it.price ?? 0) * Number(it.qty ?? 0), 0);
+      return {
+        id,
+        restaurant_id: o.restaurant_id,
+        table_id: o.table_id ?? null,
+        server_id: o.server_id ?? null,
+        status: o.status,
+        covers: o.covers,
+        note: o.note ?? null,
+        order_type: o.order_type ?? 'dine_in',
+        table_name: o.table_name ?? null,
+        server_name: o.server_name ?? null,
+        created_at: o.created_at,
+        updated_at: o.updated_at,
+        ticket_id: o.ticket_id ?? null,
+        ticket_status: o.ticket_status ?? null,
+        ticket_vip: o.ticket_vip ?? 0,
+        ticket_updated_at: o.ticket_updated_at ?? null,
+        subtotal,
+        items: items.map(it => ({
+          id: it.id,
+          order_id: it.order_id,
+          menu_item_id: it.menu_item_id,
+          qty: it.qty,
+          mods: it.mods,
+          is_done: it.is_done,
+          name: it.name,
+          price: it.price,
+        })),
+      };
+    }));
+  } catch (e) { next(e); }
+});
+
+// ── PATCH /api/orders/:id/kitchen-progress ────────────────────────────────────
+// Advance kitchen ticket without requiring the Pro KDS API (waiters/cashiers).
+router.patch('/:id/kitchen-progress', requireRole('owner', 'manager', 'cashier', 'waiter', 'kitchen'), async (req: AuthRequest, res, next) => {
+  try {
+    const rid = req.user!.restaurant_id;
+    const orderId = req.params.id as string;
+    const { action } = z.object({
+      action: z.enum(['fire', 'ready', 'delivered']),
+    }).parse(req.body);
+
+    const statusMap = { fire: 'prep', ready: 'ready', delivered: 'delivered' } as const;
+    const nextStatus = statusMap[action];
+    const db = getDb();
+
+    const ticketRes = await db.execute({
+      sql: `SELECT id, status FROM kds_tickets
+            WHERE order_id = ? AND restaurant_id = ?
+            ORDER BY created_at DESC LIMIT 1`,
+      args: [orderId, rid],
+    });
+    if (!ticketRes.rows.length) {
+      res.status(404).json({ error: 'No kitchen ticket for this order' });
+      return;
+    }
+    const ticket = ticketRes.rows[0] as Record<string, unknown>;
+    const ticketId = String(ticket.id);
+
+    const result = await db.execute({
+      sql: `UPDATE kds_tickets SET status=?, updated_at=datetime('now')
+            WHERE id=? AND restaurant_id=?`,
+      args: [nextStatus, ticketId, rid],
+    });
+    if (!result.rowsAffected) { res.status(404).json({ error: 'Ticket not found' }); return; }
+    res.json({ order_id: orderId, ticket_id: ticketId, status: nextStatus });
+  } catch (e) { next(e); }
+});
 
 // ── GET /api/orders ───────────────────────────────────────────────────────────
 router.get('/', requireRole('owner', 'manager', 'cashier', 'waiter', 'kitchen'), async (req: AuthRequest, res, next) => {
@@ -172,6 +303,14 @@ router.post('/quick-send', requireRole('owner', 'manager', 'cashier', 'waiter'),
       args: [data.table_id, rid],
     });
     await db.batch(stmts);
+
+    sendRestaurantPush(rid, {
+      title: `New order — ${tableName}`,
+      body: `${data.items.length} item${data.items.length === 1 ? '' : 's'} · ${covers} covers`,
+      data: { type: 'order', orderId, page: 'kds' },
+      roles: ['kitchen', 'manager', 'owner'],
+      excludeUserId: req.user!.id,
+    });
 
     res.status(201).json({ id: orderId, ticket_id: ticketId, status: 'sent' });
   } catch (e) { next(e); }
@@ -382,6 +521,12 @@ router.post('/settle-table', requireRole('owner', 'manager', 'cashier'), async (
     const rid = req.user!.restaurant_id;
     const { table_id } = z.object({ table_id: z.string().min(1) }).parse(req.body);
     const db = getDb();
+    const tableRes = await db.execute({
+      sql: 'SELECT name FROM restaurant_tables WHERE id=? AND restaurant_id=?',
+      args: [table_id, rid],
+    });
+    const tableName = tableRes.rows.length ? String((tableRes.rows[0] as Record<string, unknown>).name) : 'Table';
+
     const result = await db.batch([
       {
         sql: `UPDATE orders SET status='paid', updated_at=datetime('now')
@@ -389,12 +534,29 @@ router.post('/settle-table', requireRole('owner', 'manager', 'cashier'), async (
         args: [rid, table_id],
       },
       {
+        sql: `UPDATE kds_tickets SET status='delivered', updated_at=datetime('now')
+              WHERE restaurant_id=? AND order_id IN (
+                SELECT id FROM orders WHERE restaurant_id=? AND table_id=? AND status='paid'
+              ) AND status != 'delivered'`,
+        args: [rid, rid, table_id],
+      },
+      {
         sql: `UPDATE restaurant_tables SET status='empty', course='', covers=0
               WHERE id=? AND restaurant_id=?`,
         args: [table_id, rid],
       },
     ]);
-    res.json({ ok: true, settled: result[0]?.rowsAffected ?? 0 });
+    const settled = result[0]?.rowsAffected ?? 0;
+    if (settled > 0) {
+      sendRestaurantPush(rid, {
+        title: `Payment received — ${tableName}`,
+        body: `${settled} order${settled === 1 ? '' : 's'} settled`,
+        data: { type: 'order', page: 'orders', tableId: table_id },
+        roles: ['manager', 'owner', 'cashier'],
+        excludeUserId: req.user!.id,
+      });
+    }
+    res.json({ ok: true, settled });
   } catch (e) { next(e); }
 });
 

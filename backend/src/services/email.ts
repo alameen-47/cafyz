@@ -156,7 +156,9 @@ async function sendViaResend(mail: nodemailer.SendMailOptions): Promise<EmailSen
   const to = normalizeRecipients(mail.to);
   if (!to.length) return { ok: false, error: 'Missing recipient' };
 
-  const from = resolveResendFrom();
+  const from = typeof mail.from === 'string' && mail.from.trim()
+    ? stripEnvQuotes(mail.from)
+    : resolveResendFrom();
   const body: Record<string, unknown> = {
     from,
     to,
@@ -292,6 +294,19 @@ export function smtpFrom(system = false): string {
   const addr = process.env.SMTP_FROM ?? process.env.SMTP_USER ?? 'noreply@cafyz.io';
   const name = process.env.SMTP_FROM_NAME ?? 'Cafyz';
   return system ? `"${name} System" <${addr}>` : `"${name}" <${addr}>`;
+}
+
+/** Founder-branded sender for trial / renewal reminders (uses RESEND_FROM or FOUNDER_EMAIL). */
+export function founderFrom(): string {
+  const explicit = process.env.RESEND_FROM?.trim();
+  if (explicit) return stripEnvQuotes(explicit);
+  const founder = process.env.FOUNDER_EMAIL?.trim();
+  if (founder) return `"Cafyz" <${founder}>`;
+  return smtpFrom(true);
+}
+
+export function founderReplyTo(): string | undefined {
+  return process.env.FOUNDER_EMAIL?.trim() || undefined;
 }
 
 async function sendWithTransporter(

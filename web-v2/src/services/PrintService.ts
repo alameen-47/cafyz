@@ -7,7 +7,9 @@ import { logoDataUrlToEscPos } from './logoThermalRaster';
 import { formatPrinterConnectError, getPrinterEnvironment } from './printerEnvironment';
 import {
   canUseNativeBle,
+  nativeAutoReconnect,
   nativeConnectBluetooth,
+  nativeScanBleBluetooth,
   nativePrintBluetooth,
   nativeDisconnectPrinter,
   nativePrinterStatus,
@@ -94,6 +96,7 @@ export interface ReceiptData {
   total:          number;
   payMethod?:     string;
   note?:          string;
+  footer?:        string;
   dateStr?:       string;
 }
 
@@ -175,7 +178,7 @@ export function buildReceipt(data: ReceiptData, width = 32, logoBytes?: Uint8Arr
 
   // Footer
   b.nl().alignCenter()
-   .text('Thank you for your visit!').nl()
+   .text(data.footer || 'Thank you for your visit!').nl()
    .text('cafyz.com').nl(2);
 
   b.feed(4).cut();
@@ -245,7 +248,7 @@ ${data.note ? `<p style="font-size:11px;margin:4px 0">Note: ${data.note}</p>` : 
 ${data.payMethod ? `<hr><p class="center">Paid by ${data.payMethod}</p>` : ''}
 <hr>
 <div class="center">
-  <p>Thank you for your visit!</p>
+  <p>${data.footer || 'Thank you for your visit!'}</p>
   <p>cafyz.com</p>
 </div>
 </body>
@@ -362,10 +365,48 @@ async function writeChunked(
   }
 }
 
-export async function connectBluetooth(): Promise<string> {
+export async function connectBluetoothBle(hintName?: string): Promise<string> {
   if (canUseNativeBle()) {
     try {
-      return await nativeConnectBluetooth();
+      return await nativeScanBleBluetooth(hintName);
+    } catch (err) {
+      throw new Error(formatPrinterConnectError(err, getPrinterEnvironment()));
+    }
+  }
+
+  const env = getPrinterEnvironment();
+  if (env.platform === 'ios') {
+    throw new Error(formatPrinterConnectError(new Error('ios'), env));
+  }
+  if (!env.isSecureContext) {
+    throw new Error('Bluetooth requires HTTPS. Open the site via https://.');
+  }
+  if (!('bluetooth' in navigator)) {
+    throw new Error(formatPrinterConnectError(new Error('unsupported'), env));
+  }
+  try {
+    const device = await (navigator as any).bluetooth.requestDevice({
+      acceptAllDevices: true,
+      optionalServices: BT_SERVICES,
+    });
+    const writable = await connectBluetoothDevice(device);
+    if (!writable) {
+      throw new Error('No writable characteristic found. Make sure the printer is in BT pairing mode.');
+    }
+    btChar = writable;
+    btDevice = device;
+    rememberBluetoothDevice(device);
+    attachBluetoothDisconnectListener(device);
+    return device.name || 'Bluetooth Printer';
+  } catch (err) {
+    throw new Error(formatPrinterConnectError(err, env));
+  }
+}
+
+export async function connectBluetooth(hintName?: string): Promise<string> {
+  if (canUseNativeBle()) {
+    try {
+      return await nativeConnectBluetooth(hintName);
     } catch (err) {
       throw new Error(formatPrinterConnectError(err, getPrinterEnvironment()));
     }
@@ -438,12 +479,9 @@ function rememberBluetoothDevice(device: any): void {
   }
 }
 
-export async function autoReconnectBluetooth(): Promise<{ connected: boolean; name?: string }> {
+export async function autoReconnectBluetooth(hintName?: string): Promise<{ connected: boolean; name?: string }> {
   if (canUseNativeBle()) {
-    const native = nativePrinterStatus();
-    return native.type === 'bluetooth'
-      ? { connected: true, name: native.name || 'Bluetooth Printer' }
-      : { connected: false };
+    return nativeAutoReconnect(hintName);
   }
   const env = getPrinterEnvironment();
   if (!env.isSecureContext || !('bluetooth' in navigator)) return { connected: false };
@@ -525,6 +563,25 @@ export function disconnectPrinter() {
 
 function isBluetoothConnected(): boolean {
   return !!btChar || nativePrinterStatus().type === 'bluetooth';
+}
+
+/** Try to restore a Bluetooth link before printing (saved device / bonded printer). */
+export async function ensureBluetoothReady(hintName?: string): Promise<boolean> {
+  if (isBluetoothConnected()) return true;
+  const result = await autoReconnectBluetooth(hintName);
+  return result.connected;
+}
+
+export async function connectBluetoothForRole(printerName?: string): Promise<string> {
+  if (isBluetoothConnected()) return printerStatus().name || printerName || 'Bluetooth Printer';
+  const re = await autoReconnectBluetooth(printerName);
+  if (re.connected) return re.name || printerName || 'Bluetooth Printer';
+  return connectBluetooth(printerName);
+}
+
+export async function connectBluetoothBleForRole(printerName?: string): Promise<string> {
+  if (isBluetoothConnected()) return printerStatus().name || printerName || 'Bluetooth Printer';
+  return connectBluetoothBle(printerName);
 }
 
 export function printerStatus(): { type: 'none' | 'bluetooth' | 'usb'; name: string } {
@@ -741,8 +798,9 @@ export async function print(
   const requested = options?.channel ?? 'auto';
 
   if (requested === 'bluetooth') {
-    if (!isBluetoothConnected()) {
-      throw new Error('Bluetooth printer is not connected.');
+    const ready = await ensureBluetoothReady();
+    if (!ready) {
+      throw new Error('Bluetooth printer is not connected. Open Printer setup → Pick Bluetooth printer.');
     }
     const bytes = await buildHardwareReceiptBytes(data, width, escposData);
     await printBluetooth(bytes);
@@ -761,6 +819,10 @@ export async function print(
   if (requested === 'dialog') {
     await printDialog(data);
     return 'dialog';
+  }
+
+  if (!isBluetoothConnected() && !usbDevice) {
+    await ensureBluetoothReady();
   }
 
   if (isBluetoothConnected() || usbDevice) {
@@ -789,26 +851,44 @@ export async function printTest(opts: {
   logoUrl?: string;
   addressLine?: string;
   phone?: string;
+  taxId?: string;
+  taxLabel?: string;
+  taxRate?: number;
+  serviceRate?: number;
+  currencySymbol?: string;
+  footer?: string;
+  serverName?: string;
 }, printOptions?: { channel?: PrintChannel }): Promise<'bluetooth' | 'usb' | 'dialog'> {
   const logoUrl = resolveLogoUrl(opts.logoUrl, opts.restaurantId);
+  const subtotal = 19.0;
+  const serviceRate = opts.serviceRate ?? 18;
+  const taxRate = opts.taxRate ?? 8.75;
+  const service = Math.round(subtotal * serviceRate) / 100;
+  const tax = Math.round((subtotal + service) * taxRate) / 100;
   const sample: ReceiptData = {
     restaurantName: opts.restaurantName || 'Cafyz',
+    currencySymbol: opts.currencySymbol,
     logoUrl,
     addressLine: opts.addressLine,
     phone: opts.phone,
+    taxId: opts.taxId,
     tableName: 'TEST',
-    serverName: 'Cafyz',
+    serverName: opts.serverName || 'Cafyz',
     covers: 2,
     items: [
       { name: 'Test Print — Margherita', qty: 1, price: 12.0 },
       { name: 'Espresso', qty: 2, price: 3.5 },
     ],
-    subtotal: 19.0,
-    service: 3.42,
-    tax: 1.66,
-    total: 24.08,
+    subtotal,
+    service,
+    tax,
+    total: subtotal + service + tax,
+    serviceRate,
+    taxRate,
+    taxLabel: opts.taxLabel,
     payMethod: 'TEST',
-    note: 'This is a printer test — connection and logo OK.',
+    note: 'Printer test — sample line items.',
+    footer: opts.footer,
   };
   return print(sample, undefined, 32, opts.restaurantId, printOptions);
 }
@@ -824,7 +904,8 @@ export async function printKitchenTicket(
   const requested = opts?.channel ?? 'auto';
 
   if (requested === 'bluetooth') {
-    if (!isBluetoothConnected()) throw new Error('Bluetooth printer is not connected for kitchen printing.');
+    const ready = await ensureBluetoothReady();
+    if (!ready) throw new Error('Bluetooth printer is not connected for kitchen printing.');
     const bytes = await buildHardwareKitchenBytes(ticket);
     await printBluetooth(bytes);
     return 'bluetooth';

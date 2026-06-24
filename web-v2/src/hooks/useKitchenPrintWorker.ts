@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { kdsApi, restaurantApi } from '../services/api';
-import { printKitchenTicket, printerStatus } from '../services/PrintService';
+import { autoReconnectBluetooth, ensureBluetoothReady, printKitchenTicket, printerStatus } from '../services/PrintService';
 
 /** Poll cloud kitchen print queue and print to connected BLE/USB printer. */
 export function useKitchenPrintWorker(enabled = true) {
@@ -20,6 +20,9 @@ export function useKitchenPrintWorker(enabled = true) {
         assignedKitchen = r.kitchen_printer
           ? { channel: r.kitchen_printer.channel, name: r.kitchen_printer.name }
           : null;
+        if (assignedKitchen?.channel === 'bluetooth') {
+          await ensureBluetoothReady(assignedKitchen.name);
+        }
       } catch {
         // keep last-known config
       }
@@ -58,6 +61,9 @@ export function useKitchenPrintWorker(enabled = true) {
     };
 
     void syncRestaurant();
+    void autoReconnectBluetooth();
+    const onSent = () => { void syncRestaurant(); };
+    window.addEventListener('CAFYZ_ORDER_SENT', onSent);
     const syncTimer = window.setInterval(() => { void syncRestaurant(); }, 60_000);
     const loop = async () => {
       while (alive) {
@@ -68,6 +74,7 @@ export function useKitchenPrintWorker(enabled = true) {
     void loop();
     return () => {
       alive = false;
+      window.removeEventListener('CAFYZ_ORDER_SENT', onSent);
       window.clearInterval(syncTimer);
     };
   }, [enabled]);
