@@ -95,7 +95,7 @@ app.use('/api/tables',           mutationLimiter, requireAuth, requireActiveSubs
 app.use('/api/kds',              mutationLimiter, requireAuth, requireActiveSubscription, requireSectionAccess('kds'), requirePlan('pro'),     kdsRoutes);
 app.use('/api/reservations',     mutationLimiter, requireAuth, requireActiveSubscription, requireSectionAccess('manager'), requirePlan('premium'), reservationRoutes);
 app.use('/api/inventory',        mutationLimiter, requireAuth, requireActiveSubscription, requireSectionAccess('inventory'), requirePlan('pro'),     inventoryRoutes);
-app.use('/api/dashboard',        requireAuth, requireActiveSubscription, requireSectionAccess('reports'), requirePlan('pro'), dashboardRoutes);
+app.use('/api/dashboard',        requireAuth, requireActiveSubscription, requireSectionAccess('manager', 'reports'), dashboardRoutes);
 app.use('/api/restaurants',      mutationLimiter, restaurantRoutes);
 app.use('/api/licenses',         mutationLimiter, requireAuth, requireSectionAccess('license'), licenseRoutes);
 app.use('/api/founder',          mutationLimiter, founderRoutes);
