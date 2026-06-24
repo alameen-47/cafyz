@@ -18,10 +18,13 @@ function figmaAssetResolver() {
   }
 }
 
-export default defineConfig(({ mode }) => ({
+export default defineConfig(({ mode }) => {
+  const isCapacitor = mode === 'capacitor';
+
+  return {
   root: __dirname,
   // Relative asset paths are required for Capacitor's file:// / https://localhost shell.
-  base: mode === 'capacitor' ? './' : '/',
+  base: isCapacitor ? './' : '/',
   plugins: [
     figmaAssetResolver(),
     // The React and Tailwind plugins are both required for Make, even if
@@ -33,6 +36,15 @@ export default defineConfig(({ mode }) => ({
     alias: {
       // Alias @ to the src directory
       '@': path.resolve(__dirname, './src'),
+      // Native-only Capacitor plugins (not installed in web-v2 for Vercel)
+      ...(!isCapacitor
+        ? {
+            '@kduma-autoid/capacitor-bluetooth-printer': path.resolve(
+              __dirname,
+              'src/stubs/capacitor-bluetooth-printer.ts',
+            ),
+          }
+        : {}),
     },
   },
 
@@ -46,4 +58,5 @@ export default defineConfig(({ mode }) => ({
 
   // File types to support raw imports. Never add .css, .tsx, or .ts files to this.
   assetsInclude: ['**/*.svg', '**/*.csv'],
-}))
+};
+});
