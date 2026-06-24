@@ -16,6 +16,11 @@ export function appPath(path: string): string {
   return `${APP_URL}${p}`;
 }
 
+/** Public Cafyz wordmark (hosted by web-v2 / Vercel). */
+export function brandLogoUrl(): string {
+  return appPath('/cafyz-logo.png');
+}
+
 export function trialEndsAt(from = new Date()): string {
   const d = new Date(from);
   d.setUTCDate(d.getUTCDate() + TRIAL_DAYS);

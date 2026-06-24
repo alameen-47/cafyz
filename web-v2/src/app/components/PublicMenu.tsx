@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { motion } from "motion/react";
 import { MapPin, Search, Shield } from "lucide-react";
+import { CafyzLogo } from "./CafyzLogo";
 import { publicApi, type PublicMenuResponse } from "../../services/api";
 import { getCurrencySymbol } from "../../utils/currency";
 import { useAuth } from "../auth";
@@ -189,8 +190,9 @@ export function PublicMenu({ restaurantId }: { restaurantId?: string }) {
                 <p style={{ color: "#6b82a0", fontSize: "0.85rem" }}>{search ? `No dishes match "${search}"` : "No items on the menu yet"}</p>
               </div>
             )}
-            <div className="text-center pt-6 pb-2">
-              <p style={{ color: "#6b82a0", fontSize: "0.72rem" }}>Powered by <span style={{ color: "#1e7fff", fontWeight: 600 }}>CAFYZ</span> · Restaurant OS</p>
+            <div className="text-center pt-6 pb-2 flex flex-col items-center gap-2">
+              <p style={{ color: "#6b82a0", fontSize: "0.72rem" }}>Powered by</p>
+              <CafyzLogo size="sm" className="opacity-95 mx-auto" />
             </div>
           </div>
         </>

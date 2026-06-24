@@ -3,7 +3,7 @@ import { randomBytes } from 'crypto';
 import type { Client } from '@libsql/client';
 import { getDb } from '../db.js';
 import { uid } from '../utils.js';
-import { appPath, trialEndsAt, trialEndsDateLabel, TRIAL_DAYS } from '../config/site.js';
+import { appPath, trialEndsAt, trialEndsDateLabel, TRIAL_DAYS, brandLogoUrl } from '../config/site.js';
 import { ADMIN_EMAIL, isEmailConfigured, sendMailReliable, smtpFrom } from './email.js';
 
 const LOGIN_URL = appPath('/login');
@@ -155,6 +155,7 @@ function userCredentialsHtml(inquiry: InquiryRow, provision: ProvisionResult): s
   return `<!doctype html><html><body style="margin:0;padding:0;background:#07060F;font-family:Inter,Arial,sans-serif;color:#F5F5F0">
 <div style="max-width:560px;margin:40px auto;border:0.5px solid rgba(46,204,138,0.35);border-radius:16px;overflow:hidden">
   <div style="padding:32px;background:linear-gradient(135deg,#0d2a1f 0%,#0A0816 60%)">
+    <img src="${brandLogoUrl()}" alt="Cafyz" width="200" style="max-width:200px;height:auto;display:block;margin-bottom:20px" />
     <div style="font-size:11px;color:#2ECC8A;text-transform:uppercase;letter-spacing:2px">Trial approved</div>
     <div style="font-family:Georgia,serif;font-size:28px;margin:12px 0">Welcome, ${first}.</div>
     <p style="font-size:14px;color:#B8B8C2;line-height:1.7">Your <strong>${TRIAL_DAYS}-day free trial</strong> for <strong>${restaurant}</strong> is active on the <strong>${planLabel}</strong> plan (ends ${trialEnd}).</p>

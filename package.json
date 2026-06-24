@@ -11,6 +11,7 @@
     "build": "vite build --config web-v2/vite.config.ts",
     "build:native": "vite build --config web-v2/vite.config.ts --mode capacitor",
     "gen-icons": "node scripts/gen-icons.mjs",
+    "sync:logo": "cp logo.png web-v2/public/cafyz-logo.png",
     "cap:sync": "npm run build:native && npx cap sync",
     "cap:android:usb": "bash scripts/cap-run-usb-android.sh",
     "cap:android:emulator": "bash scripts/cap-run-emulator.sh",

@@ -11,6 +11,7 @@ import type { Plan, Role } from "../auth";
 import type { PageId } from "../../config/access";
 import { planMeetsRequirement, requiredPlanForPage } from "../../config/access";
 import { usePlanConfig } from "../PlanConfigProvider";
+import { CafyzLogo } from "./CafyzLogo";
 
 const navItems = [
   { id: "dashboard", label: "Dashboard", icon: LayoutDashboard, group: "main" },
@@ -89,26 +90,19 @@ export function Sidebar({
 
       {/* Sidebar */}
       <motion.aside
-        animate={{ width: collapsed ? 72 : 248 }}
+        animate={{ width: collapsed ? 72 : 268 }}
         transition={{ duration: 0.3, ease: "easeInOut" }}
         className={`fixed left-0 top-0 h-full z-50 flex flex-col border-r border-[rgba(30,127,255,0.12)] lg:relative lg:translate-x-0 ${mobileOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"} transition-transform duration-300 lg:transition-none`}
         style={{ background: "linear-gradient(180deg, #080c1e 0%, #06091a 100%)", boxShadow: "4px 0 24px rgba(30,127,255,0.06)" }}
       >
         {/* Logo */}
-        <div className="flex items-center gap-3 px-4 py-4 border-b border-[rgba(30,127,255,0.12)] flex-shrink-0">
-          <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
-            style={{ background: "linear-gradient(135deg, #1e7fff, #00c6ff)", boxShadow: "0 0 16px rgba(30,127,255,0.5)" }}>
-            <Shield size={17} className="text-white" />
-          </div>
-          <AnimatePresence>
-            {!collapsed && (
-              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="overflow-hidden flex-1">
-                <div style={{ fontFamily: "var(--font-display)", fontWeight: 800, color: "#fff", fontSize: "1.05rem", letterSpacing: "0.08em" }}>CAFYZ</div>
-                <div style={{ fontSize: "0.6rem", color: "#6b82a0", letterSpacing: "0.12em" }}>RESTAURANT OS</div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-          <button onClick={onMobileClose} className="ml-auto text-[#6b82a0] hover:text-white lg:hidden"><X size={16} /></button>
+        <div className={`flex items-center border-b border-[rgba(30,127,255,0.12)] flex-shrink-0 ${collapsed ? "justify-center px-3 py-4" : "px-4 py-5 gap-2"}`}>
+          {collapsed ? (
+            <CafyzLogo size="xs" className="flex-shrink-0" />
+          ) : (
+            <CafyzLogo size="sm" className="flex-shrink-0" />
+          )}
+          <button onClick={onMobileClose} className={`text-[#6b82a0] hover:text-white lg:hidden flex-shrink-0 ${collapsed ? "absolute right-3 top-4" : "ml-auto"}`}><X size={16} /></button>
         </div>
 
         {/* Nav */}

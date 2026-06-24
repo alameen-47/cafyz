@@ -23,6 +23,7 @@ import { PublicMenu } from "./components/PublicMenu";
 import { UpgradeModal } from "./components/UpgradeModal";
 import { TrialExpiredModal } from "./components/TrialExpiredModal";
 import { RenewalBanner } from "./components/RenewalBanner";
+import { CafyzLogo } from "./components/CafyzLogo";
 import { useAuth, type Plan, type Role } from "./auth";
 import { NavContext } from "./nav";
 import { licensesApi, usersApi, TRIAL_EXPIRED_EVENT, type ApiSubscriptionStatus } from "../services/api";
@@ -149,7 +150,8 @@ export default function App() {
 
   if (loading) {
     return (
-      <div className="flex app-screen app-native-inset-top w-full items-center justify-center" style={{ background: "#06091a" }}>
+      <div className="flex app-screen app-native-inset-top w-full flex-col items-center justify-center gap-4" style={{ background: "#06091a" }}>
+        <CafyzLogo size="lg" className="animate-pulse drop-shadow-[0_8px_24px_rgba(30,127,255,0.2)]" />
         <div className="w-8 h-8 border-2 border-white/20 border-t-[#1e7fff] rounded-full animate-spin" />
       </div>
     );

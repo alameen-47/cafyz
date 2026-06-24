@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { Eye, EyeOff, Shield, ArrowRight, Phone, Lock, Mail, Delete, ChevronRight, Star, Store, User } from "lucide-react";
+import { Eye, EyeOff, ArrowRight, Phone, Lock, Mail, Delete, ChevronRight, Star, Store, User } from "lucide-react";
 import { toast } from "./Toast";
 import { useAuth } from "../auth";
 import { authApi, inquiryApi, type ApiPlanConfig } from "../../services/api";
@@ -8,6 +8,7 @@ import { usePlanConfig } from "../PlanConfigProvider";
 import { formatPlanPrice, formatBillingSuffix } from "../../services/planConfigStore";
 import { LanguageSwitcher } from "../../i18n/LanguageSwitcher";
 import { useLanguage } from "../../i18n/LanguageProvider";
+import { CafyzLogo } from "./CafyzLogo";
 
 type AuthMethod = "password" | "pin" | "otp";
 type AuthState = "login" | "forgot" | "reset" | "otp-verify" | "inquiry";
@@ -222,18 +223,9 @@ export function LoginScreen({ onLogin }: { onLogin?: () => void }) {
           borderRight: "1px solid rgba(30,127,255,0.1)",
         }}
       >
-        {/* Logo */}
-        <div className="flex items-center gap-3">
-          <div
-            className="w-11 h-11 rounded-2xl flex items-center justify-center"
-            style={{ background: "linear-gradient(135deg, #1e7fff, #00c6ff)", boxShadow: "0 0 24px rgba(30,127,255,0.5)" }}
-          >
-            <Shield size={22} className="text-white" />
-          </div>
-          <div>
-            <div style={{ fontFamily: "var(--font-display)", fontWeight: 800, color: "#fff", fontSize: "1.25rem", letterSpacing: "0.08em" }}>CAFYZ</div>
-            <div style={{ fontSize: "0.65rem", color: "#6b82a0", letterSpacing: "0.15em" }}>RESTAURANT OS</div>
-          </div>
+        {/* Logo — repo root logo.png */}
+        <div className="mb-4 flex justify-start">
+          <CafyzLogo size="login" className="drop-shadow-[0_10px_36px_rgba(30,127,255,0.28)]" />
         </div>
 
         {/* Hero content */}
@@ -272,18 +264,22 @@ export function LoginScreen({ onLogin }: { onLogin?: () => void }) {
       </div>
 
       {/* Right form panel */}
-      <div className="flex-1 flex flex-col items-center justify-center p-6 overflow-y-auto relative">
+      <div className="flex-1 flex flex-col min-h-0 overflow-y-auto relative lg:justify-center">
         <div className="absolute top-4 right-4 sm:top-6 sm:right-6 z-10">
           <LanguageSwitcher variant="login" />
         </div>
-        {/* Mobile logo */}
-        <div className="lg:hidden flex items-center gap-3 mb-8">
-          <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: "linear-gradient(135deg, #1e7fff, #00c6ff)" }}>
-            <Shield size={18} className="text-white" />
-          </div>
-          <span style={{ fontFamily: "var(--font-display)", fontWeight: 800, color: "#fff", fontSize: "1.2rem", letterSpacing: "0.08em" }}>CAFYZ</span>
-        </div>
 
+        {/* Mobile / tablet: logo band = 30% of screen height, form in the remaining space */}
+        <header className="lg:hidden w-full flex flex-col items-center justify-center flex-shrink-0 px-4
+          h-[30dvh] min-h-[30dvh] max-h-[30dvh]
+          pt-[max(0.75rem,env(safe-area-inset-top))]">
+          <CafyzLogo
+            size="loginMobile"
+            className="drop-shadow-[0_10px_36px_rgba(30,127,255,0.28)]"
+          />
+        </header>
+
+        <div className="flex-1 w-full min-h-0 flex flex-col items-center overflow-y-auto px-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] lg:flex-none lg:overflow-visible lg:justify-center lg:p-6 lg:pt-6">
         <div className="w-full max-w-[400px]">
           <AnimatePresence mode="wait">
             {authState === "login" && (
@@ -520,6 +516,7 @@ export function LoginScreen({ onLogin }: { onLogin?: () => void }) {
               </motion.div>
             )}
           </AnimatePresence>
+        </div>
         </div>
       </div>
     </div>

@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
+import { CafyzLogo } from "./CafyzLogo";
 import { Sparkles, X, Send, Bot, User, Minimize2 } from "lucide-react";
 
 interface Message {
@@ -122,10 +123,7 @@ export function AIAssistantWidget({ screen }: { screen?: string }) {
             {/* Header */}
             <div className="flex items-center gap-3 px-4 py-3 flex-shrink-0"
               style={{ background: "linear-gradient(135deg, rgba(168,85,247,0.12), rgba(30,127,255,0.08))", borderBottom: "1px solid rgba(168,85,247,0.15)" }}>
-              <div className="w-8 h-8 rounded-xl flex items-center justify-center"
-                style={{ background: "linear-gradient(135deg, #a855f7, #1e7fff)" }}>
-                <Sparkles size={14} className="text-white" />
-              </div>
+              <CafyzLogo size="xs" className="flex-shrink-0" />
               <div className="flex-1">
                 <p style={{ color: "#e8eef8", fontFamily: "var(--font-display)", fontWeight: 700, fontSize: "0.88rem" }}>CAFYZ AI</p>
                 <div className="flex items-center gap-1">

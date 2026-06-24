@@ -457,21 +457,108 @@ export function Profile() {
 
   return (
     <div className="p-3 sm:p-4 md:p-6 space-y-4 max-w-3xl w-full">
-      {/* Scope banner — makes it explicit this profile belongs to one restaurant + manager */}
-      <div className="rounded-2xl px-4 py-3 flex flex-wrap items-center gap-x-4 gap-y-1"
-        style={{ background: "rgba(30,127,255,0.06)", border: "1px solid rgba(30,127,255,0.14)" }}>
-        <div className="flex items-center gap-2">
-          <Building2 size={15} style={{ color: "#1e7fff" }} />
-          <span style={{ color: "#e8eef8", fontSize: "0.85rem", fontWeight: 600 }}>{user?.restaurant_name || profile.name || "Your restaurant"}</span>
+      {/* Scope banner — restaurant + signed-in manager context */}
+      <motion.div
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="rounded-2xl overflow-hidden"
+        style={{
+          background: "linear-gradient(135deg, rgba(30,127,255,0.1) 0%, rgba(13,19,38,0.95) 55%)",
+          border: "1px solid rgba(30,127,255,0.18)",
+          boxShadow: "0 8px 32px rgba(0,0,0,0.2)",
+        }}
+      >
+        <div className="px-4 py-3.5 sm:px-5 sm:py-4 flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
+          <div className="flex items-center gap-3 min-w-0 flex-1">
+            <div
+              className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 font-bold text-sm"
+              style={{
+                background: logoUrl
+                  ? `url(${logoUrl}) center/cover no-repeat`
+                  : "linear-gradient(135deg, #1e7fff, #00c6ff)",
+                color: "#fff",
+                border: "1px solid rgba(30,127,255,0.25)",
+                boxShadow: "0 4px 16px rgba(30,127,255,0.2)",
+              }}
+            >
+              {!logoUrl && initials}
+            </div>
+            <div className="min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <h2
+                  className="truncate"
+                  style={{ color: "#e8eef8", fontFamily: "var(--font-display)", fontWeight: 700, fontSize: "1rem", lineHeight: 1.25 }}
+                >
+                  {profile.name || user?.restaurant_name || "Your restaurant"}
+                </h2>
+                {user?.plan && (
+                  <span
+                    className="px-2 py-0.5 rounded-full text-[0.65rem] font-semibold uppercase tracking-wide flex-shrink-0"
+                    style={{ background: "rgba(30,127,255,0.14)", color: "#1e7fff", border: "1px solid rgba(30,127,255,0.22)" }}
+                  >
+                    {user.plan}
+                  </span>
+                )}
+              </div>
+              {profile.tagline ? (
+                <p className="truncate mt-0.5" style={{ color: "#a8bdd4", fontSize: "0.78rem" }}>{profile.tagline}</p>
+              ) : (
+                <p className="flex items-center gap-1.5 mt-0.5" style={{ color: "#6b82a0", fontSize: "0.72rem" }}>
+                  <Building2 size={12} style={{ flexShrink: 0 }} />
+                  Restaurant settings & profile
+                </p>
+              )}
+            </div>
+          </div>
+
+          <div
+            className="flex items-center gap-2.5 px-3 py-2 rounded-xl sm:max-w-[280px]"
+            style={{ background: "rgba(6,9,26,0.45)", border: "1px solid rgba(30,127,255,0.1)" }}
+          >
+            <div
+              className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 text-xs font-bold"
+              style={{ background: "rgba(30,127,255,0.12)", color: "#1e7fff" }}
+            >
+              {(account.name || user?.name || "?").slice(0, 2).toUpperCase()}
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="truncate" style={{ color: "#e8eef8", fontSize: "0.8rem", fontWeight: 600 }}>
+                {account.name || user?.name || "Account"}
+              </p>
+              <p className="truncate" style={{ color: "#6b82a0", fontSize: "0.7rem" }}>
+                {account.email || user?.email || "—"}
+              </p>
+            </div>
+            {account.role && (
+              <span
+                className="px-2 py-1 rounded-lg text-[0.65rem] font-semibold flex-shrink-0"
+                style={{
+                  background: account.role === "owner" ? "rgba(168,85,247,0.14)" : "rgba(30,127,255,0.1)",
+                  color: account.role === "owner" ? "#c084fc" : "#1e7fff",
+                  border: `1px solid ${account.role === "owner" ? "rgba(168,85,247,0.25)" : "rgba(30,127,255,0.2)"}`,
+                }}
+              >
+                {ROLE_LABEL[account.role] ?? account.role}
+              </span>
+            )}
+          </div>
         </div>
-        <span style={{ color: "#6b82a0", fontSize: "0.78rem" }}>
-          Managed by <span style={{ color: "#a8bdd4" }}>{account.email || user?.email || "—"}</span>
-          {account.role && <> · {ROLE_LABEL[account.role] ?? account.role}</>}
-        </span>
-        <span className="ml-auto" style={{ color: "#6b82a0", fontSize: "0.72rem" }}>
-          All data on this page is scoped to this restaurant.
-        </span>
-      </div>
+
+        <div
+          className="px-4 py-2 sm:px-5 flex flex-wrap items-center gap-x-3 gap-y-1"
+          style={{ background: "rgba(0,0,0,0.15)", borderTop: "1px solid rgba(30,127,255,0.08)" }}
+        >
+          <span className="flex items-center gap-1.5" style={{ color: "#6b82a0", fontSize: "0.7rem" }}>
+            <Shield size={12} style={{ color: "#1e7fff", flexShrink: 0 }} />
+            All settings on this page apply only to this restaurant.
+          </span>
+          {slug && (
+            <span className="sm:ml-auto font-mono truncate max-w-full" style={{ color: "#5a6d85", fontSize: "0.65rem" }}>
+              ID · {restaurantId ? `${restaurantId.slice(0, 8)}…` : slug}
+            </span>
+          )}
+        </div>
+      </motion.div>
 
       {/* Brand section */}
       <Section title="Brand Identity" icon={Shield}>
