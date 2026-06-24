@@ -1,5 +1,6 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { motion } from "motion/react";
+import QRCode from "qrcode";
 import {
   Camera, Save, Globe, DollarSign, FileText, MapPin, Phone, Shield, QrCode,
   Download, ExternalLink, User, Lock, Link2, Building2, Trash2, Loader2,
@@ -78,6 +79,20 @@ export function Profile() {
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
+  // QR code canvas data URL for the public menu URL
+  const [qrDataUrl, setQrDataUrl] = useState("");
+  const generateQr = useCallback(async (menuSlug: string) => {
+    if (!menuSlug) return;
+    const url = `${window.location.protocol}//${window.location.host}/m/${menuSlug}`;
+    try {
+      const dataUrl = await QRCode.toDataURL(url, {
+        width: 256, margin: 2,
+        color: { dark: "#06091a", light: "#ffffff" },
+      });
+      setQrDataUrl(dataUrl);
+    } catch { /* non-fatal */ }
+  }, []);
+
   // Manager / owner account (the logged-in user) — scoped to this restaurant.
   const [account, setAccount] = useState({ name: "", email: "", phone: "", role: "" });
   const [savingAccount, setSavingAccount] = useState(false);
@@ -86,7 +101,9 @@ export function Profile() {
 
   useEffect(() => {
     restaurantApi.me().then(r => {
-      setSlug(r.slug ?? "");
+      const s = r.slug ?? "";
+      setSlug(s);
+      void generateQr(s);
       setLogoUrl(r.logo_url ?? "");
       void syncRestaurantLogoCacheAsync(r);
       setProfile({
@@ -165,7 +182,9 @@ export function Profile() {
       toast.error("Restaurant not loaded", "Wait a moment and try again.");
       return;
     }
-    if (!file.type.startsWith("image/")) { toast.error("Invalid file", "Please choose an image (PNG, JPG, WebP)."); return; }
+    const ext = '.' + (file.name.split('.').pop() ?? '').toLowerCase();
+    const imgTypeOk = file.type ? file.type.startsWith("image/") : ['.jpg','.jpeg','.png','.webp','.gif'].includes(ext);
+    if (!imgTypeOk) { toast.error("Invalid file", "Please choose an image (PNG, JPG, WebP)."); return; }
     if (file.size > MAX_LOGO_BYTES) { toast.error("Image too large", "Logo must be under 2 MB."); return; }
     setUploadingLogo(true);
     try {
@@ -435,33 +454,50 @@ export function Profile() {
 
       {/* QR Menu card */}
       <Section title="Customer QR Menu" icon={QrCode}>
-        <div className="flex items-center gap-4">
-          <div className="w-20 h-20 rounded-xl flex items-center justify-center flex-shrink-0 overflow-hidden" style={{ background: "#fff" }}>
-            {logoUrl
-              ? <img src={logoUrl} alt="logo" className="w-full h-full object-cover" />
+        <div className="flex flex-col sm:flex-row items-center sm:items-start gap-5">
+          {/* Real scannable QR code */}
+          <div className="flex-shrink-0 rounded-2xl p-3 flex items-center justify-center"
+            style={{ background: "#fff", width: 140, height: 140 }}>
+            {qrDataUrl
+              ? <img src={qrDataUrl} alt="QR code" className="w-full h-full object-contain" style={{ imageRendering: "pixelated" }} />
               : (
-                <div className="grid grid-cols-3 gap-0.5">
-                  {[...Array(9)].map((_, i) => (
-                    <div key={i} className="w-4 h-4 rounded-sm" style={{ background: [0,2,6,8].includes(i) ? "#06091a" : i === 4 ? "#1e7fff" : "rgba(6,9,26,0.3)" }} />
-                  ))}
+                <div className="w-full h-full flex items-center justify-center">
+                  <Loader2 size={24} className="animate-spin" style={{ color: "#1e7fff" }} />
                 </div>
               )}
           </div>
-          <div className="flex-1 space-y-2">
-            <p style={{ color: "#a8bdd4", fontSize: "0.82rem" }}>
-              Share your digital menu with customers via QR code.
+          <div className="flex-1 space-y-3 text-center sm:text-left">
+            <div>
+              <p style={{ color: "#e8eef8", fontSize: "0.88rem", fontWeight: 600 }}>
+                Scan to view your live menu
+              </p>
+              <p style={{ color: "#a8bdd4", fontSize: "0.78rem", marginTop: 3 }}>
+                Place this QR code on tables, receipts, or your front door. Customers scan it to browse your current menu in real time.
+              </p>
+            </div>
+            <p style={{ color: "#6b82a0", fontSize: "0.7rem", fontFamily: "var(--font-mono)", wordBreak: "break-all" }}>
+              {`${window.location.protocol}//${window.location.host}/m/${slug || "your-restaurant"}`}
             </p>
-            <p style={{ color: "#6b82a0", fontSize: "0.72rem", fontFamily: "var(--font-mono)" }}>
-              {`${window.location.host}/m/${slug || "your-restaurant"}`}
-            </p>
-            <div className="flex gap-2">
-              <button onClick={() => slug && window.open(`/m/${slug}`, "_blank")}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold" style={{ background: "rgba(30,127,255,0.1)", color: "#1e7fff" }}>
-                <Download size={12} /> Download
+            <div className="flex flex-wrap gap-2 justify-center sm:justify-start">
+              <button
+                onClick={() => {
+                  if (!qrDataUrl) return;
+                  const a = document.createElement("a");
+                  a.href = qrDataUrl;
+                  a.download = `${slug || "menu"}-qr.png`;
+                  a.click();
+                }}
+                disabled={!qrDataUrl}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all"
+                style={{ background: "rgba(30,127,255,0.12)", color: "#1e7fff", border: "1px solid rgba(30,127,255,0.2)", opacity: qrDataUrl ? 1 : 0.5 }}>
+                <Download size={12} /> Download PNG
               </button>
-              <button onClick={() => slug && window.open(`/m/${slug}`, "_blank")}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold" style={{ background: "rgba(30,127,255,0.06)", color: "#6b82a0" }}>
-                <ExternalLink size={12} /> Open
+              <button
+                onClick={() => slug && window.open(`/m/${slug}`, "_blank")}
+                disabled={!slug}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all"
+                style={{ background: "rgba(30,127,255,0.06)", color: "#6b82a0", border: "1px solid rgba(30,127,255,0.1)", opacity: slug ? 1 : 0.5 }}>
+                <ExternalLink size={12} /> Preview Menu
               </button>
             </div>
           </div>

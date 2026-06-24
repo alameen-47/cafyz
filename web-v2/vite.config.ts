@@ -38,6 +38,7 @@ export default defineConfig(({ mode }) => ({
 
   // Dev proxy → backend, so the ported api.ts can use relative /api URLs.
   server: {
+    host: true, // 0.0.0.0 — required for Android emulator (10.0.2.2 → host machine)
     proxy: {
       '/api': { target: 'http://localhost:4000', changeOrigin: true },
     },

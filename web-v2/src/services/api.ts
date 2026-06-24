@@ -416,6 +416,11 @@ export const founderApi = {
     put<ApiPlanConfig>(`/api/founder/plan-config/${plan}`, d),
 };
 
+// ── Search ────────────────────────────────────────────────────────────────────
+export const searchApi = {
+  search: (q: string) => get<ApiSearchResponse>(`/api/search?q=${encodeURIComponent(q)}`),
+};
+
 // ── AI Support ────────────────────────────────────────────────────────────────
 export const supportApi = {
   ask: (d: { message: string; screen?: string; history?: { role: 'user' | 'assistant'; text: string }[] }) =>
@@ -649,6 +654,20 @@ export interface ApiPlanConfig {
   billing_interval_unit?: 'month' | 'year';
   billing_interval_count?: number;
   updated_at: string;
+}
+
+export interface ApiSearchResult {
+  type: 'menu' | 'table' | 'order' | 'staff' | 'inventory' | 'reservation';
+  id: string;
+  title: string;
+  subtitle: string;
+  meta: string;
+  page: string;
+}
+
+export interface ApiSearchResponse {
+  results: ApiSearchResult[];
+  query: string;
 }
 
 export interface ApiSupportAction {

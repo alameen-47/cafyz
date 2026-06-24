@@ -6,7 +6,7 @@ alwaysApply: true
 # Canonical codebase
 
 - **Only worktree:** `/Users/alameen/cafyz` on branch `main`. Do not create git worktrees or develop in other checkouts.
-- **Canonical UI:** `web-v2/` — used for Vercel, Capacitor (Android/iOS), and local dev (`npm run dev`, `npm run web-v2`).
-- **Capacitor:** `web-v2/dist` via `npm run cap:sync`. Native projects live in `cap-android/` and `cap-ios/`.
-- **Legacy (do not extend):** `web/` (old UI), React Native `android/`/`ios/` at repo root — ignore unless explicitly asked.
+- **Canonical UI:** `web-v2/` only — used for Vercel, Capacitor (Android/iOS), and local dev (`npm run dev`).
+- **Do not add or restore** other UI trees (`web/`, React Native `src/`, root `android/`/`ios/`, `electron/`, static `public/` prototype).
+- **Capacitor:** `web-v2/dist` via `npm run cap:sync`. Native shells: `cap-android/`, `cap-ios/`.
 - **API:** `backend/` — local dev on `:4000`; production `https://cafyz.onrender.com`.

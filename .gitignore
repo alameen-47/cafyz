@@ -81,14 +81,14 @@ backend/.env
 !.yarn/versions
 
 # Vite web build
-web/dist
+web-v2/dist
 
 # Native release binaries (build locally)
-releases/desktop/
 releases/*.apk
 releases/*.dmg
 releases/*.exe
 releases/*.AppImage
+releases/ios/
 
 # Backend compiled output (Render builds this itself)
 backend/dist
@@ -96,4 +96,3 @@ backend/dist
 # Env files — never commit secrets
 .env
 backend/.env
-web-v2/dist

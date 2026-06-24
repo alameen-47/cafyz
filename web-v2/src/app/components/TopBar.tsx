@@ -1,7 +1,9 @@
-import { Bell, Search, ChevronDown, Menu, Clock } from "lucide-react";
-import { useState, useEffect, useRef } from "react";
+import { Bell, Search, ChevronDown, Menu, Clock, X, UtensilsCrossed, LayoutGrid, ShoppingBag, Users, Package, CalendarCheck } from "lucide-react";
+import { useState, useEffect, useRef, useCallback } from "react";
+import { motion, AnimatePresence } from "motion/react";
 import { NotificationDropdown } from "./NotificationDropdown";
 import { UserProfileDropdown } from "./UserProfileDropdown";
+import { searchApi, type ApiSearchResult } from "../../services/api";
 
 const pageLabels: Record<string, { title: string; subtitle: string }> = {
   dashboard:    { title: "Dashboard",          subtitle: "Welcome back, Alex" },
@@ -19,6 +21,47 @@ const pageLabels: Record<string, { title: string; subtitle: string }> = {
   license:      { title: "License & Plan",     subtitle: "Subscription & upgrades" },
   founder:      { title: "Founder Console",    subtitle: "Super admin · All tenants" },
 };
+
+const typeIcon: Record<ApiSearchResult["type"], React.ElementType> = {
+  menu:        UtensilsCrossed,
+  table:       LayoutGrid,
+  order:       ShoppingBag,
+  staff:       Users,
+  inventory:   Package,
+  reservation: CalendarCheck,
+};
+
+const typeColor: Record<ApiSearchResult["type"], string> = {
+  menu:        "#1e7fff",
+  table:       "#00c6ff",
+  order:       "#a855f7",
+  staff:       "#22c55e",
+  inventory:   "#f59e0b",
+  reservation: "#22d3ee",
+};
+
+const metaBadge: Record<string, { color: string; bg: string }> = {
+  open:       { color: "#1e7fff",  bg: "rgba(30,127,255,0.1)" },
+  sent:       { color: "#a855f7",  bg: "rgba(168,85,247,0.1)" },
+  paid:       { color: "#22c55e",  bg: "rgba(34,197,94,0.1)" },
+  voided:     { color: "#6b82a0",  bg: "rgba(107,130,160,0.1)" },
+  comped:     { color: "#22d3ee",  bg: "rgba(34,211,238,0.1)" },
+  active:     { color: "#22c55e",  bg: "rgba(34,197,94,0.1)" },
+  break:      { color: "#f59e0b",  bg: "rgba(245,158,11,0.1)" },
+  off:        { color: "#6b82a0",  bg: "rgba(107,130,160,0.1)" },
+  occupied:   { color: "#f59e0b",  bg: "rgba(245,158,11,0.1)" },
+  empty:      { color: "#22c55e",  bg: "rgba(34,197,94,0.1)" },
+  low:        { color: "#ff3b5c",  bg: "rgba(255,59,92,0.1)" },
+  ok:         { color: "#22c55e",  bg: "rgba(34,197,94,0.1)" },
+  confirmed:  { color: "#1e7fff",  bg: "rgba(30,127,255,0.1)" },
+  seated:     { color: "#22c55e",  bg: "rgba(34,197,94,0.1)" },
+  cancelled:  { color: "#ff3b5c",  bg: "rgba(255,59,92,0.1)" },
+  available:  { color: "#22c55e",  bg: "rgba(34,197,94,0.1)" },
+};
+
+function getBadge(meta: string) {
+  return metaBadge[meta] ?? { color: "#a8bdd4", bg: "rgba(168,189,212,0.08)" };
+}
 
 interface TopBarProps {
   active: string;
@@ -45,19 +88,69 @@ function useClock() {
   return time;
 }
 
+function useDebounce<T>(value: T, delay: number): T {
+  const [debounced, setDebounced] = useState(value);
+  useEffect(() => {
+    const t = setTimeout(() => setDebounced(value), delay);
+    return () => clearTimeout(t);
+  }, [value, delay]);
+  return debounced;
+}
+
 export function TopBar({ active, onMobileMenuOpen, onNavigate, onLogout, role, plan, userName = "there", userEmail = "", userInitials = "?" }: TopBarProps) {
+  const [searchQuery, setSearchQuery] = useState("");
   const [searchFocused, setSearchFocused] = useState(false);
+  const [searchResults, setSearchResults] = useState<ApiSearchResult[]>([]);
+  const [searchLoading, setSearchLoading] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [unreadNotifs, setUnreadNotifs] = useState(0);
   const notifRef = useRef<HTMLDivElement>(null);
   const profileRef = useRef<HTMLDivElement>(null);
+  const searchRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
   const time = useClock();
   const initials = (userInitials || userName.split(" ").map(n => n[0]).join("")).slice(0, 2).toUpperCase();
+  const debouncedQuery = useDebounce(searchQuery, 280);
 
   const page = pageLabels[active] || pageLabels.dashboard;
+  const showDropdown = searchFocused && (searchQuery.length >= 2 || searchResults.length > 0);
 
-  // Close dropdowns on outside click handled inside each component
+  useEffect(() => {
+    if (debouncedQuery.length < 2) {
+      setSearchResults([]);
+      return;
+    }
+    let alive = true;
+    setSearchLoading(true);
+    searchApi.search(debouncedQuery)
+      .then(r => { if (alive) setSearchResults(r.results); })
+      .catch(() => { if (alive) setSearchResults([]); })
+      .finally(() => { if (alive) setSearchLoading(false); });
+    return () => { alive = false; };
+  }, [debouncedQuery]);
+
+  const clearSearch = useCallback(() => {
+    setSearchQuery("");
+    setSearchResults([]);
+    inputRef.current?.blur();
+  }, []);
+
+  const handleResultClick = useCallback((result: ApiSearchResult) => {
+    onNavigate(result.page);
+    clearSearch();
+  }, [onNavigate, clearSearch]);
+
+  // Close search on outside click
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (searchRef.current && !searchRef.current.contains(e.target as Node)) {
+        setSearchFocused(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
 
   return (
     <header
@@ -93,21 +186,103 @@ export function TopBar({ active, onMobileMenuOpen, onNavigate, onLogout, role, p
         <span style={{ color: "#a8bdd4", fontFamily: "var(--font-mono)", fontSize: "0.78rem", fontWeight: 600 }}>{time}</span>
       </div>
 
-      {/* Search — desktop only */}
-      <div
-        className="hidden md:flex items-center gap-2 rounded-xl px-3 py-2 transition-all duration-200 flex-shrink-0"
-        style={{
-          background: "#0d1326",
-          border: `1px solid ${searchFocused ? "rgba(30,127,255,0.4)" : "rgba(30,127,255,0.1)"}`,
-          width: 190,
-          boxShadow: searchFocused ? "0 0 0 3px rgba(30,127,255,0.08)" : "none",
-        }}>
-        <Search size={13} style={{ color: "#6b82a0", flexShrink: 0 }} />
-        <input type="text" placeholder="Search..."
-          onFocus={() => setSearchFocused(true)}
-          onBlur={() => setSearchFocused(false)}
-          className="bg-transparent border-none outline-none flex-1 placeholder:text-[#6b82a0]"
-          style={{ color: "#e8eef8", fontSize: "0.82rem" }} />
+      {/* Global search — desktop only */}
+      <div ref={searchRef} className="hidden md:block relative flex-shrink-0" style={{ width: 220 }}>
+        <div
+          className="flex items-center gap-2 rounded-xl px-3 py-2 transition-all duration-200"
+          style={{
+            background: "#0d1326",
+            border: `1px solid ${searchFocused ? "rgba(30,127,255,0.4)" : "rgba(30,127,255,0.1)"}`,
+            boxShadow: searchFocused ? "0 0 0 3px rgba(30,127,255,0.08)" : "none",
+          }}>
+          {searchLoading
+            ? <div className="w-3 h-3 border border-white/20 border-t-[#1e7fff] rounded-full animate-spin flex-shrink-0" />
+            : <Search size={13} style={{ color: "#6b82a0", flexShrink: 0 }} />
+          }
+          <input
+            ref={inputRef}
+            type="text"
+            placeholder="Search…"
+            value={searchQuery}
+            onChange={e => setSearchQuery(e.target.value)}
+            onFocus={() => setSearchFocused(true)}
+            onKeyDown={e => e.key === "Escape" && clearSearch()}
+            className="bg-transparent border-none outline-none flex-1 placeholder:text-[#6b82a0]"
+            style={{ color: "#e8eef8", fontSize: "0.82rem" }}
+          />
+          {searchQuery && (
+            <button onClick={clearSearch} className="flex-shrink-0" style={{ color: "#6b82a0" }}>
+              <X size={12} />
+            </button>
+          )}
+        </div>
+
+        {/* Results dropdown */}
+        <AnimatePresence>
+          {showDropdown && (
+            <motion.div
+              initial={{ opacity: 0, y: -6, scale: 0.97 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -6, scale: 0.97 }}
+              transition={{ type: "spring", damping: 28, stiffness: 380 }}
+              className="absolute top-full left-0 right-0 mt-2 rounded-2xl overflow-hidden z-50"
+              style={{
+                background: "#0d1326",
+                border: "1px solid rgba(30,127,255,0.18)",
+                boxShadow: "0 16px 40px rgba(0,0,0,0.55)",
+                minWidth: 300,
+              }}>
+              {searchQuery.length >= 2 && searchResults.length === 0 && !searchLoading ? (
+                <div className="py-8 text-center">
+                  <p style={{ color: "#6b82a0", fontSize: "0.8rem" }}>No results for <span style={{ color: "#e8eef8" }}>"{searchQuery}"</span></p>
+                </div>
+              ) : searchResults.length > 0 ? (
+                <div className="py-1.5 overflow-y-auto" style={{ maxHeight: 380 }}>
+                  {searchResults.map(result => {
+                    const Icon = typeIcon[result.type];
+                    const color = typeColor[result.type];
+                    const badge = getBadge(result.meta);
+                    return (
+                      <button
+                        key={`${result.type}-${result.id}`}
+                        onMouseDown={e => { e.preventDefault(); handleResultClick(result); }}
+                        className="w-full flex items-center gap-3 px-4 py-2.5 text-left transition-all hover:bg-[rgba(30,127,255,0.06)]"
+                      >
+                        <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
+                          style={{ background: `${color}18` }}>
+                          <Icon size={13} style={{ color }} />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="truncate" style={{ color: "#e8eef8", fontSize: "0.8rem", fontWeight: 500 }}>
+                            {result.title}
+                          </p>
+                          {result.subtitle && (
+                            <p className="truncate" style={{ color: "#6b82a0", fontSize: "0.7rem" }}>
+                              {result.subtitle}
+                            </p>
+                          )}
+                        </div>
+                        <span className="px-2 py-0.5 rounded-full text-[0.62rem] font-semibold capitalize flex-shrink-0"
+                          style={{ background: badge.bg, color: badge.color }}>
+                          {result.meta.replace(/_/g, " ")}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              ) : null}
+              {searchResults.length > 0 && (
+                <div className="px-4 py-2 border-t flex items-center justify-between"
+                  style={{ borderColor: "rgba(30,127,255,0.08)" }}>
+                  <span style={{ color: "#6b82a0", fontSize: "0.65rem" }}>
+                    {searchResults.length} result{searchResults.length !== 1 ? "s" : ""} for "{searchQuery}"
+                  </span>
+                  <span style={{ color: "#6b82a0", fontSize: "0.62rem" }}>↵ to navigate · Esc to clear</span>
+                </div>
+              )}
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
       {/* Notification bell */}

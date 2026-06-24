@@ -1,8 +1,15 @@
 {
-  "extends": "@react-native/typescript-config",
   "compilerOptions": {
-    "types": ["jest"]
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "jsx": "react-jsx",
+    "strict": true,
+    "skipLibCheck": true,
+    "noEmit": true,
+    "isolatedModules": true,
+    "esModuleInterop": true
   },
-  "include": ["**/*.ts", "**/*.tsx"],
-  "exclude": ["**/node_modules", "**/Pods"]
+  "include": ["web-v2/**/*.ts", "web-v2/**/*.tsx", "capacitor.config.ts"],
+  "exclude": ["node_modules", "web-v2/dist", "cap-android", "cap-ios", "backend"]
 }

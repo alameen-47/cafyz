@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Build Cafyz native apps — Android APK, iOS (Xcode), Desktop (Electron).
+# Build Cafyz native apps — Android APK and iOS (Capacitor + web-v2).
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
@@ -93,16 +93,6 @@ fi
 
 if [[ "${1:-}" == "ios" || "${1:-}" == "all" ]]; then
   echo "==> iOS: open Xcode to archive — run: npx cap open ios"
-fi
-
-if [[ "${1:-}" == "desktop" || "${1:-}" == "all" ]]; then
-  if [[ -d node_modules/electron ]]; then
-    echo "==> Packaging Electron desktop app"
-    npx electron-builder --dir
-    echo "    → releases/ (see electron-builder output)"
-  else
-    echo "    Skip desktop — run: npm install electron electron-builder --save-dev"
-  fi
 fi
 
 echo "Done."

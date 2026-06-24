@@ -136,7 +136,7 @@ export default function App() {
     return (
       <>
         <Toaster position="bottom-right" richColors closeButton />
-        <TrialExpiredModal expiresAt={subscription?.expires_at} onGoLicense={() => setActivePage("license")} />
+        <TrialExpiredModal expiresAt={subscription?.trial_expires_at} onGoLicense={() => setActivePage("license")} />
         <div className="flex app-screen app-native-inset-top w-full overflow-hidden" style={{ background: "#06091a" }}>
           <License />
         </div>
