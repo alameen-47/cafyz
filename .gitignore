@@ -96,3 +96,6 @@ backend/dist
 # Env files — never commit secrets
 .env
 backend/.env
+
+# App icon source archives (generated assets live in cap-ios / cap-android / web-v2/public)
+AppIcons*.zip
