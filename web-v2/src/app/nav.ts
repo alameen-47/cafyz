@@ -5,6 +5,7 @@ import { createContext, useContext } from "react";
 export interface AppNav {
   goToTableOrder: (tableId: string) => void;
   goToPos: () => void;
+  goToPage: (page: string) => void;
   posTableId: string | null;
   clearPosTable: () => void;
 }
@@ -12,6 +13,7 @@ export interface AppNav {
 export const NavContext = createContext<AppNav>({
   goToTableOrder: () => {},
   goToPos: () => {},
+  goToPage: () => {},
   posTableId: null,
   clearPosTable: () => {},
 });

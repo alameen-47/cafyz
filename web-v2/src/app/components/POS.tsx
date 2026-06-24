@@ -122,13 +122,13 @@ function CartPanel({
               {tables.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
             </select>
           </div>
-          <div className="flex flex-col items-center pb-1">
-            <label style={{ color: "#6b82a0", fontSize: "0.68rem", marginBottom: 4 }}>Takeaway</label>
+          <div className="flex flex-col items-end justify-end">
+            <label style={{ color: "#6b82a0", fontSize: "0.68rem", marginBottom: 6, display: "block" }}>Takeaway</label>
             <button type="button" onClick={onParcelToggle} aria-pressed={isParcel}
-              className="w-12 h-7 rounded-full relative transition-all min-h-[44px] flex items-center"
+              className="w-12 h-7 rounded-full relative transition-all flex-shrink-0"
               style={{ background: isParcel ? "#1e7fff" : "rgba(30,127,255,0.12)" }}>
-              <div className="w-5 h-5 rounded-full bg-white absolute transition-all shadow-sm"
-                style={{ left: isParcel ? "calc(100% - 22px)" : 4, top: "50%", transform: "translateY(-50%)" }} />
+              <div className="w-5 h-5 rounded-full bg-white absolute transition-all shadow-sm top-1/2 -translate-y-1/2"
+                style={{ left: isParcel ? "calc(100% - 22px)" : 4 }} />
             </button>
           </div>
         </div>
@@ -326,6 +326,142 @@ function CartPanel({
 
 type PendingBill = { id: string; table_id?: string; table_name: string; items: number; total: number; since: string };
 
+function mergePendingByTable(rows: PendingBill[]): PendingBill[] {
+  const byTable = new Map<string, PendingBill>();
+  for (const row of rows) {
+    const key = row.table_id ?? row.id;
+    const existing = byTable.get(key);
+    if (!existing) {
+      byTable.set(key, row);
+      continue;
+    }
+    byTable.set(key, {
+      ...existing,
+      items: existing.items + row.items,
+      total: existing.total + row.total,
+    });
+  }
+  return Array.from(byTable.values());
+}
+
+function OpenBillsStrip({
+  pending, selectedTable, cur, onOpenBill, onNewBill,
+}: {
+  pending: PendingBill[];
+  selectedTable: string;
+  cur: string;
+  onOpenBill: (tableId: string) => void;
+  onNewBill: () => void;
+}) {
+  const isNewBillActive = !selectedTable;
+  return (
+    <div className="flex-shrink-0 border-b" style={{ borderColor: "rgba(30,127,255,0.08)" }}>
+      <div className="flex items-center justify-between px-3 pt-3 pb-1.5">
+        <p style={{ color: "#a8bdd4", fontSize: "0.72rem", fontWeight: 600, letterSpacing: "0.04em", textTransform: "uppercase" }}>
+          Open bills
+        </p>
+        {pending.length > 0 && (
+          <span className="px-2 py-0.5 rounded-full"
+            style={{ background: "rgba(30,127,255,0.12)", color: "#1e7fff", fontSize: "0.65rem", fontWeight: 700 }}>
+            {pending.length}
+          </span>
+        )}
+      </div>
+      <div className="flex gap-2 px-3 pb-3 overflow-x-auto scrollbar-hide">
+        <button type="button" onClick={onNewBill}
+          className="flex items-center gap-2 rounded-xl px-3.5 py-2.5 flex-shrink-0 transition-all min-h-[52px] min-w-[108px]"
+          style={{
+            background: isNewBillActive ? "rgba(30,127,255,0.14)" : "#0d1326",
+            borderStyle: isNewBillActive ? "solid" : "dashed",
+            borderWidth: 1,
+            borderColor: isNewBillActive ? "rgba(30,127,255,0.45)" : "rgba(30,127,255,0.22)",
+          }}>
+          <span className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
+            style={{ background: "rgba(30,127,255,0.15)" }}>
+            <Plus size={15} style={{ color: "#1e7fff" }} />
+          </span>
+          <span style={{ color: isNewBillActive ? "#e8eef8" : "#a8bdd4", fontSize: "0.78rem", fontWeight: 700 }}>
+            New bill
+          </span>
+        </button>
+
+        {pending.length === 0 ? (
+          <div className="flex items-center px-3 py-2.5 rounded-xl flex-shrink-0 min-h-[52px]"
+            style={{ background: "#0d1326", border: "1px dashed rgba(30,127,255,0.12)" }}>
+            <span style={{ color: "#6b82a0", fontSize: "0.75rem" }}>No open table bills yet</span>
+          </div>
+        ) : (
+          pending.map(b => {
+            const isActive = !!b.table_id && selectedTable === b.table_id;
+            return (
+              <button key={b.table_id ?? b.id} type="button"
+                onClick={() => { if (b.table_id) onOpenBill(b.table_id); }}
+                disabled={!b.table_id}
+                className="flex items-center gap-3 rounded-xl px-3.5 py-2.5 flex-shrink-0 transition-all min-h-[52px] disabled:opacity-50"
+                style={{
+                  background: isActive ? "rgba(30,127,255,0.14)" : "#0d1326",
+                  border: `1px solid ${isActive ? "rgba(30,127,255,0.4)" : "rgba(30,127,255,0.1)"}`,
+                  minWidth: 132,
+                }}>
+                <div className="text-left min-w-0 flex-1">
+                  <p className="truncate" style={{ color: "#e8eef8", fontSize: "0.8rem", fontWeight: 700 }}>{b.table_name}</p>
+                  <p style={{ color: "#6b82a0", fontSize: "0.68rem" }}>
+                    {b.items} item{b.items !== 1 ? "s" : ""} · {b.since}
+                  </p>
+                </div>
+                <span style={{ color: "#1e7fff", fontFamily: "var(--font-mono)", fontWeight: 800, fontSize: "0.88rem", flexShrink: 0 }}>
+                  {formatMoney(cur, b.total)}
+                </span>
+              </button>
+            );
+          })
+        )}
+      </div>
+    </div>
+  );
+}
+
+function MobileBillFab({
+  itemCount, grandTotal, cur, onOpen,
+}: {
+  itemCount: number;
+  grandTotal: number;
+  cur: string;
+  onOpen: () => void;
+}) {
+  const hasItems = itemCount > 0;
+  return (
+    <motion.button
+      initial={{ opacity: 0, y: 16 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: 16 }}
+      onClick={onOpen}
+      aria-label={hasItems ? "View bill" : "Open bill"}
+      className="lg:hidden fixed right-4 z-30 pos-fab-bottom flex items-center gap-2.5 pl-3.5 pr-4 py-3 rounded-2xl shadow-2xl min-h-[52px] max-w-[calc(100vw-2rem)]"
+      style={{ background: "linear-gradient(135deg, #1e7fff, #00c6ff)", boxShadow: "0 8px 24px rgba(30,127,255,0.4)" }}
+    >
+      <span className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
+        style={{ background: "rgba(255,255,255,0.18)" }}>
+        <ShoppingCart size={18} className="text-white" />
+      </span>
+      <div className="text-left min-w-0 flex-1">
+        <p className="truncate" style={{ color: "#fff", fontWeight: 700, fontSize: "0.82rem", lineHeight: 1.2 }}>
+          {hasItems ? "View bill" : "Open bill"}
+        </p>
+        <p className="truncate" style={{ color: "rgba(255,255,255,0.82)", fontSize: "0.68rem", lineHeight: 1.2 }}>
+          {hasItems ? `${itemCount} item${itemCount !== 1 ? "s" : ""}` : "Table, items & payment"}
+        </p>
+      </div>
+      {hasItems && (
+        <span style={{ background: "#fff", color: "#1e7fff", fontFamily: "var(--font-mono)", fontWeight: 800, fontSize: "0.82rem" }}
+          className="px-2.5 py-1 rounded-full flex-shrink-0 whitespace-nowrap">
+          {formatMoney(cur, grandTotal)}
+        </span>
+      )}
+    </motion.button>
+  );
+}
+
 export function POS() {
   const { user } = useAuth();
   const [menu, setMenu] = useState<ApiMenuItem[]>([]);
@@ -376,7 +512,7 @@ export function POS() {
         } catch { /* leave zeros */ }
         return { id: o.id, table_id: o.table_id, table_name: o.table_name || "No table", items, total, since: relSince(o.created_at) };
       }));
-      setPending(enriched);
+      setPending(mergePendingByTable(enriched));
     } catch {
       setPending([]);
     }
@@ -415,13 +551,25 @@ export function POS() {
   const canEditBill = payState === "sent" && !!activeOrderId && !isPaid;
   const itemCount = cart.reduce((s, c) => s + c.qty, 0);
 
-  // ── Reset the working bill ──────────────────────────────────────────────────
-  function resetBill() {
+  // ── Reset the working bill (keeps table selection unless starting fresh) ───
+  function resetBill(opts?: { clearTable?: boolean }) {
     setCart([]);
     setActiveOrderId(null);
     setPayState("open");
     setIsParcel(false);
     setEditMode(false);
+    setCharged(false);
+    if (opts?.clearTable) setSelectedTable("");
+  }
+
+  function startNewBill() {
+    resetBill({ clearTable: true });
+    setShowMobileCart(true);
+  }
+
+  async function openTableBill(tableId: string) {
+    await handleTableChange(tableId);
+    setShowMobileCart(true);
   }
 
   // ── Table selection: load that table's pending kitchen-sent bill (self-heals
@@ -434,9 +582,13 @@ export function POS() {
     setIsParcel(false);
     if (!tableId) { setCart([]); return; }
     try {
-      const orders = await ordersApi.list({ table_id: tableId });
+      const [orders, tableRows] = await Promise.all([
+        ordersApi.list({ table_id: tableId }),
+        tablesApi.list(),
+      ]);
+      setTables(tableRows);
       const sent = orders.find(o => o.status === "sent");
-      const tableStatus = tables.find(t => t.id === tableId)?.status;
+      const tableStatus = tableRows.find(t => t.id === tableId)?.status;
       // Self-heal a stale 'sent' order lingering on a cleared table — but never
       // when we just placed the order (skipHeal), and never when the local table
       // snapshot is unknown (avoid settling a fresh order on a stale 'empty').
@@ -598,15 +750,29 @@ export function POS() {
         });
         await ordersApi.settleTable(selectedTable);
       }
-      if (method === "card") setCharged(true);
+      if (method === "card") {
+        setCharged(true);
+        setPayState("card");
+      } else {
+        setPayState("cash");
+      }
       const tName = tables.find(t => t.id === selectedTable)?.name ?? "";
+      const paidTable = selectedTable;
       toast.success(
-        `${cur}${grandTotal.toFixed(0)} ${method === "card" ? "charged" : "received"} · ${tName}`,
+        `${formatMoney(cur, grandTotal)} ${method === "card" ? "charged" : "received"} · ${tName}`,
         `${itemCount} item${itemCount !== 1 ? "s" : ""} · ${method === "card" ? "Card" : "Cash"} payment`,
       );
       void printCustomerReceipt(method === "card" ? "Card" : "Cash");
       window.dispatchEvent(new Event("CAFYZ_ORDER_SENT"));
-      setTimeout(() => { setCharged(false); resetBill(); setShowMobileCart(false); }, method === "card" ? 1600 : 1100);
+      setTimeout(() => {
+        void (async () => {
+          setCharged(false);
+          resetBill();
+          setShowMobileCart(false);
+          await refreshPending();
+          if (paidTable) await handleTableChange(paidTable);
+        })();
+      }, method === "card" ? 1600 : 1100);
       await refreshPending();
     } catch (e) {
       toast.error("Payment failed", (e as Error).message);
@@ -663,7 +829,7 @@ export function POS() {
     onBreakdownToggle: () => setBreakdownOpen(o => !o),
     onPrinterToggle: () => setShowPrinter(p => !p),
     onUpdateQty: (id: string, d: number) => void updateQty(id, d),
-    onClear: resetBill,
+    onClear: () => resetBill(),
     onCharge: () => void handleCharge("card"),
     onCash: () => void handleCharge("cash"),
     onRestaurantUpdate: setRestaurant,
@@ -673,38 +839,13 @@ export function POS() {
     <div className="flex h-full overflow-hidden relative">
       {/* ── Left: menu panel ── */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-        {/* Open bills */}
-        <div className="flex gap-2 px-3 pt-3 pb-2 overflow-x-auto scrollbar-hide flex-shrink-0">
-          {pending.length === 0 ? (
-            <div className="flex items-center px-3 py-2.5 rounded-xl flex-shrink-0"
-              style={{ background: "#0d1326", border: "1px dashed rgba(30,127,255,0.12)", minHeight: 52 }}>
-              <span style={{ color: "#6b82a0", fontSize: "0.75rem" }}>No open table bills</span>
-            </div>
-          ) : (
-            pending.map(b => (
-              <button key={b.id} type="button" onClick={() => { if (b.table_id) void handleTableChange(b.table_id); }}
-                className="flex items-center gap-3 rounded-xl px-3 py-2.5 flex-shrink-0 transition-all min-h-[52px]"
-                style={{
-                  background: selectedTable === b.table_id ? "rgba(30,127,255,0.14)" : "#0d1326",
-                  border: `1px solid ${selectedTable === b.table_id ? "rgba(30,127,255,0.4)" : "rgba(30,127,255,0.1)"}`,
-                }}>
-                <div className="text-left min-w-0">
-                  <p style={{ color: "#e8eef8", fontSize: "0.8rem", fontWeight: 700 }}>{b.table_name}</p>
-                  <p style={{ color: "#6b82a0", fontSize: "0.68rem" }}>{b.items} item{b.items !== 1 ? "s" : ""} · {b.since}</p>
-                </div>
-                <span style={{ color: "#1e7fff", fontFamily: "var(--font-mono)", fontWeight: 800, fontSize: "0.88rem", flexShrink: 0 }}>
-                  {cur}{b.total.toFixed(0)}
-                </span>
-              </button>
-            ))
-          )}
-          <button type="button" onClick={() => { setSelectedTable(""); resetBill(); }}
-            className="flex items-center gap-1.5 rounded-xl px-3 py-2.5 flex-shrink-0 min-h-[52px]"
-            style={{ background: "#0d1326", border: "1px dashed rgba(30,127,255,0.2)" }}>
-            <Plus size={14} style={{ color: "#1e7fff" }} />
-            <span style={{ color: "#a8bdd4", fontSize: "0.75rem", fontWeight: 600 }}>New bill</span>
-          </button>
-        </div>
+        <OpenBillsStrip
+          pending={pending}
+          selectedTable={selectedTable}
+          cur={cur}
+          onOpenBill={tableId => { void openTableBill(tableId); }}
+          onNewBill={startNewBill}
+        />
 
         {/* Search + categories */}
         <div className="px-3 pb-2 space-y-2 flex-shrink-0">
@@ -777,30 +918,12 @@ export function POS() {
       {/* ── Mobile: floating cart button ── */}
       <AnimatePresence>
         {!showMobileCart && (
-          <motion.button
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 16 }}
-            onClick={() => setShowMobileCart(true)}
-            className="lg:hidden fixed bottom-24 right-4 z-30 flex items-center gap-2 px-4 py-3 rounded-2xl shadow-2xl min-h-[52px]"
-            style={{ background: "linear-gradient(135deg, #1e7fff, #00c6ff)", boxShadow: "0 8px 24px rgba(30,127,255,0.4)" }}
-          >
-            <ShoppingCart size={18} className="text-white flex-shrink-0" />
-            <div className="text-left">
-              <p style={{ color: "#fff", fontWeight: 700, fontSize: "0.8rem", lineHeight: 1.2 }}>
-                {itemCount > 0 ? "View bill" : "Open bill"}
-              </p>
-              {itemCount > 0 && (
-                <p style={{ color: "rgba(255,255,255,0.85)", fontSize: "0.68rem" }}>{itemCount} item{itemCount !== 1 ? "s" : ""}</p>
-              )}
-            </div>
-            {itemCount > 0 && (
-              <span style={{ background: "#fff", color: "#1e7fff", fontFamily: "var(--font-mono)", fontWeight: 800, fontSize: "0.8rem" }}
-                className="px-2.5 py-1 rounded-full flex-shrink-0">
-                {cur}{grandTotal.toFixed(0)}
-              </span>
-            )}
-          </motion.button>
+          <MobileBillFab
+            itemCount={itemCount}
+            grandTotal={grandTotal}
+            cur={cur}
+            onOpen={() => setShowMobileCart(true)}
+          />
         )}
       </AnimatePresence>
 

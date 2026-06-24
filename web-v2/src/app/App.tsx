@@ -148,7 +148,7 @@ export default function App() {
   const isFullHeight = fullHeightPages.has(activePage);
 
   return (
-    <NavContext.Provider value={{ goToTableOrder, goToPos, posTableId, clearPosTable: () => setPosTableId(null) }}>
+    <NavContext.Provider value={{ goToTableOrder, goToPos, goToPage: navigate, posTableId, clearPosTable: () => setPosTableId(null) }}>
       <div className="flex app-screen w-full overflow-hidden" style={{ background: "#06091a", fontFamily: "var(--font-body)" }}>
         <Toaster position="top-right" richColors={false} closeButton toastOptions={{
           duration: 3500,

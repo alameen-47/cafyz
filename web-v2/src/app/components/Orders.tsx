@@ -11,6 +11,7 @@ type OrderRow = {
   id: string;        // display "#XXXX"
   oid: string;       // real order id
   tid?: string;      // backing KDS ticket id (used to advance kitchen progress)
+  orderStatus: string;
   table: string; waiter: string;
   items: { name: string; qty: number; price: number }[];
   total: number; status: UiStatus; time: string; priority: boolean;
@@ -120,6 +121,7 @@ function OrderCard({ order, cur, onAdvance }: { order: OrderRow; cur: string; on
 export function Orders() {
   const { goToPos } = useAppNav();
   const [filter, setFilter] = useState("all");
+  const [viewMode, setViewMode] = useState<"active" | "all">("active");
   const [search, setSearch] = useState("");
   const [orders, setOrders] = useState<OrderRow[]>([]);
   const cur = getCurrencySymbol();
@@ -145,6 +147,7 @@ export function Orders() {
           id: "#" + o.id.slice(0, 4).toUpperCase(),
           oid: o.id,
           tid: ticket?.id,
+          orderStatus: o.status,
           table: o.table_name || "—",
           waiter: o.server_id ? (nameById.get(o.server_id) ?? "") : "",
           items,
@@ -167,11 +170,21 @@ export function Orders() {
   const handleAdvance = async (order: OrderRow) => {
     const next = ({ pending: "preparing", preparing: "ready", ready: "served" } as Record<string, UiStatus>)[order.status];
     if (!next) return;
-    if (!order.tid) { toast.error("No kitchen ticket", `${order.id} has no active kitchen ticket`); return; }
     setOrders(prev => prev.map(o => o.oid === order.oid ? { ...o, status: next } : o));
     const labels: Record<string, string> = { preparing: "Sent to kitchen", ready: "Order is ready", served: "Order served" };
     const icons: Record<string, "success" | "info"> = { preparing: "info", ready: "success", served: "success" };
     try {
+      if (!order.tid) {
+        // No KDS ticket yet — sync via order status (creates ticket on sent, closes on paid).
+        if (next === "preparing" || next === "ready") {
+          await ordersApi.updateStatus(order.oid, "sent");
+        } else if (next === "served") {
+          await ordersApi.updateStatus(order.oid, "paid");
+        }
+        toast[icons[next] || "info"](`${order.id} · ${labels[next]}`, `${order.table} · ${cur}${order.total}`);
+        void load();
+        return;
+      }
       if (next === "preparing") await kdsApi.fire(order.tid);
       else if (next === "ready") await kdsApi.ready(order.tid);
       else if (next === "served") await kdsApi.delivered(order.tid);
@@ -183,12 +196,14 @@ export function Orders() {
     }
   };
 
-  const filtered = orders.filter(o =>
+  const activeOrders = orders.filter(o => o.orderStatus === "open" || o.orderStatus === "sent");
+  const source = viewMode === "active" ? activeOrders : orders;
+  const filtered = source.filter(o =>
     (filter === "all" || o.status === filter) &&
     (search === "" || o.id.toLowerCase().includes(search.toLowerCase()) || o.table.toLowerCase().includes(search.toLowerCase()))
   );
 
-  const counts = Object.fromEntries(statuses.slice(1).map(s => [s, orders.filter(o => o.status === s).length]));
+  const counts = Object.fromEntries(statuses.slice(1).map(s => [s, source.filter(o => o.status === s).length]));
 
   return (
     <div className="p-3 sm:p-4 md:p-6 space-y-4">
@@ -220,6 +235,18 @@ export function Orders() {
         </div>
         {/* Status filter + new order row */}
         <div className="flex gap-2">
+          <div className="flex gap-1 p-1 rounded-xl flex-shrink-0"
+            style={{ background: "#0d1326", border: "1px solid rgba(30,127,255,0.1)" }}>
+            {(["active", "all"] as const).map(mode => (
+              <button key={mode} onClick={() => setViewMode(mode)}
+                className="px-2.5 py-1.5 rounded-lg text-xs capitalize transition-all whitespace-nowrap"
+                style={viewMode === mode
+                  ? { background: "rgba(30,127,255,0.15)", color: "#1e7fff", fontWeight: 600 }
+                  : { color: "#6b82a0" }}>
+                {mode === "active" ? "Active" : "All"}
+              </button>
+            ))}
+          </div>
           <div className="flex gap-1 p-1 rounded-xl overflow-x-auto scrollbar-hide flex-1"
             style={{ background: "#0d1326", border: "1px solid rgba(30,127,255,0.1)" }}>
             {statuses.map(s => (

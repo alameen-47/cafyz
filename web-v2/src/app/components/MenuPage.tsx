@@ -135,8 +135,13 @@ function ItemModal({ item, itemCategories, onSave, onClose }: {
               e.target.value = "";
               if (file) void handlePickImage(file);
             }} />
-          <div className="rounded-2xl overflow-hidden h-36 relative flex items-center justify-center"
-            style={{ background: "#111b35", border: "1px dashed rgba(30,127,255,0.2)" }}>
+          <div className="rounded-2xl overflow-hidden h-36 relative flex items-center justify-center cursor-pointer"
+            style={{ background: "#111b35", border: "1px dashed rgba(30,127,255,0.2)" }}
+            onClick={() => !imageUploading && fileRef.current?.click()}
+            role="button"
+            tabIndex={0}
+            onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fileRef.current?.click(); } }}
+            aria-label="Upload menu item photo">
             {form.image ? (
               <img src={form.image} alt="preview" className="w-full h-full object-cover" />
             ) : (
@@ -168,7 +173,7 @@ function ItemModal({ item, itemCategories, onSave, onClose }: {
             )}
           </div>
           {imageUploadError && <p style={{ color: "#ff3b5c", fontSize: "0.72rem" }}>{imageUploadError}</p>}
-          <p style={{ color: "#6b82a0", fontSize: "0.68rem" }}>JPEG, PNG, WebP, or GIF · max 5 MB</p>
+          <p style={{ color: "#6b82a0", fontSize: "0.68rem" }}>JPEG, PNG, WebP, GIF, or HEIC · max 8 MB</p>
           <Field label="Or paste image URL (optional)" value={form.image} onChange={v => setField("image", v)} placeholder="https://…" />
 
           <div className="grid grid-cols-2 gap-3">
@@ -231,10 +236,10 @@ function ItemModal({ item, itemCategories, onSave, onClose }: {
             style={{ background: "rgba(30,127,255,0.06)", color: "#a8bdd4", border: "1px solid rgba(30,127,255,0.1)" }}>
             Cancel
           </button>
-          <motion.button whileTap={{ scale: 0.96 }} onClick={handleSave} disabled={saving}
+          <motion.button whileTap={{ scale: 0.96 }} onClick={handleSave} disabled={saving || imageUploading}
             className="flex-1 py-2.5 rounded-xl text-sm font-semibold flex items-center justify-center gap-2 transition-all"
-            style={{ background: "linear-gradient(135deg, #1e7fff, #00c6ff)", color: "#fff", opacity: saving ? 0.8 : 1 }}>
-            {saving
+            style={{ background: "linear-gradient(135deg, #1e7fff, #00c6ff)", color: "#fff", opacity: saving || imageUploading ? 0.8 : 1 }}>
+            {saving || imageUploading
               ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
               : <><Save size={14} /> {isEdit ? "Save Changes" : "Add to Menu"}</>}
           </motion.button>

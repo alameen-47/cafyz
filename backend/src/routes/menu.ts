@@ -13,10 +13,10 @@ const router = Router();
 router.use('/categories', categoryRoutes);
 
 const ImageUrlSchema = z.union([
-  z.string().url().max(2048),
+  z.string().url().max(4096),
   z.literal(''),
   z.null(),
-  z.string().regex(/^data:image\/(png|jpeg|jpg|webp|gif);base64,/, 'Invalid image data URL'),
+  z.string().regex(/^data:image\/[\w.+-]+;base64,/, 'Invalid image data URL').max(4_000_000),
 ]).optional();
 
 const ItemSchema = z.object({
@@ -30,7 +30,7 @@ const ItemSchema = z.object({
   is_available: z.boolean().default(true),
 });
 
-const menuWriteRoles = requireRole('owner', 'manager', 'cashier');
+const menuWriteRoles = requireRole('owner', 'manager', 'cashier', 'founder');
 
 // POST /api/menu/upload-image — Cloudinary (multipart field: image)
 router.post(
@@ -48,18 +48,25 @@ router.post(
   },
   async (req: AuthRequest, res, next) => {
     try {
-      if (!isCloudinaryConfigured()) {
-        res.status(503).json({
-          error: 'Image upload is not configured. Add CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, and CLOUDINARY_API_SECRET to the server.',
-        });
-        return;
-      }
       const file = req.file;
       if (!file?.buffer?.length) {
         res.status(400).json({ error: 'No image file provided. Use form field "image".' });
         return;
       }
       const rid = req.user!.restaurant_id;
+
+      // Cloudinary when configured; otherwise embed as data URL (local dev / offline).
+      if (!isCloudinaryConfigured()) {
+        const mime = file.mimetype?.startsWith('image/') ? file.mimetype : 'image/jpeg';
+        if (file.buffer.length > 3 * 1024 * 1024) {
+          res.status(400).json({ error: 'Image too large for local storage (max 3 MB).' });
+          return;
+        }
+        const url = `data:${mime};base64,${file.buffer.toString('base64')}`;
+        res.status(201).json({ url, public_id: 'local' });
+        return;
+      }
+
       const result = await uploadMenuItemImage(file.buffer, rid);
       res.status(201).json(result);
     } catch (e) { next(e); }

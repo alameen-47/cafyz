@@ -54,6 +54,22 @@ describe('POST /api/menu', () => {
   });
 });
 
+describe('POST /api/menu/upload-image', () => {
+  it('manager can upload an image (local data URL when Cloudinary is off)', async () => {
+    const png = Buffer.from(
+      'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
+      'base64',
+    );
+    const res = await request(app)
+      .post('/api/menu/upload-image')
+      .set('Authorization', `Bearer ${managerToken}`)
+      .attach('image', png, { filename: 'dot.png', contentType: 'image/png' });
+    expect(res.status).toBe(201);
+    expect(res.body.url).toBeTruthy();
+    expect(String(res.body.url)).toMatch(/^https?:\/\/|^data:image\//);
+  });
+});
+
 describe('PUT /api/menu/:id', () => {
   it('manager can set image_url', async () => {
     const created = await request(app)

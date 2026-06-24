@@ -50,3 +50,12 @@ body.cap-native .app-main-spacer {
 .safe-area-pb {
   padding-bottom: max(0.75rem, env(safe-area-inset-bottom, 0px));
 }
+
+/* Floating controls above the mobile tab bar (POS bill FAB, etc.) */
+:root {
+  --app-mobile-nav-height: 4.75rem;
+}
+
+.pos-fab-bottom {
+  bottom: calc(var(--app-mobile-nav-height) + env(safe-area-inset-bottom, 0px) + 0.625rem);
+}

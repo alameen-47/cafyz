@@ -229,7 +229,7 @@ export const menuApi = {
   uploadImage: async (file: File): Promise<{ url: string; public_id: string }> => {
     const token = localStorage.getItem('cafyz_token');
     const form = new FormData();
-    form.append('image', file);
+    form.append('image', file, file.name || 'menu-item.jpg');
     const res = await fetch(`${BASE}/api/menu/upload-image`, {
       method: 'POST',
       headers: token ? { Authorization: `Bearer ${token}` } : {},
@@ -241,9 +241,18 @@ export const menuApi = {
       window.location.href = '/login';
       throw new Error('Session expired — please sign in again.');
     }
-    const data = await res.json().catch(() => ({ error: res.statusText }));
-    if (!res.ok) throw new Error(data.error ?? res.statusText);
-    return data as { url: string; public_id: string };
+    let data: { error?: string; url?: string; public_id?: string } = {};
+    const text = await res.text();
+    try {
+      data = text ? JSON.parse(text) : {};
+    } catch {
+      throw new Error(text || res.statusText || 'Upload failed');
+    }
+    if (!res.ok) {
+      throw new Error(data.error ?? res.statusText ?? 'Upload failed');
+    }
+    if (!data.url) throw new Error('Upload succeeded but no image URL was returned.');
+    return { url: data.url, public_id: data.public_id ?? '' };
   },
 };
 

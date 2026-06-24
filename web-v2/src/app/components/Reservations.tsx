@@ -125,6 +125,7 @@ export function Reservations() {
   };
 
   const createReservation = () => void saveReservation(newRes);
+  const statsLabel = filterDate ? `Reservations · ${filterDate}` : "All reservations";
 
   return (
     <div className="p-3 sm:p-4 md:p-6 space-y-4">
@@ -158,7 +159,7 @@ export function Reservations() {
       {/* Stats */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {[
-          { label: "Today's Reservations", value: filtered.length, color: "#1e7fff" },
+          { label: statsLabel, value: filtered.length, color: "#1e7fff" },
           { label: "Confirmed", value: filtered.filter(r => r.status === "confirmed").length, color: "#22c55e" },
           { label: "Seated", value: filtered.filter(r => r.status === "seated").length, color: "#1e7fff" },
           { label: "Total Covers", value: filtered.reduce((s,r) => s + r.covers, 0), color: "#00c6ff" },
@@ -214,11 +215,18 @@ export function Reservations() {
                 <div className="flex items-center gap-2 flex-shrink-0 flex-wrap justify-end">
                   <span className="text-xs px-2.5 py-1 rounded-full font-medium" style={{ background: cfg.bg, color: cfg.color }}>{cfg.label}</span>
                   {res.status === "confirmed" && (
-                    <button onClick={() => updateStatus(res.id, "seated")} title="Mark seated"
-                      className="w-7 h-7 rounded-lg flex items-center justify-center"
-                      style={{ background: "rgba(30,127,255,0.1)" }}>
-                      <Armchair size={13} style={{ color: "#1e7fff" }} />
-                    </button>
+                    <>
+                      <button onClick={() => updateStatus(res.id, "seated")} title="Mark seated"
+                        className="w-7 h-7 rounded-lg flex items-center justify-center"
+                        style={{ background: "rgba(30,127,255,0.1)" }}>
+                        <Armchair size={13} style={{ color: "#1e7fff" }} />
+                      </button>
+                      <button onClick={() => updateStatus(res.id, "completed")} title="Mark no-show"
+                        className="px-2 py-1 rounded-lg text-xs font-medium"
+                        style={{ background: "rgba(107,130,160,0.12)", color: "#6b82a0" }}>
+                        No-show
+                      </button>
+                    </>
                   )}
                   {res.status !== "cancelled" && res.status !== "completed" && (
                     <>

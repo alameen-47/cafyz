@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
-import { motion } from "motion/react";
-import { Users, Clock, Plus, Utensils } from "lucide-react";
+import { motion, AnimatePresence } from "motion/react";
+import { Users, Clock, Plus, Utensils, X, Save } from "lucide-react";
 import { tablesApi, usersApi, ordersApi, reservationsApi, type ApiTable, type ApiReservation, type ApiUser } from "../../services/api";
 import { toast } from "./Toast";
 import { useAppNav } from "../nav";
@@ -58,33 +58,6 @@ function mapTable(
       : undefined,
   };
 }
-
-const initialTables: TableData[] = [
-  { id: "T-01", seats: 2, status: "available" },
-  { id: "T-02", seats: 4, status: "occupied", guests: 3, waiter: "Ravi", since: "7:45pm", order: "#4816" },
-  { id: "T-03", seats: 4, status: "occupied", guests: 2, waiter: "Sam", since: "7:20pm", order: "#4819" },
-  { id: "T-04", seats: 6, status: "reserved", reservation: "8:30pm · Smith party · 4 guests" },
-  { id: "T-05", seats: 4, status: "occupied", guests: 4, waiter: "Ravi", since: "7:00pm", order: "#4821" },
-  { id: "T-06", seats: 2, status: "occupied", guests: 2, waiter: "Mia", since: "7:55pm", order: "#4814" },
-  { id: "T-07", seats: 4, status: "occupied", guests: 3, waiter: "Ravi", since: "6:50pm", order: "#4818" },
-  { id: "T-08", seats: 8, status: "available" },
-  { id: "T-09", seats: 4, status: "occupied", guests: 4, waiter: "Mia", since: "6:30pm", order: "#4817" },
-  { id: "T-10", seats: 2, status: "cleaning" },
-  { id: "T-11", seats: 4, status: "occupied", guests: 2, waiter: "Priya", since: "8:05pm", order: "#4815" },
-  { id: "T-12", seats: 6, status: "occupied", guests: 5, waiter: "Priya", since: "7:35pm", order: "#4820" },
-  { id: "T-13", seats: 2, status: "available" },
-  { id: "T-14", seats: 4, status: "reserved", reservation: "9:00pm · Johnson · 3 guests" },
-  { id: "T-15", seats: 6, status: "available" },
-  { id: "T-16", seats: 4, status: "cleaning" },
-  { id: "T-17", seats: 2, status: "available" },
-  { id: "T-18", seats: 8, status: "reserved", reservation: "9:15pm · Birthday party · 7 guests" },
-  { id: "T-19", seats: 4, status: "available" },
-  { id: "T-20", seats: 2, status: "occupied", guests: 1, waiter: "Sam", since: "8:10pm", order: "#4822" },
-  { id: "T-21", seats: 4, status: "available" },
-  { id: "T-22", seats: 6, status: "occupied", guests: 4, waiter: "Mia", since: "7:15pm", order: "#4823" },
-  { id: "T-23", seats: 2, status: "available" },
-  { id: "T-24", seats: 4, status: "cleaning" },
-];
 
 const statusConfig: Record<TableStatus, { color: string; bg: string; border: string; label: string }> = {
   available: { color: "#22c55e", bg: "rgba(34,197,94,0.08)", border: "rgba(34,197,94,0.25)", label: "Available" },
@@ -148,6 +121,8 @@ export function Tables() {
   const [tables, setTables] = useState<TableData[]>([]);
   const [selected, setSelected] = useState<TableData | null>(null);
   const [filterStatus, setFilterStatus] = useState<TableStatus | "all">("all");
+  const [tableForm, setTableForm] = useState<null | { mode: "create"; name: string; seats: string; zone: string } | { mode: "edit"; id: string; name: string; seats: string }>(null);
+  const [savingTable, setSavingTable] = useState(false);
 
   // Live floor plan: tables joined with their server, active order, reservation.
   const load = useCallback(async () => {
@@ -180,8 +155,6 @@ export function Tables() {
     (["available", "occupied", "reserved", "cleaning"] as TableStatus[]).map(s => [s, tables.filter(t => t.status === s).length])
   );
 
-  const filtered = filterStatus === "all" ? tables : tables.filter(t => t.status === filterStatus);
-
   const handleStatusChange = async (id: string, status: TableStatus) => {
     setTables(prev => prev.map(t => t.id === id ? { ...t, status, guests: status !== "occupied" ? undefined : t.guests } : t));
     setSelected(null);
@@ -191,6 +164,33 @@ export function Tables() {
     } catch (e) {
       toast.error("Couldn't update table", (e as Error).message);
       void load();
+    }
+  };
+
+  const filtered = filterStatus === "all" ? tables : tables.filter(t => t.status === filterStatus);
+
+  const saveTableForm = async () => {
+    if (!tableForm) return;
+    const name = tableForm.name.trim();
+    const seats = Number(tableForm.seats);
+    if (!name) { toast.error("Table name required"); return; }
+    if (!Number.isFinite(seats) || seats < 1) { toast.error("Enter a valid seat count"); return; }
+    setSavingTable(true);
+    try {
+      if (tableForm.mode === "create") {
+        await tablesApi.create({ name, zone: tableForm.zone.trim() || "Main", capacity: seats });
+        toast.success("Table added", name);
+      } else {
+        await tablesApi.update(tableForm.id, { name, capacity: seats });
+        toast.success("Table updated", name);
+        setSelected(prev => prev?.id === tableForm.id ? { ...prev, name, seats } : prev);
+      }
+      setTableForm(null);
+      void load();
+    } catch (e) {
+      toast.error("Save failed", (e as Error).message);
+    } finally {
+      setSavingTable(false);
     }
   };
 
@@ -219,17 +219,7 @@ export function Tables() {
           Floor Plan · {filtered.length} tables
         </h3>
         <button
-          onClick={async () => {
-            const name = window.prompt("Table name (e.g. T-12)?");
-            if (!name?.trim()) return;
-            const capacity = Number(window.prompt("Seats?", "4") ?? "4");
-            const zone = window.prompt("Zone (optional)?", "Main") ?? "Main";
-            try {
-              await tablesApi.create({ name: name.trim(), zone, capacity });
-              toast.success("Table added", name.trim());
-              void load();
-            } catch (e) { toast.error("Failed", (e as Error).message); }
-          }}
+          onClick={() => setTableForm({ mode: "create", name: "", seats: "4", zone: "Main" })}
           className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold"
           style={{ background: "rgba(30,127,255,0.12)", color: "#1e7fff", border: "1px solid rgba(30,127,255,0.2)" }}
         >
@@ -275,18 +265,7 @@ export function Tables() {
               {selected.reservation && <p><span style={{ color: "#a8bdd4" }}>Reservation:</span> {selected.reservation}</p>}
             </div>
             <button
-              onClick={async () => {
-                const name = window.prompt("Table name", selected.name)?.trim();
-                if (!name) return;
-                const capacity = Number(window.prompt("Seats", String(selected.seats)) ?? String(selected.seats));
-                if (!Number.isFinite(capacity) || capacity < 1) { toast.error("Invalid capacity"); return; }
-                try {
-                  await tablesApi.update(selected.id, { name, capacity });
-                  toast.success("Table updated", name);
-                  setSelected(prev => prev ? { ...prev, name, seats: capacity } : prev);
-                  void load();
-                } catch (e) { toast.error("Update failed", (e as Error).message); }
-              }}
+              onClick={() => setTableForm({ mode: "edit", id: selected.id, name: selected.name, seats: String(selected.seats) })}
               className="w-full py-2 rounded-xl text-xs font-semibold"
               style={{ background: "rgba(30,127,255,0.08)", color: "#1e7fff", border: "1px solid rgba(30,127,255,0.15)" }}
             >
@@ -337,6 +316,63 @@ export function Tables() {
           </motion.div>
         </div>
       )}
+
+      <AnimatePresence>
+        {tableForm && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
+            style={{ background: "rgba(6,9,26,0.85)", backdropFilter: "blur(8px)" }}
+            onClick={() => setTableForm(null)}>
+            <motion.div
+              initial={{ opacity: 0, scale: 0.92 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.92 }}
+              className="w-full max-w-sm rounded-2xl p-5 space-y-4"
+              style={{ background: "#0d1326", border: "1px solid rgba(30,127,255,0.2)" }}
+              onClick={e => e.stopPropagation()}>
+              <div className="flex items-center justify-between">
+                <h3 style={{ fontFamily: "var(--font-display)", color: "#e8eef8", fontWeight: 700 }}>
+                  {tableForm.mode === "create" ? "Add Table" : "Edit Table"}
+                </h3>
+                <button onClick={() => setTableForm(null)} style={{ color: "#6b82a0" }}><X size={18} /></button>
+              </div>
+              <div className="space-y-3">
+                <div>
+                  <label style={{ color: "#a8bdd4", fontSize: "0.78rem", display: "block", marginBottom: 4 }}>Table name</label>
+                  <input type="text" value={tableForm.name}
+                    onChange={e => setTableForm(f => f ? { ...f, name: e.target.value } : f)}
+                    className="w-full rounded-xl px-3 py-2.5 text-sm outline-none"
+                    style={{ background: "#111b35", color: "#e8eef8", border: "1px solid rgba(30,127,255,0.12)" }} />
+                </div>
+                <div>
+                  <label style={{ color: "#a8bdd4", fontSize: "0.78rem", display: "block", marginBottom: 4 }}>Seats</label>
+                  <input type="number" min={1} value={tableForm.seats}
+                    onChange={e => setTableForm(f => f ? { ...f, seats: e.target.value } : f)}
+                    className="w-full rounded-xl px-3 py-2.5 text-sm outline-none"
+                    style={{ background: "#111b35", color: "#e8eef8", border: "1px solid rgba(30,127,255,0.12)" }} />
+                </div>
+                {tableForm.mode === "create" && (
+                  <div>
+                    <label style={{ color: "#a8bdd4", fontSize: "0.78rem", display: "block", marginBottom: 4 }}>Zone</label>
+                    <input type="text" value={tableForm.zone}
+                      onChange={e => setTableForm(f => f && f.mode === "create" ? { ...f, zone: e.target.value } : f)}
+                      className="w-full rounded-xl px-3 py-2.5 text-sm outline-none"
+                      style={{ background: "#111b35", color: "#e8eef8", border: "1px solid rgba(30,127,255,0.12)" }} />
+                  </div>
+                )}
+              </div>
+              <div className="flex gap-2 pt-1">
+                <button onClick={() => setTableForm(null)} className="flex-1 py-2.5 rounded-xl text-sm font-semibold"
+                  style={{ background: "rgba(30,127,255,0.06)", color: "#6b82a0", border: "1px solid rgba(30,127,255,0.1)" }}>
+                  Cancel
+                </button>
+                <button onClick={() => void saveTableForm()} disabled={savingTable}
+                  className="flex-1 py-2.5 rounded-xl text-sm font-semibold flex items-center justify-center gap-2"
+                  style={{ background: "linear-gradient(135deg, #1e7fff, #00c6ff)", color: "#fff", opacity: savingTable ? 0.7 : 1 }}>
+                  <Save size={15} /> Save
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

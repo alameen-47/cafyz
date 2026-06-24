@@ -50,9 +50,10 @@ function mapRow(r: ApiInventoryItem): InventoryItem {
 
 export function Inventory() {
   const [search, setSearch] = useState("");
-  const [category, setCategory] = useState("All");
   const [inventoryItems, setInventoryItems] = useState<InventoryItem[]>([]);
   const [modal, setModal] = useState<{ mode: "create" | "edit"; item?: InventoryItem } | null>(null);
+  const [restockItem, setRestockItem] = useState<InventoryItem | null>(null);
+  const [restockQty, setRestockQty] = useState("");
   const [form, setForm] = useState<ItemForm>({ name: "", par: "10", current: "0", unit: "kg" });
   const [saving, setSaving] = useState(false);
 
@@ -117,13 +118,23 @@ export function Inventory() {
     }
   };
 
-  const categories = ["All", ...Array.from(new Set(inventoryItems.map(i => i.category)))];
+  const applyRestock = async () => {
+    if (!restockItem) return;
+    const qty = Number(restockQty);
+    if (!Number.isFinite(qty) || qty <= 0) { toast.error("Enter a valid quantity"); return; }
+    try {
+      await inventoryApi.update(restockItem.id, { current: restockItem.currentQty + qty });
+      toast.success("Stock updated", `${restockItem.name} +${qty}${restockItem.unit}`);
+      setRestockItem(null);
+      setRestockQty("");
+      await load();
+    } catch (e) {
+      toast.error("Update failed", (e as Error).message);
+    }
+  };
 
   const filtered = inventoryItems
-    .filter(item =>
-      (category === "All" || item.category === category) &&
-      (search === "" || item.name.toLowerCase().includes(search.toLowerCase()))
-    )
+    .filter(item => search === "" || item.name.toLowerCase().includes(search.toLowerCase()))
     .sort((a, b) => {
       const order = ["critical","low","ok","surplus"];
       return order.indexOf(getStockLevel(a)) - order.indexOf(getStockLevel(b));
@@ -160,18 +171,6 @@ export function Inventory() {
             style={{ color: "#e8eef8" }} />
         </div>
         <div className="flex gap-2">
-          <div className="flex gap-1.5 overflow-x-auto scrollbar-hide flex-1"
-            style={{ minWidth: 0 }}>
-            {categories.map(c => (
-              <button key={c} onClick={() => setCategory(c)}
-                className="px-3 py-1.5 rounded-full text-xs whitespace-nowrap transition-all flex-shrink-0 font-medium"
-                style={category === c
-                  ? { background: "linear-gradient(135deg, #1e7fff, #00c6ff)", color: "#fff" }
-                  : { background: "#0d1326", color: "#6b82a0", border: "1px solid rgba(30,127,255,0.1)" }}>
-                {c}
-              </button>
-            ))}
-          </div>
           <button onClick={openCreate} className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-semibold flex-shrink-0"
             style={{ background: "linear-gradient(135deg, #1e7fff, #00c6ff)", color: "#fff" }}>
             <Plus size={15} />
@@ -185,10 +184,9 @@ export function Inventory() {
         <div className="grid grid-cols-12 gap-2 px-3 sm:px-4 py-3 text-xs font-semibold uppercase tracking-wider border-b"
           style={{ color: "#6b82a0", borderColor: "rgba(30,127,255,0.08)", fontFamily: "var(--font-mono)" }}>
           <div className="col-span-5 sm:col-span-4">Item</div>
-          <div className="col-span-3 hidden sm:block">Category</div>
-          <div className="col-span-4 sm:col-span-3">Stock</div>
+          <div className="col-span-4 sm:col-span-4">Stock</div>
           <div className="col-span-3 hidden md:block">Par level</div>
-          <div className="col-span-3 sm:col-span-2 md:col-span-2 text-right sm:text-left">Actions</div>
+          <div className="col-span-3 sm:col-span-4 md:col-span-4 text-right sm:text-left">Actions</div>
         </div>
 
         <div className="divide-y divide-[rgba(30,127,255,0.05)]">
@@ -203,13 +201,7 @@ export function Inventory() {
                 <div className="col-span-5 sm:col-span-4 min-w-0">
                   <p style={{ color: "#e8eef8", fontSize: "0.82rem", fontWeight: 500 }} className="truncate">{item.name}</p>
                 </div>
-                <div className="col-span-3 hidden sm:block">
-                  <span className="text-xs px-2 py-0.5 rounded-full"
-                    style={{ background: "rgba(30,127,255,0.08)", color: "#1e7fff" }}>
-                    {item.category}
-                  </span>
-                </div>
-                <div className="col-span-4 sm:col-span-3">
+                <div className="col-span-4 sm:col-span-4">
                   <div className="flex items-center gap-1.5 mb-1">
                     <Icon size={10} style={{ color: cfg.color }} />
                     <span style={{ color: cfg.color, fontSize: "0.68rem", fontWeight: 600 }}>
@@ -230,18 +222,13 @@ export function Inventory() {
                     par {item.minQty}{item.unit}
                   </span>
                 </div>
-                <div className="col-span-3 sm:col-span-2 md:col-span-2 flex justify-end sm:justify-start gap-1 flex-wrap">
+                <div className="col-span-3 sm:col-span-4 md:col-span-4 flex justify-end sm:justify-start gap-1 flex-wrap">
                   {(level === "critical" || level === "low") && (
                     <button className="px-2 py-1 rounded-lg text-xs font-semibold"
                       style={{ background: "rgba(30,127,255,0.12)", color: "#1e7fff" }}
-                      onClick={async () => {
-                        const qty = Number(window.prompt(`Restock ${item.name} — add quantity`, String(Math.max(0, item.minQty - item.currentQty))) ?? "0");
-                        if (!qty || qty <= 0) return;
-                        try {
-                          await inventoryApi.update(item.id, { current: item.currentQty + qty });
-                          toast.success("Stock updated", `${item.name} +${qty}${item.unit}`);
-                          void load();
-                        } catch (e) { toast.error("Update failed", (e as Error).message); }
+                      onClick={() => {
+                        setRestockItem(item);
+                        setRestockQty(String(Math.max(1, item.minQty - item.currentQty)));
                       }}>
                       Restock
                     </button>
@@ -316,6 +303,43 @@ export function Inventory() {
                   className="flex-1 py-2.5 rounded-xl text-sm font-semibold flex items-center justify-center gap-2"
                   style={{ background: "linear-gradient(135deg, #1e7fff, #00c6ff)", color: "#fff", opacity: saving ? 0.7 : 1 }}>
                   <Save size={15} /> {modal.mode === "edit" ? "Save" : "Add"}
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {restockItem && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
+            style={{ background: "rgba(6,9,26,0.85)", backdropFilter: "blur(8px)" }}
+            onClick={() => setRestockItem(null)}>
+            <motion.div
+              initial={{ opacity: 0, scale: 0.92 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.92 }}
+              className="w-full max-w-sm rounded-2xl p-5 space-y-4"
+              style={{ background: "#0d1326", border: "1px solid rgba(30,127,255,0.2)" }}
+              onClick={e => e.stopPropagation()}>
+              <div className="flex items-center justify-between">
+                <h3 style={{ fontFamily: "var(--font-display)", color: "#e8eef8", fontWeight: 700 }}>Restock</h3>
+                <button onClick={() => setRestockItem(null)} style={{ color: "#6b82a0" }}><X size={18} /></button>
+              </div>
+              <p style={{ color: "#a8bdd4", fontSize: "0.85rem" }}>
+                Add stock for <strong style={{ color: "#e8eef8" }}>{restockItem.name}</strong>
+                {" "}(current {restockItem.currentQty}{restockItem.unit}, par {restockItem.minQty}{restockItem.unit})
+              </p>
+              <input type="number" min={1} value={restockQty} onChange={e => setRestockQty(e.target.value)}
+                className="w-full rounded-xl px-3 py-2.5 text-sm outline-none"
+                style={{ background: "#111b35", color: "#e8eef8", border: "1px solid rgba(30,127,255,0.12)" }} />
+              <div className="flex gap-2">
+                <button onClick={() => setRestockItem(null)} className="flex-1 py-2.5 rounded-xl text-sm font-semibold"
+                  style={{ background: "rgba(30,127,255,0.06)", color: "#6b82a0", border: "1px solid rgba(30,127,255,0.1)" }}>
+                  Cancel
+                </button>
+                <button onClick={() => void applyRestock()}
+                  className="flex-1 py-2.5 rounded-xl text-sm font-semibold"
+                  style={{ background: "linear-gradient(135deg, #1e7fff, #00c6ff)", color: "#fff" }}>
+                  Add stock
                 </button>
               </div>
             </motion.div>

@@ -6,6 +6,7 @@ import {
 } from "lucide-react";
 import { dashboardApi, ordersApi, menuApi } from "../../services/api";
 import { formatMoney, getCurrencySymbol } from "../../utils/currency";
+import { useAppNav } from "../nav";
 
 const CAT_COLORS = ["#1e7fff", "#00c6ff", "#a855f7", "#22d3ee", "#f59e0b", "#22c55e"];
 const CAT_LABELS: Record<string, string> = { starters: "Starters", mains: "Mains", desserts: "Desserts", wine: "Wine", drinks: "Drinks" };
@@ -190,6 +191,7 @@ function DonutChart({ data, centerValue, centerLabel = "items" }: { data: CatDat
 }
 
 export function Dashboard() {
+  const { goToPage } = useAppNav();
   const [revRows, setRevRows] = useState<{ day: string; revenue: number }[]>([]);
   const [todayRevenue, setTodayRevenue] = useState(0);
   const [stats, setStats] = useState<{ orders_today: number; tables_total: number; tables_occupied: number; inventory_low: number; staff_active: number } | null>(null);
@@ -269,8 +271,9 @@ export function Dashboard() {
       {/* Alert banner — only when items are below par */}
       {lowStock && (
         <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}
-          className="flex items-start gap-2.5 px-3 py-2.5 rounded-xl"
-          style={{ background: "rgba(245,158,11,0.08)", border: "1px solid rgba(245,158,11,0.2)" }}>
+          className="flex items-start gap-2.5 px-3 py-2.5 rounded-xl cursor-pointer"
+          style={{ background: "rgba(245,158,11,0.08)", border: "1px solid rgba(245,158,11,0.2)" }}
+          onClick={() => goToPage("inventory")}>
           <AlertCircle size={15} style={{ color: "#f59e0b", flexShrink: 0, marginTop: 2 }} />
           <p style={{ color: "#f59e0b", fontSize: "0.78rem", lineHeight: 1.5 }}>
             <strong>Low stock:</strong> {stats?.inventory_low} item{(stats?.inventory_low ?? 0) > 1 ? 's are' : ' is'} below par — reorder soon
@@ -314,8 +317,8 @@ export function Dashboard() {
           style={{ background: "#0d1326", border: "1px solid rgba(30,127,255,0.1)" }}>
           <div className="flex items-center justify-between mb-3">
             <div>
-              <h3 style={{ color: "#e8eef8", fontFamily: "var(--font-display)", fontWeight: 600, fontSize: "0.92rem" }}>Today's Revenue</h3>
-              <p style={{ color: "#6b82a0", fontSize: "0.72rem" }}>Hourly breakdown</p>
+              <h3 style={{ color: "#e8eef8", fontFamily: "var(--font-display)", fontWeight: 600, fontSize: "0.92rem" }}>7-Day Revenue</h3>
+              <p style={{ color: "#6b82a0", fontSize: "0.72rem" }}>Daily breakdown</p>
             </div>
             <span className="text-xs px-2.5 py-1 rounded-full" style={{ background: "rgba(30,127,255,0.12)", color: "#1e7fff" }}>Live</span>
           </div>
@@ -334,7 +337,7 @@ export function Dashboard() {
           className="rounded-2xl p-3 sm:p-4"
           style={{ background: "#0d1326", border: "1px solid rgba(30,127,255,0.1)" }}>
           <h3 style={{ color: "#e8eef8", fontFamily: "var(--font-display)", fontWeight: 600, fontSize: "0.92rem", marginBottom: 2 }}>Order Categories</h3>
-          <p style={{ color: "#6b82a0", fontSize: "0.72rem", marginBottom: 12 }}>Today's split</p>
+          <p style={{ color: "#6b82a0", fontSize: "0.72rem", marginBottom: 12 }}>This week's split</p>
           {/* On mobile: horizontal layout; on desktop: stacked */}
           <div className="flex lg:flex-col items-center gap-4 lg:gap-2">
             <div className="flex-shrink-0">
@@ -377,7 +380,7 @@ export function Dashboard() {
         >
           <div className="flex items-center justify-between mb-3">
             <h3 style={{ color: "#e8eef8", fontFamily: "var(--font-display)", fontWeight: 600, fontSize: "0.92rem" }}>Recent Orders</h3>
-            <button className="flex items-center gap-1" style={{ color: "#1e7fff", fontSize: "0.75rem" }}>
+            <button type="button" onClick={() => goToPage("orders")} className="flex items-center gap-1" style={{ color: "#1e7fff", fontSize: "0.75rem" }}>
               View all <ChevronRight size={12} />
             </button>
           </div>

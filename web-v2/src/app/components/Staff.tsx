@@ -1,8 +1,9 @@
 import { useState, useEffect, useCallback } from "react";
 import { motion } from "motion/react";
-import { Plus, Phone, Mail, Star, Clock, CheckCircle, XCircle, Coffee } from "lucide-react";
+import { Plus, Phone, Mail, Clock, CheckCircle, XCircle, Coffee } from "lucide-react";
 import { toast } from "./Toast";
 import { usersApi, tablesApi, ordersApi, type ApiUser } from "../../services/api";
+import { useAppNav } from "../nav";
 
 type StaffStatus = "on-shift" | "on-break" | "off-duty";
 
@@ -13,7 +14,6 @@ interface StaffMember {
   status: StaffStatus;
   shift: string;
   tablesAssigned: string[];
-  rating: number | null;
   ordersToday: number;
   phone: string;
   email: string;
@@ -45,6 +45,7 @@ const avatarColors = [
 ];
 
 export function Staff() {
+  const { goToPage } = useAppNav();
   const [members, setMembers] = useState<StaffMember[]>([]);
   const [selected, setSelected] = useState<StaffMember | null>(null);
   const [filterRole, setFilterRole] = useState("All");
@@ -60,8 +61,13 @@ export function Staff() {
       tables.forEach(t => {
         if (t.server_id) tablesBySrv.set(t.server_id, [...(tablesBySrv.get(t.server_id) ?? []), t.name]);
       });
+      const today = new Date().toISOString().slice(0, 10);
       const ordersBySrv = new Map<string, number>();
-      orders.forEach(o => { if (o.server_id) ordersBySrv.set(o.server_id, (ordersBySrv.get(o.server_id) ?? 0) + 1); });
+      orders.forEach(o => {
+        if (!o.server_id) return;
+        const day = (o.created_at || "").slice(0, 10);
+        if (day === today) ordersBySrv.set(o.server_id, (ordersBySrv.get(o.server_id) ?? 0) + 1);
+      });
       setMembers(users.map((u: ApiUser) => {
         const role = ROLE_LABEL[u.role] ?? u.role;
         return {
@@ -71,7 +77,6 @@ export function Staff() {
           status: STATUS_MAP[u.status] ?? "off-duty",
           shift: u.start_time && u.start_time !== "—" ? u.start_time : "—",
           tablesAssigned: tablesBySrv.get(u.id) ?? [],
-          rating: null,
           ordersToday: ordersBySrv.get(u.id) ?? 0,
           phone: u.phone ?? "—",
           email: u.email,
@@ -85,7 +90,8 @@ export function Staff() {
   useEffect(() => { void load(); }, [load]);
 
   const handleAddStaff = () => {
-    toast.info("Add Staff", "Create staff in Roles & Access — they appear here once added");
+    goToPage("roles");
+    toast.info("Roles & Access", "Create staff accounts there — they appear here automatically");
   };
 
   const staff = members;
@@ -179,14 +185,14 @@ export function Staff() {
               <div className="grid grid-cols-3 gap-2 mb-3">
                 <div className="rounded-lg p-2 text-center" style={{ background: "rgba(30,127,255,0.06)" }}>
                   <div style={{ color: "#1e7fff", fontFamily: "var(--font-mono)", fontWeight: 700, fontSize: "0.9rem" }}>{member.ordersToday}</div>
-                  <div style={{ color: "#6b82a0", fontSize: "0.65rem" }}>Orders</div>
+                  <div style={{ color: "#6b82a0", fontSize: "0.65rem" }}>Today</div>
                 </div>
                 <div className="rounded-lg p-2 text-center" style={{ background: "rgba(30,127,255,0.06)" }}>
                   <div className="flex items-center justify-center gap-1">
-                    <Star size={10} fill="#f59e0b" stroke="none" />
-                    <span style={{ color: "#f59e0b", fontFamily: "var(--font-mono)", fontWeight: 700, fontSize: "0.9rem" }}>{member.rating ?? "—"}</span>
+                    <StatusIcon size={10} style={{ color: cfg.color }} />
+                    <span style={{ color: cfg.color, fontFamily: "var(--font-mono)", fontWeight: 700, fontSize: "0.75rem" }}>{cfg.label}</span>
                   </div>
-                  <div style={{ color: "#6b82a0", fontSize: "0.65rem" }}>Rating</div>
+                  <div style={{ color: "#6b82a0", fontSize: "0.65rem" }}>Status</div>
                 </div>
                 <div className="rounded-lg p-2 text-center" style={{ background: "rgba(30,127,255,0.06)" }}>
                   <div style={{ color: "#a8bdd4", fontFamily: "var(--font-mono)", fontWeight: 700, fontSize: "0.9rem" }}>{member.tablesAssigned.length}</div>

@@ -1,7 +1,7 @@
 import { motion } from "motion/react";
 import { useState, useEffect } from "react";
 import { TrendingUp } from "lucide-react";
-import { dashboardApi, menuApi, ordersApi, type RevenuePeriod } from "../../services/api";
+import { dashboardApi, menuApi, ordersApi, type RevenueQueryParams } from "../../services/api";
 import { formatMoney, getCurrencySymbol } from "../../utils/currency";
 
 const periods = ["Today", "7 Days", "30 Days", "3 Months"];
@@ -17,6 +17,42 @@ const shortDay = (iso: string) => {
   return isNaN(d.getTime()) ? iso : d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
 };
 const catLabel = (slug: string) => slug ? slug.charAt(0).toUpperCase() + slug.slice(1) : "Other";
+
+function isoDate(d: Date) {
+  return d.toISOString().slice(0, 10);
+}
+
+function revenueQueryForPeriod(period: string): RevenueQueryParams {
+  if (period === "Today") return { period: "day" };
+  if (period === "7 Days") return { period: "week" };
+  if (period === "30 Days") return { period: "month" };
+  const to = isoDate(new Date());
+  const from = new Date();
+  from.setDate(from.getDate() - 89);
+  return { period: "range", from: isoDate(from), to };
+}
+
+function orderDateKey(createdAt?: string) {
+  return (createdAt || "").slice(0, 10);
+}
+
+function orderInSelectedPeriod(createdAt: string | undefined, period: string, range?: { from: string; to: string }) {
+  const day = orderDateKey(createdAt);
+  if (!day) return false;
+  if (period === "Today") return day === isoDate(new Date());
+  if (period === "7 Days") {
+    const start = new Date();
+    start.setDate(start.getDate() - 6);
+    return day >= isoDate(start) && day <= isoDate(new Date());
+  }
+  if (period === "30 Days") {
+    const start = new Date();
+    start.setDate(start.getDate() - 29);
+    return day >= isoDate(start) && day <= isoDate(new Date());
+  }
+  if (range) return day >= range.from && day <= range.to;
+  return true;
+}
 
 // ── Custom dual-line area chart (revenue; profit line only if present) ─────────
 function DualAreaChart({ data, cur = "₹" }: { data: RevPoint[]; cur?: string }) {
@@ -195,16 +231,21 @@ export function Analytics() {
 
   useEffect(() => {
     let alive = true;
-    const periodKey: RevenuePeriod = period === "Today" ? "day" : period === "7 Days" ? "week" : "month";
+    const query = revenueQueryForPeriod(period);
+    const periodKey: RevenuePeriod = query.period ?? "month";
     (async () => {
       const [stats, rev, sold, menu, orders] = await Promise.all([
         dashboardApi.stats().catch(() => null),
-        dashboardApi.revenue({ period: periodKey }).catch(() => null),
-        dashboardApi.soldItems({ period: periodKey }).catch(() => null),
+        dashboardApi.revenue(query).catch(() => null),
+        dashboardApi.soldItems(query).catch(() => null),
         menuApi.list().catch(() => []),
         ordersApi.list().catch(() => []),
       ]);
       if (!alive) return;
+
+      const range = query.period === "range" && query.from && query.to
+        ? { from: query.from, to: query.to }
+        : undefined;
 
       // Revenue trend (daily rows)
       setRevTrend((rev?.rows ?? []).map(r => ({ month: shortDay(r.day), revenue: r.revenue, profit: 0 })));
@@ -228,13 +269,19 @@ export function Analytics() {
       const maxCat = Math.max(1, ...[...catQty.values()]);
       setRadar(allCats.map(c => ({ metric: catLabel(c), score: Math.round(((catQty.get(c) ?? 0) / maxCat) * 100) })));
 
-      // Covers by hour from order timestamps (server-local hour from the string)
+      // Covers by hour from orders in the selected period
       const buckets = Array.from({ length: 24 }, (_, h) => ({ hour: `${h}h`, covers: 0 }));
-      orders.forEach(o => {
-        const h = parseInt((o.created_at || "").slice(11, 13), 10);
-        if (!isNaN(h) && h >= 0 && h < 24) buckets[h].covers += o.covers || 1;
-      });
-      setHourly(buckets.slice(9, 24)); // business hours window
+      orders
+        .filter(o => orderInSelectedPeriod(o.created_at, period, range))
+        .forEach(o => {
+          const h = parseInt((o.created_at || "").slice(11, 13), 10);
+          if (!isNaN(h) && h >= 0 && h < 24) buckets[h].covers += o.covers || 1;
+        });
+      setHourly(buckets.slice(9, 24));
+
+      const paidInPeriod = orders.filter(o =>
+        (o.status === "paid" || o.status === "comped") && orderInSelectedPeriod(o.created_at, period, range),
+      ).length;
 
       // KPIs from real totals
       const totalRev = rev?.totalRevenue ?? 0;
@@ -247,7 +294,7 @@ export function Analytics() {
         { label: "Orders", value: String(totalOrders), change: period, up: true },
         { label: "Items Sold", value: String(itemsSold), change: "this period", up: true },
         { label: "Active Tables", value: `${stats?.tables_occupied ?? 0}/${stats?.tables_total ?? 0}`, change: `${occ}% occ.`, up: true },
-        { label: "Paid Orders", value: String(stats?.orders_paid ?? 0), change: "today", up: true },
+        { label: "Paid Orders", value: String(paidInPeriod), change: period, up: true },
       ]);
     })();
     return () => { alive = false; };
@@ -315,7 +362,7 @@ export function Analytics() {
       <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.45 }}
         className="rounded-2xl p-5" style={{ background: "#0d1326", border: "1px solid rgba(30,127,255,0.1)" }}>
         <h3 style={{ color: "#e8eef8", fontFamily: "var(--font-display)", fontWeight: 600, marginBottom: 4 }}>Covers by Hour</h3>
-        <p style={{ color: "#6b82a0", fontSize: "0.75rem", marginBottom: 12 }}>Identifies peak dining times</p>
+        <p style={{ color: "#6b82a0", fontSize: "0.75rem", marginBottom: 12 }}>Orders in {period.toLowerCase()}</p>
         <LineSparkline data={hourly} />
       </motion.div>
     </div>
