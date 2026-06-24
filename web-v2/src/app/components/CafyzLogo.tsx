@@ -1,6 +1,6 @@
 import { CAFYZ_LOGO_SRC } from '../../config/brand';
 
-export type CafyzLogoSize = 'xs' | 'sm' | 'md' | 'lg' | 'xl' | 'hero' | 'login' | 'loginMobile';
+export type CafyzLogoSize = 'xs' | 'sm' | 'md' | 'lg' | 'xl' | 'hero' | 'login' | 'loginMobile' | 'sidebar';
 
 interface CafyzLogoProps {
   /** @deprecated Both variants use `logo.png`; size presets differ only. */
@@ -19,6 +19,8 @@ const LOGO_SIZE: Record<CafyzLogoSize, string> = {
   xl: 'w-[9.9rem] max-h-[9.9rem] sm:w-44 sm:max-h-44',
   hero: 'w-[min(100%,18rem)] sm:w-[min(100%,20rem)]',
   login: 'w-[min(100%,19.8rem)] sm:w-[min(100%,25rem)]',
+  /** Expanded app sidebar on large screens */
+  sidebar: 'w-[min(100%,11rem)] max-h-[3.5rem] lg:w-[min(100%,13rem)] lg:max-h-16',
   /** Small screens: fits within the 30% viewport logo band */
   loginMobile: 'w-[min(30vw,30dvh)] max-w-[min(30vw,30dvh)] max-h-[min(24dvh,30vw)] h-auto',
 };

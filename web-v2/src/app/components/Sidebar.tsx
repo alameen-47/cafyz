@@ -95,14 +95,26 @@ export function Sidebar({
         className={`fixed left-0 top-0 h-full z-50 flex flex-col border-r border-[rgba(30,127,255,0.12)] lg:relative lg:translate-x-0 ${mobileOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"} transition-transform duration-300 lg:transition-none`}
         style={{ background: "linear-gradient(180deg, #080c1e 0%, #06091a 100%)", boxShadow: "4px 0 24px rgba(30,127,255,0.06)" }}
       >
-        {/* Logo */}
-        <div className={`flex items-center border-b border-[rgba(30,127,255,0.12)] flex-shrink-0 ${collapsed ? "justify-center px-3 py-4" : "px-4 py-5 gap-2"}`}>
-          {collapsed ? (
-            <CafyzLogo size="xs" className="flex-shrink-0" />
-          ) : (
-            <CafyzLogo size="sm" className="flex-shrink-0" />
-          )}
-          <button onClick={onMobileClose} className={`text-[#6b82a0] hover:text-white lg:hidden flex-shrink-0 ${collapsed ? "absolute right-3 top-4" : "ml-auto"}`}><X size={16} /></button>
+        {/* Logo — full wordmark when expanded, compact mark when collapsed */}
+        <div
+          className={`flex items-center border-b border-[rgba(30,127,255,0.12)] flex-shrink-0 ${
+            collapsed
+              ? "justify-center px-3 py-4"
+              : "justify-center px-4 py-5 lg:px-5 lg:py-6"
+          }`}
+        >
+          <CafyzLogo
+            size={collapsed ? "xs" : "sidebar"}
+            className="flex-shrink-0 drop-shadow-[0_4px_16px_rgba(30,127,255,0.22)]"
+          />
+          <button
+            onClick={onMobileClose}
+            className={`text-[#6b82a0] hover:text-white lg:hidden flex-shrink-0 ${
+              collapsed ? "absolute right-3 top-4" : "absolute right-4 top-5"
+            }`}
+          >
+            <X size={16} />
+          </button>
         </div>
 
         {/* Nav */}
