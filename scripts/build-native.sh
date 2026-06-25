@@ -7,7 +7,7 @@ cd "$ROOT"
 API_URL="${VITE_API_URL:-https://cafyz.onrender.com}"
 APP_URL="${VITE_APP_URL:-https://cafyz.ametronyx.com}"
 APP_ICONS_DIR="${APP_ICONS_DIR:-AppIcons (1)}"
-APP_ICONS_ZIP="${APP_ICONS_ZIP:-}"
+APP_ICONS_ZIP="${APP_ICONS_ZIP:-AppIcons (3).zip}"
 
 apply_icons_from_dir() {
   local dir="$1"
@@ -15,34 +15,42 @@ apply_icons_from_dir() {
   local ios_set="cap-ios/App/App/Assets.xcassets/AppIcon.appiconset"
   local src_ios="$dir/Assets.xcassets/AppIcon.appiconset"
   if [[ -d "$src_ios" ]]; then
-    cp -f "$src_ios/40.png"  "$ios_set/Icon-App-20x20@2x.png"
-    cp -f "$src_ios/60.png"  "$ios_set/Icon-App-20x20@3x.png"
-    cp -f "$src_ios/20.png"  "$ios_set/Icon-App-20x20@1x.png"
-    cp -f "$src_ios/29.png"  "$ios_set/Icon-App-29x29@1x.png"
-    cp -f "$src_ios/58.png"  "$ios_set/Icon-App-29x29@2x.png"
-    cp -f "$src_ios/87.png"  "$ios_set/Icon-App-29x29@3x.png"
-    cp -f "$src_ios/80.png"  "$ios_set/Icon-App-40x40@2x.png"
-    cp -f "$src_ios/120.png" "$ios_set/Icon-App-40x40@3x.png"
-    cp -f "$src_ios/40.png"  "$ios_set/Icon-App-40x40@1x.png"
-    cp -f "$src_ios/120.png" "$ios_set/Icon-App-60x60@2x.png"
-    cp -f "$src_ios/180.png" "$ios_set/Icon-App-60x60@3x.png"
-    cp -f "$src_ios/76.png"  "$ios_set/Icon-App-76x76@1x.png"
-    cp -f "$src_ios/152.png" "$ios_set/Icon-App-76x76@2x.png"
-    cp -f "$src_ios/167.png" "$ios_set/Icon-App-83.5x83.5@2x.png"
-    cp -f "$src_ios/1024.png" "$ios_set/ItunesArtwork@2x.png"
+    echo "    → iOS AppIcon.appiconset"
+    cp -f "$src_ios"/*.png "$ios_set/" 2>/dev/null || true
+    if [[ -f "$src_ios/Contents.json" ]]; then
+      cp -f "$src_ios/Contents.json" "$ios_set/Contents.json"
+    fi
   fi
   for d in mdpi hdpi xhdpi xxhdpi xxxhdpi; do
     local src="$dir/android/mipmap-$d/ic_launcher.png"
     local dest="cap-android/app/src/main/res/mipmap-$d"
     if [[ -f "$src" ]]; then
+      echo "    → Android mipmap-$d"
       cp -f "$src" "$dest/ic_launcher.png"
       cp -f "$src" "$dest/ic_launcher_round.png"
       cp -f "$src" "$dest/ic_launcher_foreground.png"
     fi
   done
+  local store_png=""
   if [[ -f "$dir/playstore.png" ]]; then
-    mkdir -p build
-    cp -f "$dir/playstore.png" build/icon.png
+    store_png="$dir/playstore.png"
+  elif [[ -f "$dir/appstore.png" ]]; then
+    store_png="$dir/appstore.png"
+  fi
+  if [[ -n "$store_png" ]]; then
+    echo "    → PWA / store icons"
+    mkdir -p build web-v2/public
+    cp -f "$store_png" build/icon.png
+    cp -f "$store_png" icon.png
+    if command -v sips >/dev/null 2>&1; then
+      sips -z 192 192 "$store_png" --out web-v2/public/icon-192.png >/dev/null
+      sips -z 512 512 "$store_png" --out web-v2/public/icon-512.png >/dev/null
+      sips -z 180 180 "$store_png" --out web-v2/public/apple-touch-icon.png >/dev/null
+    else
+      cp -f "$store_png" web-v2/public/icon-192.png
+      cp -f "$store_png" web-v2/public/icon-512.png
+      cp -f "$store_png" web-v2/public/apple-touch-icon.png
+    fi
   fi
 }
 

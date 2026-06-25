@@ -1,4 +1,4 @@
-import { Bell, Search, ChevronDown, Menu, Clock, X, UtensilsCrossed, LayoutGrid, ShoppingBag, Users, Package, CalendarCheck } from "lucide-react";
+import { Bell, Search, ChevronDown, Menu, Clock, X, UtensilsCrossed, LayoutGrid, ShoppingBag, Users, Package, CalendarCheck, Headset } from "lucide-react";
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { NotificationDropdown } from "./NotificationDropdown";
@@ -162,6 +162,9 @@ export function TopBar({ active, onMobileMenuOpen, onNavigate, onLogout, role, p
     onNavigate(result.page);
     clearSearch();
   }, [onNavigate, clearSearch]);
+  const openSupport = useCallback(() => {
+    window.dispatchEvent(new CustomEvent("cafyz:open-support"));
+  }, []);
 
   // Close search on outside click
   useEffect(() => {
@@ -310,6 +313,17 @@ export function TopBar({ active, onMobileMenuOpen, onNavigate, onLogout, role, p
       {/* Language — compact on mobile, full label on desktop */}
       <LanguageSwitcher variant="compact" className="flex-shrink-0 sm:hidden" />
       <LanguageSwitcher variant="header" className="flex-shrink-0 hidden sm:block" />
+
+      {/* Customer support */}
+      <button
+        onClick={openSupport}
+        className="relative flex items-center justify-center w-9 h-9 rounded-xl transition-all hover:bg-[rgba(30,127,255,0.08)] active:scale-95 flex-shrink-0"
+        style={{ color: "#6b82a0" }}
+        title="Customer support"
+        aria-label="Open customer support"
+      >
+        <Headset size={17} />
+      </button>
 
       {/* Notification bell */}
       <div ref={notifRef} className="relative flex-shrink-0">

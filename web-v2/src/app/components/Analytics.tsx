@@ -1,32 +1,33 @@
 import { motion } from "motion/react";
 import { useState, useEffect, useCallback } from "react";
-import { TrendingUp, TrendingDown, RefreshCw, Loader2, AlertCircle, BarChart3 } from "lucide-react";
+import {
+  TrendingUp, TrendingDown, RefreshCw, Loader2, AlertCircle, BarChart3,
+  Printer, FileText, CalendarRange, ChevronRight,
+} from "lucide-react";
 import { toast } from "./Toast";
-import { dashboardApi, menuCategoriesApi, type ApiAnalyticsResponse } from "../../services/api";
+import {
+  dashboardApi, menuCategoriesApi, restaurantApi,
+  type ApiAnalyticsResponse, type ApiRestaurant,
+} from "../../services/api";
 import { formatMoney, getCurrencySymbol } from "../../utils/currency";
+import { useAuth } from "../auth";
+import {
+  autoReconnectBluetooth, ensureBluetoothReady, printMonthlyReport, printSalesReport, printerStatus,
+} from "../../services/PrintService";
+import { buildPeriodBreakdownReport, buildSalesReportFromAnalytics } from "../../services/analyticsReports";
+import {
+  ANALYTICS_PRESETS, buildAnalyticsQuery, currentMonthISO, defaultCustomFrom,
+  formatFilterRange, isoDate, type AnalyticsPreset,
+} from "../../utils/analyticsPeriod";
 
-const periods = ["Today", "7 Days", "30 Days", "3 Months"] as const;
-type PeriodLabel = typeof periods[number];
+const periods = ANALYTICS_PRESETS;
+type PeriodLabel = AnalyticsPreset;
 
 type RevPoint = { month: string; revenue: number; profit: number };
 type ItemPoint = { name: string; revenue: number; qty: number };
 type RadarPoint = { metric: string; score: number };
 type HourPoint = { hour: string; covers: number };
 type Kpi = { label: string; value: string; change: string; up: boolean };
-
-function isoDate(d: Date) {
-  return d.toISOString().slice(0, 10);
-}
-
-function revenueQueryForPeriod(period: PeriodLabel) {
-  if (period === "Today") return { period: "day" as const };
-  if (period === "7 Days") return { period: "week" as const };
-  if (period === "30 Days") return { period: "month" as const };
-  const to = isoDate(new Date());
-  const from = new Date();
-  from.setDate(from.getDate() - 89);
-  return { period: "range" as const, from: isoDate(from), to };
-}
 
 function daysBetween(from: string, to: string): string[] {
   const out: string[] = [];
@@ -47,6 +48,13 @@ function shortDay(iso: string) {
     : d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
 }
 
+function monthBounds(monthStr: string): { from: string; to: string } {
+  const [y, m] = monthStr.split("-").map(Number);
+  const from = `${y}-${String(m).padStart(2, "0")}-01`;
+  const last = new Date(y, m, 0);
+  return { from, to: isoDate(last) };
+}
+
 function compactMoney(cur: string, amount: number): string {
   if (amount >= 1000) return `${cur}${(amount / 1000).toFixed(1)}k`;
   return `${cur}${Math.round(amount)}`;
@@ -58,7 +66,7 @@ function pctLabel(pct: number): string {
   return `${sign}${pct}% vs prior period`;
 }
 
-function buildKpis(data: ApiAnalyticsResponse, period: PeriodLabel): Kpi[] {
+function buildKpis(data: ApiAnalyticsResponse): Kpi[] {
   const { revenue, totalQty, tables_total, tables_occupied, deltas } = data;
   const totalRev = revenue.totalRevenue;
   const totalOrders = revenue.totalOrders;
@@ -87,7 +95,7 @@ function buildKpis(data: ApiAnalyticsResponse, period: PeriodLabel): Kpi[] {
     {
       label: "Items Sold",
       value: String(totalQty),
-      change: period,
+      change: formatFilterRange(data.from, data.to),
       up: totalQty > 0,
     },
     {
@@ -108,7 +116,6 @@ function buildKpis(data: ApiAnalyticsResponse, period: PeriodLabel): Kpi[] {
 function mapAnalytics(
   data: ApiAnalyticsResponse,
   catLabels: Map<string, string>,
-  period: PeriodLabel,
 ) {
   const revTrend: RevPoint[] = daysBetween(data.from, data.to).map(day => {
     const row = data.revenue.rows.find(r => r.day === day);
@@ -130,7 +137,7 @@ function mapAnalytics(
     .map(h => ({ hour: `${h.hour}:00`, covers: h.covers }));
 
   return {
-    kpis: buildKpis(data, period),
+    kpis: buildKpis(data),
     revTrend,
     topItems,
     radar,
@@ -324,7 +331,12 @@ function LineSparkline({ data }: { data: HourPoint[] }) {
 }
 
 export function Analytics() {
+  const { user } = useAuth();
   const [period, setPeriod] = useState<PeriodLabel>("30 Days");
+  const [anchorDate, setAnchorDate] = useState(() => isoDate(new Date()));
+  const [filterMonth, setFilterMonth] = useState(currentMonthISO);
+  const [customFrom, setCustomFrom] = useState(defaultCustomFrom);
+  const [customTo, setCustomTo] = useState(() => isoDate(new Date()));
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState("");
@@ -334,20 +346,75 @@ export function Analytics() {
   const [topItems, setTopItems] = useState<ItemPoint[]>([]);
   const [radar, setRadar] = useState<RadarPoint[]>([]);
   const [hourly, setHourly] = useState<HourPoint[]>([]);
+  const [analyticsData, setAnalyticsData] = useState<ApiAnalyticsResponse | null>(null);
+  const [restaurant, setRestaurant] = useState<ApiRestaurant | null>(null);
+  const [catLabels, setCatLabels] = useState<Map<string, string>>(new Map());
+  const [printBusy, setPrintBusy] = useState<"sales" | "period" | null>(null);
+  const [livePrinter, setLivePrinter] = useState(printerStatus);
   const cur = getCurrencySymbol();
+
+  const refreshPrinter = useCallback(() => setLivePrinter(printerStatus()), []);
+  const setPreset = useCallback((next: PeriodLabel) => {
+    setPeriod(next);
+    if (next === "Custom") return;
+    if (next === "Today") {
+      setCustomFrom(anchorDate);
+      setCustomTo(anchorDate);
+      return;
+    }
+    if (next === "7 Days") {
+      const d = new Date(`${anchorDate}T12:00:00`);
+      const diffToMon = (d.getDay() + 6) % 7;
+      const mon = new Date(d);
+      mon.setDate(d.getDate() - diffToMon);
+      const sun = new Date(mon);
+      sun.setDate(mon.getDate() + 6);
+      setCustomFrom(isoDate(mon));
+      setCustomTo(isoDate(sun));
+      return;
+    }
+    if (next === "30 Days") {
+      const bounds = monthBounds(filterMonth);
+      setCustomFrom(bounds.from);
+      setCustomTo(bounds.to);
+      return;
+    }
+    const to = anchorDate;
+    const fromD = new Date(`${to}T12:00:00`);
+    fromD.setDate(fromD.getDate() - 89);
+    setCustomFrom(isoDate(fromD));
+    setCustomTo(to);
+  }, [anchorDate, filterMonth]);
+
+  useEffect(() => {
+    const hint = restaurant?.cashier_printer?.name || restaurant?.kitchen_printer?.name;
+    void autoReconnectBluetooth(hint).finally(refreshPrinter);
+  }, [restaurant?.cashier_printer?.name, restaurant?.kitchen_printer?.name, refreshPrinter]);
+
+  const revenueQuery = useCallback(() => buildAnalyticsQuery({
+    preset: period,
+    anchorDate,
+    month: filterMonth,
+    customFrom,
+    customTo,
+  }), [period, anchorDate, filterMonth, customFrom, customTo]);
 
   const load = useCallback(async (silent = false) => {
     if (!silent) setLoading(true);
     else setRefreshing(true);
     setError("");
     try {
-      const query = revenueQueryForPeriod(period);
-      const [data, categories] = await Promise.all([
+      const query = revenueQuery();
+      const [data, categories, rest] = await Promise.all([
         dashboardApi.analytics(query),
         menuCategoriesApi.list().catch(() => []),
+        restaurantApi.me().catch(() => null),
       ]);
-      const catLabels = new Map(categories.map(c => [c.slug, c.label]));
-      const mapped = mapAnalytics(data, catLabels, period);
+      const labels = new Map(categories.map(c => [c.slug, c.label]));
+      const mapped = mapAnalytics(data, labels);
+      setAnalyticsData(data);
+      setRestaurant(rest);
+      setCatLabels(labels);
       setKpis(mapped.kpis);
       setRevTrend(mapped.revTrend);
       setTopItems(mapped.topItems);
@@ -362,7 +429,56 @@ export function Analytics() {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [period]);
+  }, [revenueQuery]);
+
+  const filterRangeCaption = analyticsData
+    ? formatFilterRange(analyticsData.from, analyticsData.to)
+    : "";
+
+  const runReportPrint = useCallback(async (kind: "sales" | "period") => {
+    if (!restaurant) {
+      toast.error("Report unavailable", "Restaurant details are still loading.");
+      return;
+    }
+    setPrintBusy(kind);
+    try {
+      const latestData = await dashboardApi.analytics(revenueQuery());
+      if (latestData.revenue.totalOrders === 0) {
+        toast.error("Nothing to print", "No paid sales in this period.");
+        return;
+      }
+      const labels = catLabels.size
+        ? catLabels
+        : new Map((await menuCategoriesApi.list().catch(() => [])).map(c => [c.slug, c.label]));
+      setAnalyticsData(latestData);
+      setCatLabels(labels);
+      setPeriodLabel(latestData.periodLabel);
+
+      const hint = restaurant.cashier_printer?.name || restaurant.kitchen_printer?.name;
+      await ensureBluetoothReady(hint);
+      refreshPrinter();
+
+      const method = kind === "sales"
+        ? await printSalesReport(
+            buildSalesReportFromAnalytics(latestData, restaurant, labels),
+            restaurant.id,
+          )
+        : await printMonthlyReport(
+            buildPeriodBreakdownReport(latestData, restaurant),
+            restaurant.id,
+          );
+
+      const via = method === "bluetooth" ? "thermal printer"
+        : method === "usb" ? "USB printer"
+          : "print dialog";
+      toast.success("Report sent", `Printed via ${via}.`);
+    } catch (e) {
+      toast.error("Print failed", (e as Error).message);
+    } finally {
+      setPrintBusy(null);
+      refreshPrinter();
+    }
+  }, [restaurant, catLabels, refreshPrinter, revenueQuery]);
 
   useEffect(() => { void load(); }, [load]);
 
@@ -378,30 +494,61 @@ export function Analytics() {
 
   return (
     <div className="p-3 sm:p-4 md:p-6 space-y-4 md:space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-2 p-1 rounded-xl w-fit" style={{ background: "#0d1326", border: "1px solid rgba(30,127,255,0.1)" }}>
-          {periods.map(p => (
-            <button key={p} type="button" onClick={() => setPeriod(p)}
-              className="px-3 py-1.5 rounded-lg text-xs font-medium transition-all"
-              style={period === p ? { background: "linear-gradient(135deg, #1e7fff, #00c6ff)", color: "white" } : { color: "#6b82a0" }}>
-              {p}
+      <div className="space-y-3">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-2 p-1 rounded-xl w-fit flex-wrap" style={{ background: "#0d1326", border: "1px solid rgba(30,127,255,0.1)" }}>
+            {periods.map(p => (
+              <button key={p} type="button" onClick={() => setPreset(p)}
+                className="px-3 py-1.5 rounded-lg text-xs font-medium transition-all"
+                style={period === p ? { background: "linear-gradient(135deg, #1e7fff, #00c6ff)", color: "white" } : { color: "#6b82a0" }}>
+                {p}
+              </button>
+            ))}
+          </div>
+          <div className="flex items-center gap-2">
+            {periodLabel && (
+              <span style={{ color: "#6b82a0", fontSize: "0.72rem" }}>{periodLabel}</span>
+            )}
+            <button
+              type="button"
+              onClick={() => void load(true)}
+              disabled={loading || refreshing}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold"
+              style={{ background: "rgba(30,127,255,0.1)", color: "#1e7fff", opacity: loading || refreshing ? 0.6 : 1 }}
+            >
+              {refreshing ? <Loader2 size={13} className="animate-spin" /> : <RefreshCw size={13} />}
+              Refresh
             </button>
-          ))}
+          </div>
         </div>
-        <div className="flex items-center gap-2">
-          {periodLabel && (
-            <span style={{ color: "#6b82a0", fontSize: "0.72rem" }}>{periodLabel}</span>
+
+        <div className="flex flex-wrap items-end gap-3 rounded-xl px-4 py-3"
+          style={{ background: "#0d1326", border: "1px solid rgba(30,127,255,0.08)" }}>
+          <label className="flex flex-col gap-1">
+            <span style={{ color: "#6b82a0", fontSize: "0.68rem", textTransform: "uppercase", letterSpacing: "0.05em" }}>From</span>
+            <input type="date" value={customFrom} max={customTo}
+              onChange={e => {
+                setCustomFrom(e.target.value);
+                setPeriod("Custom");
+              }}
+              className="rounded-lg px-2.5 py-1.5 text-xs"
+              style={{ background: "#080c1e", border: "1px solid rgba(30,127,255,0.15)", color: "#e8eef8" }} />
+          </label>
+          <label className="flex flex-col gap-1">
+            <span style={{ color: "#6b82a0", fontSize: "0.68rem", textTransform: "uppercase", letterSpacing: "0.05em" }}>To</span>
+            <input type="date" value={customTo} min={customFrom}
+              onChange={e => {
+                setCustomTo(e.target.value);
+                setPeriod("Custom");
+              }}
+              className="rounded-lg px-2.5 py-1.5 text-xs"
+              style={{ background: "#080c1e", border: "1px solid rgba(30,127,255,0.15)", color: "#e8eef8" }} />
+          </label>
+          {filterRangeCaption && (
+            <p style={{ color: "#a8bdd4", fontSize: "0.78rem", marginLeft: "auto" }}>
+              Showing <span style={{ color: "#1e7fff", fontWeight: 600 }}>{filterRangeCaption}</span>
+            </p>
           )}
-          <button
-            type="button"
-            onClick={() => void load(true)}
-            disabled={loading || refreshing}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold"
-            style={{ background: "rgba(30,127,255,0.1)", color: "#1e7fff", opacity: loading || refreshing ? 0.6 : 1 }}
-          >
-            {refreshing ? <Loader2 size={13} className="animate-spin" /> : <RefreshCw size={13} />}
-            Refresh
-          </button>
         </div>
       </div>
 
@@ -441,7 +588,7 @@ export function Analytics() {
                 <span className="w-3 h-0.5 rounded inline-block" style={{ background: "#1e7fff" }} /> Paid revenue
               </span>
             </div>
-            <p style={{ color: "#6b82a0", fontSize: "0.75rem", marginBottom: 12 }}>Daily paid revenue · {period}</p>
+            <p style={{ color: "#6b82a0", fontSize: "0.75rem", marginBottom: 12 }}>Daily paid revenue · {filterRangeCaption || periodLabel}</p>
             <DualAreaChart data={revTrend} cur={cur} />
           </motion.div>
 
@@ -464,8 +611,109 @@ export function Analytics() {
           <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.45 }}
             className="rounded-2xl p-5" style={{ background: "#0d1326", border: "1px solid rgba(30,127,255,0.1)" }}>
             <h3 style={{ color: "#e8eef8", fontFamily: "var(--font-display)", fontWeight: 600, marginBottom: 4 }}>Covers by Hour</h3>
-            <p style={{ color: "#6b82a0", fontSize: "0.75rem", marginBottom: 12 }}>Paid orders · {period.toLowerCase()}</p>
+            <p style={{ color: "#6b82a0", fontSize: "0.75rem", marginBottom: 12 }}>Paid orders · {filterRangeCaption || periodLabel}</p>
             <LineSparkline data={hourly} />
+          </motion.div>
+
+          {/* Reports — thermal printer + browser fallback */}
+          <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }}
+            className="rounded-2xl p-5 space-y-4" style={{ background: "#0d1326", border: "1px solid rgba(30,127,255,0.1)" }}>
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <h3 style={{ color: "#e8eef8", fontFamily: "var(--font-display)", fontWeight: 600 }}>Reports & Printouts</h3>
+                <p style={{ color: "#6b82a0", fontSize: "0.75rem", marginTop: 4 }}>
+                  Print on connected thermal printers (Bluetooth/USB) or use the browser print dialog.
+                </p>
+                {(periodLabel || filterRangeCaption) && (
+                  <div className="mt-3 inline-flex flex-col gap-0.5 rounded-lg px-3 py-2"
+                    style={{ background: "rgba(30,127,255,0.06)", border: "1px solid rgba(30,127,255,0.12)" }}>
+                    <span style={{ color: "#6b82a0", fontSize: "0.65rem", textTransform: "uppercase", letterSpacing: "0.06em" }}>
+                      Report period
+                    </span>
+                    <span style={{ color: "#e8eef8", fontSize: "0.82rem", fontWeight: 600 }}>{periodLabel}</span>
+                    {filterRangeCaption && (
+                      <span style={{ color: "#1e7fff", fontSize: "0.75rem" }}>{filterRangeCaption}</span>
+                    )}
+                  </div>
+                )}
+              </div>
+              <div className="rounded-xl px-3 py-2" style={{ background: "rgba(30,127,255,0.06)", border: "1px solid rgba(30,127,255,0.12)" }}>
+                <p style={{ color: "#6b82a0", fontSize: "0.65rem", textTransform: "uppercase", letterSpacing: "0.06em" }}>Printer</p>
+                <p style={{ color: livePrinter.type === "none" ? "#fbbf24" : "#22c55e", fontSize: "0.78rem", fontWeight: 600 }}>
+                  {livePrinter.type === "none"
+                    ? "Not connected — configure in Restaurant profile"
+                    : `Connected · ${livePrinter.name}`}
+                </p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div className="rounded-xl p-4 space-y-3" style={{ background: "#080c1e", border: "1px solid rgba(30,127,255,0.08)" }}>
+                <div className="flex items-start gap-3">
+                  <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+                    style={{ background: "rgba(30,127,255,0.12)" }}>
+                    <FileText size={18} style={{ color: "#1e7fff" }} />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p style={{ color: "#e8eef8", fontWeight: 700, fontSize: "0.9rem" }}>Sales Summary Report</p>
+                    <p style={{ color: "#6b82a0", fontSize: "0.75rem", marginTop: 4, lineHeight: 1.5 }}>
+                      KPIs, top items, category breakdown, peak hour — {filterRangeCaption || periodLabel}.
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  disabled={!!printBusy || analyticsData?.revenue.totalOrders === 0}
+                  onClick={() => void runReportPrint("sales")}
+                  className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold transition-all"
+                  style={{
+                    background: "linear-gradient(135deg, #1e7fff, #00c6ff)",
+                    color: "#fff",
+                    opacity: printBusy || analyticsData?.revenue.totalOrders === 0 ? 0.55 : 1,
+                  }}
+                >
+                  {printBusy === "sales" ? <Loader2 size={15} className="animate-spin" /> : <Printer size={15} />}
+                  Print summary
+                </button>
+              </div>
+
+              <div className="rounded-xl p-4 space-y-3" style={{ background: "#080c1e", border: "1px solid rgba(30,127,255,0.08)" }}>
+                <div className="flex items-start gap-3">
+                  <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+                    style={{ background: "rgba(168,85,247,0.12)" }}>
+                    <CalendarRange size={18} style={{ color: "#a855f7" }} />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p style={{ color: "#e8eef8", fontWeight: 700, fontSize: "0.9rem" }}>Daily Breakdown Report</p>
+                    <p style={{ color: "#6b82a0", fontSize: "0.75rem", marginTop: 4, lineHeight: 1.5 }}>
+                      Day-by-day orders and revenue for {filterRangeCaption || periodLabel}.
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  disabled={!!printBusy || analyticsData?.revenue.totalOrders === 0}
+                  onClick={() => void runReportPrint("period")}
+                  className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold transition-all"
+                  style={{
+                    background: "rgba(168,85,247,0.15)",
+                    color: "#c4b5fd",
+                    border: "1px solid rgba(168,85,247,0.25)",
+                    opacity: printBusy || analyticsData?.revenue.totalOrders === 0 ? 0.55 : 1,
+                  }}
+                >
+                  {printBusy === "period" ? <Loader2 size={15} className="animate-spin" /> : <Printer size={15} />}
+                  Print daily breakdown
+                </button>
+              </div>
+            </div>
+
+            {user?.role && ["owner", "manager"].includes(user.role) && (
+              <p className="flex items-center gap-1.5" style={{ color: "#6b82a0", fontSize: "0.72rem" }}>
+                <ChevronRight size={12} />
+                Pair printers in Restaurant → Receipt &amp; Printer Test if not connected.
+              </p>
+            )}
           </motion.div>
 
           {!error && kpis.length > 0 && kpis[0].value === formatMoney(0) && (

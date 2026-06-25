@@ -252,7 +252,7 @@ export default function App() {
         </div>
 
         <MobileNav active={activePage} onNavigate={navigate} permittedPages={permitted} />
-        <AIAssistantWidget screen={activePage} />
+        <AIAssistantWidget screen={activePage} onNewBill={goToPos} />
       </div>
     </NavContext.Provider>
   );

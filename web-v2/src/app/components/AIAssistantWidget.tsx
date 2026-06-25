@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { CafyzLogo } from "./CafyzLogo";
-import { Sparkles, X, Send, Bot, User, Minimize2 } from "lucide-react";
+import { Sparkles, X, Send, User, Minimize2, ReceiptText } from "lucide-react";
 
 interface Message {
   id: string;
@@ -49,7 +49,7 @@ function getReply(msg: string): string {
 
 import { supportApi } from "../../services/api";
 
-export function AIAssistantWidget({ screen }: { screen?: string }) {
+export function AIAssistantWidget({ screen, onNewBill }: { screen?: string; onNewBill: () => void }) {
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>(initialMessages);
   const [input, setInput] = useState("");
@@ -62,6 +62,15 @@ export function AIAssistantWidget({ screen }: { screen?: string }) {
       setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: "smooth" }), 50);
     }
   }, [messages, open, minimised]);
+
+  useEffect(() => {
+    const handler = () => {
+      setMinimised(false);
+      setOpen(true);
+    };
+    window.addEventListener("cafyz:open-support", handler);
+    return () => window.removeEventListener("cafyz:open-support", handler);
+  }, []);
 
   const send = async (text?: string) => {
     const msg = text || input.trim();
@@ -85,25 +94,20 @@ export function AIAssistantWidget({ screen }: { screen?: string }) {
 
   return (
     <>
-      {/* Floating button */}
-      <AnimatePresence>
-        {!open && (
-          <motion.button
-            initial={{ scale: 0, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            exit={{ scale: 0, opacity: 0 }}
-            whileHover={{ scale: 1.08 }}
-            whileTap={{ scale: 0.94 }}
-            onClick={() => setOpen(true)}
-            className="fixed bottom-24 lg:bottom-6 left-4 z-40 w-12 h-12 rounded-2xl flex items-center justify-center shadow-2xl"
-            style={{
-              background: "linear-gradient(135deg, #a855f7, #1e7fff)",
-              boxShadow: "0 8px 24px rgba(168,85,247,0.4)",
-            }}>
-            <Sparkles size={20} className="text-white" />
-          </motion.button>
-        )}
-      </AnimatePresence>
+      {/* Floating button: new POS bill */}
+      <motion.button
+        whileHover={{ scale: 1.04 }}
+        whileTap={{ scale: 0.94 }}
+        onClick={onNewBill}
+        className="fixed bottom-24 lg:bottom-6 left-4 z-40 h-12 rounded-2xl px-4 flex items-center justify-center gap-2 shadow-2xl"
+        style={{
+          background: "linear-gradient(135deg, #1e7fff, #00c6ff)",
+          boxShadow: "0 8px 24px rgba(30,127,255,0.4)",
+          color: "#ffffff",
+        }}>
+        <ReceiptText size={18} />
+        <span style={{ fontSize: "0.78rem", fontWeight: 700, letterSpacing: "0.02em" }}>New Bill</span>
+      </motion.button>
 
       {/* Chat panel */}
       <AnimatePresence>

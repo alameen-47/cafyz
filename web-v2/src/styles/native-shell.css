@@ -3,6 +3,23 @@
   --cap-status-bar-height: 0px;
 }
 
+/* Keep app shell fixed to viewport in web + native */
+html,
+body,
+#root {
+  height: 100%;
+  min-height: 100%;
+  min-height: 100dvh;
+  overflow: hidden;
+}
+
+.app-screen {
+  height: 100%;
+  min-height: 100%;
+  min-height: 100dvh;
+  overflow: hidden;
+}
+
 html.cap-native,
 body.cap-native,
 body.cap-native #root {
