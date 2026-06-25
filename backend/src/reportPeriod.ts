@@ -115,3 +115,8 @@ export function periodLabel(q: RevenueQuery, from: string, to: string): string {
   }
   return `${fmt(from)} – ${fmt(to)}`;
 }
+
+/** Index-friendly created_at filter for inclusive calendar from/to (YYYY-MM-DD). */
+export function sqlCreatedBetween(column = 'created_at'): string {
+  return `${column} >= ? AND ${column} < datetime(?, '+1 day')`;
+}

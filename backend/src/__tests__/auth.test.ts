@@ -51,7 +51,7 @@ describe('POST /api/auth/login', () => {
       .post('/api/auth/login')
       .send({ email: 'nobody@nowhere.com', password: 'any' });
 
-    expect(res.status).toBe(404);
+    expect(res.status).toBe(401);
   });
 
 });

@@ -21,7 +21,7 @@ describe('POST /api/auth/login', () => {
 
   it('rejects unknown email', async () => {
     const res = await request(app).post('/api/auth/login').send({ email: 'nobody@test.com', password: 'pass' });
-    expect(res.status).toBe(404);
+    expect(res.status).toBe(401);
   });
 
   it('validates email format', async () => {

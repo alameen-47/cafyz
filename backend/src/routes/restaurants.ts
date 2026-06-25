@@ -208,7 +208,17 @@ router.get('/me', requireAuth, async (req: AuthRequest, res, next) => {
 router.put('/me', requireAuth, requireRole('owner', 'manager', 'cashier', 'kitchen', 'waiter'), async (req: AuthRequest, res, next) => {
   try {
     const rid = req.user!.restaurant_id;
+    const role = req.user!.role;
     const data = UpdateRestaurantSchema.parse(req.body);
+    const privileged = role === 'owner' || role === 'manager' || role === 'founder';
+    if (!privileged) {
+      const keys = Object.keys(data);
+      const printerOnly = keys.every(k => k === 'kitchen_printer' || k === 'cashier_printer');
+      if (!printerOnly) {
+        res.status(403).json({ error: 'Only owners and managers can update restaurant settings.' });
+        return;
+      }
+    }
 
     const sets: string[] = []; const args: any[] = [];
     if (data.name          !== undefined) { sets.push('name=?');          args.push(data.name); }

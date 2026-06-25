@@ -26,6 +26,8 @@ function resolveApiBase(): string {
 
 const BASE = resolveApiBase();
 let sessionToastShown = false;
+const REQUEST_TIMEOUT_MS = 30_000;
+const inflightGets = new Map<string, Promise<unknown>>();
 
 /** Dispatched when the API returns 402 TRIAL_EXPIRED — App listens to lock the shell. */
 export const TRIAL_EXPIRED_EVENT = 'cafyz:trial-expired';
@@ -63,14 +65,27 @@ async function request<T = unknown>(
     && ('kitchen_printer' in bodyObj || 'cashier_printer' in bodyObj);
 
   const token = localStorage.getItem('cafyz_token');
-  const res = await fetch(`${BASE}${path}`, {
-    method,
-    headers: {
-      'Content-Type': 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    },
-    body: body !== undefined ? JSON.stringify(body) : undefined,
-  });
+  const controller = new AbortController();
+  const timeoutId = window.setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  let res: Response;
+  try {
+    res = await fetch(`${BASE}${path}`, {
+      method,
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: body !== undefined ? JSON.stringify(body) : undefined,
+      signal: controller.signal,
+    });
+  } catch (e) {
+    if ((e as Error).name === 'AbortError') {
+      throw new Error('Request timed out — check your connection and try again.');
+    }
+    throw e;
+  } finally {
+    window.clearTimeout(timeoutId);
+  }
 
   if (res.status === 401) {
     localStorage.removeItem('cafyz_token');
@@ -136,7 +151,13 @@ async function request<T = unknown>(
   return data as T;
 }
 
-const get  = <T = unknown>(path: string)                    => request<T>('GET',    path);
+const get = <T = unknown>(path: string) => {
+  const existing = inflightGets.get(path);
+  if (existing) return existing as Promise<T>;
+  const promise = request<T>('GET', path).finally(() => inflightGets.delete(path));
+  inflightGets.set(path, promise);
+  return promise;
+};
 const post = <T = unknown>(path: string, body: unknown)     => request<T>('POST',   path, body);
 const put  = <T = unknown>(path: string, body: unknown)     => request<T>('PUT',    path, body);
 const patch= <T = unknown>(path: string, body?: unknown)    => request<T>('PATCH',  path, body);

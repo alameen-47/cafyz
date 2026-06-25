@@ -5,8 +5,11 @@ import { requireAuth, type AuthRequest } from '../middleware/auth.js';
 import { requireRole } from '../middleware/rbac.js';
 import { requirePlan } from '../middleware/planGuard.js';
 import {
-  RevenueQuerySchema, resolveRevenueWindow, previousRevenueWindow, periodLabel,
+  RevenueQuerySchema, resolveRevenueWindow, previousRevenueWindow, periodLabel, sqlCreatedBetween,
 } from '../reportPeriod.js';
+import { cacheGet, cacheSet } from '../cache.js';
+
+const CREATED_BETWEEN = sqlCreatedBetween('o.created_at');
 
 const router = Router();
 router.use(requireAuth, requireRole('owner', 'manager', 'cashier'));
@@ -22,8 +25,7 @@ const REVENUE_SELECT = `
   JOIN menu_items m   ON m.id = oi.menu_item_id
   WHERE o.status = 'paid'
     AND o.restaurant_id = ?
-    AND date(o.created_at) >= date(?)
-    AND date(o.created_at) <= date(?)
+    AND ${CREATED_BETWEEN}
   GROUP BY date(o.created_at)
   ORDER BY day ASC
 `;
@@ -39,8 +41,7 @@ const SOLD_ITEMS_SELECT = `
   JOIN menu_items m   ON m.id = oi.menu_item_id
   WHERE o.status = 'paid'
     AND o.restaurant_id = ?
-    AND date(o.created_at) >= date(?)
-    AND date(o.created_at) <= date(?)
+    AND ${CREATED_BETWEEN}
   GROUP BY date(o.created_at), m.id, m.name
   ORDER BY day ASC, qty_sold DESC, item_name ASC
 `;
@@ -49,6 +50,12 @@ const SOLD_ITEMS_SELECT = `
 router.get('/stats', async (req: AuthRequest, res, next) => {
   try {
     const rid = req.user!.restaurant_id;
+    const cacheKey = `dash:stats:${rid}`;
+    const cached = cacheGet<Record<string, number>>(cacheKey);
+    if (cached) {
+      res.json(cached);
+      return;
+    }
     const db = getDb();
     const [orders, tables, staff, inv] = await Promise.all([
       db.execute({ sql: "SELECT COUNT(*) as cnt, SUM(CASE WHEN status='paid' THEN 1 ELSE 0 END) as paid FROM orders WHERE restaurant_id=? AND date(created_at)=date('now')", args: [rid] }),
@@ -56,7 +63,7 @@ router.get('/stats', async (req: AuthRequest, res, next) => {
       db.execute({ sql: "SELECT COUNT(*) as total, SUM(CASE WHEN status='active' THEN 1 ELSE 0 END) as active, SUM(CASE WHEN status='break' THEN 1 ELSE 0 END) as on_break FROM users WHERE restaurant_id=?", args: [rid] }),
       db.execute({ sql: "SELECT COUNT(*) as low FROM inventory WHERE restaurant_id=? AND CAST(current AS REAL)/CAST(par AS REAL) < 0.4", args: [rid] }),
     ]);
-    res.json({
+    const payload = {
       orders_today:    rowNumber(orders.rows[0], 'cnt'),
       orders_paid:     rowNumber(orders.rows[0], 'paid'),
       tables_total:    rowNumber(tables.rows[0], 'total'),
@@ -65,7 +72,9 @@ router.get('/stats', async (req: AuthRequest, res, next) => {
       staff_active:    rowNumber(staff.rows[0], 'active'),
       staff_on_break:  rowNumber(staff.rows[0], 'on_break'),
       inventory_low:   rowNumber(inv.rows[0], 'low'),
-    });
+    };
+    cacheSet(cacheKey, payload, 15_000);
+    res.json(payload);
   } catch (e) { next(e); }
 });
 
@@ -170,8 +179,7 @@ const COVERS_BY_HOUR_SELECT = `
   FROM orders o
   WHERE o.status = 'paid'
     AND o.restaurant_id = ?
-    AND date(o.created_at) >= date(?)
-    AND date(o.created_at) <= date(?)
+    AND ${CREATED_BETWEEN}
   GROUP BY hour
   ORDER BY hour ASC
 `;
@@ -185,8 +193,7 @@ const CATEGORY_MIX_SELECT = `
   JOIN menu_items m   ON m.id = oi.menu_item_id
   WHERE o.status = 'paid'
     AND o.restaurant_id = ?
-    AND date(o.created_at) >= date(?)
-    AND date(o.created_at) <= date(?)
+    AND ${CREATED_BETWEEN}
   GROUP BY m.category
   ORDER BY qty_sold DESC
 `;
@@ -201,8 +208,7 @@ const TOP_ITEMS_SELECT = `
   JOIN menu_items m   ON m.id = oi.menu_item_id
   WHERE o.status = 'paid'
     AND o.restaurant_id = ?
-    AND date(o.created_at) >= date(?)
-    AND date(o.created_at) <= date(?)
+    AND ${CREATED_BETWEEN}
   GROUP BY m.id, m.name
   ORDER BY revenue DESC, qty_sold DESC
   LIMIT 12
@@ -330,6 +336,12 @@ router.get('/analytics', proAnalytics, async (req: AuthRequest, res, next) => {
     const rid = req.user!.restaurant_id;
     const query = RevenueQuerySchema.parse(req.query);
     const { from, to, period } = resolveRevenueWindow(query);
+    const cacheKey = `dash:analytics:${rid}:${period}:${from}:${to}`;
+    const cached = cacheGet<Record<string, unknown>>(cacheKey);
+    if (cached) {
+      res.json(cached);
+      return;
+    }
     const prev = previousRevenueWindow(query, from, to);
 
     const db = getDb();
@@ -384,7 +396,7 @@ router.get('/analytics', proAnalytics, async (req: AuthRequest, res, next) => {
       return Math.round(((cur - prevVal) / prevVal) * 100);
     };
 
-    res.json({
+    const payload = {
       period,
       from,
       to,
@@ -411,7 +423,9 @@ router.get('/analytics', proAnalytics, async (req: AuthRequest, res, next) => {
         revenuePct: pct(current.totalRevenue, previous.totalRevenue),
         ordersPct: pct(current.totalOrders, previous.totalOrders),
       },
-    });
+    };
+    cacheSet(cacheKey, payload, 60_000);
+    res.json(payload);
   } catch (e) { next(e); }
 });
 

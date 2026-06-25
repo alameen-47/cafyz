@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import bcrypt from 'bcryptjs';
+import { randomBytes } from 'crypto';
 import { z } from 'zod';
 import { getDb } from '../db.js';
 import { requireAuth, type AuthRequest } from '../middleware/auth.js';
@@ -14,6 +15,7 @@ import {
   sanitizeAccessMap,
   serializeAccessMap,
 } from '../services/sectionAccess.js';
+import { cacheDel } from '../cache.js';
 
 const router = Router();
 router.use(requireAuth);
@@ -127,7 +129,7 @@ router.post('/', requireRole('owner','manager'), async (req: AuthRequest, res, n
     const rid = req.user!.restaurant_id;
     const data = UserSchema.parse(req.body);
     const id = uid();
-    const plainPassword = data.password?.trim() || 'cafyz2026';
+    const plainPassword = data.password?.trim() || randomBytes(12).toString('base64url');
     const pw = await bcrypt.hash(plainPassword, 10);
     const generatedPin = generatePin();
     const pinToSave = data.pin ?? generatedPin;
@@ -274,9 +276,9 @@ router.put('/:id', requireRole('owner','manager'), async (req: AuthRequest, res,
 
     // Invalidate section-access cache so role/permission changes take effect immediately.
     if (data.role || data.access_json !== undefined) {
-      const { cacheDel } = await import('../cache.js');
       cacheDel(`access:${userId}`);
     }
+    if (data.status) cacheDel(`user:status:${userId}`);
 
     const row = await db.execute({ sql: 'SELECT id,restaurant_id,name,initials,email,phone,role,access_json,status,start_time FROM users WHERE id=?', args: [userId] });
     res.json(row.rows[0]);
@@ -297,6 +299,7 @@ router.patch('/:id/status', requireRole('owner','manager'), async (req: AuthRequ
       return;
     }
     await db.execute({ sql: 'UPDATE users SET status=? WHERE id=? AND restaurant_id=?', args: [status, (req.params.id as string), rid] });
+    cacheDel(`user:status:${req.params.id as string}`);
     res.json({ id: (req.params.id as string), status });
   } catch (e) { next(e); }
 });

@@ -502,16 +502,14 @@ export function POS() {
   // ── Pending table bills (kitchen-sent orders) — polled like the cashier panel ─
   const refreshPending = useCallback(async () => {
     try {
-      const [rows, tableRows] = await Promise.all([ordersApi.list({ status: "sent" }), tablesApi.list()]);
+      const [liveRows, tableRows] = await Promise.all([ordersApi.live(), tablesApi.list()]);
       setTables(tableRows);
-      const enriched: PendingBill[] = await Promise.all(rows.map(async (o) => {
-        let items = 0, total = 0;
-        try {
-          const full = await ordersApi.get(o.id);
-          for (const it of full.items ?? []) { items += it.qty; total += (it.price ?? 0) * it.qty; }
-        } catch { /* leave zeros */ }
+      const rows = liveRows.filter(o => o.status === 'sent');
+      const enriched: PendingBill[] = rows.map((o) => {
+        const items = (o.items ?? []).reduce((s, it) => s + it.qty, 0);
+        const total = o.subtotal ?? (o.items ?? []).reduce((s, it) => s + (it.price ?? 0) * it.qty, 0);
         return { id: o.id, table_id: o.table_id, table_name: o.table_name || "No table", items, total, since: relSince(o.created_at) };
-      }));
+      });
       setPending(mergePendingByTable(enriched));
     } catch {
       setPending([]);

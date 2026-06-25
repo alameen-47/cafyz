@@ -269,11 +269,15 @@ export function Dashboard() {
       const recent = [...orders]
         .sort((a, b) => (b.created_at || "").localeCompare(a.created_at || ""))
         .slice(0, 5);
-      const detailed = await Promise.all(recent.map(o => ordersApi.get(o.id).catch(() => null)));
-      setRecentOrders(recent.map((o, i) => {
-        const full = detailed[i];
+      let liveRecent: Awaited<ReturnType<typeof ordersApi.live>> = [];
+      try {
+        liveRecent = await ordersApi.live();
+      } catch { /* fallback below */ }
+      const liveById = new Map(liveRecent.map(o => [o.id, o]));
+      setRecentOrders(recent.map((o) => {
+        const full = liveById.get(o.id);
         const items = full?.items ?? [];
-        const amount = items.reduce((sum, it) => sum + (it.price ?? 0) * it.qty, 0);
+        const amount = full?.subtotal ?? items.reduce((sum, it) => sum + (it.price ?? 0) * it.qty, 0);
         const itemText = items.map(it => `${it.name}${it.qty > 1 ? ` ×${it.qty}` : ""}`).join(", ") || "—";
         return {
           id: "#" + o.id.slice(0, 4).toUpperCase(),

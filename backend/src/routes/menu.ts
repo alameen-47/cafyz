@@ -109,10 +109,28 @@ router.get('/', async (req: AuthRequest, res, next) => {
   } catch (e) { next(e); }
 });
 
-// GET /api/menu/:id
-router.get('/:id', async (req, res, next) => {
+// GET /api/menu/:id — scoped to tenant when authenticated
+router.get('/:id', async (req: AuthRequest, res, next) => {
   try {
-    const row = await getDb().execute({ sql: 'SELECT * FROM menu_items WHERE id=?', args: [(req.params.id as string)] });
+    const header = req.headers.authorization;
+    if (header?.startsWith('Bearer ')) {
+      try {
+        const jwt = await import('jsonwebtoken');
+        const { JWT_SECRET } = await import('../middleware/auth.js');
+        req.user = jwt.default.verify(header.slice(7), JWT_SECRET) as AuthRequest['user'];
+      } catch {
+        res.status(401).json({ error: 'Token expired or invalid' });
+        return;
+      }
+    }
+
+    const id = req.params.id as string;
+    const rid = req.user?.restaurant_id ?? (req.query.restaurant_id as string | undefined);
+    const sql = rid
+      ? 'SELECT * FROM menu_items WHERE id=? AND restaurant_id=?'
+      : 'SELECT * FROM menu_items WHERE id=?';
+    const args = rid ? [id, rid] : [id];
+    const row = await getDb().execute({ sql, args });
     if (!row.rows.length) { res.status(404).json({ error: 'Menu item not found' }); return; }
     res.json(row.rows[0]);
   } catch (e) { next(e); }

@@ -8,7 +8,7 @@ router.use(requireAuth);
 // GET /api/search?q=... — cross-entity search scoped to the current restaurant
 router.get('/', async (req: AuthRequest, res, next) => {
   try {
-    const q = String(req.query.q ?? '').trim();
+    const q = String(req.query.q ?? '').trim().slice(0, 64);
     if (!q || q.length < 2) {
       res.json({ results: [] });
       return;
@@ -34,10 +34,11 @@ router.get('/', async (req: AuthRequest, res, next) => {
         args: [rid, like, like],
       }),
       db.execute({
-        sql: `SELECT id, status, table_name, covers, note, created_at
-              FROM orders
-              WHERE restaurant_id=? AND (id LIKE ? OR table_name LIKE ? OR note LIKE ?)
-              ORDER BY created_at DESC LIMIT 5`,
+        sql: `SELECT o.id, o.status, t.name AS table_name, o.covers, o.note, o.created_at
+              FROM orders o
+              LEFT JOIN restaurant_tables t ON t.id = o.table_id
+              WHERE o.restaurant_id=? AND (o.id LIKE ? OR t.name LIKE ? OR o.note LIKE ?)
+              ORDER BY o.created_at DESC LIMIT 5`,
         args: [rid, like, like, like],
       }),
       db.execute({

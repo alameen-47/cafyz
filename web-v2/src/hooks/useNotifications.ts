@@ -58,7 +58,9 @@ export function useNotifications(enabled: boolean) {
     window.addEventListener(NOTIFICATIONS_REFRESH_EVENT, onRefresh);
     window.addEventListener('CAFYZ_ORDER_SENT', onRefresh);
     window.addEventListener('CAFYZ_RESERVATION_CHANGED', onRefresh);
-    const timer = window.setInterval(() => { void load(true); }, POLL_MS);
+    const timer = window.setInterval(() => {
+      if (document.visibilityState === 'visible') void load(true);
+    }, POLL_MS);
     return () => {
       window.removeEventListener(NOTIFICATIONS_REFRESH_EVENT, onRefresh);
       window.removeEventListener('CAFYZ_ORDER_SENT', onRefresh);

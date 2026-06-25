@@ -71,7 +71,7 @@ router.post('/login', async (req, res, next) => {
       args: [emailNorm],
     });
     if (!row.rows.length) {
-      res.status(404).json({ error: 'No account found for this email. Please register first.' });
+      res.status(401).json({ error: 'Invalid credentials' });
       return;
     }
 
@@ -128,7 +128,7 @@ router.post('/request-otp', async (req, res, next) => {
       args: [phoneNorm],
     });
     if (!userRows.rows.length) {
-      res.status(404).json({ error: 'No account found for this phone number. Please register first.' });
+      res.status(400).json({ error: 'If that phone number is registered, an OTP has been sent.' });
       return;
     }
     if (String(userRows.rows[0].status) === 'off') {
@@ -164,7 +164,7 @@ router.post('/request-otp', async (req, res, next) => {
       ok: true,
       message: `OTP sent to ${phoneNorm}. It expires in ${OTP_TTL_MINUTES} minutes.`,
       ...(sms.details ? { delivery_id: sms.details } : {}),
-      ...(sms.provider === 'dev-log' ? { dev_otp: otp } : {}),
+      ...(process.env.NODE_ENV !== 'production' && sms.provider === 'dev-log' ? { dev_otp: otp } : {}),
     });
   } catch (e) { next(e); }
 });
@@ -263,7 +263,7 @@ router.post('/pin', async (req, res, next) => {
       args: [emailNorm],
     });
     if (!row.rows.length) {
-      res.status(404).json({ error: 'No account found for this email. Please register first.' });
+      res.status(401).json({ error: 'Invalid credentials' });
       return;
     }
     const u = row.rows[0] as Record<string, unknown>;
@@ -354,7 +354,7 @@ router.post('/forgot-password', async (req, res, next) => {
     }
 
     const resetUrl = resetPasswordUrl(tokenRaw);
-    const exposeDevLink = process.env.NODE_ENV !== 'production' || !isEmailConfigured();
+    const exposeDevLink = process.env.NODE_ENV !== 'production' && !isEmailConfigured();
     res.json({
       ok: true,
       message: GENERIC_RESET_MSG,

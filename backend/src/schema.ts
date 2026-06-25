@@ -238,6 +238,9 @@ export async function runMigrations() {
     CREATE INDEX IF NOT EXISTS idx_kitchen_print_jobs_queue ON kitchen_print_jobs(restaurant_id, status, created_at);
     CREATE INDEX IF NOT EXISTS idx_reservations_rest_time   ON reservations(restaurant_id, res_time);
     CREATE INDEX IF NOT EXISTS idx_inventory_rest_name      ON inventory(restaurant_id, name);
+    CREATE INDEX IF NOT EXISTS idx_order_items_order        ON order_items(order_id);
+    CREATE INDEX IF NOT EXISTS idx_kds_tickets_order        ON kds_tickets(order_id, restaurant_id);
+    CREATE INDEX IF NOT EXISTS idx_license_keys_rest_active ON license_keys(restaurant_id, is_active);
 
     CREATE TABLE IF NOT EXISTS app_settings (
       key         TEXT PRIMARY KEY,
@@ -312,6 +315,7 @@ export async function runMigrations() {
   await db.execute(`CREATE UNIQUE INDEX IF NOT EXISTS idx_users_phone_unique ON users(phone) WHERE phone IS NOT NULL`);
   await addCol(`ALTER TABLE restaurants ADD COLUMN receipt_footer TEXT`, 'receipt_footer');
   await addCol(`ALTER TABLE restaurants ADD COLUMN tagline TEXT`, 'tagline');
+  await addCol(`ALTER TABLE restaurants ADD COLUMN logo_url TEXT`, 'logo_url');
   await addCol(`ALTER TABLE inquiries ADD COLUMN is_retry INTEGER NOT NULL DEFAULT 0`, 'is_retry');
   await addCol(`ALTER TABLE inquiries ADD COLUMN retry_of_id TEXT`, 'retry_of_id');
   await addCol(`ALTER TABLE inquiries ADD COLUMN restaurant_id TEXT`, 'restaurant_id');
