@@ -178,7 +178,7 @@ export default function App() {
           onGoLicense={() => setActivePage("license")}
           onRenewalSubmitted={() => { void loadSubscription(); }}
         />
-        <div className="flex app-screen app-native-inset-top w-full overflow-hidden" style={{ background: "#06091a" }}>
+        <div className="flex app-screen app-native-inset-top w-full overflow-hidden cafyz-app-shell">
           <License />
         </div>
       </>
@@ -190,10 +190,15 @@ export default function App() {
 
   return (
     <NavContext.Provider value={{ goToTableOrder, goToPos, goToPage: navigate, posTableId, clearPosTable: () => setPosTableId(null) }}>
-      <div className="flex app-screen w-full overflow-hidden" style={{ background: "#06091a", fontFamily: "var(--font-body)" }}>
+      <div className="flex app-screen w-full overflow-hidden cafyz-app-shell" style={{ fontFamily: "var(--font-body)" }}>
         <Toaster position="top-right" richColors={false} closeButton toastOptions={{
           duration: 3500,
-          style: { background: "#0d1326", border: "1px solid rgba(30,127,255,0.2)", color: "#e8eef8", borderRadius: "14px" },
+          style: {
+            background: "var(--cafyz-toast-bg)",
+            border: "1px solid var(--cafyz-toast-border)",
+            color: "var(--cafyz-toast-text)",
+            borderRadius: "14px",
+          },
         }} />
 
         {upgrade && (
@@ -244,8 +249,7 @@ export default function App() {
             userInitials={user.initials}
           />
 
-          <main className={`flex-1 ${isFullHeight ? "app-main-full overflow-hidden" : "app-main-scroll overflow-y-auto"}`}
-            style={{ background: "radial-gradient(ellipse at 20% 0%, rgba(30,127,255,0.04) 0%, transparent 60%), #06091a" }}>
+          <main className={`flex-1 cafyz-main-scroll ${isFullHeight ? "app-main-full overflow-hidden" : "app-main-scroll overflow-y-auto"}`}>
             {permitted.includes(activePage) ? <PageComponent /> : <License />}
             {!isFullHeight && <div className="app-main-spacer lg:hidden h-20" />}
           </main>

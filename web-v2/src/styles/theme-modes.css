@@ -1,0 +1,118 @@
+/* Cafyz shell theme tokens — toggled via html.dark / html.light */
+
+html.dark,
+html:not(.light) {
+  color-scheme: dark;
+  --cafyz-app-bg: #06091a;
+  --cafyz-main-bg: radial-gradient(ellipse at 20% 0%, rgba(30, 127, 255, 0.04) 0%, transparent 60%), #06091a;
+  --cafyz-sidebar-bg: linear-gradient(180deg, #080c1e 0%, #06091a 100%);
+  --cafyz-sidebar-shadow: 4px 0 24px rgba(30, 127, 255, 0.06);
+  --cafyz-sidebar-border: rgba(30, 127, 255, 0.12);
+  --cafyz-sidebar-border-soft: rgba(30, 127, 255, 0.1);
+  --cafyz-text: #e8eef8;
+  --cafyz-muted: #6b82a0;
+  --cafyz-nav-hover: #ffffff;
+  --cafyz-nav-active-bg: linear-gradient(135deg, rgba(30, 127, 255, 0.18) 0%, rgba(0, 198, 255, 0.06) 100%);
+  --cafyz-nav-active-border: rgba(30, 127, 255, 0.22);
+  --cafyz-collapse-btn-bg: #0d1326;
+  --cafyz-mobile-nav-bg: rgba(8, 12, 30, 0.97);
+  --cafyz-toast-bg: #0d1326;
+  --cafyz-toast-border: rgba(30, 127, 255, 0.2);
+  --cafyz-toast-text: #e8eef8;
+
+  --background: #06091a;
+  --foreground: #e8eef8;
+  --card: #0d1326;
+  --card-foreground: #e8eef8;
+  --popover: #0d1326;
+  --popover-foreground: #e8eef8;
+  --secondary: #111b35;
+  --secondary-foreground: #a8bdd4;
+  --muted: #0f1830;
+  --muted-foreground: #6b82a0;
+  --border: rgba(30, 127, 255, 0.15);
+  --input: rgba(30, 127, 255, 0.08);
+  --input-background: #111b35;
+}
+
+html.light {
+  color-scheme: light;
+  --cafyz-app-bg: #f4f7fb;
+  --cafyz-main-bg: radial-gradient(ellipse at 20% 0%, rgba(30, 127, 255, 0.08) 0%, transparent 55%), #f4f7fb;
+  --cafyz-sidebar-bg: linear-gradient(180deg, #ffffff 0%, #eef2f8 100%);
+  --cafyz-sidebar-shadow: 4px 0 24px rgba(15, 23, 42, 0.06);
+  --cafyz-sidebar-border: rgba(15, 23, 42, 0.08);
+  --cafyz-sidebar-border-soft: rgba(15, 23, 42, 0.06);
+  --cafyz-text: #0f172a;
+  --cafyz-muted: #64748b;
+  --cafyz-nav-hover: #0f172a;
+  --cafyz-nav-active-bg: linear-gradient(135deg, rgba(30, 127, 255, 0.12) 0%, rgba(0, 198, 255, 0.05) 100%);
+  --cafyz-nav-active-border: rgba(30, 127, 255, 0.2);
+  --cafyz-collapse-btn-bg: #ffffff;
+  --cafyz-mobile-nav-bg: rgba(255, 255, 255, 0.97);
+  --cafyz-toast-bg: #ffffff;
+  --cafyz-toast-border: rgba(30, 127, 255, 0.18);
+  --cafyz-toast-text: #0f172a;
+
+  --background: #f4f7fb;
+  --foreground: #0f172a;
+  --card: #ffffff;
+  --card-foreground: #0f172a;
+  --popover: #ffffff;
+  --popover-foreground: #0f172a;
+  --secondary: #eef2f8;
+  --secondary-foreground: #334155;
+  --muted: #e8edf4;
+  --muted-foreground: #64748b;
+  --border: rgba(15, 23, 42, 0.1);
+  --input: rgba(15, 23, 42, 0.06);
+  --input-background: #ffffff;
+}
+
+html.dark body,
+html:not(.light) body,
+html.dark #root,
+html:not(.light) #root {
+  background: var(--cafyz-app-bg);
+}
+
+html.light body,
+html.light #root {
+  background: var(--cafyz-app-bg);
+}
+
+.cafyz-app-shell {
+  background: var(--cafyz-app-bg);
+}
+
+.cafyz-main-scroll {
+  background: var(--cafyz-main-bg);
+}
+
+.cafyz-sidebar-shell {
+  background: var(--cafyz-sidebar-bg);
+  box-shadow: var(--cafyz-sidebar-shadow);
+  border-color: var(--cafyz-sidebar-border);
+}
+
+.cafyz-sidebar-border-t {
+  border-color: var(--cafyz-sidebar-border-soft);
+}
+
+.cafyz-sidebar-muted {
+  color: var(--cafyz-muted);
+}
+
+.cafyz-sidebar-text {
+  color: var(--cafyz-text);
+}
+
+.cafyz-sidebar-nav-active {
+  background: var(--cafyz-nav-active-bg);
+  box-shadow: inset 0 0 0 1px var(--cafyz-nav-active-border);
+}
+
+.cafyz-sidebar-collapse-btn {
+  background: var(--cafyz-collapse-btn-bg);
+  border: 1px solid var(--cafyz-sidebar-border);
+}

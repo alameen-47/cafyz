@@ -14,17 +14,24 @@
       <link rel="apple-touch-icon" href="/cafyz-logo.png" />
       <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png" />
       <link rel="icon" type="image/png" sizes="512x512" href="/icon-512.png" />
+      <script>
+        (function () {
+          var t = localStorage.getItem('cafyz_theme');
+          document.documentElement.classList.add(t === 'light' ? 'light' : 'dark');
+          document.documentElement.dataset.theme = t === 'light' ? 'light' : 'dark';
+        })();
+      </script>
       <style>
         html, body {
           height: 100%;
           margin: 0;
-          background: #06091a;
+          background: var(--cafyz-app-bg, #06091a);
         }
         #root {
           height: 100%;
           min-height: 100%;
           min-height: 100dvh;
-          background: #06091a;
+          background: var(--cafyz-app-bg, #06091a);
         }
       </style>
       

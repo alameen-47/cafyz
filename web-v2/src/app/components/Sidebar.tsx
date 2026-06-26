@@ -4,13 +4,14 @@ import {
   LayoutDashboard, ShoppingBag, Grid3X3, UtensilsCrossed,
   Users, BarChart3, Package, Settings, Bell, ChevronLeft,
   ChevronRight, LogOut, Shield, X, ChefHat, CalendarClock,
-  CreditCard, UserCog, QrCode, MonitorSpeaker, Crown, Zap
+  CreditCard, UserCog, QrCode, MonitorSpeaker, Crown, Zap, Sun, Moon
 } from "lucide-react";
 
 import type { Plan, Role } from "../auth";
 import type { PageId } from "../../config/access";
 import { planMeetsRequirement, requiredPlanForPage } from "../../config/access";
 import { usePlanConfig } from "../PlanConfigProvider";
+import { useThemeMode } from "../ThemeProvider";
 import { CafyzLogo } from "./CafyzLogo";
 
 const navItems = [
@@ -63,6 +64,7 @@ export function Sidebar({
   userName = "User", userInitials = "U",
 }: SidebarProps) {
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  const { theme, toggleTheme } = useThemeMode();
   usePlanConfig(); // re-render when founder updates plan gates/prices
   const allowedPages = permittedPages;
 
@@ -92,12 +94,11 @@ export function Sidebar({
       <motion.aside
         animate={{ width: collapsed ? 72 : 268 }}
         transition={{ duration: 0.3, ease: "easeInOut" }}
-        className={`fixed left-0 top-0 h-full z-50 flex flex-col border-r border-[rgba(30,127,255,0.12)] lg:relative lg:translate-x-0 ${mobileOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"} transition-transform duration-300 lg:transition-none`}
-        style={{ background: "linear-gradient(180deg, #080c1e 0%, #06091a 100%)", boxShadow: "4px 0 24px rgba(30,127,255,0.06)" }}
+        className={`cafyz-sidebar-shell fixed left-0 top-0 h-full z-50 flex flex-col border-r lg:relative lg:translate-x-0 ${mobileOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"} transition-transform duration-300 lg:transition-none`}
       >
         {/* Logo — full wordmark when expanded, compact mark when collapsed */}
         <div
-          className={`flex items-center border-b border-[rgba(30,127,255,0.12)] flex-shrink-0 ${
+          className={`flex items-center border-b cafyz-sidebar-border-t flex-shrink-0 ${
             collapsed
               ? "justify-center px-3 py-4"
               : "justify-center px-4 py-5 lg:px-5 lg:py-6"
@@ -109,7 +110,7 @@ export function Sidebar({
           />
           <button
             onClick={onMobileClose}
-            className={`text-[#6b82a0] hover:text-white lg:hidden flex-shrink-0 ${
+            className={`text-[var(--cafyz-muted)] hover:text-[var(--cafyz-nav-hover)] lg:hidden flex-shrink-0 ${
               collapsed ? "absolute right-3 top-4" : "absolute right-4 top-5"
             }`}
           >
@@ -128,7 +129,7 @@ export function Sidebar({
                   {!collapsed && (
                     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
                       className="px-4 py-1.5">
-                      <span style={{ color: "#6b82a0", fontSize: "0.6rem", fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", fontFamily: "var(--font-mono)" }}>
+                      <span className="cafyz-sidebar-muted" style={{ fontSize: "0.6rem", fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", fontFamily: "var(--font-mono)" }}>
                         {groupLabels[group]}
                       </span>
                     </motion.div>
@@ -148,25 +149,22 @@ export function Sidebar({
                           if (isLocked && reqPlan) onUpgrade?.(reqPlan, item.id as PageId);
                           else handleNav(item.id);
                         }}
-                        className="w-full flex items-center gap-3 rounded-xl px-3 py-2 transition-all duration-200 relative group"
-                        style={isActive
-                          ? { background: "linear-gradient(135deg, rgba(30,127,255,0.18) 0%, rgba(0,198,255,0.06) 100%)", boxShadow: "inset 0 0 0 1px rgba(30,127,255,0.22)" }
-                          : isLocked
-                            ? { opacity: 0.4, cursor: "not-allowed" }
-                            : { color: "#6b82a0" }
-                        }
+                        className={`w-full flex items-center gap-3 rounded-xl px-3 py-2 transition-all duration-200 relative group ${isActive ? "cafyz-sidebar-nav-active" : ""}`}
+                        style={!isActive && isLocked
+                          ? { opacity: 0.4, cursor: "not-allowed", color: "var(--cafyz-muted)" }
+                          : !isActive ? { color: "var(--cafyz-muted)" } : undefined}
                       >
                         {isActive && (
                           <motion.div layoutId="activeIndicator"
                             className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 rounded-full"
                             style={{ background: "linear-gradient(180deg, #1e7fff, #00c6ff)" }} />
                         )}
-                        <Icon size={17} className={`flex-shrink-0 ${isActive ? "text-[#1e7fff]" : isLocked ? "text-[#6b82a0]" : "text-[#6b82a0] group-hover:text-white"}`} />
+                        <Icon size={17} className={`flex-shrink-0 ${isActive ? "text-[#1e7fff]" : isLocked ? "text-[var(--cafyz-muted)]" : "text-[var(--cafyz-muted)] group-hover:text-[var(--cafyz-nav-hover)]"}`} />
                         <AnimatePresence>
                           {!collapsed && (
                             <motion.span initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
                               className="flex-1 text-left truncate text-sm font-medium"
-                              style={{ fontFamily: "var(--font-display)", color: isActive ? "#e8eef8" : "#6b82a0" }}>
+                              style={{ fontFamily: "var(--font-display)", color: isActive ? "var(--cafyz-text)" : "var(--cafyz-muted)" }}>
                               {item.label}
                             </motion.span>
                           )}
@@ -186,7 +184,7 @@ export function Sidebar({
         </nav>
 
         {/* Bottom: plan badge + user + logout */}
-        <div className="flex-shrink-0 border-t border-[rgba(30,127,255,0.1)] p-3 space-y-2">
+        <div className="flex-shrink-0 border-t cafyz-sidebar-border-t p-3 space-y-2">
           {/* Plan badge */}
           <AnimatePresence>
             {!collapsed && (
@@ -213,31 +211,57 @@ export function Sidebar({
             <AnimatePresence>
               {!collapsed && (
                 <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex-1 min-w-0">
-                  <p style={{ color: "#e8eef8", fontSize: "0.78rem", fontWeight: 600 }} className="truncate">{userName}</p>
+                  <p className="cafyz-sidebar-text truncate" style={{ fontSize: "0.78rem", fontWeight: 600 }}>{userName}</p>
                   <p style={{ color: roleColors[role], fontSize: "0.65rem", textTransform: "capitalize" }}>{role}</p>
                 </motion.div>
               )}
             </AnimatePresence>
           </div>
 
-          {/* Logout */}
-          <button
-            onClick={() => setShowLogoutConfirm(true)}
-            className="w-full flex items-center gap-3 rounded-xl px-3 py-2 text-[#6b82a0] hover:text-[#ff3b5c] hover:bg-[rgba(255,59,92,0.06)] transition-all"
-          >
-            <LogOut size={16} className="flex-shrink-0" />
-            <AnimatePresence>
-              {!collapsed && (
-                <motion.span initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="text-sm font-medium">Logout</motion.span>
-              )}
-            </AnimatePresence>
-          </button>
+          {/* Theme + Logout */}
+          <div className="flex flex-row gap-1">
+            <button
+              type="button"
+              onClick={toggleTheme}
+              title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+              className="flex-1 flex items-center justify-center gap-2 rounded-xl px-3 py-2 text-[var(--cafyz-muted)] hover:text-[#1e7fff] hover:bg-[rgba(30,127,255,0.08)] transition-all min-w-0"
+            >
+              {theme === "dark" ? <Sun size={16} className="flex-shrink-0" /> : <Moon size={16} className="flex-shrink-0" />}
+              <AnimatePresence>
+                {!collapsed && (
+                  <motion.span
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    className="text-sm font-medium truncate"
+                  >
+                    {theme === "dark" ? "Light" : "Dark"}
+                  </motion.span>
+                )}
+              </AnimatePresence>
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowLogoutConfirm(true)}
+              title="Logout"
+              className="flex-1 flex items-center justify-center gap-2 rounded-xl px-3 py-2 text-[var(--cafyz-muted)] hover:text-[#ff3b5c] hover:bg-[rgba(255,59,92,0.06)] transition-all min-w-0"
+            >
+              <LogOut size={16} className="flex-shrink-0" />
+              <AnimatePresence>
+                {!collapsed && (
+                  <motion.span initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="text-sm font-medium truncate">
+                    Logout
+                  </motion.span>
+                )}
+              </AnimatePresence>
+            </button>
+          </div>
         </div>
 
         {/* Collapse toggle (desktop) */}
         <button onClick={onToggle}
-          className="hidden lg:flex absolute -right-3 top-20 w-6 h-6 rounded-full items-center justify-center text-[#6b82a0] hover:text-white transition-colors z-10"
-          style={{ background: "#0d1326", border: "1px solid rgba(30,127,255,0.2)", boxShadow: "0 2px 8px rgba(0,0,0,0.3)" }}>
+          className="cafyz-sidebar-collapse-btn hidden lg:flex absolute -right-3 top-20 w-6 h-6 rounded-full items-center justify-center text-[var(--cafyz-muted)] hover:text-[var(--cafyz-nav-hover)] transition-colors z-10"
+          style={{ boxShadow: "0 2px 8px rgba(0,0,0,0.15)" }}>
           {collapsed ? <ChevronRight size={12} /> : <ChevronLeft size={12} />}
         </button>
       </motion.aside>

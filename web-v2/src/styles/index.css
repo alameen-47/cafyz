@@ -1,4 +1,5 @@
 @import './fonts.css';
 @import './tailwind.css';
 @import './theme.css';
+@import './theme-modes.css';
 @import './native-shell.css';

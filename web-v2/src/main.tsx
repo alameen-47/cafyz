@@ -6,6 +6,7 @@ import { applyNativeSafeAreas, watchNativeSafeAreas } from "./utils/nativeSafeAr
 import App from "./app/App.tsx";
 import { AuthProvider } from "./app/auth.tsx";
 import { PlanConfigProvider } from "./app/PlanConfigProvider.tsx";
+import { ThemeProvider } from "./app/ThemeProvider.tsx";
 import { LanguageProvider } from "./i18n/LanguageProvider.tsx";
 import "./styles/index.css";
 
@@ -28,11 +29,13 @@ async function initNativeShell() {
 initNativeShell();
 
 createRoot(document.getElementById("root")!).render(
-  <LanguageProvider>
-    <AuthProvider>
-      <PlanConfigProvider>
-        <App />
-      </PlanConfigProvider>
-    </AuthProvider>
-  </LanguageProvider>
+  <ThemeProvider>
+    <LanguageProvider>
+      <AuthProvider>
+        <PlanConfigProvider>
+          <App />
+        </PlanConfigProvider>
+      </AuthProvider>
+    </LanguageProvider>
+  </ThemeProvider>
 );

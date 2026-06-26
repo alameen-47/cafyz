@@ -21,9 +21,9 @@ export function MobileNav({ active, onNavigate, permittedPages }: MobileNavProps
     <nav
       className="app-mobile-nav lg:hidden fixed bottom-0 left-0 right-0 z-40 flex items-center justify-around px-1"
       style={{
-        background: "rgba(8,12,30,0.97)",
+        background: "var(--cafyz-mobile-nav-bg)",
         backdropFilter: "blur(20px)",
-        borderTop: "1px solid rgba(30,127,255,0.12)",
+        borderTop: "1px solid var(--cafyz-sidebar-border)",
         paddingTop: "0.375rem",
       }}
     >
@@ -44,9 +44,9 @@ export function MobileNav({ active, onNavigate, permittedPages }: MobileNavProps
                 style={{ background: "rgba(30,127,255,0.1)" }}
               />
             )}
-            <Icon size={20} style={{ color: isActive ? "#1e7fff" : "#6b82a0", position: "relative", zIndex: 1 }} />
+            <Icon size={20} style={{ color: isActive ? "#1e7fff" : "var(--cafyz-muted)", position: "relative", zIndex: 1 }} />
             <span style={{
-              color: isActive ? "#1e7fff" : "#6b82a0",
+              color: isActive ? "#1e7fff" : "var(--cafyz-muted)",
               fontSize: "0.6rem",
               fontWeight: isActive ? 700 : 400,
               fontFamily: "var(--font-display)",
