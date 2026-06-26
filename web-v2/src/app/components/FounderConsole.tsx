@@ -7,7 +7,7 @@ import {
   type ApiFounderStats, type ApiFounderRestaurant, type ApiFounderInquiry, type ApiFounderUser,
   type ApiLicenseKey, type ApiPlanConfig, type ApiLicensePurchaseRequest,
 } from "../../services/api";
-import { notifyPlanConfigUpdated, parsePanelsJson, refreshPlanConfigs } from "../../services/planConfigStore";
+import { notifyPlanConfigUpdated, parsePanelsJson, refreshPlanConfigs, formatPlanPrice, formatBillingSuffix } from "../../services/planConfigStore";
 import { secureCopyToClipboard, scheduleClipboardClear } from "../../utils/secureClipboard";
 
 const tabs = ["Overview", "Restaurants", "Users", "Trial Requests", "License Keys", "Plan Config"];
@@ -553,20 +553,53 @@ export function FounderConsole() {
                     </select>
                   </div>
                   <div>
-                    <label style={{ color: "#6b82a0", fontSize: "0.72rem", display: "block", marginBottom: 4 }}>Price ({cfg?.currency_symbol ?? "$"})</label>
-                    <input type="number" defaultValue={cfg?.price_monthly ?? FALLBACK_PRICE[plan]}
+                    <label style={{ color: "#6b82a0", fontSize: "0.72rem", display: "block", marginBottom: 4 }}>Price per period ({cfg?.currency_symbol ?? "$"})</label>
+                    <input type="number" min={0} step={1} defaultValue={cfg?.price_monthly ?? FALLBACK_PRICE[plan]}
                       onBlur={e => {
                         const price = Number(e.target.value);
-                        if (cfg && price !== cfg.price_monthly) void savePlanField(plan, { price_monthly: price });
+                        if (cfg && Number.isFinite(price) && price !== cfg.price_monthly) void savePlanField(plan, { price_monthly: price });
                       }}
                       className="w-full rounded-xl px-3 py-2 text-sm outline-none"
                       style={{ background: "#111b35", color: "#e8eef8", border: "1px solid rgba(30,127,255,0.1)", fontFamily: "var(--font-mono)" }} />
                   </div>
                   <div>
-                    <label style={{ color: "#6b82a0", fontSize: "0.72rem", display: "block", marginBottom: 4 }}>Billing</label>
-                    <input type="text" readOnly value={cfg ? `${cfg.billing_interval_count} ${cfg.billing_interval_unit}` : "1 month"}
-                      className="w-full rounded-xl px-3 py-2 text-sm outline-none"
-                      style={{ background: "#111b35", color: "#6b82a0", border: "1px solid rgba(30,127,255,0.1)", fontFamily: "var(--font-mono)" }} />
+                    <label style={{ color: "#6b82a0", fontSize: "0.72rem", display: "block", marginBottom: 4 }}>Billing period</label>
+                    <div className="flex gap-2">
+                      <input
+                        type="number"
+                        min={1}
+                        max={60}
+                        defaultValue={cfg?.billing_interval_count ?? 1}
+                        onBlur={e => {
+                          const count = Math.min(60, Math.max(1, Math.round(Number(e.target.value) || 1)));
+                          if (cfg && count !== (cfg.billing_interval_count ?? 1)) {
+                            void savePlanField(plan, { billing_interval_count: count });
+                          }
+                        }}
+                        className="w-20 rounded-xl px-3 py-2 text-sm outline-none"
+                        style={{ background: "#111b35", color: "#e8eef8", border: "1px solid rgba(30,127,255,0.1)", fontFamily: "var(--font-mono)" }}
+                      />
+                      <select
+                        defaultValue={cfg?.billing_interval_unit ?? "month"}
+                        onChange={e => {
+                          const unit = e.target.value as "month" | "year";
+                          if (cfg && unit !== (cfg.billing_interval_unit ?? "month")) {
+                            void savePlanField(plan, { billing_interval_unit: unit });
+                          }
+                        }}
+                        className="flex-1 rounded-xl px-3 py-2 text-sm outline-none capitalize"
+                        style={{ background: "#111b35", color: "#e8eef8", border: "1px solid rgba(30,127,255,0.1)" }}
+                      >
+                        <option value="month">Month(s)</option>
+                        <option value="year">Year(s)</option>
+                      </select>
+                    </div>
+                    {cfg && (
+                      <p style={{ color: "#6b82a0", fontSize: "0.68rem", marginTop: 6 }}>
+                        License keys expire after {cfg.billing_interval_count ?? 1} {cfg.billing_interval_unit ?? "month"}
+                        {(cfg.billing_interval_count ?? 1) > 1 ? "s" : ""}. Shown as {formatPlanPrice(cfg)}{formatBillingSuffix(cfg)}.
+                      </p>
+                    )}
                   </div>
                 </div>
                 <div>

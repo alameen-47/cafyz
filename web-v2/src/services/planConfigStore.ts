@@ -97,7 +97,16 @@ export function formatBillingSuffix(cfg: ApiPlanConfig): string {
   const count = cfg.billing_interval_count ?? 1;
   const unit = cfg.billing_interval_unit ?? 'month';
   if (count === 1) return unit === 'year' ? '/yr' : '/mo';
-  return `/${count} ${unit}${count > 1 ? 's' : ''}`;
+  if (unit === 'year') return count === 1 ? '/yr' : `/${count} yrs`;
+  return `/${count} mo`;
+}
+
+/** Human-readable billing period for admin copy and emails. */
+export function formatBillingPeriod(cfg: ApiPlanConfig): string {
+  const count = cfg.billing_interval_count ?? 1;
+  const unit = cfg.billing_interval_unit ?? 'month';
+  const label = unit === 'year' ? 'year' : 'month';
+  return count === 1 ? label : `${count} ${label}s`;
 }
 
 export function panelLabelsFromConfig(cfg: ApiPlanConfig): string[] {

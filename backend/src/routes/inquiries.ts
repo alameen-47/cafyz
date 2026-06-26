@@ -48,23 +48,38 @@ function clientIp(req: any): string {
   return xff || req.ip || req.socket?.remoteAddress || 'unknown';
 }
 
-const PLAN_LABELS: Record<string, string> = {
-  basic:   `Basic — $49/mo after ${TRIAL_DAYS}-day free trial`,
-  pro:     `Pro — $99/mo after ${TRIAL_DAYS}-day free trial`,
-  premium: `Premium — $199/mo after ${TRIAL_DAYS}-day free trial`,
-};
+async function planInterestLine(plan: string): Promise<string> {
+  const row = await getDb().execute({
+    sql: `SELECT label, price_monthly, currency_symbol, billing_interval_unit, billing_interval_count
+          FROM plan_config WHERE plan=? LIMIT 1`,
+    args: [plan],
+  });
+  const cfg = row.rows[0] as Record<string, unknown> | undefined;
+  if (!cfg) return `${plan} after ${TRIAL_DAYS}-day free trial`;
+  const sym = String(cfg.currency_symbol ?? '$');
+  const price = Number(cfg.price_monthly ?? 0);
+  const count = Math.max(1, Number(cfg.billing_interval_count ?? 1));
+  const unit = String(cfg.billing_interval_unit ?? 'month');
+  const label = String(cfg.label ?? plan);
+  const priceStr = Number.isInteger(price) ? String(price) : price.toFixed(2);
+  const period = count === 1
+    ? (unit === 'year' ? 'yr' : 'mo')
+    : `${count} ${unit}${count > 1 ? 's' : ''}`;
+  return `${label} — ${sym}${priceStr}/${period} after ${TRIAL_DAYS}-day free trial`;
+}
 
 function adminHtml(args: {
   name: string;
   restaurantName: string;
   email: string;
   plan: string;
+  planLine: string;
   message?: string;
   approveUrl: string;
   denyUrl: string;
 }) {
   const trialEnd = trialEndsDateLabel();
-  const { name, restaurantName, email, plan, message, approveUrl, denyUrl } = args;
+  const { name, restaurantName, email, plan, planLine, message, approveUrl, denyUrl } = args;
   return `
 <!DOCTYPE html>
 <html>
@@ -80,7 +95,7 @@ function adminHtml(args: {
       <tr><td style="padding:10px 0;border-bottom:0.5px solid rgba(255,255,255,0.06);font-size:11px;color:#8A8A9A;text-transform:uppercase;letter-spacing:1.5px;width:40%">Contact Name</td><td style="padding:10px 0;border-bottom:0.5px solid rgba(255,255,255,0.06);font-size:14px;color:#F5F5F0">${esc(name)}</td></tr>
       <tr><td style="padding:10px 0;border-bottom:0.5px solid rgba(255,255,255,0.06);font-size:11px;color:#8A8A9A;text-transform:uppercase;letter-spacing:1.5px">Restaurant</td><td style="padding:10px 0;border-bottom:0.5px solid rgba(255,255,255,0.06);font-size:14px;color:#F5F5F0">${esc(restaurantName)}</td></tr>
       <tr><td style="padding:10px 0;border-bottom:0.5px solid rgba(255,255,255,0.06);font-size:11px;color:#8A8A9A;text-transform:uppercase;letter-spacing:1.5px">Email</td><td style="padding:10px 0;border-bottom:0.5px solid rgba(255,255,255,0.06);font-size:14px;color:#8B5CF6"><a href="mailto:${esc(email)}" style="color:#8B5CF6;text-decoration:none">${esc(email)}</a></td></tr>
-      <tr><td style="padding:10px 0;border-bottom:0.5px solid rgba(255,255,255,0.06);font-size:11px;color:#8A8A9A;text-transform:uppercase;letter-spacing:1.5px">Plan Interest</td><td style="padding:10px 0;border-bottom:0.5px solid rgba(255,255,255,0.06);font-size:14px;color:#F5F5F0"><span style="background:rgba(139,92,246,0.16);color:#8B5CF6;padding:4px 12px;border-radius:6px;font-size:12px;font-weight:600;text-transform:uppercase">${plan.toUpperCase()}</span>  ${PLAN_LABELS[plan]}</td></tr>
+      <tr><td style="padding:10px 0;border-bottom:0.5px solid rgba(255,255,255,0.06);font-size:11px;color:#8A8A9A;text-transform:uppercase;letter-spacing:1.5px">Plan Interest</td><td style="padding:10px 0;border-bottom:0.5px solid rgba(255,255,255,0.06);font-size:14px;color:#F5F5F0"><span style="background:rgba(139,92,246,0.16);color:#8B5CF6;padding:4px 12px;border-radius:6px;font-size:12px;font-weight:600;text-transform:uppercase">${plan.toUpperCase()}</span>  ${esc(planLine)}</td></tr>
       <tr><td style="padding:10px 0;border-bottom:0.5px solid rgba(255,255,255,0.06);font-size:11px;color:#8A8A9A;text-transform:uppercase;letter-spacing:1.5px">Trial Policy</td><td style="padding:10px 0;border-bottom:0.5px solid rgba(255,255,255,0.06);font-size:14px;color:#2ECC8A"><strong>${TRIAL_DAYS}-day free trial</strong> on all packages · billing starts after trial (target end: ${trialEnd})</td></tr>
       ${message ? `<tr><td colspan="2" style="padding:16px 0 0"><div style="font-size:11px;color:#8A8A9A;text-transform:uppercase;letter-spacing:1.5px;margin-bottom:8px">Message</div><div style="background:rgba(255,255,255,0.04);border:0.5px solid rgba(255,255,255,0.1);border-radius:8px;padding:14px;font-size:14px;color:#B8B8C2;line-height:1.6">${esc(message)}</div></td></tr>` : ''}
     </table>
@@ -216,12 +231,13 @@ router.post('/', async (req, res, next) => {
     } = { founder: false, user: false, smtp: isEmailConfigured() };
 
     if (emailStatus.smtp) {
+      const planLine = await planInterestLine(plan);
       // Sequential sends — Resend free tier allows 2 req/s; parallel often triggers 429.
       const founderResult = await sendMailReliable({
         from:    smtpFrom(true),
         to:      ADMIN_EMAIL,
         subject: `[Cafyz] Trial approval needed — ${plan.toUpperCase()} · ${restaurant_name}`,
-        html:    adminHtml({ name, restaurantName: restaurant_name, email, plan, message, approveUrl, denyUrl }),
+        html:    adminHtml({ name, restaurantName: restaurant_name, email, plan, planLine, message, approveUrl, denyUrl }),
       }, 12000);
       await new Promise((r) => setTimeout(r, 600));
       const userResult = await sendMailReliable({
