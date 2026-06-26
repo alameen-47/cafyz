@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { motion } from "motion/react";
 import { Shield, Key, Zap, TrendingUp, Check, X, Copy, RefreshCw, Globe, Building2, CreditCard, Trash2, Users, Pause, Play } from "lucide-react";
 import { toast } from "./Toast";
@@ -34,6 +34,9 @@ export function FounderConsole() {
   const [users, setUsers] = useState<ApiFounderUser[]>([]);
   const [userFilter, setUserFilter] = useState("");
   const [busy, setBusy] = useState(false);
+  const [panelSyncing, setPanelSyncing] = useState<Set<string>>(() => new Set());
+  const panelFlushTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
+  const panelSnapshot = useRef<Record<string, string>>({});
 
   const load = useCallback(async () => {
     const [s, r, inq, lr, k, pc, u] = await Promise.all([
@@ -60,6 +63,18 @@ export function FounderConsole() {
     } finally { setBusy(false); }
   };
   useEffect(() => { void load(); }, [load]);
+
+  useEffect(() => () => {
+    for (const [plan, timer] of Object.entries(panelFlushTimers.current)) {
+      clearTimeout(timer);
+      const json = panelSnapshot.current[plan];
+      if (json) {
+        void founderApi.updatePlanConfig(plan, { panels_json: json })
+          .then(() => refreshPlanConfigs(true))
+          .catch(() => {});
+      }
+    }
+  }, []);
 
   const priceByPlan = (plan: string) => planCfg.find(p => p.plan === plan)?.price_monthly ?? FALLBACK_PRICE[plan] ?? 0;
 
@@ -162,24 +177,67 @@ export function FounderConsole() {
     } finally { setBusy(false); }
   };
 
-  const savePlanField = async (plan: string, patch: Partial<ApiPlanConfig>) => {
+  const savePlanField = async (plan: string, patch: Partial<ApiPlanConfig>, options?: { silent?: boolean }) => {
+    const previous = planCfg.find(p => p.plan === plan);
+    if (!previous) return;
+
+    setPlanCfg(prev => prev.map(p => (p.plan === plan ? { ...p, ...patch } : p)));
+
     try {
-      await founderApi.updatePlanConfig(plan, patch);
-      await refreshPlanConfigs(true);
+      const updated = await founderApi.updatePlanConfig(plan, patch);
+      setPlanCfg(prev => prev.map(p => (p.plan === plan ? updated : p)));
+      void refreshPlanConfigs(true);
       notifyPlanConfigUpdated();
-      toast.success("Plan updated", `${plan} saved — live on web & mobile`);
-      await load();
+      if (!options?.silent) {
+        toast.success("Plan updated", `${plan} saved — live on web & mobile`);
+      }
     } catch (err) {
+      setPlanCfg(prev => prev.map(p => (p.plan === plan ? previous : p)));
       toast.error("Couldn't update plan", (err as Error).message);
     }
   };
 
-  const togglePanel = async (plan: string, panel: string, enabled: boolean) => {
+  const flushPanelSave = async (plan: string) => {
+    const panelsJson = panelSnapshot.current[plan];
+    if (!panelsJson) return;
+
+    setPanelSyncing(prev => new Set(prev).add(plan));
+    try {
+      const updated = await founderApi.updatePlanConfig(plan, { panels_json: panelsJson });
+      setPlanCfg(prev => prev.map(p => (p.plan === plan ? updated : p)));
+      await refreshPlanConfigs(true);
+      notifyPlanConfigUpdated();
+    } catch (err) {
+      const pc = await founderApi.planConfig().catch(() => planCfg);
+      setPlanCfg(pc);
+      toast.error("Couldn't save features", (err as Error).message);
+    } finally {
+      setPanelSyncing(prev => {
+        const next = new Set(prev);
+        next.delete(plan);
+        return next;
+      });
+    }
+  };
+
+  const togglePanel = (plan: string, panel: string) => {
     const cfg = planCfg.find(p => p.plan === plan);
     if (!cfg) return;
+
     const panels = new Set(parsePanelsJson(cfg.panels_json));
-    if (enabled) panels.add(panel); else panels.delete(panel);
-    await savePlanField(plan, { panels_json: JSON.stringify([...panels]) });
+    if (panels.has(panel)) panels.delete(panel);
+    else panels.add(panel);
+
+    const nextJson = JSON.stringify([...panels]);
+    setPlanCfg(prev => prev.map(p => (p.plan === plan ? { ...p, panels_json: nextJson } : p)));
+    panelSnapshot.current[plan] = nextJson;
+
+    const existing = panelFlushTimers.current[plan];
+    if (existing) clearTimeout(existing);
+    panelFlushTimers.current[plan] = setTimeout(() => {
+      delete panelFlushTimers.current[plan];
+      void flushPanelSave(plan);
+    }, 300);
   };
 
   const totalRestaurants = (stats?.restaurants_by_plan ?? []).reduce((s, p) => s + p.count, 0) || rests.length;
@@ -610,17 +668,33 @@ export function FounderConsole() {
                     style={{ background: "#111b35", color: "#e8eef8", border: "1px solid rgba(30,127,255,0.1)" }} />
                 </div>
                 <div>
-                  <label style={{ color: "#6b82a0", fontSize: "0.72rem", display: "block", marginBottom: 8 }}>Included features</label>
+                  <div className="flex items-center justify-between gap-2" style={{ marginBottom: 8 }}>
+                    <label style={{ color: "#6b82a0", fontSize: "0.72rem" }}>Included features</label>
+                    {panelSyncing.has(plan) && (
+                      <span style={{ color: planColors[plan], fontSize: "0.65rem", fontWeight: 600 }}>Syncing…</span>
+                    )}
+                  </div>
                   <div className="flex flex-wrap gap-2">
                     {ALL_PANELS.map(panel => {
                       const on = panels.includes(panel);
+                      const color = planColors[plan];
                       return (
-                        <button key={panel} type="button" disabled={busy}
-                          onClick={() => { setBusy(true); void togglePanel(plan, panel, !on).finally(() => setBusy(false)); }}
-                          className="text-xs px-2.5 py-1.5 rounded-lg font-medium transition-all"
-                          style={on
-                            ? { background: `${planColors[plan]}18`, color: planColors[plan], border: `1px solid ${planColors[plan]}35` }
-                            : { background: "rgba(255,255,255,0.04)", color: "#6b82a0", border: "1px solid rgba(255,255,255,0.06)" }}>
+                        <button
+                          key={panel}
+                          type="button"
+                          aria-pressed={on}
+                          onClick={() => togglePanel(plan, panel)}
+                          className="inline-flex items-center gap-1 text-xs px-2.5 py-1.5 rounded-lg font-medium cursor-pointer select-none active:scale-[0.96]"
+                          style={{
+                            background: on ? `${color}22` : "rgba(255,255,255,0.04)",
+                            color: on ? color : "#6b82a0",
+                            border: on ? `1px solid ${color}45` : "1px solid rgba(255,255,255,0.06)",
+                            boxShadow: on ? `0 0 0 1px ${color}18` : "none",
+                            transition: "transform 70ms ease, background-color 90ms ease, border-color 90ms ease, color 90ms ease, box-shadow 90ms ease",
+                            WebkitTapHighlightColor: "transparent",
+                          }}
+                        >
+                          {on ? <Check size={11} strokeWidth={2.5} /> : null}
                           {PANEL_LABELS[panel] ?? panel}
                         </button>
                       );
