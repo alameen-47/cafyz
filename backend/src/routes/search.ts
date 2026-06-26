@@ -1,9 +1,12 @@
 import { Router } from 'express';
+import { getDb } from '../db.js';
 import { escapeLikePattern } from '../utils/security.js';
 import { requireAuth, type AuthRequest } from '../middleware/auth.js';
 
 const router = Router();
 router.use(requireAuth);
+
+type SearchRow = Record<string, unknown>;
 
 // GET /api/search?q=... — cross-entity search scoped to the current restaurant
 router.get('/', async (req: AuthRequest, res, next) => {
@@ -65,7 +68,7 @@ router.get('/', async (req: AuthRequest, res, next) => {
     ]);
 
     const results = [
-      ...menuRows.rows.map(r => ({
+      ...menuRows.rows.map((r: SearchRow) => ({
         type: 'menu' as const,
         id: String(r.id),
         title: String(r.name),
@@ -73,7 +76,7 @@ router.get('/', async (req: AuthRequest, res, next) => {
         meta: r.is_available ? 'available' : '86\'d',
         page: 'menu',
       })),
-      ...tableRows.rows.map(r => ({
+      ...tableRows.rows.map((r: SearchRow) => ({
         type: 'table' as const,
         id: String(r.id),
         title: String(r.name),
@@ -81,7 +84,7 @@ router.get('/', async (req: AuthRequest, res, next) => {
         meta: String(r.status),
         page: 'tables',
       })),
-      ...orderRows.rows.map(r => ({
+      ...orderRows.rows.map((r: SearchRow) => ({
         type: 'order' as const,
         id: String(r.id),
         title: r.table_name ? String(r.table_name) : 'Takeaway',
@@ -89,7 +92,7 @@ router.get('/', async (req: AuthRequest, res, next) => {
         meta: String(r.status),
         page: 'orders',
       })),
-      ...staffRows.rows.map(r => ({
+      ...staffRows.rows.map((r: SearchRow) => ({
         type: 'staff' as const,
         id: String(r.id),
         title: String(r.name),
@@ -97,7 +100,7 @@ router.get('/', async (req: AuthRequest, res, next) => {
         meta: String(r.status),
         page: 'staff',
       })),
-      ...inventoryRows.rows.map(r => ({
+      ...inventoryRows.rows.map((r: SearchRow) => ({
         type: 'inventory' as const,
         id: String(r.id),
         title: String(r.name),
@@ -105,7 +108,7 @@ router.get('/', async (req: AuthRequest, res, next) => {
         meta: Number(r.current) <= Number(r.par) ? 'low' : 'ok',
         page: 'inventory',
       })),
-      ...reservationRows.rows.map(r => ({
+      ...reservationRows.rows.map((r: SearchRow) => ({
         type: 'reservation' as const,
         id: String(r.id),
         title: String(r.guest_name),

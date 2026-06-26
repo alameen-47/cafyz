@@ -58,13 +58,13 @@ export function containsSecretKeyName(key: string): boolean {
   return SECRET_KEY_PATTERN.test(key);
 }
 
-export function redactSecretsFromObject<T extends Record<string, unknown>>(obj: T): T {
-  const out = { ...obj };
+export function redactSecretsFromObject(obj: Record<string, unknown>): Record<string, unknown> {
+  const out: Record<string, unknown> = { ...obj };
   for (const key of Object.keys(out)) {
     if (containsSecretKeyName(key)) {
       delete out[key];
     } else if (out[key] && typeof out[key] === 'object' && !Array.isArray(out[key])) {
-      out[key] = redactSecretsFromObject(out[key] as Record<string, unknown>) as T[Extract<keyof T, string>];
+      out[key] = redactSecretsFromObject(out[key] as Record<string, unknown>);
     }
   }
   return out;
