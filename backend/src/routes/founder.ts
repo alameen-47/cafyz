@@ -9,6 +9,9 @@ import { fulfillLicensePurchaseRequest, denyLicensePurchaseRequest } from '../se
 import { appPath } from '../config/site.js';
 import { approveInquiryById } from '../services/inquiryApproval.js';
 import { ADMIN_EMAIL, sendMailReliable, smtpFrom } from '../services/email.js';
+import { cacheDel, cacheDelPrefix } from '../cache.js';
+import { bumpTokenVersion } from '../services/tokenVersion.js';
+import { invalidateUserAuthCache } from '../middleware/auth.js';
 
 const router = Router();
 const onlyFounder = [requireAuth, requireRole('founder')] as const;
@@ -73,6 +76,129 @@ router.delete('/restaurants/:id', ...onlyFounder, async (req: AuthRequest, res, 
     });
 
     res.json({ ok: true, id: rid });
+  } catch (e) { next(e); }
+});
+
+// PATCH /api/founder/restaurants/:id/access — pause or resume entire tenant access
+router.patch('/restaurants/:id/access', ...onlyFounder, async (req: AuthRequest, res, next) => {
+  try {
+    const rid = String(req.params.id);
+    if (!rid || rid === 'CAFYZ_SYSTEM') {
+      res.status(400).json({ error: 'This restaurant cannot be paused.' });
+      return;
+    }
+    const { paused } = z.object({ paused: z.boolean() }).parse(req.body);
+    const db = getDb();
+    const existing = await db.execute({
+      sql: `SELECT id, name, access_paused FROM restaurants WHERE id=? LIMIT 1`,
+      args: [rid],
+    });
+    if (!existing.rows.length) {
+      res.status(404).json({ error: 'Restaurant not found' });
+      return;
+    }
+    await db.execute({
+      sql: `UPDATE restaurants SET access_paused=? WHERE id=?`,
+      args: [paused ? 1 : 0, rid],
+    });
+    if (paused) {
+      await db.execute({
+        sql: `UPDATE users SET status='off' WHERE restaurant_id=? AND role != 'founder'`,
+        args: [rid],
+      });
+    } else {
+      await db.execute({
+        sql: `UPDATE users SET status='active' WHERE restaurant_id=? AND role != 'founder' AND status='off'`,
+        args: [rid],
+      });
+    }
+    cacheDelPrefix(`sub:${rid}`);
+    cacheDelPrefix(`user:status:`);
+    res.json({
+      id: rid,
+      name: String(existing.rows[0].name ?? ''),
+      access_paused: paused ? 1 : 0,
+    });
+  } catch (e) { next(e); }
+});
+
+// GET /api/founder/users — all tenant users (optional restaurant_id filter)
+router.get('/users', ...onlyFounder, async (req: AuthRequest, res, next) => {
+  try {
+    const restaurantId = typeof req.query.restaurant_id === 'string' ? req.query.restaurant_id : '';
+    let sql = `
+      SELECT u.id, u.restaurant_id, u.name, u.initials, u.email, u.phone, u.role, u.status, u.start_time, u.created_at,
+             r.name AS restaurant_name, r.slug AS restaurant_slug, r.plan AS restaurant_plan,
+             r.access_paused
+      FROM users u
+      JOIN restaurants r ON r.id = u.restaurant_id
+      WHERE u.role != 'founder' AND r.id != 'CAFYZ_SYSTEM'`;
+    const args: string[] = [];
+    if (restaurantId) {
+      sql += ' AND u.restaurant_id=?';
+      args.push(restaurantId);
+    }
+    sql += ' ORDER BY r.name ASC, u.name ASC LIMIT 500';
+    const rows = await getDb().execute({ sql, args });
+    res.json(rows.rows);
+  } catch (e) { next(e); }
+});
+
+// PATCH /api/founder/users/:id/status — pause (off) or resume (active) a user
+router.patch('/users/:id/status', ...onlyFounder, async (req: AuthRequest, res, next) => {
+  try {
+    const userId = String(req.params.id);
+    const { status } = z.object({ status: z.enum(['active', 'break', 'off']) }).parse(req.body);
+    const db = getDb();
+    const row = await db.execute({
+      sql: `SELECT id, role, restaurant_id FROM users WHERE id=? LIMIT 1`,
+      args: [userId],
+    });
+    if (!row.rows.length) {
+      res.status(404).json({ error: 'User not found' });
+      return;
+    }
+    const target = row.rows[0] as Record<string, unknown>;
+    if (String(target.role) === 'founder') {
+      res.status(403).json({ error: 'Founder accounts cannot be modified here.' });
+      return;
+    }
+    await db.execute({
+      sql: `UPDATE users SET status=? WHERE id=?`,
+      args: [status, userId],
+    });
+    await bumpTokenVersion(userId);
+    invalidateUserAuthCache(userId);
+    res.json({ id: userId, status, restaurant_id: String(target.restaurant_id ?? '') });
+  } catch (e) { next(e); }
+});
+
+// DELETE /api/founder/users/:id — remove a tenant user
+router.delete('/users/:id', ...onlyFounder, async (req: AuthRequest, res, next) => {
+  try {
+    const userId = String(req.params.id);
+    const db = getDb();
+    const row = await db.execute({
+      sql: `SELECT id, role, restaurant_id, name FROM users WHERE id=? LIMIT 1`,
+      args: [userId],
+    });
+    if (!row.rows.length) {
+      res.status(404).json({ error: 'User not found' });
+      return;
+    }
+    const target = row.rows[0] as Record<string, unknown>;
+    if (String(target.role) === 'founder') {
+      res.status(403).json({ error: 'Founder accounts cannot be deleted.' });
+      return;
+    }
+    if (req.user?.id === userId) {
+      res.status(400).json({ error: 'You cannot delete your own account from this panel.' });
+      return;
+    }
+    await db.execute({ sql: `DELETE FROM users WHERE id=?`, args: [userId] });
+    invalidateUserAuthCache(userId);
+    cacheDel(`access:${userId}`);
+    res.status(204).end();
   } catch (e) { next(e); }
 });
 
@@ -170,10 +296,8 @@ router.patch('/inquiries/:id', ...onlyFounder, async (req, res, next) => {
         alreadyProvisioned: provision.alreadyProvisioned,
         emailSent: provision.emailSent,
         emailError: provision.emailError,
-        // Credentials returned so founder can manually forward if email delivery failed.
-        userEmail:    provision.email,
-        userPassword: provision.alreadyProvisioned ? null : provision.password,
-        licenseKey:   provision.licenseKey,
+        userEmail: provision.email,
+        licenseKey: provision.licenseKey,
       });
       return;
     }

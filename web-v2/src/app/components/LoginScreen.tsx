@@ -158,7 +158,7 @@ export function LoginScreen({ onLogin }: { onLogin?: () => void }) {
     try {
       const r = await requestOtp(phone);
       toast.success(r.message || "OTP sent");
-      if (r.dev_otp) toast.info(`Dev OTP: ${r.dev_otp}`);
+      if (import.meta.env.DEV && r.dev_otp) toast.info(`Dev OTP: ${r.dev_otp}`);
       setAuthState("otp-verify");
     } catch (e) { toast.error(errMsg(e)); }
     finally { setLoading(false); }
@@ -187,7 +187,7 @@ export function LoginScreen({ onLogin }: { onLogin?: () => void }) {
     setLoading(true);
     try {
       const r = await authApi.forgotPassword(forgotEmail.trim());
-      if (r.dev_reset_url) {
+      if (import.meta.env.DEV && r.dev_reset_url) {
         toast.success("Reset link ready", { description: "Opening the password reset page…" });
         window.location.assign(r.dev_reset_url);
         return;

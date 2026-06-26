@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { safeRegexTest } from '../utils/security.js';
 import { z } from 'zod';
 import { requireAuth, type AuthRequest } from '../middleware/auth.js';
 
@@ -25,14 +26,14 @@ type SupportCategory =
   | 'general';
 
 function detectCategory(message: string): SupportCategory {
-  const text = message.toLowerCase();
-  if (/(print|printer|bluetooth|usb|receipt|thermal|kitchen)/.test(text)) return 'printer';
-  if (/(trial|license|plan|billing|subscription|payment)/.test(text)) return 'billing';
-  if (/(login|otp|pin|password|auth|signin|sign in)/.test(text)) return 'login';
-  if (/(role|permission|access|manager|cashier|waiter|kitchen panel)/.test(text)) return 'permissions';
-  if (/(order|pos|checkout|table|send to kitchen)/.test(text)) return 'orders';
-  if (/(menu|category|item|price)/.test(text)) return 'menu';
-  if (/(report|sales|dashboard|analytics)/.test(text)) return 'reports';
+  const text = message.toLowerCase().slice(0, 1200);
+  if (safeRegexTest(/(print|printer|bluetooth|usb|receipt|thermal|kitchen)/, text)) return 'printer';
+  if (safeRegexTest(/(trial|license|plan|billing|subscription|payment)/, text)) return 'billing';
+  if (safeRegexTest(/(login|otp|pin|password|auth|signin|sign in)/, text)) return 'login';
+  if (safeRegexTest(/(role|permission|access|manager|cashier|waiter|kitchen panel)/, text)) return 'permissions';
+  if (safeRegexTest(/(order|pos|checkout|table|send to kitchen)/, text)) return 'orders';
+  if (safeRegexTest(/(menu|category|item|price)/, text)) return 'menu';
+  if (safeRegexTest(/(report|sales|dashboard|analytics)/, text)) return 'reports';
   return 'general';
 }
 

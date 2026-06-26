@@ -124,6 +124,15 @@ export const inquiryLimiter = rateLimit({
   message: limiterError('Too many trial requests from this network. Please try later.'),
 });
 
+export const onboardingLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: isTestEnv ? 100000 : 6,
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: keyFromIp,
+  message: limiterError('Too many signup attempts from this network. Please try later.'),
+});
+
 // Write limiter is per-principal (per session) so a busy POS device gets its
 // own 120/min budget instead of colliding with sibling devices on the same IP.
 export const mutationLimiter = rateLimit({

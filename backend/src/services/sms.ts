@@ -1,6 +1,8 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
+import { safeRegexTest } from '../utils/security.js';
+
 export type SmsSendResult =
   | { ok: true; provider: string; details?: string }
   | { ok: false; error: string; details?: string };
@@ -17,7 +19,7 @@ export function normalizePhone(input: string): string {
 }
 
 export function isValidPhoneE164(phone: string): boolean {
-  return E164_RE.test(phone);
+  return safeRegexTest(E164_RE, phone, 20);
 }
 
 function twilioConfigured(): boolean {

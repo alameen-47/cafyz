@@ -316,6 +316,8 @@ export async function runMigrations() {
   await addCol(`ALTER TABLE restaurants ADD COLUMN receipt_footer TEXT`, 'receipt_footer');
   await addCol(`ALTER TABLE restaurants ADD COLUMN tagline TEXT`, 'tagline');
   await addCol(`ALTER TABLE restaurants ADD COLUMN logo_url TEXT`, 'logo_url');
+  await addCol(`ALTER TABLE restaurants ADD COLUMN access_paused INTEGER NOT NULL DEFAULT 0`, 'access_paused');
+  await addCol(`ALTER TABLE users ADD COLUMN token_version INTEGER NOT NULL DEFAULT 0`, 'token_version');
   await addCol(`ALTER TABLE inquiries ADD COLUMN is_retry INTEGER NOT NULL DEFAULT 0`, 'is_retry');
   await addCol(`ALTER TABLE inquiries ADD COLUMN retry_of_id TEXT`, 'retry_of_id');
   await addCol(`ALTER TABLE inquiries ADD COLUMN restaurant_id TEXT`, 'restaurant_id');

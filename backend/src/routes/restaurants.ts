@@ -2,11 +2,13 @@ import { Router } from 'express';
 import bcrypt from 'bcryptjs';
 import { z } from 'zod';
 import { getDb } from '../db.js';
-import { requireAuth, signToken, type AuthRequest } from '../middleware/auth.js';
+import { requireAuth, signTokenForUser, type AuthRequest } from '../middleware/auth.js';
 import { requireRole } from '../middleware/rbac.js';
 import { uid } from '../utils.js';
 import { isValidPhoneE164, normalizePhone } from '../services/sms.js';
+import { passwordField } from '../utils/security.js';
 import { trialEndsAt, TRIAL_DAYS } from '../config/site.js';
+import { BCRYPT_ROUNDS } from '../constants/security.js';
 
 const router = Router();
 
@@ -22,7 +24,7 @@ const OnboardingSchema = z.object({
   owner_name:      z.string().min(1),
   email:           z.string().email(),
   phone:           z.string().min(8),
-  password:        z.string().min(8),
+  password:        passwordField,
   plan:            z.enum(['basic','pro','premium']).optional(),
   timezone:        z.string().optional(),
 });
@@ -122,9 +124,16 @@ function normalizeRestaurantRow(row: Record<string, unknown>) {
   };
 }
 
-// POST /api/restaurants/onboarding — public, creates restaurant + owner user
+// POST /api/restaurants/onboarding — public trial signup (rate-limited; disabled in production unless ALLOW_PUBLIC_ONBOARDING=true)
 router.post('/onboarding', async (req, res, next) => {
   try {
+    if (process.env.NODE_ENV === 'production' && process.env.ALLOW_PUBLIC_ONBOARDING !== 'true') {
+      res.status(403).json({
+        error: 'Self-service signup is disabled. Request a trial from the Cafyz website.',
+        code: 'ONBOARDING_DISABLED',
+      });
+      return;
+    }
     const data = OnboardingSchema.parse(req.body);
     const db = getDb();
     const emailNorm = data.email.trim().toLowerCase();
@@ -167,7 +176,7 @@ router.post('/onboarding', async (req, res, next) => {
     });
 
     const ownerId = uid();
-    const pwHash = await bcrypt.hash(data.password, 10);
+    const pwHash = await bcrypt.hash(data.password, BCRYPT_ROUNDS);
     const initials = data.owner_name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0,2);
     await db.execute({
       sql: `INSERT INTO users(id,restaurant_id,name,initials,email,phone,password_hash,role,status,start_time) VALUES(?,?,?,?,?,?,?,?,?,?)`,
@@ -182,9 +191,10 @@ router.post('/onboarding', async (req, res, next) => {
     });
 
     const restaurant = await db.execute({ sql: 'SELECT * FROM restaurants WHERE id=?', args: [restId] });
-    const user = await db.execute({ sql: 'SELECT id,name,initials,email,role,status FROM users WHERE id=?', args: [ownerId] });
+    const user = await db.execute({ sql: 'SELECT id,name,initials,email,role,status,restaurant_id,token_version FROM users WHERE id=?', args: [ownerId] });
 
-    const token = signToken({ id: ownerId, role: 'owner', email: emailNorm, restaurant_id: restId });
+    const ownerRow = user.rows[0] as Record<string, unknown>;
+    const token = signTokenForUser(ownerRow);
 
     res.status(201).json({
       token,

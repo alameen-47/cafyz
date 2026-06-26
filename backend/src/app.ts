@@ -29,6 +29,7 @@ import {
   globalLimiter,
   inquiryLimiter,
   mutationLimiter,
+  onboardingLimiter,
   otpLimiter,
   publicLimiter,
 } from './middleware/rateLimits.js';
@@ -58,7 +59,7 @@ app.use(cors({
     const ok =
       allowed.includes(origin) ||
       isNativeLocalhost ||
-      /\.vercel\.app$/.test(origin) ||
+      (process.env.ALLOW_VERCEL_PREVIEWS === 'true' && /\.vercel\.app$/.test(origin)) ||
       /^https:\/\/([a-z0-9-]+\.)?ametronyx\.com$/i.test(origin);
     cb(ok ? null : new Error(`CORS: ${origin} not allowed`), ok);
   },
@@ -77,7 +78,18 @@ app.use(compression({ threshold: 1024 }));
 
 // ── Body parsing ────────────────────────────────────────────────────────────────
 // Logo uploads store dithered PNG data URLs (up to ~3 MB).
-app.use(express.json({ limit: '4mb' }));
+app.use(express.json({
+  limit: '4mb',
+  verify(req, _res, buf) {
+    const path = String(req.url ?? '').split('?')[0];
+    if (path.startsWith('/api/auth') && buf.length > 32 * 1024) {
+      const err = new Error('Authentication payload too large') as Error & { status: number; expose: boolean };
+      err.status = 413;
+      err.expose = true;
+      throw err;
+    }
+  },
+}));
 app.use(express.urlencoded({ extended: true }));
 
 // ── Health ──────────────────────────────────────────────────────────────────────
@@ -97,6 +109,7 @@ app.use('/api/kds',              mutationLimiter, requireAuth, requireActiveSubs
 app.use('/api/reservations',     mutationLimiter, requireAuth, requireActiveSubscription, requireSectionAccess('manager'), requirePlan('premium'), reservationRoutes);
 app.use('/api/inventory',        mutationLimiter, requireAuth, requireActiveSubscription, requireSectionAccess('inventory'), requirePlan('pro'),     inventoryRoutes);
 app.use('/api/dashboard',        requireAuth, requireActiveSubscription, requireSectionAccess('manager', 'reports'), dashboardRoutes);
+app.use('/api/restaurants/onboarding', onboardingLimiter);
 app.use('/api/restaurants',      mutationLimiter, restaurantRoutes);
 app.get('/api/licenses/renewal/action', licenseRenewalAction);
 app.use('/api/licenses',         mutationLimiter, requireAuth, requireSectionAccess('license'), licenseRoutes);

@@ -478,7 +478,6 @@ export const founderApi = {
       alreadyProvisioned?: boolean;
       emailSent?: boolean;
       userEmail?: string;
-      userPassword?: string | null;
       licenseKey?: string;
     }>(`/api/founder/inquiries/${id}`, { status }),
   licenseRequests: ()                                                                   => get<ApiLicensePurchaseRequest[]>('/api/founder/license-requests'),
@@ -488,6 +487,13 @@ export const founderApi = {
     patch<{ id: string; status: string }>(`/api/founder/license-requests/${id}`, { status: 'cancelled' }),
   setPlan:        (restaurantId: string, plan: string)                                 => patch<ApiRestaurant>(`/api/founder/restaurants/${restaurantId}/plan`, { plan }),
   deleteRestaurant: (restaurantId: string)                                              => del(`/api/founder/restaurants/${restaurantId}`),
+  setRestaurantAccess: (restaurantId: string, paused: boolean)                          =>
+    patch<{ id: string; name: string; access_paused: number }>(`/api/founder/restaurants/${restaurantId}/access`, { paused }),
+  users:          (restaurantId?: string)                                                =>
+    get<ApiFounderUser[]>(`/api/founder/users${restaurantId ? `?restaurant_id=${encodeURIComponent(restaurantId)}` : ''}`),
+  setUserStatus:  (userId: string, status: ApiUser['status'])                           =>
+    patch<{ id: string; status: string; restaurant_id: string }>(`/api/founder/users/${userId}/status`, { status }),
+  deleteUser:     (userId: string)                                                      => del(`/api/founder/users/${userId}`),
   planConfig:     ()                                                                    => get<ApiPlanConfig[]>('/api/founder/plan-config'),
   updatePlanConfig: (plan: string, d: Partial<{
     panels_json: string; label: string; description: string; price_monthly: number; currency_symbol: string;
@@ -734,7 +740,13 @@ export interface ApiSubscriptionStatus {
 
 export interface ApiFounderRestaurant {
   id: string; name: string; slug: string; plan: string; timezone: string; created_at: string;
-  user_count: number; active_key?: string;
+  user_count: number; active_key?: string; access_paused?: number;
+}
+
+export interface ApiFounderUser {
+  id: string; restaurant_id: string; name: string; initials: string; email: string; phone?: string;
+  role: ApiUser['role']; status: ApiUser['status']; start_time: string; created_at?: string;
+  restaurant_name: string; restaurant_slug: string; restaurant_plan: string; access_paused?: number;
 }
 
 export interface ApiFounderStats {

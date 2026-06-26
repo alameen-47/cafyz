@@ -15,13 +15,18 @@ import {
   sanitizeAccessMap,
   serializeAccessMap,
 } from '../services/sectionAccess.js';
+import { passwordField } from '../utils/security.js';
 import { cacheDel } from '../cache.js';
+import { bumpTokenVersion } from '../services/tokenVersion.js';
+import { invalidateUserAuthCache } from '../middleware/auth.js';
+import { BCRYPT_ROUNDS } from '../constants/security.js';
+import { securePin4 } from '../utils/secureRandom.js';
 
 const router = Router();
 router.use(requireAuth);
 
 function generatePin(): string {
-  return String(Math.floor(1000 + Math.random() * 9000));
+  return securePin4();
 }
 
 async function sendUserPinEmail(data: {
@@ -68,7 +73,7 @@ const UserSchema = z.object({
   initials:   z.string().max(3).optional(),
   email:      z.string().email(),
   phone:      z.string().min(8).optional(),
-  password:   z.string().min(6).optional(),
+  password:   passwordField.optional(),
   role:       z.enum(['manager','cashier','waiter','kitchen']),
   status:     z.enum(['active','break','off']).optional(),
   start_time: z.string().optional(),
@@ -130,10 +135,10 @@ router.post('/', requireRole('owner','manager'), async (req: AuthRequest, res, n
     const data = UserSchema.parse(req.body);
     const id = uid();
     const plainPassword = data.password?.trim() || randomBytes(12).toString('base64url');
-    const pw = await bcrypt.hash(plainPassword, 10);
+    const pw = await bcrypt.hash(plainPassword, BCRYPT_ROUNDS);
     const generatedPin = generatePin();
     const pinToSave = data.pin ?? generatedPin;
-    const ph = await bcrypt.hash(pinToSave, 10);
+    const ph = await bcrypt.hash(pinToSave, BCRYPT_ROUNDS);
     const accessJson = resolveAccessJson(data.role, data.access_json);
     const initials = data.initials ?? data.name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0,2);
     const emailNorm = data.email.trim().toLowerCase();
@@ -265,8 +270,8 @@ router.put('/:id', requireRole('owner','manager'), async (req: AuthRequest, res,
     if (data.status)     { sets.push('status=?');     args.push(data.status); }
     if (data.start_time) { sets.push('start_time=?'); args.push(data.start_time); }
     if (data.initials)   { sets.push('initials=?');   args.push(data.initials); }
-    if (data.password)   { sets.push('password_hash=?'); args.push(await bcrypt.hash(data.password, 10)); }
-    if (data.pin)        { sets.push('pin_hash=?');   args.push(await bcrypt.hash(data.pin, 10)); }
+    if (data.password)   { sets.push('password_hash=?'); args.push(await bcrypt.hash(data.password, BCRYPT_ROUNDS)); }
+    if (data.pin)        { sets.push('pin_hash=?');   args.push(await bcrypt.hash(data.pin, BCRYPT_ROUNDS)); }
 
     if (!sets.length) { res.status(400).json({ error: 'No fields to update' }); return; }
     const userId = req.params.id as string;
@@ -274,11 +279,14 @@ router.put('/:id', requireRole('owner','manager'), async (req: AuthRequest, res,
     args.push(rid);
     await db.execute({ sql: `UPDATE users SET ${sets.join(',')} WHERE id=? AND restaurant_id=?`, args });
 
+    const needsTokenBump = !!(data.password || data.pin || data.role || data.access_json !== undefined || data.status);
+    if (needsTokenBump) await bumpTokenVersion(userId);
+
     // Invalidate section-access cache so role/permission changes take effect immediately.
     if (data.role || data.access_json !== undefined) {
       cacheDel(`access:${userId}`);
     }
-    if (data.status) cacheDel(`user:status:${userId}`);
+    if (data.status || data.role) invalidateUserAuthCache(userId);
 
     const row = await db.execute({ sql: 'SELECT id,restaurant_id,name,initials,email,phone,role,access_json,status,start_time FROM users WHERE id=?', args: [userId] });
     res.json(row.rows[0]);
@@ -299,7 +307,7 @@ router.patch('/:id/status', requireRole('owner','manager'), async (req: AuthRequ
       return;
     }
     await db.execute({ sql: 'UPDATE users SET status=? WHERE id=? AND restaurant_id=?', args: [status, (req.params.id as string), rid] });
-    cacheDel(`user:status:${req.params.id as string}`);
+    invalidateUserAuthCache(req.params.id as string);
     res.json({ id: (req.params.id as string), status });
   } catch (e) { next(e); }
 });
@@ -317,6 +325,8 @@ router.delete('/:id', requireRole('owner','manager'), async (req: AuthRequest, r
       return;
     }
     await db.execute({ sql: 'DELETE FROM users WHERE id=? AND restaurant_id=?', args: [(req.params.id as string), rid] });
+    invalidateUserAuthCache(req.params.id as string);
+    cacheDel(`access:${req.params.id as string}`);
     res.status(204).end();
   } catch (e) { next(e); }
 });

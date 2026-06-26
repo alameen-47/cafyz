@@ -97,5 +97,13 @@ backend/dist
 .env
 backend/.env
 
+# Backend local database (never commit)
+backend/local/
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+
 # App icon source archives (generated assets live in cap-ios / cap-android / web-v2/public)
 AppIcons*.zip
+

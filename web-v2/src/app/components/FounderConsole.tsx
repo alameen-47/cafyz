@@ -1,15 +1,16 @@
 import { useState, useEffect, useCallback } from "react";
 import { motion } from "motion/react";
-import { Shield, Key, Zap, TrendingUp, Check, X, Copy, RefreshCw, Globe, Building2, CreditCard, Trash2 } from "lucide-react";
+import { Shield, Key, Zap, TrendingUp, Check, X, Copy, RefreshCw, Globe, Building2, CreditCard, Trash2, Users, Pause, Play } from "lucide-react";
 import { toast } from "./Toast";
 import {
   founderApi, licensesApi,
-  type ApiFounderStats, type ApiFounderRestaurant, type ApiFounderInquiry,
+  type ApiFounderStats, type ApiFounderRestaurant, type ApiFounderInquiry, type ApiFounderUser,
   type ApiLicenseKey, type ApiPlanConfig, type ApiLicensePurchaseRequest,
 } from "../../services/api";
 import { notifyPlanConfigUpdated, parsePanelsJson, refreshPlanConfigs } from "../../services/planConfigStore";
+import { secureCopyToClipboard, scheduleClipboardClear } from "../../utils/secureClipboard";
 
-const tabs = ["Overview", "Restaurants", "Trial Requests", "License Keys", "Plan Config"];
+const tabs = ["Overview", "Restaurants", "Users", "Trial Requests", "License Keys", "Plan Config"];
 const planColors: Record<string, string> = { basic: "#6b82a0", pro: "#1e7fff", premium: "#a855f7" };
 const FALLBACK_PRICE: Record<string, number> = { basic: 49, pro: 99, premium: 199 };
 const ALL_PANELS = ["pos", "menu", "waiter", "kds", "manager", "inventory", "staff", "reports", "roles", "reservations", "license"];
@@ -30,18 +31,21 @@ export function FounderConsole() {
   const [licReqs, setLicReqs] = useState<ApiLicensePurchaseRequest[]>([]);
   const [keys, setKeys] = useState<ApiLicenseKey[]>([]);
   const [planCfg, setPlanCfg] = useState<ApiPlanConfig[]>([]);
+  const [users, setUsers] = useState<ApiFounderUser[]>([]);
+  const [userFilter, setUserFilter] = useState("");
   const [busy, setBusy] = useState(false);
 
   const load = useCallback(async () => {
-    const [s, r, inq, lr, k, pc] = await Promise.all([
+    const [s, r, inq, lr, k, pc, u] = await Promise.all([
       founderApi.stats().catch(() => null),
       founderApi.restaurants().catch(() => []),
       founderApi.inquiries().catch(() => []),
       founderApi.licenseRequests().catch(() => []),
       licensesApi.list().catch(() => []),
       founderApi.planConfig().catch(() => []),
+      founderApi.users().catch(() => []),
     ]);
-    setStats(s); setRests(r); setInquiries(inq); setLicReqs(lr); setKeys(k); setPlanCfg(pc);
+    setStats(s); setRests(r); setInquiries(inq); setLicReqs(lr); setKeys(k); setPlanCfg(pc); setUsers(u);
   }, []);
 
   // Fulfill a renewal/purchase request → mints a key and emails it to the manager.
@@ -59,10 +63,16 @@ export function FounderConsole() {
 
   const priceByPlan = (plan: string) => planCfg.find(p => p.plan === plan)?.price_monthly ?? FALLBACK_PRICE[plan] ?? 0;
 
-  const copyKey = (key: string) => {
-    navigator.clipboard.writeText(key);
+  const copyKey = async (key: string) => {
+    const ok = await secureCopyToClipboard(key);
+    if (!ok) {
+      toast.error("Couldn't copy", "Clipboard access was denied.");
+      return;
+    }
     setCopied(key);
     setTimeout(() => setCopied(null), 1500);
+    toast.success("License key copied", "Verify the pasted value before sharing.");
+    scheduleClipboardClear(90_000);
   };
 
   const decideInquiry = async (id: string, status: "approved" | "denied") => {
@@ -97,6 +107,46 @@ export function FounderConsole() {
       await load();
     } catch (e) {
       toast.error("Couldn't delete restaurant", (e as Error).message);
+    } finally { setBusy(false); }
+  };
+
+  const toggleRestaurantAccess = async (restaurantId: string, name: string, paused: boolean) => {
+    const msg = paused
+      ? `Pause access for "${name}"? All staff will be signed out and blocked until you resume.`
+      : `Resume access for "${name}"? Staff accounts will be reactivated.`;
+    if (!window.confirm(msg)) return;
+    setBusy(true);
+    try {
+      await founderApi.setRestaurantAccess(restaurantId, paused);
+      toast.success(paused ? "Access paused" : "Access resumed", name);
+      await load();
+    } catch (e) {
+      toast.error(paused ? "Couldn't pause access" : "Couldn't resume access", (e as Error).message);
+    } finally { setBusy(false); }
+  };
+
+  const toggleUserAccess = async (user: ApiFounderUser) => {
+    const paused = user.status !== "off";
+    const next = paused ? "off" : "active";
+    setBusy(true);
+    try {
+      await founderApi.setUserStatus(user.id, next);
+      toast.success(paused ? "User paused" : "User resumed", user.name);
+      await load();
+    } catch (e) {
+      toast.error("Couldn't update user", (e as Error).message);
+    } finally { setBusy(false); }
+  };
+
+  const removeUser = async (user: ApiFounderUser) => {
+    if (!window.confirm(`Delete user "${user.name}" (${user.email})? This cannot be undone.`)) return;
+    setBusy(true);
+    try {
+      await founderApi.deleteUser(user.id);
+      toast.success("User deleted", user.name);
+      await load();
+    } catch (e) {
+      toast.error("Couldn't delete user", (e as Error).message);
     } finally { setBusy(false); }
   };
 
@@ -136,6 +186,7 @@ export function FounderConsole() {
   const totalMRR = (stats?.restaurants_by_plan ?? []).reduce((s, p) => s + p.count * priceByPlan(p.plan), 0);
   const activeLicenses = stats?.license_keys.activated ?? 0;
   const pendingTrials = stats?.pending_license_requests ?? inquiries.filter(i => i.status === "pending").length;
+  const filteredUsers = users.filter(u => !userFilter || u.restaurant_id === userFilter);
 
   return (
     <div className="p-3 sm:p-4 md:p-6 space-y-4">
@@ -232,12 +283,28 @@ export function FounderConsole() {
                 {r.user_count}
               </div>
               <div className="col-span-2">
-                <span className="text-xs px-2 py-0.5 rounded-full"
-                  style={r.active_key ? { background: "rgba(34,197,94,0.1)", color: "#22c55e" } : { background: "rgba(245,158,11,0.1)", color: "#f59e0b" }}>
-                  {r.active_key ? "Licensed" : "No license"}
-                </span>
+                <div className="flex flex-col gap-1">
+                  <span className="text-xs px-2 py-0.5 rounded-full w-fit"
+                    style={r.active_key ? { background: "rgba(34,197,94,0.1)", color: "#22c55e" } : { background: "rgba(245,158,11,0.1)", color: "#f59e0b" }}>
+                    {r.active_key ? "Licensed" : "No license"}
+                  </span>
+                  {Number(r.access_paused) === 1 && (
+                    <span className="text-xs px-2 py-0.5 rounded-full w-fit" style={{ background: "rgba(255,59,92,0.1)", color: "#ff3b5c" }}>
+                      Paused
+                    </span>
+                  )}
+                </div>
               </div>
               <div className="col-span-12 sm:col-span-2 flex flex-wrap items-center gap-2 mt-1 sm:mt-0">
+                <button
+                  disabled={busy}
+                  onClick={() => void toggleRestaurantAccess(r.id, r.name, Number(r.access_paused) !== 1)}
+                  className="p-1.5 rounded-lg transition-all"
+                  title={Number(r.access_paused) === 1 ? "Resume access" : "Pause access"}
+                  style={{ color: Number(r.access_paused) === 1 ? "#22c55e" : "#f59e0b", background: Number(r.access_paused) === 1 ? "rgba(34,197,94,0.1)" : "rgba(245,158,11,0.1)" }}
+                >
+                  {Number(r.access_paused) === 1 ? <Play size={14} /> : <Pause size={14} />}
+                </button>
                 <select
                   defaultValue={r.plan}
                   disabled={busy}
@@ -259,6 +326,92 @@ export function FounderConsole() {
               </div>
             </motion.div>
           ))}
+        </motion.div>
+      )}
+
+      {/* Users */}
+      {activeTab === "Users" && (
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-3">
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="flex items-center gap-2 px-3 py-2 rounded-xl" style={{ background: "#0d1326", border: "1px solid rgba(30,127,255,0.1)" }}>
+              <Users size={14} style={{ color: "#1e7fff" }} />
+              <span style={{ color: "#e8eef8", fontSize: "0.82rem", fontWeight: 600 }}>{filteredUsers.length} users</span>
+            </div>
+            <select
+              value={userFilter}
+              onChange={e => setUserFilter(e.target.value)}
+              className="text-sm rounded-xl px-3 py-2 outline-none"
+              style={{ background: "#0d1326", color: "#e8eef8", border: "1px solid rgba(30,127,255,0.15)" }}
+            >
+              <option value="">All restaurants</option>
+              {rests.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
+            </select>
+          </div>
+          <div className="rounded-2xl overflow-hidden" style={{ background: "#0d1326", border: "1px solid rgba(30,127,255,0.1)" }}>
+            <div className="grid grid-cols-12 gap-2 px-4 py-3 border-b text-xs uppercase tracking-wider" style={{ color: "#6b82a0", borderColor: "rgba(30,127,255,0.08)", fontFamily: "var(--font-mono)" }}>
+              <div className="col-span-3">User</div>
+              <div className="col-span-3 hidden sm:block">Restaurant</div>
+              <div className="col-span-2 hidden md:block">Role</div>
+              <div className="col-span-2">Status</div>
+              <div className="col-span-12 sm:col-span-2">Actions</div>
+            </div>
+            {filteredUsers.length === 0 && (
+              <div className="px-4 py-8 text-center" style={{ color: "#6b82a0", fontSize: "0.82rem" }}>No users found</div>
+            )}
+            {filteredUsers.map((u, i) => {
+              const paused = u.status === "off" || Number(u.access_paused) === 1;
+              const statusLabel = Number(u.access_paused) === 1 ? "tenant paused" : u.status;
+              return (
+                <motion.div key={u.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: i * 0.02 }}
+                  className="grid grid-cols-12 gap-2 px-4 py-3 items-center border-b hover:bg-[rgba(30,127,255,0.03)] transition-all"
+                  style={{ borderColor: "rgba(30,127,255,0.06)" }}>
+                  <div className="col-span-3 min-w-0">
+                    <p className="truncate" style={{ color: "#e8eef8", fontSize: "0.85rem", fontWeight: 500 }}>{u.name}</p>
+                    <p className="truncate" style={{ color: "#6b82a0", fontSize: "0.7rem" }}>{u.email}</p>
+                  </div>
+                  <div className="col-span-3 hidden sm:block min-w-0">
+                    <p className="truncate" style={{ color: "#a8bdd4", fontSize: "0.8rem" }}>{u.restaurant_name}</p>
+                    <p className="truncate capitalize" style={{ color: "#6b82a0", fontSize: "0.7rem" }}>{u.restaurant_plan}</p>
+                  </div>
+                  <div className="col-span-2 hidden md:block capitalize" style={{ color: "#6b82a0", fontSize: "0.78rem" }}>{u.role}</div>
+                  <div className="col-span-2">
+                    <span className="text-xs px-2 py-0.5 rounded-full capitalize"
+                      style={paused
+                        ? { background: "rgba(255,59,92,0.1)", color: "#ff3b5c" }
+                        : u.status === "break"
+                          ? { background: "rgba(245,158,11,0.1)", color: "#f59e0b" }
+                          : { background: "rgba(34,197,94,0.1)", color: "#22c55e" }}>
+                      {statusLabel}
+                    </span>
+                  </div>
+                  <div className="col-span-12 sm:col-span-2 flex flex-wrap items-center gap-2 mt-1 sm:mt-0">
+                    <button
+                      disabled={busy || Number(u.access_paused) === 1}
+                      onClick={() => void toggleUserAccess(u)}
+                      className="p-1.5 rounded-lg transition-all"
+                      title={Number(u.access_paused) === 1 ? "Resume the restaurant first" : u.status === "off" ? "Resume user" : "Pause user"}
+                      style={{
+                        color: u.status === "off" ? "#22c55e" : "#f59e0b",
+                        background: u.status === "off" ? "rgba(34,197,94,0.1)" : "rgba(245,158,11,0.1)",
+                        opacity: Number(u.access_paused) === 1 ? 0.4 : 1,
+                      }}
+                    >
+                      {u.status === "off" ? <Play size={14} /> : <Pause size={14} />}
+                    </button>
+                    <button
+                      disabled={busy}
+                      onClick={() => void removeUser(u)}
+                      className="p-1.5 rounded-lg transition-all hover:bg-[rgba(255,59,92,0.1)]"
+                      title="Delete user"
+                      style={{ color: "#ff3b5c" }}
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
+                </motion.div>
+              );
+            })}
+          </div>
         </motion.div>
       )}
 
@@ -356,7 +509,7 @@ export function FounderConsole() {
                   <span className="text-xs px-2 py-0.5 rounded-full" style={lk.restaurant_id ? { background: "rgba(34,197,94,0.1)", color: "#22c55e" } : { background: "rgba(30,127,255,0.1)", color: "#1e7fff" }}>
                     {lk.restaurant_id ? "Used" : "Available"}
                   </span>
-                  <button onClick={() => copyKey(lk.key_code)} className="w-7 h-7 rounded-lg flex items-center justify-center transition-all"
+                  <button onClick={() => void copyKey(lk.key_code)} className="w-7 h-7 rounded-lg flex items-center justify-center transition-all"
                     style={{ background: copied === lk.key_code ? "rgba(34,197,94,0.1)" : "rgba(30,127,255,0.08)" }}>
                     {copied === lk.key_code ? <Check size={13} style={{ color: "#22c55e" }} /> : <Copy size={13} style={{ color: "#6b82a0" }} />}
                   </button>

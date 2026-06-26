@@ -1,10 +1,6 @@
-export function escHtml(s: string): string {
-  return s
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
-}
+export { escHtml } from './security.js';
+
+import { escHtml } from './security.js';
 
 export function requestActionHtml(title: string, body: string): string {
   return `<!DOCTYPE html><html><head><meta charset="utf-8"/><title>${escHtml(title)}</title></head>

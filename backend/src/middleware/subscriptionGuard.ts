@@ -42,6 +42,19 @@ export async function requireActiveSubscription(req: AuthRequest, res: Response,
             LIMIT 1`,
       args: [req.user.restaurant_id],
     });
+    const paused = await getDb().execute({
+      sql: `SELECT access_paused FROM restaurants WHERE id=? LIMIT 1`,
+      args: [req.user.restaurant_id],
+    });
+    if (Number(paused.rows[0]?.access_paused ?? 0) === 1) {
+      cacheSet(cacheKey, { ok: false, expiresAt: '' }, SUB_TTL);
+      res.status(402).json({
+        error: 'Restaurant access is paused. Contact Cafyz support.',
+        code: 'ACCESS_PAUSED',
+        purchase_url: PURCHASE_URL,
+      });
+      return;
+    }
     const expiresAt = String(lic.rows[0]?.expires_at ?? '');
     if (!expiresAt) {
       cacheSet(cacheKey, { ok: true }, SUB_TTL);

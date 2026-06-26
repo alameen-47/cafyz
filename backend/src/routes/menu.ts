@@ -73,35 +73,18 @@ router.post(
   },
 );
 
-// GET /api/menu  (public — no auth needed for browsing)
-// If authenticated, scope by the token's restaurant_id.
-// If a ?restaurant_id query param is provided (public), scope to that.
-// Otherwise return all available items.
+// GET /api/menu — tenant-scoped (requireAuth applied at app mount)
 router.get('/', async (req: AuthRequest, res, next) => {
   try {
-    // Try to extract token if present (optional auth)
-    const header = req.headers.authorization;
-    if (header?.startsWith('Bearer ')) {
-      try {
-        const jwt = await import('jsonwebtoken');
-        const { JWT_SECRET } = await import('../middleware/auth.js');
-        req.user = jwt.default.verify(header.slice(7), JWT_SECRET) as AuthRequest['user'];
-      } catch {
-        // Token invalid - proceed without auth
-      }
-    }
-
+    const rid = req.user!.restaurant_id;
     const { category } = req.query;
-    const rid = req.user?.restaurant_id ?? (req.query.restaurant_id as string | undefined);
 
-    // Authenticated staff can request the full catalogue (incl. 86'd items) for
-    // the menu-management screen via ?all=1. Public browsing stays available-only.
-    const includeUnavailable = !!req.user && req.query.all === '1';
+    // Staff can request the full catalogue (incl. 86'd items) via ?all=1.
+    const includeUnavailable = req.query.all === '1';
 
-    let sql = 'SELECT * FROM menu_items WHERE 1=1';
-    const args: any[] = [];
+    let sql = 'SELECT * FROM menu_items WHERE restaurant_id=?';
+    const args: (string | number)[] = [rid];
     if (!includeUnavailable) { sql += ' AND is_available=1'; }
-    if (rid) { sql += ' AND restaurant_id=?'; args.push(rid); }
     if (category) { sql += ' AND category=?'; args.push(String(category)); }
     sql += ' ORDER BY category, name';
     const rows = await getDb().execute({ sql, args });
@@ -109,28 +92,15 @@ router.get('/', async (req: AuthRequest, res, next) => {
   } catch (e) { next(e); }
 });
 
-// GET /api/menu/:id — scoped to tenant when authenticated
+// GET /api/menu/:id — always scoped to the authenticated tenant
 router.get('/:id', async (req: AuthRequest, res, next) => {
   try {
-    const header = req.headers.authorization;
-    if (header?.startsWith('Bearer ')) {
-      try {
-        const jwt = await import('jsonwebtoken');
-        const { JWT_SECRET } = await import('../middleware/auth.js');
-        req.user = jwt.default.verify(header.slice(7), JWT_SECRET) as AuthRequest['user'];
-      } catch {
-        res.status(401).json({ error: 'Token expired or invalid' });
-        return;
-      }
-    }
-
     const id = req.params.id as string;
-    const rid = req.user?.restaurant_id ?? (req.query.restaurant_id as string | undefined);
-    const sql = rid
-      ? 'SELECT * FROM menu_items WHERE id=? AND restaurant_id=?'
-      : 'SELECT * FROM menu_items WHERE id=?';
-    const args = rid ? [id, rid] : [id];
-    const row = await getDb().execute({ sql, args });
+    const rid = req.user!.restaurant_id;
+    const row = await getDb().execute({
+      sql: 'SELECT * FROM menu_items WHERE id=? AND restaurant_id=?',
+      args: [id, rid],
+    });
     if (!row.rows.length) { res.status(404).json({ error: 'Menu item not found' }); return; }
     res.json(row.rows[0]);
   } catch (e) { next(e); }

@@ -1,9 +1,18 @@
 import { Router } from 'express';
 import bcrypt from 'bcryptjs';
-import { createHash, randomBytes } from 'crypto';
+import { createHash, randomBytes, timingSafeEqual } from 'crypto';
 import { z } from 'zod';
 import { getDb } from '../db.js';
-import { signToken, requireAuth, type AuthRequest } from '../middleware/auth.js';
+import { signToken, requireAuth, signTokenForUser, type AuthRequest } from '../middleware/auth.js';
+import { bumpTokenVersion } from '../services/tokenVersion.js';
+import { BCRYPT_ROUNDS } from '../constants/security.js';
+import { secureOtp6 } from '../utils/secureRandom.js';
+import {
+  isPasswordTooLong,
+  passwordChangeField,
+  passwordField,
+  passwordLoginField,
+} from '../utils/security.js';
 import { resetPasswordUrl } from '../config/site.js';
 import { isEmailConfigured, sendMailReliable, smtpFrom } from '../services/email.js';
 import { isValidPhoneE164, normalizePhone, sendOtpSms } from '../services/sms.js';
@@ -12,7 +21,7 @@ const router = Router();
 
 const LoginSchema = z.object({
   email:    z.string().email(),
-  password: z.string().min(1),
+  password: passwordLoginField,
   device_id: z.string().min(8).max(128).optional(),
 });
 const RequestOtpSchema = z.object({ phone: z.string().min(8) });
@@ -26,7 +35,7 @@ const PinSchema = z.object({
 const ForgotPasswordSchema = z.object({ email: z.string().email() });
 const ResetPasswordSchema = z.object({
   token: z.string().min(24),
-  password: z.string().min(8),
+  password: passwordField,
 });
 const ProfileUpdateSchema = z.object({
   name: z.string().min(2).max(80).optional(),
@@ -34,8 +43,8 @@ const ProfileUpdateSchema = z.object({
   email: z.string().email().optional(),
 });
 const ChangePasswordSchema = z.object({
-  current_password: z.string().min(1),
-  new_password: z.string().min(8),
+  current_password: passwordChangeField,
+  new_password: passwordField,
 });
 const ChangePinSchema = z.object({
   current_pin: z.string().length(4),
@@ -55,6 +64,26 @@ function hashOtp(raw: string): string {
   return createHash('sha256').update(raw).digest('hex');
 }
 
+function otpHashMatches(rawOtp: string, storedHash: string): boolean {
+  const a = Buffer.from(hashOtp(rawOtp), 'utf8');
+  const b = Buffer.from(storedHash, 'utf8');
+  if (a.length !== b.length) return false;
+  return timingSafeEqual(a, b);
+}
+
+async function issueLoginSession(db: ReturnType<typeof getDb>, userId: string) {
+  await bumpTokenVersion(userId);
+  const row = await db.execute({
+    sql: `SELECT u.*, r.name as restaurant_name, r.plan as restaurant_plan
+          FROM users u
+          JOIN restaurants r ON r.id = u.restaurant_id
+          WHERE u.id=?
+          LIMIT 1`,
+    args: [userId],
+  });
+  return row.rows[0] as Record<string, unknown>;
+}
+
 // POST /api/auth/login
 router.post('/login', async (req, res, next) => {
   try {
@@ -71,6 +100,10 @@ router.post('/login', async (req, res, next) => {
       args: [emailNorm],
     });
     if (!row.rows.length) {
+      res.status(401).json({ error: 'Invalid credentials' });
+      return;
+    }
+    if (isPasswordTooLong(password)) {
       res.status(401).json({ error: 'Invalid credentials' });
       return;
     }
@@ -96,18 +129,14 @@ router.post('/login', async (req, res, next) => {
       });
       user.pin_device_id = device_id.trim();
     }
-    const token = signToken({
-      id: String(user.id),
-      role: String(user.role),
-      email: String(user.email),
-      restaurant_id: String(user.restaurant_id),
-    });
+    const liveUser = await issueLoginSession(db, String(user.id));
+    const token = signTokenForUser(liveUser);
     res.json({
       token,
-      restaurant_id: user.restaurant_id,
-      restaurant_name: user.restaurant_name,
-      restaurant_plan: user.restaurant_plan,
-      user: { id: user.id, name: user.name, initials: user.initials, email: user.email, phone: user.phone, role: user.role, access_json: user.access_json, status: user.status, restaurant_id: user.restaurant_id },
+      restaurant_id: liveUser.restaurant_id,
+      restaurant_name: liveUser.restaurant_name,
+      restaurant_plan: liveUser.restaurant_plan,
+      user: { id: liveUser.id, name: liveUser.name, initials: liveUser.initials, email: liveUser.email, phone: liveUser.phone, role: liveUser.role, access_json: liveUser.access_json, status: liveUser.status, restaurant_id: liveUser.restaurant_id },
     });
   } catch (e) { next(e); }
 });
@@ -138,7 +167,7 @@ router.post('/request-otp', async (req, res, next) => {
 
     const user = userRows.rows[0] as Record<string, unknown>;
     const userId = String(user.id);
-    const otp = String(Math.floor(100000 + Math.random() * 900000));
+    const otp = secureOtp6();
     const otpHash = hashOtp(otp);
 
     await db.execute({
@@ -202,7 +231,7 @@ router.post('/verify-otp', async (req, res, next) => {
       return;
     }
 
-    const isMatch = hashOtp(otp) === String(otpRow.otp_hash);
+    const isMatch = otpHashMatches(otp, String(otpRow.otp_hash));
     if (!isMatch) {
       await db.execute({
         sql: `UPDATE login_otp_codes SET attempt_count=attempt_count+1 WHERE id=?`,
@@ -215,25 +244,8 @@ router.post('/verify-otp', async (req, res, next) => {
     await db.execute({ sql: `UPDATE login_otp_codes SET used_at=datetime('now') WHERE id=?`, args: [codeId] });
 
     const userId = String(otpRow.user_id);
-    const userRow = await db.execute({
-      sql: `SELECT u.*, r.name as restaurant_name, r.plan as restaurant_plan
-            FROM users u
-            JOIN restaurants r ON r.id = u.restaurant_id
-            WHERE u.id=?
-            LIMIT 1`,
-      args: [userId],
-    });
-    if (!userRow.rows.length) {
-      res.status(404).json({ error: 'User not found' });
-      return;
-    }
-    const user = userRow.rows[0] as Record<string, unknown>;
-    const token = signToken({
-      id: String(user.id),
-      role: String(user.role),
-      email: String(user.email),
-      restaurant_id: String(user.restaurant_id),
-    });
+    const user = await issueLoginSession(db, userId);
+    const token = signTokenForUser(user);
     res.json({
       token,
       restaurant_id: user.restaurant_id,
@@ -283,21 +295,16 @@ router.post('/pin', async (req, res, next) => {
     }
     if (!pinnedDevice) {
       await db.execute({ sql: 'UPDATE users SET pin_device_id=? WHERE id=?', args: [deviceIdNorm, String(u.id)] });
-      u.pin_device_id = deviceIdNorm;
     }
 
-    const token = signToken({
-      id: String(u.id),
-      role: String(u.role),
-      email: String(u.email),
-      restaurant_id: String(u.restaurant_id),
-    });
+    const liveUser = await issueLoginSession(db, String(u.id));
+    const token = signTokenForUser(liveUser);
     res.json({
       token,
-      restaurant_id: u.restaurant_id,
-      restaurant_name: u.restaurant_name,
-      restaurant_plan: u.restaurant_plan ?? 'basic',
-      user: { id: u.id, name: u.name, initials: u.initials, email: u.email, phone: u.phone, role: u.role, access_json: u.access_json, status: u.status, restaurant_id: u.restaurant_id },
+      restaurant_id: liveUser.restaurant_id,
+      restaurant_name: liveUser.restaurant_name,
+      restaurant_plan: liveUser.restaurant_plan ?? 'basic',
+      user: { id: liveUser.id, name: liveUser.name, initials: liveUser.initials, email: liveUser.email, phone: liveUser.phone, role: liveUser.role, access_json: liveUser.access_json, status: liveUser.status, restaurant_id: liveUser.restaurant_id },
     });
   } catch (e) { next(e); }
 });
@@ -386,11 +393,12 @@ router.post('/reset-password', async (req, res, next) => {
     const tokenRow = row.rows[0] as Record<string, unknown>;
     const tokenId = String(tokenRow.id);
     const userId = String(tokenRow.user_id);
-    const passwordHash = await bcrypt.hash(password, 10);
+    const passwordHash = await bcrypt.hash(password, BCRYPT_ROUNDS);
 
     await db.execute({ sql: 'UPDATE users SET password_hash=? WHERE id=?', args: [passwordHash, userId] });
     await db.execute({ sql: "UPDATE password_reset_tokens SET used_at=datetime('now') WHERE id=?", args: [tokenId] });
     await db.execute({ sql: "DELETE FROM password_reset_tokens WHERE user_id=? AND id!=?", args: [userId, tokenId] });
+    await bumpTokenVersion(userId);
 
     res.json({ ok: true, message: 'Password reset successful. You can now sign in.' });
   } catch (e) { next(e); }
@@ -497,11 +505,12 @@ router.post('/change-password', requireAuth, async (req: AuthRequest, res, next)
       res.status(401).json({ error: 'Current password is incorrect' });
       return;
     }
-    const nextHash = await bcrypt.hash(data.new_password, 10);
+    const nextHash = await bcrypt.hash(data.new_password, BCRYPT_ROUNDS);
     await db.execute({
       sql: 'UPDATE users SET password_hash=? WHERE id=?',
       args: [nextHash, req.user!.id],
     });
+    await bumpTokenVersion(req.user!.id);
     res.json({ ok: true, message: 'Password updated successfully' });
   } catch (e) { next(e); }
 });
@@ -529,11 +538,12 @@ router.post('/change-pin', requireAuth, async (req: AuthRequest, res, next) => {
       res.status(401).json({ error: 'Current PIN is incorrect' });
       return;
     }
-    const nextHash = await bcrypt.hash(data.new_pin, 10);
+    const nextHash = await bcrypt.hash(data.new_pin, BCRYPT_ROUNDS);
     await db.execute({
       sql: 'UPDATE users SET pin_hash=? WHERE id=?',
       args: [nextHash, req.user!.id],
     });
+    await bumpTokenVersion(req.user!.id);
     res.json({ ok: true, message: 'PIN updated successfully' });
   } catch (e) { next(e); }
 });

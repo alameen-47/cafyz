@@ -46,7 +46,12 @@ export const useAuth = () => useContext(Ctx);
 const DEVICE_KEY = 'cafyz_device_id';
 function deviceId(): string {
   let id = localStorage.getItem(DEVICE_KEY);
-  if (!id) { id = 'dev-' + Math.random().toString(36).slice(2) + Date.now().toString(36); localStorage.setItem(DEVICE_KEY, id); }
+  if (!id) {
+    id = typeof crypto !== 'undefined' && 'randomUUID' in crypto
+      ? `dev-${crypto.randomUUID()}`
+      : `dev-${Date.now().toString(36)}`;
+    localStorage.setItem(DEVICE_KEY, id);
+  }
   return id;
 }
 
@@ -68,28 +73,50 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const stored = localStorage.getItem('cafyz_user');
     const token = localStorage.getItem('cafyz_token');
-    if (stored && token) {
-      try { setUser(JSON.parse(stored) as AuthUser); } catch { /* ignore */ }
-      restaurantApi.me()
-        .then(r => {
-          if (r.currency_code) setActiveCurrencyCode(r.currency_code);
-          void syncRestaurantLogoCacheAsync(r);
-          setUser(prev => {
-            if (!prev) return prev;
-            const u: AuthUser = {
-              ...prev,
-              plan: (r.plan as Plan) ?? prev.plan,
-              restaurant_name: String(r.name ?? prev.restaurant_name),
-            };
-            localStorage.setItem('cafyz_user', JSON.stringify(u));
-            return u;
-          });
-        })
-        .catch(() => { /* keep defaults if offline / session expired */ });
+    if (!token) {
+      setLoading(false);
+      return;
     }
-    setLoading(false);
+
+    void (async () => {
+      try {
+        const me = await authApi.me();
+        const stored = localStorage.getItem('cafyz_user');
+        let plan: Plan = 'basic';
+        let restaurant_name = '';
+        try {
+          const parsed = stored ? JSON.parse(stored) as AuthUser : null;
+          plan = parsed?.plan ?? plan;
+          restaurant_name = parsed?.restaurant_name ?? '';
+        } catch { /* ignore corrupt cache */ }
+
+        const r = await restaurantApi.me();
+        if (r.currency_code) setActiveCurrencyCode(r.currency_code);
+        void syncRestaurantLogoCacheAsync(r);
+        plan = (r.plan as Plan) ?? plan;
+        restaurant_name = String(r.name ?? restaurant_name);
+
+        const u: AuthUser = {
+          id: String(me.id),
+          name: String(me.name),
+          email: String(me.email),
+          initials: String(me.initials || (me.name || '?').slice(0, 2).toUpperCase()),
+          role: me.role as Role,
+          restaurant_id: String(me.restaurant_id),
+          restaurant_name,
+          plan,
+        };
+        localStorage.setItem('cafyz_user', JSON.stringify(u));
+        setUser(u);
+      } catch {
+        localStorage.removeItem('cafyz_token');
+        localStorage.removeItem('cafyz_user');
+        setUser(null);
+      } finally {
+        setLoading(false);
+      }
+    })();
   }, []);
 
   // Persist token, then enrich with plan + currency from the restaurant record.

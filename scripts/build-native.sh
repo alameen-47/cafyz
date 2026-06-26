@@ -7,7 +7,7 @@ cd "$ROOT"
 API_URL="${VITE_API_URL:-https://cafyz.onrender.com}"
 APP_URL="${VITE_APP_URL:-https://cafyz.ametronyx.com}"
 APP_ICONS_DIR="${APP_ICONS_DIR:-AppIcons (1)}"
-APP_ICONS_ZIP="${APP_ICONS_ZIP:-AppIcons (3).zip}"
+APP_ICONS_ZIP="${APP_ICONS_ZIP:-AppIcons (4).zip}"
 
 apply_icons_from_dir() {
   local dir="$1"

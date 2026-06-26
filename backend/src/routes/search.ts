@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { getDb } from '../db.js';
+import { escapeLikePattern } from '../utils/security.js';
 import { requireAuth, type AuthRequest } from '../middleware/auth.js';
 
 const router = Router();
@@ -15,7 +15,7 @@ router.get('/', async (req: AuthRequest, res, next) => {
     }
 
     const rid = req.user!.restaurant_id;
-    const like = `%${q}%`;
+    const like = `%${escapeLikePattern(q)}%`;
     const db = getDb();
 
     const [menuRows, tableRows, orderRows, staffRows, inventoryRows, reservationRows] = await Promise.all([

@@ -14,6 +14,12 @@ export function errorHandler(err: Error, _req: Request, res: Response, _next: Ne
     return;
   }
 
+  const explicitStatus = Number((err as { status?: number }).status);
+  if (explicitStatus >= 400 && explicitStatus < 600) {
+    res.status(explicitStatus).json({ error: err.message || 'Request failed' });
+    return;
+  }
+
   const code = String((err as NodeJS.ErrnoException & { code?: string }).code ?? '');
   const status = code.includes('SQLITE_CONSTRAINT_UNIQUE') ? 409
                : code.includes('SQLITE_CONSTRAINT') ? 400

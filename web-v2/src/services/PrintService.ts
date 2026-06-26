@@ -4,6 +4,7 @@
 
 import { getRestaurantLogo } from './restaurantLogoStorage';
 import { logoDataUrlToEscPos } from './logoThermalRaster';
+import { escapeHtml } from '../utils/escapeHtml';
 import { formatPrinterConnectError, getPrinterEnvironment } from './printerEnvironment';
 import {
   canUseNativeBle,
@@ -197,15 +198,16 @@ export function buildReceiptHTML(data: ReceiptData): string {
 
   const rows = data.items.map(it => `
     <tr>
-      <td style="padding:1px 0">${it.qty}× ${it.name}</td>
+      <td style="padding:1px 0">${it.qty}× ${escapeHtml(it.name)}</td>
       <td style="text-align:right;padding:1px 0">${fmt(it.price * it.qty)}</td>
     </tr>`).join('');
 
+  const e = escapeHtml;
   return `<!DOCTYPE html>
 <html>
 <head>
 <meta charset="utf-8">
-<title>Receipt — ${data.restaurantName}</title>
+<title>Receipt — ${e(data.restaurantName)}</title>
 <style>
   @page { size: 72mm auto; margin: 6mm; }
   body { font-family: 'Courier New', monospace; font-size: 12px; width: 60mm; margin: 0 auto; }
@@ -220,35 +222,35 @@ export function buildReceiptHTML(data: ReceiptData): string {
 </head>
 <body>
 <div class="center receipt-header">
-  <h1>${data.restaurantName}</h1>
-  ${data.addressLine ? `<p>${data.addressLine}</p>` : ''}
-  ${data.phone ? `<p>Tel: ${data.phone}</p>` : ''}
-  ${data.taxId ? `<p>Tax ID: ${data.taxId}</p>` : ''}
-  ${data.tableName ? `<p>Table: ${data.tableName}</p>` : ''}
-  ${data.serverName ? `<p>Server: ${data.serverName}</p>` : ''}
-  ${data.covers ? `<p>Covers: ${data.covers}</p>` : ''}
-  <p>${date}</p>
+  <h1>${e(data.restaurantName)}</h1>
+  ${data.addressLine ? `<p>${e(data.addressLine)}</p>` : ''}
+  ${data.phone ? `<p>Tel: ${e(data.phone)}</p>` : ''}
+  ${data.taxId ? `<p>Tax ID: ${e(data.taxId)}</p>` : ''}
+  ${data.tableName ? `<p>Table: ${e(data.tableName)}</p>` : ''}
+  ${data.serverName ? `<p>Server: ${e(data.serverName)}</p>` : ''}
+  ${data.covers ? `<p>Covers: ${e(data.covers)}</p>` : ''}
+  <p>${e(date)}</p>
 </div>
 <hr>
 <table>
   <tbody>${rows}</tbody>
 </table>
-${data.note ? `<p style="font-size:11px;margin:4px 0">Note: ${data.note}</p>` : ''}
+${data.note ? `<p style="font-size:11px;margin:4px 0">Note: ${e(data.note)}</p>` : ''}
 <hr>
 <table>
   <tr><td>Subtotal</td><td class="right">${fmt(data.subtotal)}</td></tr>
   <tr><td>Service ${Number(data.serviceRate ?? 18).toFixed(2)}%</td><td class="right">${fmt(data.service)}</td></tr>
-  ${data.taxIncluded ? `<tr><td>Amount before ${data.taxLabel ?? 'Tax'}</td><td class="right">${fmt((data.subtotal + data.service) - data.tax)}</td></tr>` : ''}
-  <tr><td>${data.taxLabel ?? 'Tax'} ${Number(data.taxRate ?? 8.75).toFixed(2)}%${data.taxIncluded ? ' (included)' : ''}</td><td class="right">${fmt(data.tax)}</td></tr>
+  ${data.taxIncluded ? `<tr><td>Amount before ${e(data.taxLabel ?? 'Tax')}</td><td class="right">${fmt((data.subtotal + data.service) - data.tax)}</td></tr>` : ''}
+  <tr><td>${e(data.taxLabel ?? 'Tax')} ${Number(data.taxRate ?? 8.75).toFixed(2)}%${data.taxIncluded ? ' (included)' : ''}</td><td class="right">${fmt(data.tax)}</td></tr>
 </table>
 <hr>
 <table>
   <tr class="total-row"><td>TOTAL DUE</td><td class="right">${fmt(data.total)}</td></tr>
 </table>
-${data.payMethod ? `<hr><p class="center">Paid by ${data.payMethod}</p>` : ''}
+${data.payMethod ? `<hr><p class="center">Paid by ${e(data.payMethod)}</p>` : ''}
 <hr>
 <div class="center">
-  <p>${data.footer || 'Thank you for your visit!'}</p>
+  <p>${e(data.footer || 'Thank you for your visit!')}</p>
   <p>cafyz.com</p>
 </div>
 </body>
@@ -297,11 +299,12 @@ export function buildKitchenTicket(data: KitchenTicketData, width = 32, logoByte
 
 export function buildKitchenTicketHTML(data: KitchenTicketData): string {
   const ts = data.createdAt ? new Date(data.createdAt).toLocaleString('en-GB') : new Date().toLocaleString('en-GB');
+  const e = escapeHtml;
   const rows = data.items.map(it => `
     <tr>
-      <td style="padding:2px 0;font-weight:700;text-transform:uppercase">${it.alert ? '⚠ ' : ''}${it.qty}× ${it.name}</td>
+      <td style="padding:2px 0;font-weight:700;text-transform:uppercase">${it.alert ? '⚠ ' : ''}${it.qty}× ${e(it.name)}</td>
     </tr>
-    ${(it.mods ?? []).map(m => `<tr><td style="padding:1px 0 1px 14px;font-size:11px;text-transform:uppercase">· ${m}</td></tr>`).join('')}
+    ${(it.mods ?? []).map(m => `<tr><td style="padding:1px 0 1px 14px;font-size:11px;text-transform:uppercase">· ${e(m)}</td></tr>`).join('')}
   `).join('');
   return `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Kitchen Ticket</title>
   <style>
@@ -314,19 +317,19 @@ export function buildKitchenTicketHTML(data: KitchenTicketData): string {
     .parcel { border: 2px solid #000; padding: 4px; margin: 4px 0; font-weight: 800; font-size: 16px; letter-spacing: 1px; }
   </style></head><body>
   <div class="center ticket-header">
-    <h1>${data.restaurantName}</h1>
+    <h1>${e(data.restaurantName)}</h1>
     <p><b>KITCHEN TICKET</b></p>
     ${data.parcel ? `<div class="parcel">*** PARCEL ***<br/><span style="font-size:11px">TAKEAWAY ORDER</span></div>` : ''}
   </div>
   <hr>
-  <p><b>Ticket:</b> #${data.ticketId.slice(0, 8).toUpperCase()}</p>
-  <p><b>Table:</b> ${data.parcel ? 'PARCEL' : data.tableName}</p>
-  ${data.serverName ? `<p><b>Server:</b> ${data.serverName}</p>` : ''}
-  ${data.covers ? `<p><b>Covers:</b> ${data.covers}</p>` : ''}
-  ${data.station ? `<p><b>Station:</b> ${data.station}</p>` : ''}
-  <p>${ts}</p>
+  <p><b>Ticket:</b> #${e(data.ticketId.slice(0, 8).toUpperCase())}</p>
+  <p><b>Table:</b> ${data.parcel ? 'PARCEL' : e(data.tableName)}</p>
+  ${data.serverName ? `<p><b>Server:</b> ${e(data.serverName)}</p>` : ''}
+  ${data.covers ? `<p><b>Covers:</b> ${e(data.covers)}</p>` : ''}
+  ${data.station ? `<p><b>Station:</b> ${e(data.station)}</p>` : ''}
+  <p>${e(ts)}</p>
   <hr><table><tbody>${rows}</tbody></table>
-  ${data.note ? `<hr><p><b>Note:</b> ${data.note}</p>` : ''}
+  ${data.note ? `<hr><p><b>Note:</b> ${e(data.note)}</p>` : ''}
   </body></html>`;
 }
 
