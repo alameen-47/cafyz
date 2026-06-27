@@ -21,6 +21,22 @@ const PANEL_LABELS: Record<string, string> = {
 const CURRENCY_OPTIONS = ["$", "€", "£", "₹", "AED", "SAR"];
 const shortDate = (iso?: string) => iso ? new Date(iso).toLocaleDateString(undefined, { day: "numeric", month: "short" }) : "—";
 
+type KeyFilter = "all" | "unused" | "used" | "revoked";
+
+function DeleteAction({ disabled, onClick, label = "Delete" }: { disabled?: boolean; onClick: () => void; label?: string }) {
+  return (
+    <button
+      type="button"
+      disabled={disabled}
+      onClick={onClick}
+      className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all hover:bg-[rgba(255,59,92,0.12)] disabled:opacity-50"
+      style={{ color: "#ff3b5c", border: "1px solid rgba(255,59,92,0.22)" }}
+    >
+      <Trash2 size={12} /> {label}
+    </button>
+  );
+}
+
 export function FounderConsole() {
   const [activeTab, setActiveTab] = useState("Overview");
   const [copied, setCopied] = useState<string | null>(null);
@@ -33,6 +49,7 @@ export function FounderConsole() {
   const [planCfg, setPlanCfg] = useState<ApiPlanConfig[]>([]);
   const [users, setUsers] = useState<ApiFounderUser[]>([]);
   const [userFilter, setUserFilter] = useState("");
+  const [keyFilter, setKeyFilter] = useState<KeyFilter>("all");
   const [busy, setBusy] = useState(false);
   const [panelSyncing, setPanelSyncing] = useState<Set<string>>(() => new Set());
   const panelFlushTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
@@ -165,6 +182,111 @@ export function FounderConsole() {
     } finally { setBusy(false); }
   };
 
+  const removeInquiry = async (req: ApiFounderInquiry) => {
+    const msg = req.status === "pending"
+      ? `Delete pending trial request for "${req.restaurant_name}"?`
+      : `Remove trial request record for "${req.restaurant_name}"?`;
+    if (!window.confirm(msg)) return;
+    setBusy(true);
+    try {
+      await founderApi.deleteInquiry(req.id);
+      setInquiries(prev => prev.filter(i => i.id !== req.id));
+      toast.success("Trial request removed", req.restaurant_name);
+      void load();
+    } catch (e) {
+      toast.error("Couldn't delete trial request", (e as Error).message);
+    } finally { setBusy(false); }
+  };
+
+  const clearResolvedInquiries = async () => {
+    const count = inquiries.filter(i => i.status !== "pending").length;
+    if (!count) { toast.error("No resolved trial requests to clear"); return; }
+    if (!window.confirm(`Delete ${count} approved/denied trial request(s)?`)) return;
+    setBusy(true);
+    try {
+      const res = await founderApi.bulkDeleteInquiries({ resolved_only: true });
+      setInquiries(prev => prev.filter(i => i.status === "pending"));
+      toast.success("Resolved trial requests cleared", `${res.deleted} removed`);
+      void load();
+    } catch (e) {
+      toast.error("Couldn't clear trial requests", (e as Error).message);
+    } finally { setBusy(false); }
+  };
+
+  const removeLicenseRequest = async (req: ApiLicensePurchaseRequest) => {
+    if (!window.confirm(`Delete license request for "${req.restaurant_name ?? "restaurant"}"?`)) return;
+    setBusy(true);
+    try {
+      await founderApi.deleteLicenseRequest(req.id);
+      setLicReqs(prev => prev.filter(r => r.id !== req.id));
+      toast.success("License request removed", req.restaurant_name ?? "");
+      void load();
+    } catch (e) {
+      toast.error("Couldn't delete license request", (e as Error).message);
+    } finally { setBusy(false); }
+  };
+
+  const clearResolvedLicenseRequests = async () => {
+    const count = licReqs.filter(r => r.status !== "pending").length;
+    if (!count) { toast.error("No fulfilled/cancelled license requests to clear"); return; }
+    if (!window.confirm(`Delete ${count} non-pending license request(s)?`)) return;
+    setBusy(true);
+    try {
+      const res = await founderApi.bulkDeleteLicenseRequests({ non_pending_only: true });
+      setLicReqs(prev => prev.filter(r => r.status === "pending"));
+      toast.success("License requests cleared", `${res.deleted} removed`);
+      void load();
+    } catch (e) {
+      toast.error("Couldn't clear license requests", (e as Error).message);
+    } finally { setBusy(false); }
+  };
+
+  const removeLicenseKey = async (lk: ApiLicenseKey) => {
+    const msg = lk.restaurant_id
+      ? `Delete key ${lk.key_code}? It is linked to ${lk.restaurant_name ?? "a restaurant"}.`
+      : `Delete unused key ${lk.key_code}?`;
+    if (!window.confirm(msg)) return;
+    setBusy(true);
+    try {
+      await founderApi.deleteLicenseKey(lk.id);
+      setKeys(prev => prev.filter(k => k.id !== lk.id));
+      toast.success("License key deleted", lk.key_code);
+      void load();
+    } catch (e) {
+      toast.error("Couldn't delete license key", (e as Error).message);
+    } finally { setBusy(false); }
+  };
+
+  const deleteUnusedKeys = async () => {
+    const count = keys.filter(k => !k.restaurant_id).length;
+    if (!count) { toast.error("No unused license keys to delete"); return; }
+    if (!window.confirm(`Permanently delete ${count} unused license key(s)?`)) return;
+    setBusy(true);
+    try {
+      const res = await founderApi.bulkDeleteLicenseKeys({ unused_only: true });
+      setKeys(prev => prev.filter(k => k.restaurant_id));
+      toast.success("Unused keys deleted", `${res.deleted} removed`);
+      void load();
+    } catch (e) {
+      toast.error("Couldn't delete unused keys", (e as Error).message);
+    } finally { setBusy(false); }
+  };
+
+  const deleteRevokedKeys = async () => {
+    const count = keys.filter(k => Number(k.is_active) === 0).length;
+    if (!count) { toast.error("No revoked keys to delete"); return; }
+    if (!window.confirm(`Permanently delete ${count} revoked license key(s)?`)) return;
+    setBusy(true);
+    try {
+      const res = await founderApi.bulkDeleteLicenseKeys({ revoked_only: true });
+      setKeys(prev => prev.filter(k => Number(k.is_active) !== 0));
+      toast.success("Revoked keys deleted", `${res.deleted} removed`);
+      void load();
+    } catch (e) {
+      toast.error("Couldn't delete revoked keys", (e as Error).message);
+    } finally { setBusy(false); }
+  };
+
   const generateKey = async (plan: string) => {
     setBusy(true);
     try {
@@ -245,6 +367,16 @@ export function FounderConsole() {
   const activeLicenses = stats?.license_keys.activated ?? 0;
   const pendingTrials = stats?.pending_license_requests ?? inquiries.filter(i => i.status === "pending").length;
   const filteredUsers = users.filter(u => !userFilter || u.restaurant_id === userFilter);
+  const filteredKeys = keys.filter(k => {
+    if (keyFilter === "unused") return !k.restaurant_id;
+    if (keyFilter === "used") return Boolean(k.restaurant_id);
+    if (keyFilter === "revoked") return Number(k.is_active) === 0;
+    return true;
+  });
+  const resolvedInquiryCount = inquiries.filter(i => i.status !== "pending").length;
+  const resolvedLicReqCount = licReqs.filter(r => r.status !== "pending").length;
+  const unusedKeyCount = keys.filter(k => !k.restaurant_id).length;
+  const revokedKeyCount = keys.filter(k => Number(k.is_active) === 0).length;
 
   return (
     <div className="p-3 sm:p-4 md:p-6 space-y-4">
@@ -476,31 +608,65 @@ export function FounderConsole() {
       {/* Trial Requests */}
       {activeTab === "Trial Requests" && (
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-3">
-          {/* Renewal / purchase requests from existing restaurants → Fulfill to email a key */}
-          {licReqs.filter(r => r.status === "pending").length > 0 && (
+          <div className="flex flex-wrap gap-2 items-center justify-between">
+            <p style={{ color: "#6b82a0", fontSize: "0.78rem" }}>
+              Delete individual rows or bulk-clear resolved requests you no longer need.
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {resolvedLicReqCount > 0 && (
+                <button disabled={busy} onClick={() => void clearResolvedLicenseRequests()}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold"
+                  style={{ color: "#ff3b5c", border: "1px solid rgba(255,59,92,0.22)", background: "rgba(255,59,92,0.06)" }}>
+                  <Trash2 size={12} /> Clear {resolvedLicReqCount} license req.
+                </button>
+              )}
+              {resolvedInquiryCount > 0 && (
+                <button disabled={busy} onClick={() => void clearResolvedInquiries()}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold"
+                  style={{ color: "#ff3b5c", border: "1px solid rgba(255,59,92,0.22)", background: "rgba(255,59,92,0.06)" }}>
+                  <Trash2 size={12} /> Clear {resolvedInquiryCount} trial req.
+                </button>
+              )}
+            </div>
+          </div>
+          {licReqs.length > 0 && (
             <div className="space-y-2">
               <p style={{ color: "#a855f7", fontSize: "0.7rem", fontWeight: 700, letterSpacing: "0.05em", textTransform: "uppercase" }}>Renewal / Purchase Requests</p>
-              {licReqs.filter(r => r.status === "pending").map(req => (
+              {licReqs.map(req => (
                 <div key={req.id} className="rounded-2xl p-4 flex flex-wrap items-center gap-4"
                   style={{ background: "#0d1326", border: "1px solid rgba(168,85,247,0.25)" }}>
                   <div className="flex-1 min-w-0">
                     <p style={{ color: "#e8eef8", fontWeight: 600, fontSize: "0.9rem" }}>{req.restaurant_name ?? "Restaurant"}</p>
                     <p style={{ color: "#6b82a0", fontSize: "0.75rem" }}>{req.email}</p>
-                    <div className="flex items-center gap-2 mt-1">
+                    <div className="flex items-center gap-2 mt-1 flex-wrap">
                       <span className="text-xs px-2 py-0.5 rounded-full capitalize" style={{ background: `${planColors[req.plan]}15`, color: planColors[req.plan] }}>{req.plan}</span>
+                      <span className="text-xs px-2 py-0.5 rounded-full capitalize"
+                        style={req.status === "pending" ? { background: "rgba(245,158,11,0.1)", color: "#f59e0b" } : { background: "rgba(107,130,160,0.15)", color: "#6b82a0" }}>
+                        {req.status}
+                      </span>
                       <span style={{ color: "#6b82a0", fontSize: "0.72rem" }}>{shortDate(req.created_at)}</span>
                     </div>
                   </div>
-                  <button disabled={busy} onClick={() => fulfillRequest(req.id)}
-                    className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold flex-shrink-0"
-                    style={{ background: "rgba(34,197,94,0.12)", color: "#22c55e" }}>
-                    <Key size={12} /> Fulfill & email key
-                  </button>
+                  <div className="flex gap-2 flex-shrink-0 items-center">
+                    {req.status === "pending" && (
+                      <button disabled={busy} onClick={() => fulfillRequest(req.id)}
+                        className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold"
+                        style={{ background: "rgba(34,197,94,0.12)", color: "#22c55e" }}>
+                        <Key size={12} /> Fulfill & email key
+                      </button>
+                    )}
+                    <DeleteAction disabled={busy} onClick={() => void removeLicenseRequest(req)} />
+                  </div>
                 </div>
               ))}
             </div>
           )}
-          {inquiries.length === 0 && licReqs.filter(r => r.status === "pending").length === 0 && <div className="rounded-2xl py-10 text-center" style={{ background: "#0d1326", border: "1px solid rgba(30,127,255,0.1)", color: "#6b82a0", fontSize: "0.82rem" }}>No pending requests</div>}
+          {inquiries.length === 0 && licReqs.length === 0 && (
+            <div className="rounded-2xl py-10 text-center" style={{ background: "#0d1326", border: "1px solid rgba(30,127,255,0.1)", color: "#6b82a0", fontSize: "0.82rem" }}>No trial or license requests</div>
+          )}
+          {inquiries.length > 0 && (
+            <p style={{ color: "#1e7fff", fontSize: "0.7rem", fontWeight: 700, letterSpacing: "0.05em", textTransform: "uppercase" }}>Trial Requests</p>
+          )}
           {inquiries.map((req, i) => (
             <motion.div key={req.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}
               className="rounded-2xl p-4 flex flex-wrap items-center gap-4"
@@ -513,25 +679,28 @@ export function FounderConsole() {
                   <span style={{ color: "#6b82a0", fontSize: "0.72rem" }}>{shortDate(req.created_at)}</span>
                 </div>
               </div>
-              {req.status === "pending" ? (
-                <div className="flex gap-2 flex-shrink-0">
-                  <button disabled={busy} onClick={() => decideInquiry(req.id, "approved")}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold"
-                    style={{ background: "rgba(34,197,94,0.1)", color: "#22c55e" }}>
-                    <Check size={12} /> Approve
-                  </button>
-                  <button disabled={busy} onClick={() => decideInquiry(req.id, "denied")}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold"
-                    style={{ background: "rgba(255,59,92,0.08)", color: "#ff3b5c" }}>
-                    <X size={12} /> Reject
-                  </button>
-                </div>
-              ) : (
-                <span className="text-xs px-2.5 py-1 rounded-full capitalize"
-                  style={req.status === "approved" ? { background: "rgba(34,197,94,0.1)", color: "#22c55e" } : { background: "rgba(255,59,92,0.1)", color: "#ff3b5c" }}>
-                  {req.status}
-                </span>
-              )}
+              <div className="flex gap-2 flex-shrink-0 items-center">
+                {req.status === "pending" ? (
+                  <>
+                    <button disabled={busy} onClick={() => decideInquiry(req.id, "approved")}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold"
+                      style={{ background: "rgba(34,197,94,0.1)", color: "#22c55e" }}>
+                      <Check size={12} /> Approve
+                    </button>
+                    <button disabled={busy} onClick={() => decideInquiry(req.id, "denied")}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold"
+                      style={{ background: "rgba(255,59,92,0.08)", color: "#ff3b5c" }}>
+                      <X size={12} /> Reject
+                    </button>
+                  </>
+                ) : (
+                  <span className="text-xs px-2.5 py-1 rounded-full capitalize"
+                    style={req.status === "approved" ? { background: "rgba(34,197,94,0.1)", color: "#22c55e" } : { background: "rgba(255,59,92,0.1)", color: "#ff3b5c" }}>
+                    {req.status}
+                  </span>
+                )}
+                <DeleteAction disabled={busy} onClick={() => void removeInquiry(req)} />
+              </div>
             </motion.div>
           ))}
         </motion.div>
@@ -540,26 +709,62 @@ export function FounderConsole() {
       {/* License Keys */}
       {activeTab === "License Keys" && (
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
-          <div className="flex gap-2 flex-wrap">
-            {["Pro", "Premium", "Basic"].map(plan => (
-              <button key={plan} disabled={busy} onClick={() => generateKey(plan)}
-                className="flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-semibold"
-                style={{ background: `${planColors[plan.toLowerCase()]}12`, color: planColors[plan.toLowerCase()], border: `1px solid ${planColors[plan.toLowerCase()]}25` }}>
-                <Key size={14} /> Generate {plan} Key
-              </button>
-            ))}
+          <div className="flex flex-wrap gap-2 items-center justify-between">
+            <div className="flex gap-2 flex-wrap">
+              {["Pro", "Premium", "Basic"].map(plan => (
+                <button key={plan} disabled={busy} onClick={() => generateKey(plan)}
+                  className="flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-semibold"
+                  style={{ background: `${planColors[plan.toLowerCase()]}12`, color: planColors[plan.toLowerCase()], border: `1px solid ${planColors[plan.toLowerCase()]}25` }}>
+                  <Key size={14} /> Generate {plan} Key
+                </button>
+              ))}
+            </div>
+            <div className="flex flex-wrap gap-2 items-center">
+              <select
+                value={keyFilter}
+                onChange={e => setKeyFilter(e.target.value as KeyFilter)}
+                className="text-xs rounded-lg px-2.5 py-1.5 outline-none"
+                style={{ background: "#111b35", color: "#e8eef8", border: "1px solid rgba(30,127,255,0.15)" }}
+              >
+                <option value="all">All keys ({keys.length})</option>
+                <option value="unused">Unused ({unusedKeyCount})</option>
+                <option value="used">Used ({keys.filter(k => k.restaurant_id).length})</option>
+                <option value="revoked">Revoked ({revokedKeyCount})</option>
+              </select>
+              {unusedKeyCount > 0 && (
+                <button disabled={busy} onClick={() => void deleteUnusedKeys()}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold"
+                  style={{ color: "#ff3b5c", border: "1px solid rgba(255,59,92,0.22)", background: "rgba(255,59,92,0.06)" }}>
+                  <Trash2 size={12} /> Delete unused ({unusedKeyCount})
+                </button>
+              )}
+              {revokedKeyCount > 0 && (
+                <button disabled={busy} onClick={() => void deleteRevokedKeys()}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold"
+                  style={{ color: "#ff3b5c", border: "1px solid rgba(255,59,92,0.22)", background: "rgba(255,59,92,0.06)" }}>
+                  <Trash2 size={12} /> Delete revoked ({revokedKeyCount})
+                </button>
+              )}
+            </div>
           </div>
           <div className="space-y-2">
-            {keys.length === 0 && <div className="rounded-xl py-8 text-center" style={{ background: "#0d1326", border: "1px solid rgba(30,127,255,0.08)", color: "#6b82a0", fontSize: "0.82rem" }}>No license keys yet</div>}
-            {keys.map((lk, i) => (
+            {filteredKeys.length === 0 && (
+              <div className="rounded-xl py-8 text-center" style={{ background: "#0d1326", border: "1px solid rgba(30,127,255,0.08)", color: "#6b82a0", fontSize: "0.82rem" }}>
+                {keys.length === 0 ? "No license keys yet" : "No keys match this filter"}
+              </div>
+            )}
+            {filteredKeys.map((lk, i) => (
               <motion.div key={lk.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: i * 0.04 }}
                 className="flex items-center gap-3 p-3 rounded-xl"
                 style={{ background: "#0d1326", border: "1px solid rgba(30,127,255,0.08)" }}>
                 <div className="flex-1 min-w-0">
                   <p style={{ color: "#e8eef8", fontFamily: "var(--font-mono)", fontSize: "0.8rem" }}>{lk.key_code}</p>
-                  <div className="flex items-center gap-2 mt-0.5">
+                  <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                     <span className="text-xs capitalize" style={{ color: planColors[lk.plan] }}>{lk.plan}</span>
                     <span style={{ color: "#6b82a0", fontSize: "0.7rem" }}>{lk.restaurant_id ? `Used by ${lk.restaurant_name ?? "a restaurant"}` : "Available"}</span>
+                    {Number(lk.is_active) === 0 && (
+                      <span className="text-xs px-1.5 py-0.5 rounded-full" style={{ background: "rgba(255,59,92,0.1)", color: "#ff3b5c" }}>Revoked</span>
+                    )}
                     <span style={{ color: "#6b82a0", fontSize: "0.7rem" }}>· {shortDate(lk.created_at)}</span>
                   </div>
                 </div>
@@ -571,6 +776,7 @@ export function FounderConsole() {
                     style={{ background: copied === lk.key_code ? "rgba(34,197,94,0.1)" : "rgba(30,127,255,0.08)" }}>
                     {copied === lk.key_code ? <Check size={13} style={{ color: "#22c55e" }} /> : <Copy size={13} style={{ color: "#6b82a0" }} />}
                   </button>
+                  <DeleteAction disabled={busy} onClick={() => void removeLicenseKey(lk)} />
                 </div>
               </motion.div>
             ))}

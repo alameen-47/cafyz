@@ -307,6 +307,46 @@ router.patch('/inquiries/:id', ...onlyFounder, async (req, res, next) => {
   } catch (e) { next(e); }
 });
 
+// DELETE /api/founder/inquiries/:id — remove trial request record
+router.delete('/inquiries/:id', ...onlyFounder, async (req, res, next) => {
+  try {
+    const id = String(req.params.id);
+    const db = getDb();
+    const row = await db.execute({ sql: `SELECT id FROM inquiries WHERE id=? LIMIT 1`, args: [id] });
+    if (!row.rows.length) { res.status(404).json({ error: 'Inquiry not found' }); return; }
+    await db.execute({ sql: `DELETE FROM inquiries WHERE id=?`, args: [id] });
+    res.status(204).end();
+  } catch (e) { next(e); }
+});
+
+// POST /api/founder/inquiries/bulk-delete — clean resolved or selected trial requests
+router.post('/inquiries/bulk-delete', ...onlyFounder, async (req, res, next) => {
+  try {
+    const body = z.object({
+      ids: z.array(z.string().min(1)).optional(),
+      resolved_only: z.boolean().optional(),
+    }).parse(req.body ?? {});
+    const db = getDb();
+    let deleted = 0;
+    if (body.resolved_only) {
+      const r = await db.execute({
+        sql: `DELETE FROM inquiries WHERE status IN ('approved','denied')`,
+        args: [],
+      });
+      deleted = Number(r.rowsAffected ?? 0);
+    } else if (body.ids?.length) {
+      for (const id of body.ids) {
+        const r = await db.execute({ sql: `DELETE FROM inquiries WHERE id=?`, args: [id] });
+        deleted += Number(r.rowsAffected ?? 0);
+      }
+    } else {
+      res.status(400).json({ error: 'Provide ids or set resolved_only=true' });
+      return;
+    }
+    res.json({ ok: true, deleted });
+  } catch (e) { next(e); }
+});
+
 // GET /api/founder/license-requests — pending license purchase requests
 router.get('/license-requests', ...onlyFounder, async (_req, res, next) => {
   try {
@@ -345,6 +385,93 @@ router.patch('/license-requests/:id', ...onlyFounder, async (req, res, next) => 
       args: [body.status, id],
     });
     res.json({ id, status: body.status });
+  } catch (e) { next(e); }
+});
+
+// DELETE /api/founder/license-requests/:id — remove renewal/purchase request record
+router.delete('/license-requests/:id', ...onlyFounder, async (req, res, next) => {
+  try {
+    const id = String(req.params.id);
+    const db = getDb();
+    const row = await db.execute({ sql: `SELECT id FROM license_purchase_requests WHERE id=? LIMIT 1`, args: [id] });
+    if (!row.rows.length) { res.status(404).json({ error: 'License request not found' }); return; }
+    await db.execute({ sql: `DELETE FROM license_purchase_requests WHERE id=?`, args: [id] });
+    res.status(204).end();
+  } catch (e) { next(e); }
+});
+
+// DELETE /api/founder/license-keys/:id — permanently remove a license key
+router.delete('/license-keys/:id', ...onlyFounder, async (req, res, next) => {
+  try {
+    const id = String(req.params.id);
+    const db = getDb();
+    const row = await db.execute({ sql: `SELECT id FROM license_keys WHERE id=? LIMIT 1`, args: [id] });
+    if (!row.rows.length) { res.status(404).json({ error: 'License key not found' }); return; }
+    await db.execute({ sql: `DELETE FROM license_keys WHERE id=?`, args: [id] });
+    res.status(204).end();
+  } catch (e) { next(e); }
+});
+
+// POST /api/founder/license-keys/bulk-delete — remove unused or selected keys
+router.post('/license-keys/bulk-delete', ...onlyFounder, async (req, res, next) => {
+  try {
+    const body = z.object({
+      ids: z.array(z.string().min(1)).optional(),
+      unused_only: z.boolean().optional(),
+      revoked_only: z.boolean().optional(),
+    }).parse(req.body ?? {});
+    const db = getDb();
+    let deleted = 0;
+    if (body.unused_only) {
+      const r = await db.execute({
+        sql: `DELETE FROM license_keys WHERE restaurant_id IS NULL`,
+        args: [],
+      });
+      deleted = Number(r.rowsAffected ?? 0);
+    } else if (body.revoked_only) {
+      const r = await db.execute({
+        sql: `DELETE FROM license_keys WHERE is_active=0`,
+        args: [],
+      });
+      deleted = Number(r.rowsAffected ?? 0);
+    } else if (body.ids?.length) {
+      for (const id of body.ids) {
+        const r = await db.execute({ sql: `DELETE FROM license_keys WHERE id=?`, args: [id] });
+        deleted += Number(r.rowsAffected ?? 0);
+      }
+    } else {
+      res.status(400).json({ error: 'Provide ids, unused_only, or revoked_only' });
+      return;
+    }
+    res.json({ ok: true, deleted });
+  } catch (e) { next(e); }
+});
+
+// POST /api/founder/license-requests/bulk-delete — clean renewal/purchase request records
+router.post('/license-requests/bulk-delete', ...onlyFounder, async (req, res, next) => {
+  try {
+    const body = z.object({
+      ids: z.array(z.string().min(1)).optional(),
+      non_pending_only: z.boolean().optional(),
+    }).parse(req.body ?? {});
+    const db = getDb();
+    let deleted = 0;
+    if (body.non_pending_only) {
+      const r = await db.execute({
+        sql: `DELETE FROM license_purchase_requests WHERE status != 'pending'`,
+        args: [],
+      });
+      deleted = Number(r.rowsAffected ?? 0);
+    } else if (body.ids?.length) {
+      for (const id of body.ids) {
+        const r = await db.execute({ sql: `DELETE FROM license_purchase_requests WHERE id=?`, args: [id] });
+        deleted += Number(r.rowsAffected ?? 0);
+      }
+    } else {
+      res.status(400).json({ error: 'Provide ids or set non_pending_only=true' });
+      return;
+    }
+    res.json({ ok: true, deleted });
   } catch (e) { next(e); }
 });
 

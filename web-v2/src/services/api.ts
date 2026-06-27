@@ -480,11 +480,20 @@ export const founderApi = {
       userEmail?: string;
       licenseKey?: string;
     }>(`/api/founder/inquiries/${id}`, { status }),
+  deleteInquiry: (id: string)                                                          => del(`/api/founder/inquiries/${id}`),
+  bulkDeleteInquiries: (body: { ids?: string[]; resolved_only?: boolean })              =>
+    post<{ ok: boolean; deleted: number }>('/api/founder/inquiries/bulk-delete', body),
   licenseRequests: ()                                                                   => get<ApiLicensePurchaseRequest[]>('/api/founder/license-requests'),
   fulfillLicenseRequest: (id: string)                                                 =>
     post<{ id: string; status: string; key_code: string }>(`/api/founder/license-requests/${id}/fulfill`, {}),
   cancelLicenseRequest: (id: string)                                                   =>
     patch<{ id: string; status: string }>(`/api/founder/license-requests/${id}`, { status: 'cancelled' }),
+  deleteLicenseRequest: (id: string)                                                   => del(`/api/founder/license-requests/${id}`),
+  bulkDeleteLicenseRequests: (body: { ids?: string[]; non_pending_only?: boolean })      =>
+    post<{ ok: boolean; deleted: number }>('/api/founder/license-requests/bulk-delete', body),
+  deleteLicenseKey: (id: string)                                                        => del(`/api/founder/license-keys/${id}`),
+  bulkDeleteLicenseKeys: (body: { ids?: string[]; unused_only?: boolean; revoked_only?: boolean }) =>
+    post<{ ok: boolean; deleted: number }>('/api/founder/license-keys/bulk-delete', body),
   setPlan:        (restaurantId: string, plan: string)                                 => patch<ApiRestaurant>(`/api/founder/restaurants/${restaurantId}/plan`, { plan }),
   deleteRestaurant: (restaurantId: string)                                              => del(`/api/founder/restaurants/${restaurantId}`),
   setRestaurantAccess: (restaurantId: string, paused: boolean)                          =>
