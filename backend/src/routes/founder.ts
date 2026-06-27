@@ -7,7 +7,7 @@ import { requireRole } from '../middleware/rbac.js';
 import { uid } from '../utils.js';
 import { fulfillLicensePurchaseRequest, denyLicensePurchaseRequest } from '../services/licensePurchaseFulfillment.js';
 import { appPath } from '../config/site.js';
-import { approveInquiryById } from '../services/inquiryApproval.js';
+import { approveInquiryById, denyInquiryById } from '../services/inquiryApproval.js';
 import { ADMIN_EMAIL, sendMailReliable, smtpFrom } from '../services/email.js';
 import { cacheDel, cacheDelPrefix } from '../cache.js';
 import { bumpTokenVersion } from '../services/tokenVersion.js';
@@ -264,7 +264,7 @@ router.get('/stats', ...onlyFounder, async (_req, res, next) => {
 router.get('/inquiries', ...onlyFounder, async (_req, res, next) => {
   try {
     const rows = await getDb().execute(`
-      SELECT id,name,restaurant_name,email,plan,message,status,is_retry,retry_of_id,restaurant_id,created_at,approved_at,denied_at
+      SELECT id,name,restaurant_name,email,phone,plan,message,status,is_retry,retry_of_id,restaurant_id,created_at,approved_at,denied_at
       FROM inquiries
       ORDER BY created_at DESC
       LIMIT 300
@@ -302,10 +302,7 @@ router.patch('/inquiries/:id', ...onlyFounder, async (req, res, next) => {
       return;
     }
 
-    await db.execute({
-      sql: `UPDATE inquiries SET status='denied', denied_at=datetime('now') WHERE id=?`,
-      args: [id],
-    });
+    await denyInquiryById(id);
     res.json({ id, status: 'denied' });
   } catch (e) { next(e); }
 });

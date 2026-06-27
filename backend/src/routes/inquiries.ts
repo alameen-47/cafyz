@@ -5,8 +5,9 @@ import nodemailer from 'nodemailer';
 import { getDb } from '../db.js';
 import { uid } from '../utils.js';
 import { APP_URL, TRIAL_DAYS, TRIAL_REQUEST_COOLDOWN_DAYS, appPath, trialEndsDateLabel, brandLogoUrl } from '../config/site.js';
-import { approveInquiryById, buildApprovalResultHtml } from '../services/inquiryApproval.js';
+import { approveInquiryById, buildApprovalResultHtml, denyInquiryById } from '../services/inquiryApproval.js';
 import { ADMIN_EMAIL, isEmailConfigured, sendMailReliable, smtpFrom } from '../services/email.js';
+import { isValidPhoneE164, normalizePhone } from '../services/sms.js';
 
 const router = Router();
 
@@ -17,6 +18,7 @@ const InquirySchema = z.object({
   name:           z.string().min(1).max(120),
   restaurant_name: z.string().min(1).max(200),
   email:          z.string().email(),
+  phone:          z.string().min(8).max(40),
   plan:           z.enum(['basic', 'pro', 'premium']),
   message:        z.string().max(1000).optional(),
   device_id:      z.string().min(10).max(200),
@@ -72,6 +74,7 @@ function adminHtml(args: {
   name: string;
   restaurantName: string;
   email: string;
+  phone: string;
   plan: string;
   planLine: string;
   message?: string;
@@ -79,7 +82,7 @@ function adminHtml(args: {
   denyUrl: string;
 }) {
   const trialEnd = trialEndsDateLabel();
-  const { name, restaurantName, email, plan, planLine, message, approveUrl, denyUrl } = args;
+  const { name, restaurantName, email, phone, plan, planLine, message, approveUrl, denyUrl } = args;
   return `
 <!DOCTYPE html>
 <html>
@@ -95,6 +98,7 @@ function adminHtml(args: {
       <tr><td style="padding:10px 0;border-bottom:0.5px solid rgba(255,255,255,0.06);font-size:11px;color:#8A8A9A;text-transform:uppercase;letter-spacing:1.5px;width:40%">Contact Name</td><td style="padding:10px 0;border-bottom:0.5px solid rgba(255,255,255,0.06);font-size:14px;color:#F5F5F0">${esc(name)}</td></tr>
       <tr><td style="padding:10px 0;border-bottom:0.5px solid rgba(255,255,255,0.06);font-size:11px;color:#8A8A9A;text-transform:uppercase;letter-spacing:1.5px">Restaurant</td><td style="padding:10px 0;border-bottom:0.5px solid rgba(255,255,255,0.06);font-size:14px;color:#F5F5F0">${esc(restaurantName)}</td></tr>
       <tr><td style="padding:10px 0;border-bottom:0.5px solid rgba(255,255,255,0.06);font-size:11px;color:#8A8A9A;text-transform:uppercase;letter-spacing:1.5px">Email</td><td style="padding:10px 0;border-bottom:0.5px solid rgba(255,255,255,0.06);font-size:14px;color:#8B5CF6"><a href="mailto:${esc(email)}" style="color:#8B5CF6;text-decoration:none">${esc(email)}</a></td></tr>
+      <tr><td style="padding:10px 0;border-bottom:0.5px solid rgba(255,255,255,0.06);font-size:11px;color:#8A8A9A;text-transform:uppercase;letter-spacing:1.5px">Mobile</td><td style="padding:10px 0;border-bottom:0.5px solid rgba(255,255,255,0.06);font-size:14px;color:#F5F5F0">${esc(phone)}</td></tr>
       <tr><td style="padding:10px 0;border-bottom:0.5px solid rgba(255,255,255,0.06);font-size:11px;color:#8A8A9A;text-transform:uppercase;letter-spacing:1.5px">Plan Interest</td><td style="padding:10px 0;border-bottom:0.5px solid rgba(255,255,255,0.06);font-size:14px;color:#F5F5F0"><span style="background:rgba(139,92,246,0.16);color:#8B5CF6;padding:4px 12px;border-radius:6px;font-size:12px;font-weight:600;text-transform:uppercase">${plan.toUpperCase()}</span>  ${esc(planLine)}</td></tr>
       <tr><td style="padding:10px 0;border-bottom:0.5px solid rgba(255,255,255,0.06);font-size:11px;color:#8A8A9A;text-transform:uppercase;letter-spacing:1.5px">Trial Policy</td><td style="padding:10px 0;border-bottom:0.5px solid rgba(255,255,255,0.06);font-size:14px;color:#2ECC8A"><strong>${TRIAL_DAYS}-day free trial</strong> on all packages · billing starts after trial (target end: ${trialEnd})</td></tr>
       ${message ? `<tr><td colspan="2" style="padding:16px 0 0"><div style="font-size:11px;color:#8A8A9A;text-transform:uppercase;letter-spacing:1.5px;margin-bottom:8px">Message</div><div style="background:rgba(255,255,255,0.04);border:0.5px solid rgba(255,255,255,0.1);border-radius:8px;padding:14px;font-size:14px;color:#B8B8C2;line-height:1.6">${esc(message)}</div></td></tr>` : ''}
@@ -181,6 +185,21 @@ router.post('/', async (req, res, next) => {
     const body = InquirySchema.parse(req.body);
     const { name, restaurant_name, plan, message, device_id } = body;
     const email = body.email.trim().toLowerCase();
+    const phoneNorm = normalizePhone(body.phone);
+    if (!isValidPhoneE164(phoneNorm)) {
+      res.status(400).json({ error: 'Enter a valid mobile number in international format (e.g. +971500000000).' });
+      return;
+    }
+
+    const db = getDb();
+    const phoneTaken = await db.execute({
+      sql: `SELECT id FROM users WHERE phone=? LIMIT 1`,
+      args: [phoneNorm],
+    });
+    if (phoneTaken.rows.length) {
+      res.status(409).json({ error: 'An account already exists for this mobile number. Sign in or use Forgot Password.' });
+      return;
+    }
 
     const ip = clientIp(req);
     const ua = String(req.headers['user-agent'] ?? '');
@@ -211,10 +230,10 @@ router.post('/', async (req, res, next) => {
     const token = randomBytes(24).toString('hex');
     const tokenHash = sha256Hex(`tok:${token}`);
 
-    await getDb().execute({
-      sql: `INSERT INTO inquiries(id,name,restaurant_name,email,plan,message,status,is_retry,retry_of_id,device_hash,ip_hash,ua_hash,token_hash)
-            VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)`,
-      args: [id, name, restaurant_name, email, plan, message ?? null, 'pending', 0, null, deviceHash, ipHash, uaHash, tokenHash],
+    await db.execute({
+      sql: `INSERT INTO inquiries(id,name,restaurant_name,email,phone,plan,message,status,is_retry,retry_of_id,device_hash,ip_hash,ua_hash,token_hash)
+            VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+      args: [id, name, restaurant_name, email, phoneNorm, plan, message ?? null, 'pending', 0, null, deviceHash, ipHash, uaHash, tokenHash],
     });
 
     const approveUrl = `${baseUrl(req)}/api/inquiries/action?id=${encodeURIComponent(id)}&token=${encodeURIComponent(token)}&action=approve`;
@@ -237,7 +256,7 @@ router.post('/', async (req, res, next) => {
         from:    smtpFrom(true),
         to:      ADMIN_EMAIL,
         subject: `[Cafyz] Trial approval needed — ${plan.toUpperCase()} · ${restaurant_name}`,
-        html:    adminHtml({ name, restaurantName: restaurant_name, email, plan, planLine, message, approveUrl, denyUrl }),
+        html:    adminHtml({ name, restaurantName: restaurant_name, email, phone: phoneNorm, plan, planLine, message, approveUrl, denyUrl }),
       }, 12000);
       await new Promise((r) => setTimeout(r, 600));
       const userResult = await sendMailReliable({
@@ -320,11 +339,12 @@ router.get('/action', async (req, res, next) => {
     }
 
     // deny
-    await getDb().execute({
-      sql: `UPDATE inquiries SET status='denied', denied_at=datetime('now') WHERE id=?`,
-      args: [id],
-    });
-    res.status(200).send(actionHtml('Request denied', `This request is now <strong style="color:#ef4444">DENIED</strong>.`));
+    try {
+      await denyInquiryById(id);
+      res.status(200).send(actionHtml('Request denied', `This request is now <strong style="color:#ef4444">DENIED</strong>. The applicant has been notified by email.`));
+    } catch (err) {
+      res.status(500).send(actionHtml('Denial failed', esc((err as Error).message)));
+    }
   } catch (e) { next(e); }
 });
 

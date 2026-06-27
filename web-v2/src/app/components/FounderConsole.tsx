@@ -507,7 +507,7 @@ export function FounderConsole() {
               style={{ background: "#0d1326", border: "1px solid rgba(30,127,255,0.1)" }}>
               <div className="flex-1 min-w-0">
                 <p style={{ color: "#e8eef8", fontWeight: 600, fontSize: "0.9rem" }}>{req.restaurant_name}</p>
-                <p style={{ color: "#6b82a0", fontSize: "0.75rem" }}>{req.name} · {req.email}</p>
+                <p style={{ color: "#6b82a0", fontSize: "0.75rem" }}>{req.name} · {req.email}{req.phone ? ` · ${req.phone}` : ""}</p>
                 <div className="flex items-center gap-2 mt-1">
                   <span className="text-xs px-2 py-0.5 rounded-full capitalize" style={{ background: `${planColors[req.plan]}15`, color: planColors[req.plan] }}>{req.plan}</span>
                   <span style={{ color: "#6b82a0", fontSize: "0.72rem" }}>{shortDate(req.created_at)}</span>

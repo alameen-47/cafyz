@@ -322,6 +322,7 @@ export async function runMigrations() {
   await addCol(`ALTER TABLE inquiries ADD COLUMN retry_of_id TEXT`, 'retry_of_id');
   await addCol(`ALTER TABLE inquiries ADD COLUMN restaurant_id TEXT`, 'restaurant_id');
   await addCol(`ALTER TABLE inquiries ADD COLUMN provisioned_user_id TEXT`, 'provisioned_user_id');
+  await addCol(`ALTER TABLE inquiries ADD COLUMN phone TEXT`, 'phone');
   await addCol(`ALTER TABLE plan_config ADD COLUMN currency_symbol TEXT NOT NULL DEFAULT '$'`, 'currency_symbol');
   await addCol(`ALTER TABLE plan_config ADD COLUMN billing_interval_unit TEXT NOT NULL DEFAULT 'month'`, 'billing_interval_unit');
   await addCol(`ALTER TABLE plan_config ADD COLUMN billing_interval_count INTEGER NOT NULL DEFAULT 1`, 'billing_interval_count');

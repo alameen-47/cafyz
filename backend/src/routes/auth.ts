@@ -20,10 +20,48 @@ import { isValidPhoneE164, normalizePhone, sendOtpSms } from '../services/sms.js
 const router = Router();
 
 const LoginSchema = z.object({
-  email:    z.string().email(),
+  login: z.string().min(3).optional(),
+  email: z.string().email().optional(),
   password: passwordLoginField,
   device_id: z.string().min(8).max(128).optional(),
+}).refine((d) => Boolean(d.login?.trim() || d.email?.trim()), {
+  message: 'Email or mobile number is required',
 });
+
+function resolveLoginIdentifier(raw: string): { kind: 'email'; value: string } | { kind: 'phone'; value: string } | null {
+  const trimmed = raw.trim();
+  if (!trimmed) return null;
+  if (trimmed.includes('@')) {
+    const parsed = z.string().email().safeParse(trimmed.toLowerCase());
+    if (!parsed.success) return null;
+    return { kind: 'email', value: parsed.data };
+  }
+  const phoneNorm = normalizePhone(trimmed);
+  if (!isValidPhoneE164(phoneNorm)) return null;
+  return { kind: 'phone', value: phoneNorm };
+}
+
+async function findUsersForLogin(identifier: { kind: 'email' | 'phone'; value: string }) {
+  const db = getDb();
+  if (identifier.kind === 'email') {
+    return db.execute({
+      sql: `SELECT u.*, r.name as restaurant_name, r.plan as restaurant_plan
+            FROM users u
+            JOIN restaurants r ON r.id = u.restaurant_id
+            WHERE LOWER(u.email)=?
+            ORDER BY u.created_at DESC`,
+      args: [identifier.value],
+    });
+  }
+  return db.execute({
+    sql: `SELECT u.*, r.name as restaurant_name, r.plan as restaurant_plan
+          FROM users u
+          JOIN restaurants r ON r.id = u.restaurant_id
+          WHERE u.phone=?
+          ORDER BY u.created_at DESC`,
+    args: [identifier.value],
+  });
+}
 const RequestOtpSchema = z.object({ phone: z.string().min(8) });
 const VerifyOtpSchema = z.object({ phone: z.string().min(8), otp: z.string().regex(/^\d{6}$/) });
 
@@ -87,18 +125,21 @@ async function issueLoginSession(db: ReturnType<typeof getDb>, userId: string) {
 // POST /api/auth/login
 router.post('/login', async (req, res, next) => {
   try {
-    const { email, password, device_id } = LoginSchema.parse(req.body);
-    const emailNorm = email.trim().toLowerCase();
+    const body = LoginSchema.parse(req.body);
+    const { password, device_id } = body;
+    const rawLogin = (body.login ?? body.email ?? '').trim();
+    const identifier = resolveLoginIdentifier(rawLogin);
+    if (!identifier) {
+      if (rawLogin.includes('@')) {
+        res.status(400).json({ error: 'Enter a valid email address.' });
+        return;
+      }
+      res.status(401).json({ error: 'Invalid credentials' });
+      return;
+    }
+
     const passNorm = password;
-    const db = getDb();
-    const row = await db.execute({
-      sql: `SELECT u.*, r.name as restaurant_name, r.plan as restaurant_plan
-            FROM users u
-            JOIN restaurants r ON r.id = u.restaurant_id
-            WHERE LOWER(u.email)=?
-            ORDER BY u.created_at DESC`,
-      args: [emailNorm],
-    });
+    const row = await findUsersForLogin(identifier);
     if (!row.rows.length) {
       res.status(401).json({ error: 'Invalid credentials' });
       return;
@@ -123,13 +164,13 @@ router.post('/login', async (req, res, next) => {
       return;
     }
     if (device_id) {
-      await db.execute({
+      await getDb().execute({
         sql: 'UPDATE users SET pin_device_id=? WHERE id=?',
         args: [device_id.trim(), String(user.id)],
       });
       user.pin_device_id = device_id.trim();
     }
-    const liveUser = await issueLoginSession(db, String(user.id));
+    const liveUser = await issueLoginSession(getDb(), String(user.id));
     const token = signTokenForUser(liveUser);
     res.json({
       token,

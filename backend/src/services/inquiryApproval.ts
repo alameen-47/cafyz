@@ -5,6 +5,7 @@ import { getDb } from '../db.js';
 import { uid } from '../utils.js';
 import { appPath, trialEndsAt, trialEndsDateLabel, TRIAL_DAYS, brandLogoUrl } from '../config/site.js';
 import { ADMIN_EMAIL, isEmailConfigured, sendMailReliable, smtpFrom } from './email.js';
+import { isValidPhoneE164, normalizePhone } from './sms.js';
 
 const LOGIN_URL = appPath('/login');
 const MANAGER_URL = appPath('/');
@@ -14,6 +15,7 @@ export type InquiryRow = {
   name: string;
   restaurant_name: string;
   email: string;
+  phone?: string | null;
   plan: string;
   restaurant_id?: string | null;
 };
@@ -56,6 +58,7 @@ export type ProvisionResult = {
   restaurantId: string;
   userId: string;
   email: string;
+  phone: string;
   password: string;
   plan: string;
   licenseKey: string;
@@ -83,6 +86,7 @@ export async function provisionTrialFromInquiry(
       restaurantId: String(inquiry.restaurant_id),
       userId: String(existing.rows[0]?.id ?? ''),
       email: String(existing.rows[0]?.email ?? inquiry.email),
+      phone: String(inquiry.phone ?? ''),
       password: '(already provisioned — use password reset or contact founder)',
       plan: trialPlan(inquiry.plan),
       licenseKey: String(lic.rows[0]?.key_code ?? ''),
@@ -96,6 +100,10 @@ export async function provisionTrialFromInquiry(
   const restId = uid();
   const slug = slugify(inquiry.restaurant_name);
   const emailLower = inquiry.email.trim().toLowerCase();
+  const phoneNorm = normalizePhone(String(inquiry.phone ?? ''));
+  if (!isValidPhoneE164(phoneNorm)) {
+    throw new Error('Trial request is missing a valid mobile number.');
+  }
   const password = generatePassword();
   const pwHash = await bcrypt.hash(password, 10);
   const initials = inquiry.name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2) || 'MG';
@@ -118,10 +126,18 @@ export async function provisionTrialFromInquiry(
     throw new Error('An account with this email already exists. Ask the user to use Forgot Password.');
   }
 
+  const phoneExists = await db.execute({
+    sql: `SELECT id FROM users WHERE phone=? LIMIT 1`,
+    args: [phoneNorm],
+  });
+  if (phoneExists.rows.length) {
+    throw new Error('An account with this mobile number already exists.');
+  }
+
   const userId = uid();
   await db.execute({
-    sql: `INSERT INTO users(id,restaurant_id,name,initials,email,password_hash,role,status,start_time) VALUES(?,?,?,?,?,?,?,?,?)`,
-    args: [userId, restId, inquiry.name, initials, emailLower, pwHash, 'manager', 'active', '—'],
+    sql: `INSERT INTO users(id,restaurant_id,name,initials,email,phone,password_hash,role,status,start_time) VALUES(?,?,?,?,?,?,?,?,?,?)`,
+    args: [userId, restId, inquiry.name, initials, emailLower, phoneNorm, pwHash, 'manager', 'active', '—'],
   });
 
   await db.execute({
@@ -138,6 +154,7 @@ export async function provisionTrialFromInquiry(
     restaurantId: restId,
     userId,
     email: emailLower,
+    phone: phoneNorm,
     password,
     plan,
     licenseKey: keyCode,
@@ -164,10 +181,11 @@ function userCredentialsHtml(inquiry: InquiryRow, provision: ProvisionResult): s
     <p style="font-size:13px;color:#8A8A9A;text-transform:uppercase;letter-spacing:1px;margin:0 0 12px">Sign in credentials</p>
     <table style="width:100%;font-size:14px;color:#F5F5F0">
       <tr><td style="padding:8px 0;color:#8A8A9A">Email</td><td><strong>${esc(provision.email)}</strong></td></tr>
+      <tr><td style="padding:8px 0;color:#8A8A9A">Mobile</td><td><strong>${esc(provision.phone)}</strong></td></tr>
       <tr><td style="padding:8px 0;color:#8A8A9A">Password</td><td><strong style="font-family:monospace">${esc(provision.password)}</strong></td></tr>
       <tr><td style="padding:8px 0;color:#8A8A9A">License key</td><td><strong style="font-family:monospace">${esc(provision.licenseKey)}</strong></td></tr>
     </table>
-    <p style="margin:12px 0;font-size:12px;color:#8A8A9A">Login credentials do not expire. Your ${TRIAL_DAYS}-day trial ends ${trialEnd}; billing starts after that. Copy the password exactly (no spaces).</p>
+    <p style="margin:12px 0;font-size:12px;color:#8A8A9A">Sign in with your <strong>email or mobile number</strong> and the password above. Login credentials do not expire. Your ${TRIAL_DAYS}-day trial ends ${trialEnd}; billing starts after that. Copy the password exactly (no spaces).</p>
     <p style="margin:20px 0 8px;font-size:13px;color:#B8B8C2">Open the <strong>Manager Panel</strong> and use <strong>Role Management</strong> to add cashiers, waiters, and kitchen staff.</p>
     <a href="${LOGIN_URL}" style="display:inline-block;background:#8B5CF6;color:#07060F;font-size:13px;font-weight:800;text-decoration:none;padding:12px 22px;border-radius:10px;margin-top:8px">Sign in to Manager Panel →</a>
     <div style="margin-top:12px;font-size:12px;color:#5A5A6A;word-break:break-all">${LOGIN_URL}</div>
@@ -236,6 +254,7 @@ export function buildApprovalResultHtml(provision: ProvisionResult, applicantEma
   const creds = `<div style="margin-top:16px;padding:16px;background:rgba(255,255,255,0.05);border-radius:10px;font-size:14px;line-height:1.8">
     <strong>Login credentials</strong><br/>
     Email: <code>${esc(provision.email)}</code><br/>
+    Mobile: <code>${esc(provision.phone)}</code><br/>
     Password: <code>${esc(provision.password)}</code><br/>
     License: <code>${esc(provision.licenseKey)}</code><br/>
     <a href="${LOGIN_URL}" style="color:#8B5CF6">${LOGIN_URL}</a>
@@ -256,7 +275,7 @@ export function buildApprovalResultHtml(provision: ProvisionResult, applicantEma
 export async function approveInquiryById(inquiryId: string): Promise<ProvisionResult> {
   const db = getDb();
   const row = await db.execute({
-    sql: `SELECT id,name,restaurant_name,email,plan,status,restaurant_id FROM inquiries WHERE id=? LIMIT 1`,
+    sql: `SELECT id,name,restaurant_name,email,phone,plan,status,restaurant_id FROM inquiries WHERE id=? LIMIT 1`,
     args: [inquiryId],
   });
   const inquiry = row.rows[0] as unknown as (InquiryRow & { status?: string }) | undefined;
@@ -270,4 +289,48 @@ export async function approveInquiryById(inquiryId: string): Promise<ProvisionRe
     provision.emailError = sent.error;
   }
   return provision;
+}
+
+function denialHtml(inquiry: InquiryRow): string {
+  const first = esc(inquiry.name.split(' ')[0]);
+  const restaurant = esc(inquiry.restaurant_name);
+  return `<!doctype html><html><body style="margin:0;padding:0;background:#07060F;font-family:Inter,Arial,sans-serif;color:#F5F5F0">
+<div style="max-width:560px;margin:40px auto;border:0.5px solid rgba(239,68,68,0.35);border-radius:16px;overflow:hidden">
+  <div style="padding:32px;background:linear-gradient(135deg,#2a1010 0%,#0A0816 60%)">
+    <img src="${brandLogoUrl()}" alt="Cafyz" width="200" style="max-width:200px;height:auto;display:block;margin-bottom:20px" />
+    <div style="font-size:11px;color:#ef4444;text-transform:uppercase;letter-spacing:2px">Trial request update</div>
+    <div style="font-family:Georgia,serif;font-size:26px;margin:12px 0">Hi ${first},</div>
+    <p style="font-size:14px;color:#B8B8C2;line-height:1.7">Thank you for your interest in Cafyz. After review, we’re unable to approve the trial request for <strong>${restaurant}</strong> at this time.</p>
+    <p style="font-size:14px;color:#B8B8C2;line-height:1.7">If you believe this was a mistake or would like to share more details, reply to this email or contact us at <a href="mailto:${ADMIN_EMAIL}" style="color:#8B5CF6">${ADMIN_EMAIL}</a>.</p>
+  </div>
+</div></body></html>`;
+}
+
+export async function denyInquiryById(inquiryId: string): Promise<void> {
+  const db = getDb();
+  const row = await db.execute({
+    sql: `SELECT id,name,restaurant_name,email,phone,plan,status FROM inquiries WHERE id=? LIMIT 1`,
+    args: [inquiryId],
+  });
+  const inquiry = row.rows[0] as unknown as (InquiryRow & { status?: string }) | undefined;
+  if (!inquiry) throw new Error('Inquiry not found');
+  if (String(inquiry.status ?? '') !== 'pending') return;
+
+  await db.execute({
+    sql: `UPDATE inquiries SET status='denied', denied_at=datetime('now') WHERE id=?`,
+    args: [inquiryId],
+  });
+
+  if (isEmailConfigured()) {
+    const result = await sendMailReliable({
+      from: smtpFrom(false),
+      to: inquiry.email.trim().toLowerCase(),
+      replyTo: ADMIN_EMAIL,
+      subject: 'Update on your Cafyz trial request',
+      html: denialHtml(inquiry),
+    });
+    if (!result.ok) {
+      console.error(`[Email] Trial denial to ${inquiry.email} failed: ${result.error}`);
+    }
+  }
 }

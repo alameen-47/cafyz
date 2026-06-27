@@ -103,14 +103,14 @@ export function LoginScreen({ onLogin }: { onLogin?: () => void }) {
     }
   }, []);
 
-  const [inq, setInq] = useState({ name: "", restaurant: "", email: "", plan: "premium", message: "" });
+  const [inq, setInq] = useState({ name: "", restaurant: "", email: "", phone: "", plan: "premium", message: "" });
   const setInqField = (k: keyof typeof inq, v: string) => setInq(s => ({ ...s, [k]: v }));
 
   function errMsg(e: unknown) { return e instanceof Error ? e.message : "Something went wrong"; }
 
   const submitInquiry = async () => {
-    if (!inq.name.trim() || !inq.restaurant.trim() || !inq.email.trim()) {
-      toast.error("Name, restaurant, and email are required");
+    if (!inq.name.trim() || !inq.restaurant.trim() || !inq.email.trim() || !inq.phone.trim()) {
+      toast.error("Name, restaurant, email, and mobile number are required");
       return;
     }
     setLoading(true);
@@ -119,6 +119,7 @@ export function LoginScreen({ onLogin }: { onLogin?: () => void }) {
         name: inq.name.trim(),
         restaurant_name: inq.restaurant.trim(),
         email: inq.email.trim().toLowerCase(),
+        phone: inq.phone.trim(),
         plan: inq.plan,
         message: inq.message.trim() || undefined,
       });
@@ -135,7 +136,7 @@ export function LoginScreen({ onLogin }: { onLogin?: () => void }) {
 
   // Real backend login (email + password)
   const submitPassword = async () => {
-    if (!email.trim() || !password) { toast.error("Enter your email and password"); return; }
+    if (!email.trim() || !password) { toast.error("Enter your email or mobile number and password"); return; }
     setLoading(true);
     try { await loginEmail(email, password); onLogin?.(); }
     catch (e) { toast.error(errMsg(e)); }
@@ -296,7 +297,7 @@ export function LoginScreen({ onLogin }: { onLogin?: () => void }) {
                       className="flex-1 py-2 rounded-lg text-sm capitalize transition-all font-medium"
                       style={method === m ? { background: "linear-gradient(135deg, #1e7fff, #00c6ff)", color: "#fff" } : { color: "#6b82a0" }}
                     >
-                      {m === "password" ? t("Email") : m === "pin" ? "PIN" : "OTP"}
+                      {m === "password" ? t("Email / Mobile") : m === "pin" ? "PIN" : "OTP"}
                     </button>
                   ))}
                 </div>
@@ -304,10 +305,10 @@ export function LoginScreen({ onLogin }: { onLogin?: () => void }) {
                 {method === "password" && (
                   <div className="space-y-3">
                     <div>
-                      <label style={{ color: "#a8bdd4", fontSize: "0.8rem", display: "block", marginBottom: 6 }}>{t("Email address")}</label>
+                      <label style={{ color: "#a8bdd4", fontSize: "0.8rem", display: "block", marginBottom: 6 }}>{t("Email or mobile")}</label>
                       <div className="flex items-center gap-2 rounded-xl px-3 py-3" style={{ background: "#0d1326", border: "1px solid rgba(30,127,255,0.15)" }}>
                         <Mail size={15} style={{ color: "#6b82a0", flexShrink: 0 }} />
-                        <input type="email" placeholder="alex@restaurant.com" value={email} onChange={e => setEmail(e.target.value)}
+                        <input type="text" placeholder="alex@restaurant.com or +971500000000" value={email} onChange={e => setEmail(e.target.value)}
                           className="flex-1 bg-transparent outline-none text-sm placeholder:text-[#6b82a0]"
                           style={{ color: "#e8eef8" }} />
                       </div>
@@ -387,13 +388,14 @@ export function LoginScreen({ onLogin }: { onLogin?: () => void }) {
                   <button onClick={() => setAuthState("login")} style={{ color: "#6b82a0", fontSize: "0.8rem" }}>← Back to sign in</button>
                   <h2 style={{ fontFamily: "var(--font-display)", fontWeight: 700, color: "#e8eef8", fontSize: "1.6rem", marginTop: 10 }}>Start your free trial</h2>
                   <p style={{ color: "#6b82a0", fontSize: "0.85rem", marginTop: 4, lineHeight: 1.5 }}>
-                    Request access — no password needed now. Our founder will review your request and email you login credentials once approved.
+                    Request access — no password needed now. Our founder will review your request and email you login credentials once approved. You can sign in later with your email or mobile number.
                   </p>
                 </div>
                 {[
                   { k: "name" as const, label: "Your name", icon: User, type: "text", ph: "Alex Kumar" },
                   { k: "restaurant" as const, label: "Restaurant name", icon: Store, type: "text", ph: "The Spice Garden" },
                   { k: "email" as const, label: "Work email", icon: Mail, type: "email", ph: "alex@restaurant.com" },
+                  { k: "phone" as const, label: "Mobile number", icon: Phone, type: "tel", ph: "+971500000000" },
                 ].map(f => {
                   const Icon = f.icon;
                   return (
@@ -436,7 +438,7 @@ export function LoginScreen({ onLogin }: { onLogin?: () => void }) {
                   {loading ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <>Request free trial <ArrowRight size={16} /></>}
                 </motion.button>
                 <p style={{ color: "#6b82a0", fontSize: "0.72rem", textAlign: "center", lineHeight: 1.5 }}>
-                  You'll receive a confirmation email now. Login credentials are sent after founder approval.
+                  You'll receive a confirmation email now. Login credentials are sent after founder approval — use email or mobile with your password to sign in.
                 </p>
               </motion.div>
             )}

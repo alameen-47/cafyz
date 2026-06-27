@@ -134,8 +134,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(u);
   }
 
-  const loginEmail = async (email: string, password: string) => {
-    const d = await authApi.login(email.trim().toLowerCase(), password, deviceId());
+  const loginEmail = async (login: string, password: string) => {
+    const d = await authApi.login(login.trim(), password, deviceId());
     await complete(d);
   };
   const loginPin = async (email: string, pin: string) => {

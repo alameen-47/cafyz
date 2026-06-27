@@ -20,13 +20,25 @@ describe('POST /api/auth/login', () => {
   });
 
   it('rejects unknown email', async () => {
-    const res = await request(app).post('/api/auth/login').send({ email: 'nobody@test.com', password: 'pass' });
+    const res = await request(app).post('/api/auth/login').send({ login: 'nobody@test.com', password: 'pass' });
     expect(res.status).toBe(401);
   });
 
-  it('validates email format', async () => {
-    const res = await request(app).post('/api/auth/login').send({ email: 'not-an-email', password: 'pass' });
-    expect(res.status).toBe(400);
+  it('returns token for phone + password', async () => {
+    const res = await request(app).post('/api/auth/login').send({ login: '+971500000001', password: 'password123' });
+    expect(res.status).toBe(200);
+    expect(res.body.user.role).toBe('manager');
+  });
+
+  it('validates email format when @ is present', async () => {
+    const res = await request(app).post('/api/auth/login').send({ login: 'not-an-email', password: 'pass' });
+    expect(res.status).toBe(401);
+  });
+
+  it('still accepts legacy email field', async () => {
+    const res = await request(app).post('/api/auth/login').send({ email: 'manager@test.com', password: 'password123' });
+    expect(res.status).toBe(200);
+    expect(res.body).toHaveProperty('token');
   });
 });
 

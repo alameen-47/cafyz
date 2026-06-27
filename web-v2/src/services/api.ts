@@ -165,8 +165,8 @@ const del  = <T = unknown>(path: string, body?: unknown)     => request<T>('DELE
 
 // ── Auth ──────────────────────────────────────────────────────────────────────
 export const authApi = {
-  login: (email: string, password: string, device_id?: string) =>
-    post<LoginResponse>('/api/auth/login', { email, password, device_id }),
+  login: (login: string, password: string, device_id?: string) =>
+    post<LoginResponse>('/api/auth/login', { login, password, device_id }),
   requestOtp: (phone: string) =>
     post<{ ok: boolean; message: string; dev_otp?: string }>('/api/auth/request-otp', { phone }),
   verifyOtp: (phone: string, otp: string) =>
@@ -461,7 +461,7 @@ export const licensesApi = {
 
 // ── Inquiries (public — no auth) ──────────────────────────────────────────────
 export const inquiryApi = {
-  submit: (d: { name: string; restaurant_name: string; email: string; plan: string; message?: string }) =>
+  submit: (d: { name: string; restaurant_name: string; email: string; phone: string; plan: string; message?: string }) =>
     post<{ ok: boolean; message: string; trial_days?: number }>('/api/inquiries', { ...d, device_id: getDeviceId() }),
 };
 
@@ -775,6 +775,7 @@ export interface ApiFounderInquiry {
   name: string;
   restaurant_name: string;
   email: string;
+  phone?: string;
   plan: string;
   message?: string;
   status: 'pending' | 'approved' | 'denied';
