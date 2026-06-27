@@ -17,3 +17,14 @@ services:
         generateValue: true  # Render generates a secure random value automatically
       - key: ALLOWED_ORIGIN
         value: https://cafyz.vercel.app  # ← change to your real Vercel URL after first deploy
+
+  # Optional: host web-v2 on Render (canonical web deploy is Vercel).
+  - type: web
+    name: cafyz-web
+    runtime: node
+    rootDir: web-v2
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
