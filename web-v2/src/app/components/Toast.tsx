@@ -4,13 +4,13 @@ import { tt } from "../../i18n/translateToast";
 
 const base = {
   style: {
-    background: "#0d1326",
-    border: "1px solid rgba(30,127,255,0.2)",
-    color: "#e8eef8",
+    background: "var(--cafyz-toast-bg)",
+    border: "1px solid var(--cafyz-toast-border)",
+    color: "var(--cafyz-toast-text)",
     borderRadius: "14px",
     fontFamily: "var(--font-body)",
     fontSize: "0.85rem",
-    boxShadow: "0 8px 32px rgba(0,0,0,0.5)",
+    boxShadow: "var(--cafyz-toast-shadow)",
     padding: "14px 16px",
   },
 };

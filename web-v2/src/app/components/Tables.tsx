@@ -61,9 +61,9 @@ function mapTable(
 
 const statusConfig: Record<TableStatus, { color: string; bg: string; border: string; label: string }> = {
   available: { color: "#22c55e", bg: "rgba(34,197,94,0.08)", border: "rgba(34,197,94,0.25)", label: "Available" },
-  occupied: { color: "#1e7fff", bg: "rgba(30,127,255,0.1)", border: "rgba(30,127,255,0.3)", label: "Occupied" },
+  occupied: { color: "#1e7fff", bg: "var(--cafyz-border)", border: "rgba(30,127,255,0.3)", label: "Occupied" },
   reserved: { color: "#f59e0b", bg: "rgba(245,158,11,0.08)", border: "rgba(245,158,11,0.25)", label: "Reserved" },
-  cleaning: { color: "#6b82a0", bg: "rgba(107,130,160,0.08)", border: "rgba(107,130,160,0.2)", label: "Cleaning" },
+  cleaning: { color: "var(--cafyz-muted)", bg: "rgba(107,130,160,0.08)", border: "rgba(107,130,160,0.2)", label: "Cleaning" },
 };
 
 function TableCard({ table, onClick }: { table: TableData; onClick: () => void }) {
@@ -93,20 +93,20 @@ function TableCard({ table, onClick }: { table: TableData; onClick: () => void }
           {cfg.label}
         </span>
       </div>
-      <div style={{ fontFamily: "var(--font-display)", fontWeight: 700, color: "#e8eef8", fontSize: "1rem" }} className="mb-1">
+      <div style={{ fontFamily: "var(--font-display)", fontWeight: 700, color: "var(--cafyz-text)", fontSize: "1rem" }} className="mb-1">
         {table.name}
       </div>
-      <div className="flex items-center gap-1 mb-2" style={{ color: "#6b82a0", fontSize: "0.72rem" }}>
+      <div className="flex items-center gap-1 mb-2" style={{ color: "var(--cafyz-muted)", fontSize: "0.72rem" }}>
         <Users size={11} />
         <span>{table.seats} seats</span>
         {table.guests && <span>· {table.guests} guests</span>}
       </div>
       {table.status === "occupied" && (
         <div className="space-y-0.5">
-          <p style={{ color: "#a8bdd4", fontSize: "0.72rem" }}>
+          <p style={{ color: "var(--cafyz-text-secondary)", fontSize: "0.72rem" }}>
             <span style={{ color: "#1e7fff" }}>●</span> {table.waiter} · {table.since}
           </p>
-          <p style={{ color: "#6b82a0", fontSize: "0.7rem", fontFamily: "var(--font-mono)" }}>{table.order}</p>
+          <p style={{ color: "var(--cafyz-muted)", fontSize: "0.7rem", fontFamily: "var(--font-mono)" }}>{table.order}</p>
         </div>
       )}
       {table.status === "reserved" && (
@@ -216,12 +216,12 @@ export function Tables() {
             className="rounded-2xl p-4 cursor-pointer transition-all"
             onClick={() => setFilterStatus(filterStatus === key ? "all" : key)}
             style={{
-              background: filterStatus === key ? cfg.bg : "#0d1326",
-              border: `1px solid ${filterStatus === key ? cfg.border : "rgba(30,127,255,0.1)"}`,
+              background: filterStatus === key ? cfg.bg : "var(--cafyz-surface)",
+              border: `1px solid ${filterStatus === key ? cfg.border : "var(--cafyz-border)"}`,
             }}
           >
             <div style={{ color: cfg.color, fontSize: "1.6rem", fontWeight: 700, fontFamily: "var(--font-display)" }}>{statusCounts[key]}</div>
-            <div style={{ color: "#6b82a0", fontSize: "0.78rem" }}>{cfg.label}</div>
+            <div style={{ color: "var(--cafyz-muted)", fontSize: "0.78rem" }}>{cfg.label}</div>
           </div>
         ))}
       </div>
@@ -250,18 +250,18 @@ export function Tables() {
       {selected && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center p-4"
-          style={{ background: "rgba(6,9,26,0.8)", backdropFilter: "blur(8px)" }}
+          style={{ background: "var(--cafyz-overlay)", backdropFilter: "blur(8px)" }}
           onClick={() => setSelected(null)}
         >
           <motion.div
             initial={{ opacity: 0, scale: 0.92 }}
             animate={{ opacity: 1, scale: 1 }}
             className="w-full max-w-sm rounded-2xl p-5 space-y-4"
-            style={{ background: "#0d1326", border: "1px solid rgba(30,127,255,0.2)" }}
+            style={{ background: "var(--cafyz-surface)", border: "1px solid rgba(30,127,255,0.2)" }}
             onClick={e => e.stopPropagation()}
           >
             <div className="flex items-center justify-between">
-              <h3 style={{ fontFamily: "var(--font-display)", color: "#e8eef8", fontWeight: 700 }}>{selected.name}</h3>
+              <h3 style={{ fontFamily: "var(--font-display)", color: "var(--cafyz-text)", fontWeight: 700 }}>{selected.name}</h3>
               <span
                 className="text-xs px-2.5 py-1 rounded-full"
                 style={{ background: statusConfig[selected.status].bg, color: statusConfig[selected.status].color }}
@@ -269,12 +269,12 @@ export function Tables() {
                 {statusConfig[selected.status].label}
               </span>
             </div>
-            <div style={{ color: "#6b82a0", fontSize: "0.85rem" }} className="space-y-1">
-              <p><span style={{ color: "#a8bdd4" }}>Capacity:</span> {selected.seats} seats</p>
-              {selected.guests && <p><span style={{ color: "#a8bdd4" }}>Guests:</span> {selected.guests}</p>}
-              {selected.waiter && <p><span style={{ color: "#a8bdd4" }}>Server:</span> {selected.waiter}</p>}
-              {selected.since && <p><span style={{ color: "#a8bdd4" }}>Since:</span> {selected.since}</p>}
-              {selected.reservation && <p><span style={{ color: "#a8bdd4" }}>Reservation:</span> {selected.reservation}</p>}
+            <div style={{ color: "var(--cafyz-muted)", fontSize: "0.85rem" }} className="space-y-1">
+              <p><span style={{ color: "var(--cafyz-text-secondary)" }}>Capacity:</span> {selected.seats} seats</p>
+              {selected.guests && <p><span style={{ color: "var(--cafyz-text-secondary)" }}>Guests:</span> {selected.guests}</p>}
+              {selected.waiter && <p><span style={{ color: "var(--cafyz-text-secondary)" }}>Server:</span> {selected.waiter}</p>}
+              {selected.since && <p><span style={{ color: "var(--cafyz-text-secondary)" }}>Since:</span> {selected.since}</p>}
+              {selected.reservation && <p><span style={{ color: "var(--cafyz-text-secondary)" }}>Reservation:</span> {selected.reservation}</p>}
             </div>
             <button
               onClick={() => setTableForm({ mode: "edit", id: selected.id, name: selected.name, seats: String(selected.seats) })}
@@ -292,7 +292,7 @@ export function Tables() {
               <Utensils size={15} /> {selected.status === "occupied" ? "View / Edit Order" : "Take Order"}
             </button>
 
-            <p style={{ color: "#6b82a0", fontSize: "0.68rem", textTransform: "uppercase", letterSpacing: "0.05em", marginTop: 4 }}>Set status</p>
+            <p style={{ color: "var(--cafyz-muted)", fontSize: "0.68rem", textTransform: "uppercase", letterSpacing: "0.05em", marginTop: 4 }}>Set status</p>
             <div className="grid grid-cols-2 gap-2">
               {(["available", "occupied", "reserved", "cleaning"] as TableStatus[]).map(s => (
                 <button
@@ -332,47 +332,47 @@ export function Tables() {
       <AnimatePresence>
         {tableForm && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
-            style={{ background: "rgba(6,9,26,0.85)", backdropFilter: "blur(8px)" }}
+            style={{ background: "var(--cafyz-overlay)", backdropFilter: "blur(8px)" }}
             onClick={() => setTableForm(null)}>
             <motion.div
               initial={{ opacity: 0, scale: 0.92 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.92 }}
               className="w-full max-w-sm rounded-2xl p-5 space-y-4"
-              style={{ background: "#0d1326", border: "1px solid rgba(30,127,255,0.2)" }}
+              style={{ background: "var(--cafyz-surface)", border: "1px solid rgba(30,127,255,0.2)" }}
               onClick={e => e.stopPropagation()}>
               <div className="flex items-center justify-between">
-                <h3 style={{ fontFamily: "var(--font-display)", color: "#e8eef8", fontWeight: 700 }}>
+                <h3 style={{ fontFamily: "var(--font-display)", color: "var(--cafyz-text)", fontWeight: 700 }}>
                   {tableForm.mode === "create" ? "Add Table" : "Edit Table"}
                 </h3>
-                <button onClick={() => setTableForm(null)} style={{ color: "#6b82a0" }}><X size={18} /></button>
+                <button onClick={() => setTableForm(null)} style={{ color: "var(--cafyz-muted)" }}><X size={18} /></button>
               </div>
               <div className="space-y-3">
                 <div>
-                  <label style={{ color: "#a8bdd4", fontSize: "0.78rem", display: "block", marginBottom: 4 }}>Table name</label>
+                  <label style={{ color: "var(--cafyz-text-secondary)", fontSize: "0.78rem", display: "block", marginBottom: 4 }}>Table name</label>
                   <input type="text" value={tableForm.name}
                     onChange={e => setTableForm(f => f ? { ...f, name: e.target.value } : f)}
                     className="w-full rounded-xl px-3 py-2.5 text-sm outline-none"
-                    style={{ background: "#111b35", color: "#e8eef8", border: "1px solid rgba(30,127,255,0.12)" }} />
+                    style={{ background: "var(--cafyz-surface-2)", color: "var(--cafyz-text)", border: "1px solid rgba(30,127,255,0.12)" }} />
                 </div>
                 <div>
-                  <label style={{ color: "#a8bdd4", fontSize: "0.78rem", display: "block", marginBottom: 4 }}>Seats</label>
+                  <label style={{ color: "var(--cafyz-text-secondary)", fontSize: "0.78rem", display: "block", marginBottom: 4 }}>Seats</label>
                   <input type="number" min={1} value={tableForm.seats}
                     onChange={e => setTableForm(f => f ? { ...f, seats: e.target.value } : f)}
                     className="w-full rounded-xl px-3 py-2.5 text-sm outline-none"
-                    style={{ background: "#111b35", color: "#e8eef8", border: "1px solid rgba(30,127,255,0.12)" }} />
+                    style={{ background: "var(--cafyz-surface-2)", color: "var(--cafyz-text)", border: "1px solid rgba(30,127,255,0.12)" }} />
                 </div>
                 {tableForm.mode === "create" && (
                   <div>
-                    <label style={{ color: "#a8bdd4", fontSize: "0.78rem", display: "block", marginBottom: 4 }}>Zone</label>
+                    <label style={{ color: "var(--cafyz-text-secondary)", fontSize: "0.78rem", display: "block", marginBottom: 4 }}>Zone</label>
                     <input type="text" value={tableForm.zone}
                       onChange={e => setTableForm(f => f && f.mode === "create" ? { ...f, zone: e.target.value } : f)}
                       className="w-full rounded-xl px-3 py-2.5 text-sm outline-none"
-                      style={{ background: "#111b35", color: "#e8eef8", border: "1px solid rgba(30,127,255,0.12)" }} />
+                      style={{ background: "var(--cafyz-surface-2)", color: "var(--cafyz-text)", border: "1px solid rgba(30,127,255,0.12)" }} />
                   </div>
                 )}
               </div>
               <div className="flex gap-2 pt-1">
                 <button onClick={() => setTableForm(null)} className="flex-1 py-2.5 rounded-xl text-sm font-semibold"
-                  style={{ background: "rgba(30,127,255,0.06)", color: "#6b82a0", border: "1px solid rgba(30,127,255,0.1)" }}>
+                  style={{ background: "rgba(30,127,255,0.06)", color: "var(--cafyz-muted)", border: "1px solid var(--cafyz-border)" }}>
                   Cancel
                 </button>
                 <button onClick={() => void saveTableForm()} disabled={savingTable}

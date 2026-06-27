@@ -45,26 +45,26 @@ const typeColor: Record<ApiSearchResult["type"], string> = {
 };
 
 const metaBadge: Record<string, { color: string; bg: string }> = {
-  open:       { color: "#1e7fff",  bg: "rgba(30,127,255,0.1)" },
+  open:       { color: "#1e7fff",  bg: "var(--cafyz-border)" },
   sent:       { color: "#a855f7",  bg: "rgba(168,85,247,0.1)" },
   paid:       { color: "#22c55e",  bg: "rgba(34,197,94,0.1)" },
-  voided:     { color: "#6b82a0",  bg: "rgba(107,130,160,0.1)" },
+  voided:     { color: "var(--cafyz-muted)",  bg: "rgba(107,130,160,0.1)" },
   comped:     { color: "#22d3ee",  bg: "rgba(34,211,238,0.1)" },
   active:     { color: "#22c55e",  bg: "rgba(34,197,94,0.1)" },
   break:      { color: "#f59e0b",  bg: "rgba(245,158,11,0.1)" },
-  off:        { color: "#6b82a0",  bg: "rgba(107,130,160,0.1)" },
+  off:        { color: "var(--cafyz-muted)",  bg: "rgba(107,130,160,0.1)" },
   occupied:   { color: "#f59e0b",  bg: "rgba(245,158,11,0.1)" },
   empty:      { color: "#22c55e",  bg: "rgba(34,197,94,0.1)" },
   low:        { color: "#ff3b5c",  bg: "rgba(255,59,92,0.1)" },
   ok:         { color: "#22c55e",  bg: "rgba(34,197,94,0.1)" },
-  confirmed:  { color: "#1e7fff",  bg: "rgba(30,127,255,0.1)" },
+  confirmed:  { color: "#1e7fff",  bg: "var(--cafyz-border)" },
   seated:     { color: "#22c55e",  bg: "rgba(34,197,94,0.1)" },
   cancelled:  { color: "#ff3b5c",  bg: "rgba(255,59,92,0.1)" },
   available:  { color: "#22c55e",  bg: "rgba(34,197,94,0.1)" },
 };
 
 function getBadge(meta: string) {
-  return metaBadge[meta] ?? { color: "#a8bdd4", bg: "rgba(168,189,212,0.08)" };
+  return metaBadge[meta] ?? { color: "var(--cafyz-text-secondary)", bg: "rgba(168,189,212,0.08)" };
 }
 
 interface TopBarProps {
@@ -181,34 +181,34 @@ export function TopBar({ active, onMobileMenuOpen, onNavigate, onLogout, role, p
     <header
       className="app-top-bar sticky top-0 z-30 flex items-center gap-2 sm:gap-3 px-3 sm:px-4 md:px-6 border-b"
       style={{
-        background: "rgba(6,9,26,0.92)",
+        background: "var(--cafyz-topbar-bg)",
         backdropFilter: "blur(20px)",
-        borderColor: "rgba(30,127,255,0.1)",
+        borderColor: "var(--cafyz-border)",
         minHeight: 56,
       }}>
 
       {/* Mobile hamburger */}
       <button onClick={onMobileMenuOpen}
         className="lg:hidden flex items-center justify-center w-9 h-9 rounded-xl flex-shrink-0 transition-all active:scale-95"
-        style={{ background: "rgba(30,127,255,0.06)", color: "#6b82a0" }}>
+        style={{ background: "var(--cafyz-surface-hover)", color: "var(--cafyz-muted)" }}>
         <Menu size={18} />
       </button>
 
       {/* Page title */}
       <div className="flex-1 min-w-0">
-        <h1 className="truncate" style={{ color: "#e8eef8", fontFamily: "var(--font-display)", fontWeight: 700, fontSize: "0.98rem", lineHeight: 1.25 }}>
+        <h1 className="truncate" style={{ color: "var(--cafyz-text)", fontFamily: "var(--font-display)", fontWeight: 700, fontSize: "0.98rem", lineHeight: 1.25 }}>
           {page.title}
         </h1>
-        <p className="truncate hidden sm:block" style={{ color: "#6b82a0", fontSize: "0.67rem" }}>
+        <p className="truncate hidden sm:block" style={{ color: "var(--cafyz-muted)", fontSize: "0.67rem" }}>
           {active === "dashboard" ? `${t("Welcome back,")} ${userName.split(" ")[0]}` : page.subtitle}
         </p>
       </div>
 
       {/* Live clock — desktop only */}
       <div className="hidden lg:flex items-center gap-1.5 px-3 py-1.5 rounded-xl flex-shrink-0"
-        style={{ background: "#0d1326", border: "1px solid rgba(30,127,255,0.1)" }}>
-        <Clock size={12} style={{ color: "#6b82a0" }} />
-        <span style={{ color: "#a8bdd4", fontFamily: "var(--font-mono)", fontSize: "0.78rem", fontWeight: 600 }}>{time}</span>
+        style={{ background: "var(--cafyz-surface)", border: "1px solid var(--cafyz-border)" }}>
+        <Clock size={12} style={{ color: "var(--cafyz-muted)" }} />
+        <span style={{ color: "var(--cafyz-text-secondary)", fontFamily: "var(--font-mono)", fontSize: "0.78rem", fontWeight: 600 }}>{time}</span>
       </div>
 
       {/* Global search — desktop only */}
@@ -216,13 +216,13 @@ export function TopBar({ active, onMobileMenuOpen, onNavigate, onLogout, role, p
         <div
           className="flex items-center gap-2 rounded-xl px-3 py-2 transition-all duration-200"
           style={{
-            background: "#0d1326",
-            border: `1px solid ${searchFocused ? "rgba(30,127,255,0.4)" : "rgba(30,127,255,0.1)"}`,
+            background: "var(--cafyz-surface)",
+            border: `1px solid ${searchFocused ? "rgba(30,127,255,0.4)" : "var(--cafyz-border)"}`,
             boxShadow: searchFocused ? "0 0 0 3px rgba(30,127,255,0.08)" : "none",
           }}>
           {searchLoading
             ? <div className="w-3 h-3 border border-white/20 border-t-[#1e7fff] rounded-full animate-spin flex-shrink-0" />
-            : <Search size={13} style={{ color: "#6b82a0", flexShrink: 0 }} />
+            : <Search size={13} style={{ color: "var(--cafyz-muted)", flexShrink: 0 }} />
           }
           <input
             ref={inputRef}
@@ -232,11 +232,11 @@ export function TopBar({ active, onMobileMenuOpen, onNavigate, onLogout, role, p
             onChange={e => setSearchQuery(e.target.value)}
             onFocus={() => setSearchFocused(true)}
             onKeyDown={e => e.key === "Escape" && clearSearch()}
-            className="bg-transparent border-none outline-none flex-1 placeholder:text-[#6b82a0]"
-            style={{ color: "#e8eef8", fontSize: "0.82rem" }}
+            className="bg-transparent border-none outline-none flex-1 placeholder:text-[var(--cafyz-muted)]"
+            style={{ color: "var(--cafyz-text)", fontSize: "0.82rem" }}
           />
           {searchQuery && (
-            <button onClick={clearSearch} className="flex-shrink-0" style={{ color: "#6b82a0" }}>
+            <button onClick={clearSearch} className="flex-shrink-0" style={{ color: "var(--cafyz-muted)" }}>
               <X size={12} />
             </button>
           )}
@@ -252,14 +252,14 @@ export function TopBar({ active, onMobileMenuOpen, onNavigate, onLogout, role, p
               transition={{ type: "spring", damping: 28, stiffness: 380 }}
               className="absolute top-full left-0 right-0 mt-2 rounded-2xl overflow-hidden z-50"
               style={{
-                background: "#0d1326",
-                border: "1px solid rgba(30,127,255,0.18)",
-                boxShadow: "0 16px 40px rgba(0,0,0,0.55)",
+                background: "var(--cafyz-surface)",
+                border: "1px solid var(--cafyz-border-strong)",
+                boxShadow: "var(--cafyz-shadow-lg)",
                 minWidth: 300,
               }}>
               {searchQuery.length >= 2 && searchResults.length === 0 && !searchLoading ? (
                 <div className="py-8 text-center">
-                  <p style={{ color: "#6b82a0", fontSize: "0.8rem" }}>No results for <span style={{ color: "#e8eef8" }}>"{searchQuery}"</span></p>
+                  <p style={{ color: "var(--cafyz-muted)", fontSize: "0.8rem" }}>No results for <span style={{ color: "var(--cafyz-text)" }}>"{searchQuery}"</span></p>
                 </div>
               ) : searchResults.length > 0 ? (
                 <div className="py-1.5 overflow-y-auto" style={{ maxHeight: 380 }}>
@@ -271,18 +271,18 @@ export function TopBar({ active, onMobileMenuOpen, onNavigate, onLogout, role, p
                       <button
                         key={`${result.type}-${result.id}`}
                         onMouseDown={e => { e.preventDefault(); handleResultClick(result); }}
-                        className="w-full flex items-center gap-3 px-4 py-2.5 text-left transition-all hover:bg-[rgba(30,127,255,0.06)]"
+                        className="w-full flex items-center gap-3 px-4 py-2.5 text-left transition-all hover:bg-[var(--cafyz-surface-hover)]"
                       >
                         <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
                           style={{ background: `${color}18` }}>
                           <Icon size={13} style={{ color }} />
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="truncate" style={{ color: "#e8eef8", fontSize: "0.8rem", fontWeight: 500 }}>
+                          <p className="truncate" style={{ color: "var(--cafyz-text)", fontSize: "0.8rem", fontWeight: 500 }}>
                             {result.title}
                           </p>
                           {result.subtitle && (
-                            <p className="truncate" style={{ color: "#6b82a0", fontSize: "0.7rem" }}>
+                            <p className="truncate" style={{ color: "var(--cafyz-muted)", fontSize: "0.7rem" }}>
                               {result.subtitle}
                             </p>
                           )}
@@ -299,10 +299,10 @@ export function TopBar({ active, onMobileMenuOpen, onNavigate, onLogout, role, p
               {searchResults.length > 0 && (
                 <div className="px-4 py-2 border-t flex items-center justify-between"
                   style={{ borderColor: "rgba(30,127,255,0.08)" }}>
-                  <span style={{ color: "#6b82a0", fontSize: "0.65rem" }}>
+                  <span style={{ color: "var(--cafyz-muted)", fontSize: "0.65rem" }}>
                     {searchResults.length} result{searchResults.length !== 1 ? "s" : ""} for "{searchQuery}"
                   </span>
-                  <span style={{ color: "#6b82a0", fontSize: "0.62rem" }}>↵ to navigate · Esc to clear</span>
+                  <span style={{ color: "var(--cafyz-muted)", fontSize: "0.62rem" }}>↵ to navigate · Esc to clear</span>
                 </div>
               )}
             </motion.div>
@@ -318,7 +318,7 @@ export function TopBar({ active, onMobileMenuOpen, onNavigate, onLogout, role, p
       <button
         onClick={openSupport}
         className="relative flex items-center justify-center w-9 h-9 rounded-xl transition-all hover:bg-[rgba(30,127,255,0.08)] active:scale-95 flex-shrink-0"
-        style={{ color: "#6b82a0" }}
+        style={{ color: "var(--cafyz-muted)" }}
         title="Customer support"
         aria-label="Open customer support"
       >
@@ -330,7 +330,7 @@ export function TopBar({ active, onMobileMenuOpen, onNavigate, onLogout, role, p
         <button
           onClick={() => { setNotifOpen(o => !o); setProfileOpen(false); }}
           className="relative flex items-center justify-center w-9 h-9 rounded-xl transition-all hover:bg-[rgba(30,127,255,0.08)] active:scale-95"
-          style={{ color: notifOpen ? "#1e7fff" : "#6b82a0" }}>
+          style={{ color: notifOpen ? "#1e7fff" : "var(--cafyz-muted)" }}>
           <Bell size={17} />
           {unreadNotifs > 0 && (
             <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full"
@@ -356,16 +356,16 @@ export function TopBar({ active, onMobileMenuOpen, onNavigate, onLogout, role, p
       <div ref={profileRef} className="relative flex-shrink-0">
         <button
           onClick={() => { setProfileOpen(o => !o); setNotifOpen(false); }}
-          className="flex items-center gap-2 rounded-xl px-1.5 py-1 transition-all hover:bg-[rgba(30,127,255,0.06)] active:scale-95">
+          className="flex items-center gap-2 rounded-xl px-1.5 py-1 transition-all hover:bg-[var(--cafyz-surface-hover)] active:scale-95">
           <div className="w-8 h-8 rounded-full flex items-center justify-center"
             style={{ background: "linear-gradient(135deg, #1e7fff, #00c6ff)", boxShadow: "0 0 10px rgba(30,127,255,0.35)" }}>
-            <span style={{ color: "#fff", fontSize: "0.65rem", fontWeight: 800 }}>{initials}</span>
+            <span style={{ color: "var(--cafyz-text-strong)", fontSize: "0.65rem", fontWeight: 800 }}>{initials}</span>
           </div>
           <div className="hidden md:block text-left">
-            <p style={{ color: "#e8eef8", fontSize: "0.78rem", fontWeight: 600, lineHeight: 1.2 }}>{userName}</p>
-            <p style={{ color: "#6b82a0", fontSize: "0.62rem", textTransform: "capitalize" }}>{role}</p>
+            <p style={{ color: "var(--cafyz-text)", fontSize: "0.78rem", fontWeight: 600, lineHeight: 1.2 }}>{userName}</p>
+            <p style={{ color: "var(--cafyz-muted)", fontSize: "0.62rem", textTransform: "capitalize" }}>{role}</p>
           </div>
-          <ChevronDown size={13} className="hidden md:block" style={{ color: "#6b82a0", transform: profileOpen ? "rotate(180deg)" : "rotate(0)", transition: "transform 0.2s" }} />
+          <ChevronDown size={13} className="hidden md:block" style={{ color: "var(--cafyz-muted)", transform: profileOpen ? "rotate(180deg)" : "rotate(0)", transition: "transform 0.2s" }} />
         </button>
         <UserProfileDropdown
           open={profileOpen}

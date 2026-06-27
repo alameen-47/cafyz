@@ -13,7 +13,7 @@ interface UserProfileDropdownProps {
   userInitials?: string;
 }
 
-const planColors: Record<string, string> = { basic: "#6b82a0", pro: "#1e7fff", premium: "#a855f7" };
+const planColors: Record<string, string> = { basic: "var(--cafyz-muted)", pro: "#1e7fff", premium: "#a855f7" };
 const roleColors: Record<string, string> = {
   owner: "#a855f7", manager: "#1e7fff", cashier: "#22d3ee",
   waiter: "#00c6ff", kitchen: "#f59e0b", founder: "#ff3b5c",
@@ -40,20 +40,20 @@ export function UserProfileDropdown({ open, onClose, onNavigate, onLogout, role,
             transition={{ type: "spring", damping: 28, stiffness: 380 }}
             className="absolute top-full right-0 mt-2 w-64 rounded-2xl overflow-hidden z-50"
             style={{
-              background: "#0d1326",
-              border: "1px solid rgba(30,127,255,0.18)",
-              boxShadow: "0 16px 48px rgba(0,0,0,0.6)",
+              background: "var(--cafyz-surface)",
+              border: "1px solid var(--cafyz-border-strong)",
+              boxShadow: "var(--cafyz-shadow-lg)",
             }}>
             {/* User info */}
-            <div className="px-4 py-4 border-b" style={{ borderColor: "rgba(30,127,255,0.1)" }}>
+            <div className="px-4 py-4 border-b" style={{ borderColor: "var(--cafyz-border)" }}>
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-xl flex items-center justify-center"
                   style={{ background: "linear-gradient(135deg, #1e7fff, #00c6ff)", boxShadow: "0 0 12px rgba(30,127,255,0.35)" }}>
-                  <span style={{ color: "#fff", fontWeight: 800, fontSize: "0.8rem" }}>{initials}</span>
+                  <span style={{ color: "var(--cafyz-text-strong)", fontWeight: 800, fontSize: "0.8rem" }}>{initials}</span>
                 </div>
                 <div>
-                  <p style={{ color: "#e8eef8", fontWeight: 700, fontSize: "0.88rem" }}>{userName}</p>
-                  <p style={{ color: "#6b82a0", fontSize: "0.7rem" }}>{userEmail || "—"}</p>
+                  <p style={{ color: "var(--cafyz-text)", fontWeight: 700, fontSize: "0.88rem" }}>{userName}</p>
+                  <p style={{ color: "var(--cafyz-muted)", fontSize: "0.7rem" }}>{userEmail || "—"}</p>
                   <div className="flex items-center gap-2 mt-1">
                     <span className="text-xs px-1.5 py-0.5 rounded-full capitalize"
                       style={{ background: `${roleColors[role] || "#1e7fff"}15`, color: roleColors[role] || "#1e7fff" }}>
@@ -75,17 +75,17 @@ export function UserProfileDropdown({ open, onClose, onNavigate, onLogout, role,
                 return (
                   <button key={item.label}
                     onClick={() => { item.action(); onClose(); }}
-                    className="w-full flex items-center gap-3 px-4 py-2.5 text-sm transition-all hover:bg-[rgba(30,127,255,0.06)]">
-                    <Icon size={15} style={{ color: "#6b82a0", flexShrink: 0 }} />
-                    <span style={{ color: "#a8bdd4", flex: 1, textAlign: "left" }}>{item.label}</span>
-                    <ChevronRight size={13} style={{ color: "#6b82a0" }} />
+                    className="w-full flex items-center gap-3 px-4 py-2.5 text-sm transition-all hover:bg-[var(--cafyz-surface-hover)]">
+                    <Icon size={15} style={{ color: "var(--cafyz-muted)", flexShrink: 0 }} />
+                    <span style={{ color: "var(--cafyz-text-secondary)", flex: 1, textAlign: "left" }}>{item.label}</span>
+                    <ChevronRight size={13} style={{ color: "var(--cafyz-muted)" }} />
                   </button>
                 );
               })}
             </div>
 
             {/* Divider + logout */}
-            <div className="border-t py-1" style={{ borderColor: "rgba(30,127,255,0.1)" }}>
+            <div className="border-t py-1" style={{ borderColor: "var(--cafyz-border)" }}>
               <button onClick={() => { onLogout(); onClose(); }}
                 className="w-full flex items-center gap-3 px-4 py-2.5 text-sm transition-all hover:bg-[rgba(255,59,92,0.06)]">
                 <LogOut size={15} style={{ color: "#ff3b5c", flexShrink: 0 }} />

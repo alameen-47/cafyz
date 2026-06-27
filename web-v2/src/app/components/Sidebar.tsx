@@ -32,7 +32,7 @@ const navItems = [
 ];
 
 const planConfig: Record<Plan, { label: string; color: string; icon: React.ElementType }> = {
-  basic: { label: "Basic", color: "#6b82a0", icon: Shield },
+  basic: { label: "Basic", color: "var(--cafyz-muted)", icon: Shield },
   pro: { label: "Pro", color: "#1e7fff", icon: Zap },
   premium: { label: "Premium", color: "#a855f7", icon: Crown },
 };
@@ -269,20 +269,20 @@ export function Sidebar({
       {/* Logout confirm modal */}
       <AnimatePresence>
         {showLogoutConfirm && (
-          <div className="fixed inset-0 z-[60] flex items-center justify-center p-4" style={{ background: "rgba(6,9,26,0.85)", backdropFilter: "blur(8px)" }}>
+          <div className="fixed inset-0 z-[60] flex items-center justify-center p-4" style={{ background: "var(--cafyz-overlay)", backdropFilter: "blur(8px)" }}>
             <motion.div initial={{ opacity: 0, scale: 0.92 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.92 }}
               className="w-full max-w-xs rounded-2xl p-5 space-y-4"
-              style={{ background: "#0d1326", border: "1px solid rgba(255,59,92,0.2)" }}>
+              style={{ background: "var(--cafyz-surface)", border: "1px solid rgba(255,59,92,0.2)" }}>
               <div className="flex flex-col items-center gap-2 text-center">
                 <div className="w-12 h-12 rounded-xl flex items-center justify-center" style={{ background: "rgba(255,59,92,0.1)" }}>
                   <LogOut size={22} style={{ color: "#ff3b5c" }} />
                 </div>
-                <h3 style={{ color: "#e8eef8", fontFamily: "var(--font-display)", fontWeight: 700 }}>Sign Out?</h3>
-                <p style={{ color: "#6b82a0", fontSize: "0.82rem" }}>You'll be redirected to the login screen.</p>
+                <h3 style={{ color: "var(--cafyz-text)", fontFamily: "var(--font-display)", fontWeight: 700 }}>Sign Out?</h3>
+                <p style={{ color: "var(--cafyz-muted)", fontSize: "0.82rem" }}>You'll be redirected to the login screen.</p>
               </div>
               <div className="flex gap-2">
                 <button onClick={() => setShowLogoutConfirm(false)} className="flex-1 py-2.5 rounded-xl text-sm font-semibold"
-                  style={{ background: "rgba(30,127,255,0.06)", color: "#6b82a0", border: "1px solid rgba(30,127,255,0.1)" }}>
+                  style={{ background: "rgba(30,127,255,0.06)", color: "var(--cafyz-muted)", border: "1px solid var(--cafyz-border)" }}>
                   Cancel
                 </button>
                 <button onClick={() => { setShowLogoutConfirm(false); onLogout?.(); }}

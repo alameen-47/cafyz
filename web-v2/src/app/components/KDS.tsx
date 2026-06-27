@@ -29,7 +29,7 @@ const STATION_PRESET: Record<string, string> = {
 const STATION_PALETTE = ["#ff6b35", "#f59e0b", "#ef4444", "#f97316", "#eab308", "#22d3ee", "#a855f7", "#1e7fff"];
 
 function stationColor(name?: string): string {
-  if (!name) return "#6b82a0";
+  if (!name) return "var(--cafyz-muted)";
   const preset = STATION_PRESET[name.toLowerCase()];
   if (preset) return preset;
   let h = 0;
@@ -120,7 +120,7 @@ function OrderTicket({
     <motion.div layout initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }}
       className="rounded-2xl overflow-hidden w-full"
       style={{
-        background: "#0d1326",
+        background: "var(--cafyz-surface)",
         border: `1px solid ${order.vip ? "rgba(245,158,11,0.35)" : "rgba(30,127,255,0.12)"}`,
         boxShadow: order.vip ? "0 0 16px rgba(245,158,11,0.08)" : "none",
       }}>
@@ -130,8 +130,8 @@ function OrderTicket({
           borderBottom: "1px solid rgba(30,127,255,0.08)",
         }}>
         <div className="flex items-center gap-2 flex-wrap">
-          <span style={{ color: "#e8eef8", fontFamily: "var(--font-mono)", fontWeight: 800, fontSize: "0.88rem" }}>{order.table}</span>
-          <span style={{ color: "#6b82a0", fontSize: "0.65rem", fontFamily: "var(--font-mono)" }}>
+          <span style={{ color: "var(--cafyz-text)", fontFamily: "var(--font-mono)", fontWeight: 800, fontSize: "0.88rem" }}>{order.table}</span>
+          <span style={{ color: "var(--cafyz-muted)", fontSize: "0.65rem", fontFamily: "var(--font-mono)" }}>
             #{order.id.slice(0, 4).toUpperCase()}
           </span>
           {order.parcel && (
@@ -150,7 +150,7 @@ function OrderTicket({
         </div>
         <div className="flex items-center gap-2">
           <ElapsedBadge startedAt={order.startedAt} />
-          <span style={{ color: "#6b82a0", fontSize: "0.68rem" }}>· {order.covers}p · {order.server}</span>
+          <span style={{ color: "var(--cafyz-muted)", fontSize: "0.68rem" }}>· {order.covers}p · {order.server}</span>
         </div>
       </div>
 
@@ -166,7 +166,7 @@ function OrderTicket({
             <span style={{ color: "#1e7fff", fontFamily: "var(--font-mono)", fontWeight: 700, fontSize: "0.95rem", lineHeight: 1.3, flexShrink: 0 }}>×{item.qty}</span>
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
-                <span style={{ color: item.alert ? "#ff3b5c" : "#e8eef8", fontSize: "0.82rem", fontWeight: item.alert ? 700 : 500 }}>{item.name}</span>
+                <span style={{ color: item.alert ? "#ff3b5c" : "var(--cafyz-text)", fontSize: "0.82rem", fontWeight: item.alert ? 700 : 500 }}>{item.name}</span>
                 {item.station && (
                   <span className="text-xs px-1.5 py-0.5 rounded"
                     style={{ background: `${stationColor(item.station)}18`, color: stationColor(item.station) }}>
@@ -174,7 +174,7 @@ function OrderTicket({
                   </span>
                 )}
               </div>
-              {item.note && <p style={{ color: "#a8bdd4", fontSize: "0.68rem", marginTop: 2 }}>{item.note}</p>}
+              {item.note && <p style={{ color: "var(--cafyz-text-secondary)", fontSize: "0.68rem", marginTop: 2 }}>{item.note}</p>}
             </div>
           </div>
         ))}
@@ -185,7 +185,7 @@ function OrderTicket({
           <motion.button whileTap={{ scale: 0.95 }}
             onClick={() => onToggleVip(order.id, !order.vip)}
             className="px-2.5 py-2.5 rounded-xl text-xs font-semibold flex items-center justify-center gap-1"
-            style={{ background: "rgba(245,158,11,0.1)", color: order.vip ? "#f59e0b" : "#6b82a0", minWidth: 44 }}>
+            style={{ background: "rgba(245,158,11,0.1)", color: order.vip ? "#f59e0b" : "var(--cafyz-muted)", minWidth: 44 }}>
             <Star size={13} />
           </motion.button>
         )}
@@ -199,7 +199,7 @@ function OrderTicket({
             background: order.status === "new" ? "linear-gradient(135deg, #ff6b35, #f59e0b)"
               : order.status === "prep" ? "linear-gradient(135deg, #22c55e, #16a34a)"
               : "rgba(107,130,160,0.12)",
-            color: order.status === "ready" ? "#6b82a0" : "#fff",
+            color: order.status === "ready" ? "var(--cafyz-muted)" : "#fff",
           }}>
           <Icon size={14} />
           {actionLabel[order.status]}
@@ -323,22 +323,22 @@ export function KDS() {
     <div className="p-3 md:p-5 h-full flex flex-col gap-3 overflow-hidden">
       <div className="flex flex-wrap items-center gap-2 flex-shrink-0">
         <div className="flex items-center gap-1 p-1 rounded-xl overflow-x-auto scrollbar-hide flex-1 min-w-0"
-          style={{ background: "#0d1326", border: "1px solid rgba(30,127,255,0.1)" }}>
+          style={{ background: "var(--cafyz-surface)", border: "1px solid var(--cafyz-border)" }}>
           {stations.map(s => (
             <button key={s} onClick={() => setStationFilter(s)}
               className="px-2.5 py-1.5 rounded-lg text-xs whitespace-nowrap transition-all font-medium flex-shrink-0"
-              style={stationFilter === s ? { background: "linear-gradient(135deg, #1e7fff, #00c6ff)", color: "#fff" } : { color: "#6b82a0" }}>
+              style={stationFilter === s ? { background: "linear-gradient(135deg, #1e7fff, #00c6ff)", color: "#fff" } : { color: "var(--cafyz-muted)" }}>
               {s}
             </button>
           ))}
         </div>
         <div className="flex items-center gap-2 px-3 py-2 rounded-xl flex-shrink-0"
-          style={{ background: "#0d1326", border: "1px solid rgba(30,127,255,0.1)" }}>
+          style={{ background: "var(--cafyz-surface)", border: "1px solid var(--cafyz-border)" }}>
           <Printer size={13} style={{ color: printReady ? "#22c55e" : "#f59e0b" }} />
-          <span style={{ color: "#6b82a0", fontSize: "0.72rem" }}>Auto-print</span>
+          <span style={{ color: "var(--cafyz-muted)", fontSize: "0.72rem" }}>Auto-print</span>
           <button onClick={() => setAutoPrint(p => !p)}
             className="w-8 h-4 rounded-full relative transition-all flex-shrink-0"
-            style={{ background: autoPrint ? "#1e7fff" : "rgba(30,127,255,0.1)" }}>
+            style={{ background: autoPrint ? "#1e7fff" : "var(--cafyz-border)" }}>
             <div className="w-3 h-3 rounded-full bg-white absolute top-0.5 transition-all"
               style={{ left: autoPrint ? "calc(100% - 14px)" : 2 }} />
           </button>
@@ -359,16 +359,16 @@ export function KDS() {
       )}
 
       <div className="md:hidden flex gap-1 p-1 rounded-xl flex-shrink-0"
-        style={{ background: "#0d1326", border: "1px solid rgba(30,127,255,0.1)" }}>
+        style={{ background: "var(--cafyz-surface)", border: "1px solid var(--cafyz-border)" }}>
         {columns.map(col => {
           const count = filteredOrders(col.key).length;
           return (
             <button key={col.key} onClick={() => setActiveCol(col.key)}
               className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-semibold transition-all"
-              style={activeCol === col.key ? { background: `${col.color}20`, color: col.color } : { color: "#6b82a0" }}>
+              style={activeCol === col.key ? { background: `${col.color}20`, color: col.color } : { color: "var(--cafyz-muted)" }}>
               <span>{col.label.split(" ")[0]}</span>
               <span className="w-4 h-4 rounded-full flex items-center justify-center text-xs"
-                style={{ background: activeCol === col.key ? `${col.color}25` : "rgba(30,127,255,0.08)", color: activeCol === col.key ? col.color : "#6b82a0", fontFamily: "var(--font-mono)", fontSize: "0.6rem" }}>
+                style={{ background: activeCol === col.key ? `${col.color}25` : "rgba(30,127,255,0.08)", color: activeCol === col.key ? col.color : "var(--cafyz-muted)", fontFamily: "var(--font-mono)", fontSize: "0.6rem" }}>
                 {count}
               </span>
             </button>
@@ -379,7 +379,7 @@ export function KDS() {
       {loading && orders.length === 0 ? (
         <div className="flex-1 flex flex-col items-center justify-center gap-3">
           <Loader2 size={28} className="animate-spin" style={{ color: "#1e7fff" }} />
-          <p style={{ color: "#6b82a0", fontSize: "0.85rem" }}>Loading kitchen tickets…</p>
+          <p style={{ color: "var(--cafyz-muted)", fontSize: "0.85rem" }}>Loading kitchen tickets…</p>
         </div>
       ) : (
         <>
@@ -404,8 +404,8 @@ export function KDS() {
                       {colOrders.length === 0 ? (
                         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
                           className="flex flex-col items-center justify-center py-10 rounded-2xl"
-                          style={{ border: "1px dashed rgba(30,127,255,0.1)" }}>
-                          <p style={{ color: "#6b82a0", fontSize: "0.78rem" }}>No orders</p>
+                          style={{ border: "1px dashed var(--cafyz-border)" }}>
+                          <p style={{ color: "var(--cafyz-muted)", fontSize: "0.78rem" }}>No orders</p>
                         </motion.div>
                       ) : colOrders.map(order => (
                         <OrderTicket key={order.id} order={order} {...ticketProps} />
@@ -422,9 +422,9 @@ export function KDS() {
               {filteredOrders(activeCol).length === 0 ? (
                 <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
                   className="flex flex-col items-center justify-center py-16 rounded-2xl"
-                  style={{ border: "1px dashed rgba(30,127,255,0.1)" }}>
-                  <Filter size={24} style={{ color: "#6b82a0" }} />
-                  <p style={{ color: "#6b82a0", fontSize: "0.78rem", marginTop: 8 }}>No orders in this column</p>
+                  style={{ border: "1px dashed var(--cafyz-border)" }}>
+                  <Filter size={24} style={{ color: "var(--cafyz-muted)" }} />
+                  <p style={{ color: "var(--cafyz-muted)", fontSize: "0.78rem", marginTop: 8 }}>No orders in this column</p>
                 </motion.div>
               ) : filteredOrders(activeCol).map(order => (
                 <OrderTicket key={order.id} order={order} {...ticketProps} />

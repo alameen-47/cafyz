@@ -41,15 +41,15 @@ const EMPTY = {
 function InputField({ label, value, onChange, type = "text", placeholder = "", disabled = false }: { label: string; value: string; onChange: (v: string) => void; type?: string; placeholder?: string; disabled?: boolean }) {
   return (
     <div>
-      <label style={{ color: "#a8bdd4", fontSize: "0.78rem", display: "block", marginBottom: 5 }}>{label}</label>
+      <label style={{ color: "var(--cafyz-text-secondary)", fontSize: "0.78rem", display: "block", marginBottom: 5 }}>{label}</label>
       <input
         type={type}
         value={value}
         placeholder={placeholder}
         disabled={disabled}
         onChange={e => onChange(e.target.value)}
-        className="w-full rounded-xl px-3 py-2.5 text-sm outline-none placeholder:text-[#6b82a0] transition-all focus:ring-1 focus:ring-[rgba(30,127,255,0.4)] disabled:opacity-60"
-        style={{ background: "#111b35", color: "#e8eef8", border: "1px solid rgba(30,127,255,0.12)" }}
+        className="w-full rounded-xl px-3 py-2.5 text-sm outline-none placeholder:text-[var(--cafyz-muted)] transition-all focus:ring-1 focus:ring-[rgba(30,127,255,0.4)] disabled:opacity-60"
+        style={{ background: "var(--cafyz-surface-2)", color: "var(--cafyz-text)", border: "1px solid rgba(30,127,255,0.12)" }}
       />
     </div>
   );
@@ -61,12 +61,12 @@ function Section({ title, icon: Icon, children, subtitle }: { title: string; ico
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       className="rounded-2xl p-5 space-y-4"
-      style={{ background: "#0d1326", border: "1px solid rgba(30,127,255,0.1)" }}
+      style={{ background: "var(--cafyz-surface)", border: "1px solid var(--cafyz-border)" }}
     >
       <div className="flex items-center gap-2 pb-2 border-b" style={{ borderColor: "rgba(30,127,255,0.08)" }}>
         <Icon size={16} style={{ color: "#1e7fff" }} />
-        <h3 style={{ color: "#e8eef8", fontFamily: "var(--font-display)", fontWeight: 600, fontSize: "0.95rem" }}>{title}</h3>
-        {subtitle && <span style={{ color: "#6b82a0", fontSize: "0.72rem", marginLeft: "auto" }}>{subtitle}</span>}
+        <h3 style={{ color: "var(--cafyz-text)", fontFamily: "var(--font-display)", fontWeight: 600, fontSize: "0.95rem" }}>{title}</h3>
+        {subtitle && <span style={{ color: "var(--cafyz-muted)", fontSize: "0.72rem", marginLeft: "auto" }}>{subtitle}</span>}
       </div>
       {children}
     </motion.div>
@@ -463,8 +463,8 @@ export function Profile() {
         animate={{ opacity: 1, y: 0 }}
         className="rounded-2xl overflow-hidden"
         style={{
-          background: "linear-gradient(135deg, rgba(30,127,255,0.1) 0%, rgba(13,19,38,0.95) 55%)",
-          border: "1px solid rgba(30,127,255,0.18)",
+          background: "linear-gradient(135deg, var(--cafyz-border) 0%, rgba(13,19,38,0.95) 55%)",
+          border: "1px solid var(--cafyz-border-strong)",
           boxShadow: "0 8px 32px rgba(0,0,0,0.2)",
         }}
       >
@@ -476,7 +476,7 @@ export function Profile() {
                 background: logoUrl
                   ? `url(${logoUrl}) center/cover no-repeat`
                   : "linear-gradient(135deg, #1e7fff, #00c6ff)",
-                color: "#fff",
+                color: "var(--cafyz-text-strong)",
                 border: "1px solid rgba(30,127,255,0.25)",
                 boxShadow: "0 4px 16px rgba(30,127,255,0.2)",
               }}
@@ -487,7 +487,7 @@ export function Profile() {
               <div className="flex items-center gap-2 flex-wrap">
                 <h2
                   className="truncate"
-                  style={{ color: "#e8eef8", fontFamily: "var(--font-display)", fontWeight: 700, fontSize: "1rem", lineHeight: 1.25 }}
+                  style={{ color: "var(--cafyz-text)", fontFamily: "var(--font-display)", fontWeight: 700, fontSize: "1rem", lineHeight: 1.25 }}
                 >
                   {profile.name || user?.restaurant_name || "Your restaurant"}
                 </h2>
@@ -501,9 +501,9 @@ export function Profile() {
                 )}
               </div>
               {profile.tagline ? (
-                <p className="truncate mt-0.5" style={{ color: "#a8bdd4", fontSize: "0.78rem" }}>{profile.tagline}</p>
+                <p className="truncate mt-0.5" style={{ color: "var(--cafyz-text-secondary)", fontSize: "0.78rem" }}>{profile.tagline}</p>
               ) : (
-                <p className="flex items-center gap-1.5 mt-0.5" style={{ color: "#6b82a0", fontSize: "0.72rem" }}>
+                <p className="flex items-center gap-1.5 mt-0.5" style={{ color: "var(--cafyz-muted)", fontSize: "0.72rem" }}>
                   <Building2 size={12} style={{ flexShrink: 0 }} />
                   Restaurant settings & profile
                 </p>
@@ -513,7 +513,7 @@ export function Profile() {
 
           <div
             className="flex items-center gap-2.5 px-3 py-2 rounded-xl sm:max-w-[280px]"
-            style={{ background: "rgba(6,9,26,0.45)", border: "1px solid rgba(30,127,255,0.1)" }}
+            style={{ background: "var(--cafyz-overlay)", border: "1px solid var(--cafyz-border)" }}
           >
             <div
               className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 text-xs font-bold"
@@ -522,10 +522,10 @@ export function Profile() {
               {(account.name || user?.name || "?").slice(0, 2).toUpperCase()}
             </div>
             <div className="min-w-0 flex-1">
-              <p className="truncate" style={{ color: "#e8eef8", fontSize: "0.8rem", fontWeight: 600 }}>
+              <p className="truncate" style={{ color: "var(--cafyz-text)", fontSize: "0.8rem", fontWeight: 600 }}>
                 {account.name || user?.name || "Account"}
               </p>
-              <p className="truncate" style={{ color: "#6b82a0", fontSize: "0.7rem" }}>
+              <p className="truncate" style={{ color: "var(--cafyz-muted)", fontSize: "0.7rem" }}>
                 {account.email || user?.email || "—"}
               </p>
             </div>
@@ -533,7 +533,7 @@ export function Profile() {
               <span
                 className="px-2 py-1 rounded-lg text-[0.65rem] font-semibold flex-shrink-0"
                 style={{
-                  background: account.role === "owner" ? "rgba(168,85,247,0.14)" : "rgba(30,127,255,0.1)",
+                  background: account.role === "owner" ? "rgba(168,85,247,0.14)" : "var(--cafyz-border)",
                   color: account.role === "owner" ? "#c084fc" : "#1e7fff",
                   border: `1px solid ${account.role === "owner" ? "rgba(168,85,247,0.25)" : "rgba(30,127,255,0.2)"}`,
                 }}
@@ -548,7 +548,7 @@ export function Profile() {
           className="px-4 py-2 sm:px-5 flex flex-wrap items-center gap-x-3 gap-y-1"
           style={{ background: "rgba(0,0,0,0.15)", borderTop: "1px solid rgba(30,127,255,0.08)" }}
         >
-          <span className="flex items-center gap-1.5" style={{ color: "#6b82a0", fontSize: "0.7rem" }}>
+          <span className="flex items-center gap-1.5" style={{ color: "var(--cafyz-muted)", fontSize: "0.7rem" }}>
             <Shield size={12} style={{ color: "#1e7fff", flexShrink: 0 }} />
             All settings on this page apply only to this restaurant.
           </span>
@@ -579,10 +579,10 @@ export function Profile() {
               }}
             >
               {uploadingLogo
-                ? <Loader2 size={22} className="animate-spin" style={{ color: "#fff" }} />
+                ? <Loader2 size={22} className="animate-spin" style={{ color: "var(--cafyz-text-strong)" }} />
                 : logoUrl
                   ? <img src={logoUrl} alt="Restaurant logo" className="w-full h-full object-cover" />
-                  : <span style={{ fontFamily: "var(--font-display)", fontWeight: 800, color: "#fff", fontSize: "1.4rem" }}>{initials}</span>}
+                  : <span style={{ fontFamily: "var(--font-display)", fontWeight: 800, color: "var(--cafyz-text-strong)", fontSize: "1.4rem" }}>{initials}</span>}
             </button>
             <button
               type="button"
@@ -648,16 +648,16 @@ export function Profile() {
           <InputField label="Email" value={profile.email} onChange={v => update("email", v)} type="email" />
           <InputField label="Phone" value={profile.phone} onChange={v => update("phone", v)} />
           <div className="sm:col-span-2">
-            <label style={{ color: "#a8bdd4", fontSize: "0.78rem", display: "block", marginBottom: 5 }} className="flex items-center gap-1.5">
-              <Link2 size={12} style={{ color: "#6b82a0" }} /> Website
+            <label style={{ color: "var(--cafyz-text-secondary)", fontSize: "0.78rem", display: "block", marginBottom: 5 }} className="flex items-center gap-1.5">
+              <Link2 size={12} style={{ color: "var(--cafyz-muted)" }} /> Website
             </label>
             <input
               type="text"
               value={profile.website}
               placeholder="https://your-restaurant.com"
               onChange={e => update("website", e.target.value)}
-              className="w-full rounded-xl px-3 py-2.5 text-sm outline-none placeholder:text-[#6b82a0] transition-all focus:ring-1 focus:ring-[rgba(30,127,255,0.4)]"
-              style={{ background: "#111b35", color: "#e8eef8", border: "1px solid rgba(30,127,255,0.12)" }}
+              className="w-full rounded-xl px-3 py-2.5 text-sm outline-none placeholder:text-[var(--cafyz-muted)] transition-all focus:ring-1 focus:ring-[rgba(30,127,255,0.4)]"
+              style={{ background: "var(--cafyz-surface-2)", color: "var(--cafyz-text)", border: "1px solid rgba(30,127,255,0.12)" }}
             />
           </div>
         </div>
@@ -678,26 +678,26 @@ export function Profile() {
       <Section title="Localisation" icon={Globe}>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <div>
-            <label style={{ color: "#a8bdd4", fontSize: "0.78rem", display: "block", marginBottom: 5 }}>Currency</label>
+            <label style={{ color: "var(--cafyz-text-secondary)", fontSize: "0.78rem", display: "block", marginBottom: 5 }}>Currency</label>
             <select value={profile.currency} onChange={e => update("currency", e.target.value)}
               className="w-full rounded-xl px-3 py-2.5 text-sm outline-none"
-              style={{ background: "#111b35", color: "#e8eef8", border: "1px solid rgba(30,127,255,0.12)" }}>
+              style={{ background: "var(--cafyz-surface-2)", color: "var(--cafyz-text)", border: "1px solid rgba(30,127,255,0.12)" }}>
               {CURRENCIES.map(c => <option key={c}>{c}</option>)}
             </select>
           </div>
           <div>
-            <label style={{ color: "#a8bdd4", fontSize: "0.78rem", display: "block", marginBottom: 5 }}>Language</label>
+            <label style={{ color: "var(--cafyz-text-secondary)", fontSize: "0.78rem", display: "block", marginBottom: 5 }}>Language</label>
             <select value={profile.language} onChange={e => update("language", e.target.value)}
               className="w-full rounded-xl px-3 py-2.5 text-sm outline-none"
-              style={{ background: "#111b35", color: "#e8eef8", border: "1px solid rgba(30,127,255,0.12)" }}>
+              style={{ background: "var(--cafyz-surface-2)", color: "var(--cafyz-text)", border: "1px solid rgba(30,127,255,0.12)" }}>
               {LANGUAGES.map(([v,l]) => <option key={v} value={v}>{l}</option>)}
             </select>
           </div>
           <div>
-            <label style={{ color: "#a8bdd4", fontSize: "0.78rem", display: "block", marginBottom: 5 }}>Date Format</label>
+            <label style={{ color: "var(--cafyz-text-secondary)", fontSize: "0.78rem", display: "block", marginBottom: 5 }}>Date Format</label>
             <select value={profile.dateFormat} onChange={e => update("dateFormat", e.target.value)}
               className="w-full rounded-xl px-3 py-2.5 text-sm outline-none"
-              style={{ background: "#111b35", color: "#e8eef8", border: "1px solid rgba(30,127,255,0.12)" }}>
+              style={{ background: "var(--cafyz-surface-2)", color: "var(--cafyz-text)", border: "1px solid rgba(30,127,255,0.12)" }}>
               {["DD/MM/YYYY","MM/DD/YYYY","YYYY-MM-DD"].map(f => <option key={f}>{f}</option>)}
             </select>
           </div>
@@ -717,32 +717,32 @@ export function Profile() {
       {/* Receipt */}
       <Section title="Receipt Footer" icon={FileText}>
         <div>
-          <label style={{ color: "#a8bdd4", fontSize: "0.78rem", display: "block", marginBottom: 5 }}>Footer message (printed on receipts)</label>
+          <label style={{ color: "var(--cafyz-text-secondary)", fontSize: "0.78rem", display: "block", marginBottom: 5 }}>Footer message (printed on receipts)</label>
           <textarea
             value={profile.receiptFooter}
             onChange={e => update("receiptFooter", e.target.value)}
             rows={2}
             className="w-full rounded-xl px-3 py-2.5 text-sm outline-none resize-none"
-            style={{ background: "#111b35", color: "#e8eef8", border: "1px solid rgba(30,127,255,0.12)" }}
+            style={{ background: "var(--cafyz-surface-2)", color: "var(--cafyz-text)", border: "1px solid rgba(30,127,255,0.12)" }}
           />
         </div>
       </Section>
 
       {/* Receipt & printer test */}
       <Section title="Receipt & Printer Test" icon={Printer} subtitle="Uses current settings — save first to persist changes">
-        <p style={{ color: "#a8bdd4", fontSize: "0.78rem", lineHeight: 1.5 }}>
+        <p style={{ color: "var(--cafyz-text-secondary)", fontSize: "0.78rem", lineHeight: 1.5 }}>
           Print a sample receipt with your logo, address, tax rates, and footer so you can see exactly how it will look on paper.
         </p>
         <div className="rounded-xl px-3 py-2.5 flex flex-wrap items-center gap-x-3 gap-y-1"
-          style={{ background: "#111b35", border: "1px solid rgba(30,127,255,0.12)" }}>
-          <span style={{ color: "#6b82a0", fontSize: "0.72rem" }}>Printer</span>
+          style={{ background: "var(--cafyz-surface-2)", border: "1px solid rgba(30,127,255,0.12)" }}>
+          <span style={{ color: "var(--cafyz-muted)", fontSize: "0.72rem" }}>Printer</span>
           <span style={{ color: livePrinter.type === "none" ? "#fbbf24" : "#22c55e", fontSize: "0.78rem", fontWeight: 600 }}>
             {livePrinter.type === "none"
               ? "Not connected — browser preview available"
               : `Connected · ${livePrinter.name} (${livePrinter.type})`}
           </span>
           {(cashierPrinter || kitchenPrinter) && (
-            <span style={{ color: "#6b82a0", fontSize: "0.7rem" }}>
+            <span style={{ color: "var(--cafyz-muted)", fontSize: "0.7rem" }}>
               {cashierPrinter && `Cashier: ${cashierPrinter.name}`}
               {cashierPrinter && kitchenPrinter && " · "}
               {kitchenPrinter && `Kitchen: ${kitchenPrinter.name}`}
@@ -775,7 +775,7 @@ export function Profile() {
             onClick={handlePrintKitchen}
             disabled={printBusy}
             className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold transition-all"
-            style={{ background: "rgba(30,127,255,0.06)", color: "#a8bdd4", border: "1px solid rgba(30,127,255,0.15)", opacity: printBusy ? 0.6 : 1 }}
+            style={{ background: "rgba(30,127,255,0.06)", color: "var(--cafyz-text-secondary)", border: "1px solid rgba(30,127,255,0.15)", opacity: printBusy ? 0.6 : 1 }}
           >
             {printBusy ? <Loader2 size={13} className="animate-spin" /> : <ChefHat size={13} />}
             Print kitchen test
@@ -784,7 +784,7 @@ export function Profile() {
             type="button"
             onClick={() => setShowPrinterModal(true)}
             className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold transition-all"
-            style={{ background: "rgba(30,127,255,0.06)", color: "#6b82a0", border: "1px solid rgba(30,127,255,0.1)" }}
+            style={{ background: "rgba(30,127,255,0.06)", color: "var(--cafyz-muted)", border: "1px solid var(--cafyz-border)" }}
           >
             <Printer size={13} /> Configure printers
           </button>
@@ -821,20 +821,20 @@ export function Profile() {
           </div>
           <div className="flex-1 space-y-3 text-center sm:text-left">
             <div>
-              <p style={{ color: "#e8eef8", fontSize: "0.88rem", fontWeight: 600 }}>
+              <p style={{ color: "var(--cafyz-text)", fontSize: "0.88rem", fontWeight: 600 }}>
                 Scan to view your live menu
               </p>
-              <p style={{ color: "#a8bdd4", fontSize: "0.78rem", marginTop: 3 }}>
-                This QR code is unique to <span style={{ color: "#e8eef8" }}>{profile.name || "your restaurant"}</span>.
+              <p style={{ color: "var(--cafyz-text-secondary)", fontSize: "0.78rem", marginTop: 3 }}>
+                This QR code is unique to <span style={{ color: "var(--cafyz-text)" }}>{profile.name || "your restaurant"}</span>.
                 Customers see your current items, prices, and photos — updated whenever you edit the menu.
               </p>
             </div>
 
             <div className="rounded-xl px-3 py-2.5"
-              style={{ background: "#111b35", border: "1px solid rgba(30,127,255,0.12)" }}>
+              style={{ background: "var(--cafyz-surface-2)", border: "1px solid rgba(30,127,255,0.12)" }}>
               <div className="flex flex-wrap items-center gap-2">
                 {menuSync.loading ? (
-                  <span className="flex items-center gap-1.5" style={{ color: "#6b82a0", fontSize: "0.75rem" }}>
+                  <span className="flex items-center gap-1.5" style={{ color: "var(--cafyz-muted)", fontSize: "0.75rem" }}>
                     <Loader2 size={12} className="animate-spin" /> Checking menu…
                   </span>
                 ) : menuSync.valid ? (
@@ -847,7 +847,7 @@ export function Profile() {
                   </span>
                 )}
                 {menuSync.syncedAt && !menuSync.loading && (
-                  <span style={{ color: "#6b82a0", fontSize: "0.68rem" }}>
+                  <span style={{ color: "var(--cafyz-muted)", fontSize: "0.68rem" }}>
                     Synced {menuSync.syncedAt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                   </span>
                 )}

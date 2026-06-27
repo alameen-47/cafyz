@@ -28,11 +28,11 @@ function applyThemeToDocument(mode: ThemeMode) {
   localStorage.setItem(STORAGE_KEY, mode);
 
   const meta = document.querySelector('meta[name="theme-color"]');
-  if (meta) meta.setAttribute("content", mode === "dark" ? "#06091a" : "#f4f7fb");
+  if (meta) meta.setAttribute("content", mode === "dark" ? "#06091a" : "#e8edf4");
 
   if (Capacitor.isNativePlatform()) {
     void StatusBar.setStyle({ style: mode === "dark" ? Style.Dark : Style.Light });
-    void StatusBar.setBackgroundColor({ color: mode === "dark" ? "#06091a" : "#f4f7fb" });
+    void StatusBar.setBackgroundColor({ color: mode === "dark" ? "#06091a" : "#e8edf4" });
   }
 }
 

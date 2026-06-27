@@ -93,13 +93,13 @@ function OrderCard({
       onKeyDown={e => { if (e.key === "Enter" || e.key === " ") onOpen(order); }}
       className="rounded-2xl p-3 sm:p-4 flex flex-col gap-2.5 cursor-pointer transition-colors hover:border-[rgba(30,127,255,0.25)]"
       style={{
-        background: "#0d1326",
-        border: `1px solid ${order.priority ? "rgba(245,158,11,0.25)" : "rgba(30,127,255,0.1)"}`,
+        background: "var(--cafyz-surface)",
+        border: `1px solid ${order.priority ? "rgba(245,158,11,0.25)" : "var(--cafyz-border)"}`,
       }}
     >
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2 flex-wrap">
-          <span style={{ color: "#e8eef8", fontFamily: "var(--font-mono)", fontWeight: 700, fontSize: "0.82rem" }}>{order.id}</span>
+          <span style={{ color: "var(--cafyz-text)", fontFamily: "var(--font-mono)", fontWeight: 700, fontSize: "0.82rem" }}>{order.id}</span>
           {order.priority && (
             <span className="text-xs px-1.5 py-0.5 rounded-full" style={{ background: "rgba(245,158,11,0.12)", color: "#f59e0b", fontSize: "0.62rem" }}>ASAP</span>
           )}
@@ -110,21 +110,21 @@ function OrderCard({
           )}
         </div>
         <div className="flex items-center gap-1.5">
-          <Clock size={11} style={{ color: "#6b82a0" }} />
-          <span style={{ color: "#6b82a0", fontSize: "0.72rem" }}>{order.time}</span>
+          <Clock size={11} style={{ color: "var(--cafyz-muted)" }} />
+          <span style={{ color: "var(--cafyz-muted)", fontSize: "0.72rem" }}>{order.time}</span>
         </div>
       </div>
 
       <div className="flex items-center gap-2">
         <span className="px-2 py-1 rounded-lg text-xs font-semibold"
-          style={{ background: "rgba(30,127,255,0.1)", color: "#1e7fff", fontFamily: "var(--font-mono)" }}>
+          style={{ background: "var(--cafyz-border)", color: "#1e7fff", fontFamily: "var(--font-mono)" }}>
           {order.table}
         </span>
-        {order.waiter && <span style={{ color: "#6b82a0", fontSize: "0.72rem" }}>· {order.waiter}</span>}
+        {order.waiter && <span style={{ color: "var(--cafyz-muted)", fontSize: "0.72rem" }}>· {order.waiter}</span>}
       </div>
 
       {order.note && (
-        <p className="text-[0.68rem] px-2 py-1 rounded-lg" style={{ color: "#a8bdd4", background: "rgba(30,127,255,0.05)" }}>
+        <p className="text-[0.68rem] px-2 py-1 rounded-lg" style={{ color: "var(--cafyz-text-secondary)", background: "rgba(30,127,255,0.05)" }}>
           Note: {order.note}
         </p>
       )}
@@ -133,13 +133,13 @@ function OrderCard({
         {order.items.map((item, i) => (
           <div key={i}>
             <div className="flex justify-between items-center">
-              <span style={{ color: "#a8bdd4", fontSize: "0.75rem" }}>
+              <span style={{ color: "var(--cafyz-text-secondary)", fontSize: "0.75rem" }}>
                 <span style={{ color: "#1e7fff", fontFamily: "var(--font-mono)" }}>×{item.qty}</span> {item.name}
               </span>
-              <span style={{ color: "#6b82a0", fontSize: "0.72rem", fontFamily: "var(--font-mono)" }}>{cur}{(item.price * item.qty).toFixed(2)}</span>
+              <span style={{ color: "var(--cafyz-muted)", fontSize: "0.72rem", fontFamily: "var(--font-mono)" }}>{cur}{(item.price * item.qty).toFixed(2)}</span>
             </div>
             {item.mods.length > 0 && (
-              <p style={{ color: "#6b82a0", fontSize: "0.65rem", paddingLeft: 14 }}>{item.mods.join(" · ")}</p>
+              <p style={{ color: "var(--cafyz-muted)", fontSize: "0.65rem", paddingLeft: 14 }}>{item.mods.join(" · ")}</p>
             )}
           </div>
         ))}
@@ -152,7 +152,7 @@ function OrderCard({
           <span style={{ color: cfg.color, fontSize: "0.7rem", fontWeight: 600 }}>{cfg.label}</span>
         </div>
         <div className="flex items-center gap-2">
-          <span style={{ color: "#e8eef8", fontFamily: "var(--font-mono)", fontWeight: 700, fontSize: "0.88rem" }}>{cur}{order.total.toFixed(2)}</span>
+          <span style={{ color: "var(--cafyz-text)", fontFamily: "var(--font-mono)", fontWeight: 700, fontSize: "0.88rem" }}>{cur}{order.total.toFixed(2)}</span>
           {next && (
             <motion.button whileTap={{ scale: 0.94 }}
               onClick={() => onAdvance(order)}
@@ -290,33 +290,33 @@ export function Orders() {
 
       <div className="flex flex-col sm:flex-row gap-2.5">
         <div className="flex items-center gap-2 rounded-xl px-3 py-2.5 flex-1"
-          style={{ background: "#0d1326", border: "1px solid rgba(30,127,255,0.1)" }}>
-          <Search size={14} style={{ color: "#6b82a0" }} />
+          style={{ background: "var(--cafyz-surface)", border: "1px solid var(--cafyz-border)" }}>
+          <Search size={14} style={{ color: "var(--cafyz-muted)" }} />
           <input type="text" placeholder="Search order, table, or waiter..." value={search} onChange={e => setSearch(e.target.value)}
-            className="bg-transparent border-none outline-none text-sm flex-1 placeholder:text-[#6b82a0]"
-            style={{ color: "#e8eef8" }} />
+            className="bg-transparent border-none outline-none text-sm flex-1 placeholder:text-[var(--cafyz-muted)]"
+            style={{ color: "var(--cafyz-text)" }} />
         </div>
         <div className="flex gap-2">
           <div className="flex gap-1 p-1 rounded-xl flex-shrink-0"
-            style={{ background: "#0d1326", border: "1px solid rgba(30,127,255,0.1)" }}>
+            style={{ background: "var(--cafyz-surface)", border: "1px solid var(--cafyz-border)" }}>
             {(["active", "all"] as const).map(mode => (
               <button key={mode} onClick={() => setViewMode(mode)}
                 className="px-2.5 py-1.5 rounded-lg text-xs capitalize transition-all whitespace-nowrap"
                 style={viewMode === mode
                   ? { background: "rgba(30,127,255,0.15)", color: "#1e7fff", fontWeight: 600 }
-                  : { color: "#6b82a0" }}>
+                  : { color: "var(--cafyz-muted)" }}>
                 {mode === "active" ? "Active" : "All"}
               </button>
             ))}
           </div>
           <div className="flex gap-1 p-1 rounded-xl overflow-x-auto scrollbar-hide flex-1"
-            style={{ background: "#0d1326", border: "1px solid rgba(30,127,255,0.1)" }}>
+            style={{ background: "var(--cafyz-surface)", border: "1px solid var(--cafyz-border)" }}>
             {statuses.map(s => (
               <button key={s} onClick={() => setFilter(s)}
                 className="px-2.5 py-1.5 rounded-lg text-xs capitalize transition-all whitespace-nowrap flex-shrink-0"
                 style={filter === s
                   ? { background: "linear-gradient(135deg, #1e7fff, #00c6ff)", color: "#fff", fontWeight: 600 }
-                  : { color: "#6b82a0" }}>
+                  : { color: "var(--cafyz-muted)" }}>
                 {s === "at_table" ? "At table" : s}
               </button>
             ))}
@@ -339,7 +339,7 @@ export function Orders() {
       {loading && orders.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-20 gap-3">
           <Loader2 size={28} className="animate-spin" style={{ color: "#1e7fff" }} />
-          <p style={{ color: "#6b82a0", fontSize: "0.85rem" }}>Loading live orders…</p>
+          <p style={{ color: "var(--cafyz-muted)", fontSize: "0.85rem" }}>Loading live orders…</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
@@ -350,9 +350,9 @@ export function Orders() {
             {filtered.length === 0 && !loading && (
               <div key="empty" className="col-span-full flex flex-col items-center justify-center py-16 gap-3">
                 <div className="w-12 h-12 rounded-full flex items-center justify-center" style={{ background: "rgba(30,127,255,0.08)" }}>
-                  <Filter size={22} style={{ color: "#6b82a0" }} />
+                  <Filter size={22} style={{ color: "var(--cafyz-muted)" }} />
                 </div>
-                <p style={{ color: "#6b82a0", fontSize: "0.85rem" }}>
+                <p style={{ color: "var(--cafyz-muted)", fontSize: "0.85rem" }}>
                   {viewMode === "active" ? "No active orders — send one from POS" : "No orders match your filter"}
                 </p>
               </div>

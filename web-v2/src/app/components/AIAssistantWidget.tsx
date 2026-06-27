@@ -119,9 +119,9 @@ export function AIAssistantWidget({ screen, onNewBill }: { screen?: string; onNe
             transition={{ type: "spring", damping: 26, stiffness: 340 }}
             className="fixed bottom-24 lg:bottom-6 left-4 z-50 w-80 sm:w-96 rounded-2xl overflow-hidden flex flex-col"
             style={{
-              background: "#0d1326",
+              background: "var(--cafyz-surface)",
               border: "1px solid rgba(168,85,247,0.25)",
-              boxShadow: "0 16px 48px rgba(0,0,0,0.6)",
+              boxShadow: "var(--cafyz-shadow-lg)",
               maxHeight: minimised ? "auto" : 480,
             }}>
             {/* Header */}
@@ -129,20 +129,20 @@ export function AIAssistantWidget({ screen, onNewBill }: { screen?: string; onNe
               style={{ background: "linear-gradient(135deg, rgba(168,85,247,0.12), rgba(30,127,255,0.08))", borderBottom: "1px solid rgba(168,85,247,0.15)" }}>
               <CafyzLogo size="xs" className="flex-shrink-0" />
               <div className="flex-1">
-                <p style={{ color: "#e8eef8", fontFamily: "var(--font-display)", fontWeight: 700, fontSize: "0.88rem" }}>CAFYZ AI</p>
+                <p style={{ color: "var(--cafyz-text)", fontFamily: "var(--font-display)", fontWeight: 700, fontSize: "0.88rem" }}>CAFYZ AI</p>
                 <div className="flex items-center gap-1">
                   <div className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: "#22c55e" }} />
-                  <p style={{ color: "#6b82a0", fontSize: "0.65rem" }}>Online · Always learning</p>
+                  <p style={{ color: "var(--cafyz-muted)", fontSize: "0.65rem" }}>Online · Always learning</p>
                 </div>
               </div>
               <button onClick={() => setMinimised(m => !m)}
-                className="p-1.5 rounded-lg hover:bg-[rgba(30,127,255,0.1)] transition-all"
-                style={{ color: "#6b82a0" }}>
+                className="p-1.5 rounded-lg hover:bg-[var(--cafyz-border)] transition-all"
+                style={{ color: "var(--cafyz-muted)" }}>
                 <Minimize2 size={13} />
               </button>
               <button onClick={() => setOpen(false)}
                 className="p-1.5 rounded-lg hover:bg-[rgba(255,59,92,0.1)] transition-all"
-                style={{ color: "#6b82a0" }}>
+                style={{ color: "var(--cafyz-muted)" }}>
                 <X size={13} />
               </button>
             </div>
@@ -164,9 +164,9 @@ export function AIAssistantWidget({ screen, onNewBill }: { screen?: string; onNe
                             style={m.role === "assistant"
                               ? { background: "rgba(168,85,247,0.1)", border: "1px solid rgba(168,85,247,0.15)" }
                               : { background: "rgba(30,127,255,0.15)", border: "1px solid rgba(30,127,255,0.2)" }}>
-                            <p style={{ color: "#e8eef8", fontSize: "0.78rem", lineHeight: 1.55, whiteSpace: "pre-wrap" }}>{m.text}</p>
+                            <p style={{ color: "var(--cafyz-text)", fontSize: "0.78rem", lineHeight: 1.55, whiteSpace: "pre-wrap" }}>{m.text}</p>
                           </div>
-                          <p style={{ color: "#6b82a0", fontSize: "0.62rem" }}>{m.time}</p>
+                          <p style={{ color: "var(--cafyz-muted)", fontSize: "0.62rem" }}>{m.time}</p>
                         </div>
                       </div>
                     ))}
@@ -210,15 +210,15 @@ export function AIAssistantWidget({ screen, onNewBill }: { screen?: string; onNe
                       onChange={e => setInput(e.target.value)}
                       onKeyDown={e => e.key === "Enter" && !e.shiftKey && send()}
                       placeholder="Ask anything about your restaurant..."
-                      className="flex-1 rounded-xl px-3 py-2 text-sm outline-none placeholder:text-[#6b82a0]"
-                      style={{ background: "#111b35", color: "#e8eef8", border: "1px solid rgba(168,85,247,0.15)" }}
+                      className="flex-1 rounded-xl px-3 py-2 text-sm outline-none placeholder:text-[var(--cafyz-muted)]"
+                      style={{ background: "var(--cafyz-surface-2)", color: "var(--cafyz-text)", border: "1px solid rgba(168,85,247,0.15)" }}
                     />
                     <motion.button whileTap={{ scale: 0.92 }} onClick={() => send()}
                       disabled={!input.trim()}
                       className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 transition-all"
                       style={{
                         background: input.trim() ? "linear-gradient(135deg, #a855f7, #1e7fff)" : "rgba(107,130,160,0.1)",
-                        color: input.trim() ? "#fff" : "#6b82a0",
+                        color: input.trim() ? "#fff" : "var(--cafyz-muted)",
                       }}>
                       <Send size={14} />
                     </motion.button>

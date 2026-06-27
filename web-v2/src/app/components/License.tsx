@@ -8,7 +8,7 @@ import { usePlanConfig } from "../PlanConfigProvider";
 import { formatBillingSuffix, formatPlanPrice, panelLabelsFromConfig } from "../../services/planConfigStore";
 
 const PLAN_STYLE: Record<string, { color: string; icon: typeof Shield; popular?: boolean }> = {
-  basic: { color: "#6b82a0", icon: Shield },
+  basic: { color: "var(--cafyz-muted)", icon: Shield },
   pro: { color: "#1e7fff", icon: Zap, popular: true },
   premium: { color: "#a855f7", icon: Crown },
 };
@@ -122,12 +122,12 @@ export function License() {
         >
           <Clock size={18} style={{ color: status?.trial_expired ? "#ff3b5c" : "#1e7fff", flexShrink: 0 }} />
           <div className="flex-1">
-            <p style={{ color: "#e8eef8", fontSize: "0.85rem", fontWeight: 600 }}>
+            <p style={{ color: "var(--cafyz-text)", fontSize: "0.85rem", fontWeight: 600 }}>
               {status?.trial_expired
                 ? <>Your trial has <span style={{ color: "#ff3b5c", fontWeight: 800 }}>expired</span></>
                 : <>Trial expires in <span style={{ color: "#1e7fff", fontFamily: "var(--font-mono)", fontWeight: 800 }}>{trialDaysLeft} day{trialDaysLeft === 1 ? "" : "s"}</span></>}
             </p>
-            <p style={{ color: "#6b82a0", fontSize: "0.75rem" }}>
+            <p style={{ color: "var(--cafyz-muted)", fontSize: "0.75rem" }}>
               {pendingReq ? "Renewal requested — your license key will arrive by email." : "Request a renewal, then activate the key we email you. Your data is kept."}
             </p>
           </div>
@@ -144,9 +144,9 @@ export function License() {
       )}
 
       {/* Current plan */}
-      <div className="rounded-2xl p-5" style={{ background: "#0d1326", border: "1px solid rgba(30,127,255,0.15)" }}>
+      <div className="rounded-2xl p-5" style={{ background: "var(--cafyz-surface)", border: "1px solid rgba(30,127,255,0.15)" }}>
         <div className="flex items-center justify-between mb-4">
-          <h3 style={{ color: "#e8eef8", fontFamily: "var(--font-display)", fontWeight: 600 }}>Current Plan</h3>
+          <h3 style={{ color: "var(--cafyz-text)", fontFamily: "var(--font-display)", fontWeight: 600 }}>Current Plan</h3>
           <span className="text-xs px-2.5 py-1 rounded-full" style={{ background: "rgba(30,127,255,0.12)", color: "#1e7fff" }}>Active</span>
         </div>
         <div className="flex items-center gap-4">
@@ -154,16 +154,16 @@ export function License() {
             <PlanIcon size={22} style={{ color: planDef.color }} />
           </div>
           <div>
-            <p style={{ color: "#e8eef8", fontFamily: "var(--font-display)", fontWeight: 700, fontSize: "1.1rem" }}>{planDef.name} Plan</p>
-            {planDef.description && <p style={{ color: "#6b82a0", fontSize: "0.75rem" }}>{planDef.description}</p>}
-            <p style={{ color: "#6b82a0", fontSize: "0.8rem" }}>{renewLabel}</p>
+            <p style={{ color: "var(--cafyz-text)", fontFamily: "var(--font-display)", fontWeight: 700, fontSize: "1.1rem" }}>{planDef.name} Plan</p>
+            {planDef.description && <p style={{ color: "var(--cafyz-muted)", fontSize: "0.75rem" }}>{planDef.description}</p>}
+            <p style={{ color: "var(--cafyz-muted)", fontSize: "0.8rem" }}>{renewLabel}</p>
           </div>
         </div>
       </div>
 
       {/* Plan comparison */}
       <div>
-        <h3 style={{ color: "#e8eef8", fontFamily: "var(--font-display)", fontWeight: 600, marginBottom: 16 }}>Compare Plans</h3>
+        <h3 style={{ color: "var(--cafyz-text)", fontFamily: "var(--font-display)", fontWeight: 600, marginBottom: 16 }}>Compare Plans</h3>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           {plans.map((plan, i) => {
             const Icon = plan.icon;
@@ -176,8 +176,8 @@ export function License() {
                 transition={{ delay: i * 0.08 }}
                 className="rounded-2xl p-5 relative overflow-hidden flex flex-col"
                 style={{
-                  background: isActive ? `${plan.color}08` : "#0d1326",
-                  border: `1px solid ${isActive ? plan.color + "35" : "rgba(30,127,255,0.1)"}`,
+                  background: isActive ? `${plan.color}08` : "var(--cafyz-surface)",
+                  border: `1px solid ${isActive ? plan.color + "35" : "var(--cafyz-border)"}`,
                   boxShadow: isActive ? `0 0 24px ${plan.color}12` : "none",
                 }}
               >
@@ -192,26 +192,26 @@ export function License() {
                   <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: `${plan.color}15` }}>
                     <Icon size={18} style={{ color: plan.color }} />
                   </div>
-                  <span style={{ color: "#e8eef8", fontFamily: "var(--font-display)", fontWeight: 700, fontSize: "0.95rem" }}>{plan.name}</span>
+                  <span style={{ color: "var(--cafyz-text)", fontFamily: "var(--font-display)", fontWeight: 700, fontSize: "0.95rem" }}>{plan.name}</span>
                 </div>
                 <div className="mb-4">
                   <span style={{ color: plan.color, fontFamily: "var(--font-mono)", fontWeight: 800, fontSize: "1.6rem" }}>{plan.priceLabel}</span>
-                  <span style={{ color: "#6b82a0", fontSize: "0.75rem" }}>/{plan.period}</span>
+                  <span style={{ color: "var(--cafyz-muted)", fontSize: "0.75rem" }}>/{plan.period}</span>
                 </div>
                 {plan.description && (
-                  <p style={{ color: "#6b82a0", fontSize: "0.72rem", marginBottom: 10 }}>{plan.description}</p>
+                  <p style={{ color: "var(--cafyz-muted)", fontSize: "0.72rem", marginBottom: 10 }}>{plan.description}</p>
                 )}
                 <ul className="space-y-2 flex-1">
                   {plan.features.map(f => (
                     <li key={f} className="flex items-center gap-2">
                       <Check size={12} style={{ color: plan.color, flexShrink: 0 }} />
-                      <span style={{ color: "#a8bdd4", fontSize: "0.78rem" }}>{f}</span>
+                      <span style={{ color: "var(--cafyz-text-secondary)", fontSize: "0.78rem" }}>{f}</span>
                     </li>
                   ))}
                   {plan.locked.map(f => (
                     <li key={f} className="flex items-center gap-2 opacity-40">
-                      <X size={12} style={{ color: "#6b82a0", flexShrink: 0 }} />
-                      <span style={{ color: "#6b82a0", fontSize: "0.78rem" }}>{f}</span>
+                      <X size={12} style={{ color: "var(--cafyz-muted)", flexShrink: 0 }} />
+                      <span style={{ color: "var(--cafyz-muted)", fontSize: "0.78rem" }}>{f}</span>
                     </li>
                   ))}
                 </ul>
@@ -233,20 +233,20 @@ export function License() {
       </div>
 
       {/* License key activation */}
-      <div className="rounded-2xl p-5 space-y-4" style={{ background: "#0d1326", border: "1px solid rgba(30,127,255,0.1)" }}>
+      <div className="rounded-2xl p-5 space-y-4" style={{ background: "var(--cafyz-surface)", border: "1px solid var(--cafyz-border)" }}>
         <div className="flex items-center gap-2">
           <Key size={16} style={{ color: "#1e7fff" }} />
-          <h3 style={{ color: "#e8eef8", fontFamily: "var(--font-display)", fontWeight: 600 }}>License Key Activation</h3>
+          <h3 style={{ color: "var(--cafyz-text)", fontFamily: "var(--font-display)", fontWeight: 600 }}>License Key Activation</h3>
         </div>
-        <p style={{ color: "#6b82a0", fontSize: "0.8rem" }}>Have a license key? Enter it below to activate your plan.</p>
+        <p style={{ color: "var(--cafyz-muted)", fontSize: "0.8rem" }}>Have a license key? Enter it below to activate your plan.</p>
         <div className="flex gap-2">
           <input
             type="text"
             placeholder="CAFYZ-XXXX-XXXX-XXXX-XXXX"
             value={licenseKey}
             onChange={e => setLicenseKey(e.target.value.toUpperCase())}
-            className="flex-1 rounded-xl px-3 py-2.5 text-sm outline-none placeholder:text-[#6b82a0]"
-            style={{ background: "#111b35", color: "#e8eef8", border: "1px solid rgba(30,127,255,0.15)", fontFamily: "var(--font-mono)", letterSpacing: "0.05em" }}
+            className="flex-1 rounded-xl px-3 py-2.5 text-sm outline-none placeholder:text-[var(--cafyz-muted)]"
+            style={{ background: "var(--cafyz-surface-2)", color: "var(--cafyz-text)", border: "1px solid rgba(30,127,255,0.15)", fontFamily: "var(--font-mono)", letterSpacing: "0.05em" }}
           />
           <motion.button
             whileTap={{ scale: 0.95 }}

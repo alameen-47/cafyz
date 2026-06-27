@@ -24,15 +24,15 @@
   --border-radius: 14px !important;
 }
 [data-sonner-toast] {
-  background: #0d1326 !important;
-  border: 1px solid rgba(30,127,255,0.2) !important;
-  color: #e8eef8 !important;
+  background: var(--cafyz-toast-bg) !important;
+  border: 1px solid var(--cafyz-toast-border) !important;
+  color: var(--cafyz-toast-text) !important;
   font-family: var(--font-body) !important;
   font-size: 0.84rem !important;
-  box-shadow: 0 8px 32px rgba(0,0,0,0.5) !important;
+  box-shadow: var(--cafyz-toast-shadow) !important;
 }
 [data-sonner-toast] [data-description] {
-  color: #6b82a0 !important;
+  color: var(--cafyz-muted) !important;
   font-size: 0.75rem !important;
 }
 [data-sonner-toast][data-type="success"] {
@@ -45,9 +45,9 @@
   border-color: rgba(245,158,11,0.3) !important;
 }
 [data-sonner-toast] button[data-close-button] {
-  background: rgba(30,127,255,0.08) !important;
-  border: 1px solid rgba(30,127,255,0.12) !important;
-  color: #6b82a0 !important;
+  background: var(--cafyz-surface-hover) !important;
+  border: 1px solid var(--cafyz-border) !important;
+  color: var(--cafyz-muted) !important;
 }
 
 @layer base {
@@ -66,11 +66,11 @@
     background: transparent;
   }
   ::-webkit-scrollbar-thumb {
-    background: rgba(30, 127, 255, 0.15);
+    background: var(--cafyz-scrollbar);
     border-radius: 4px;
   }
   ::-webkit-scrollbar-thumb:hover {
-    background: rgba(30, 127, 255, 0.3);
+    background: var(--cafyz-scrollbar-hover);
   }
 
   /* Better tap highlights on mobile */

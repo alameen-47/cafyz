@@ -41,7 +41,7 @@ export function MobileNav({ active, onNavigate, permittedPages }: MobileNavProps
               <motion.div
                 layoutId="mobileActiveIndicator"
                 className="absolute inset-0 rounded-xl"
-                style={{ background: "rgba(30,127,255,0.1)" }}
+                style={{ background: "var(--cafyz-border)" }}
               />
             )}
             <Icon size={20} style={{ color: isActive ? "#1e7fff" : "var(--cafyz-muted)", position: "relative", zIndex: 1 }} />

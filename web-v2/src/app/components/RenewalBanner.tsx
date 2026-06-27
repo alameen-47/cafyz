@@ -59,17 +59,17 @@ export function RenewalBanner({
         <div
           className="mx-auto max-w-3xl rounded-2xl px-4 py-3 flex flex-wrap items-center gap-3 pointer-events-auto shadow-lg"
           style={{
-            background: expired ? "linear-gradient(135deg, #2a1020, #1a0d26)" : "linear-gradient(135deg, #0d2040, #0d1326)",
+            background: expired ? "linear-gradient(135deg, #2a1020, #1a0d26)" : "linear-gradient(135deg, #0d2040, var(--cafyz-surface))",
             border: `1px solid ${expired ? "rgba(255,59,92,0.35)" : "rgba(30,127,255,0.35)"}`,
             boxShadow: "0 12px 40px rgba(0,0,0,0.45)",
           }}
         >
           <AlertTriangle size={20} style={{ color: expired ? "#ff3b5c" : "#f59e0b", flexShrink: 0 }} />
           <div className="flex-1 min-w-[200px]">
-            <p style={{ color: "#e8eef8", fontWeight: 700, fontSize: "0.88rem" }}>
+            <p style={{ color: "var(--cafyz-text)", fontWeight: 700, fontSize: "0.88rem" }}>
               {expired ? "Subscription expired — renew to restore access" : `Renewal due in ${daysLeft} day${daysLeft === 1 ? "" : "s"}`}
             </p>
-            <p style={{ color: "#a8bdd4", fontSize: "0.75rem", marginTop: 2 }}>
+            <p style={{ color: "var(--cafyz-text-secondary)", fontSize: "0.75rem", marginTop: 2 }}>
               Contact Cafyz at{" "}
               <a href={`mailto:${founderEmail}`} style={{ color: "#1e7fff", textDecoration: "underline" }}>
                 {founderEmail}
@@ -97,7 +97,7 @@ export function RenewalBanner({
               License
             </button>
             {!expired && (
-              <button type="button" onClick={() => setDismissed(true)} className="p-1.5 rounded-lg" style={{ color: "#6b82a0" }} aria-label="Dismiss">
+              <button type="button" onClick={() => setDismissed(true)} className="p-1.5 rounded-lg" style={{ color: "var(--cafyz-muted)" }} aria-label="Dismiss">
                 <X size={16} />
               </button>
             )}

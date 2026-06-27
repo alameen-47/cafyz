@@ -39,8 +39,8 @@ const roleColors: Record<Role, string> = {
 
 const accessCycle: Access[] = ["none", "view", "edit"];
 const accessColors: Record<Access, { color: string; bg: string }> = {
-  none: { color: "#6b82a0", bg: "rgba(107,130,160,0.08)" },
-  view: { color: "#1e7fff", bg: "rgba(30,127,255,0.1)" },
+  none: { color: "var(--cafyz-muted)", bg: "rgba(107,130,160,0.08)" },
+  view: { color: "#1e7fff", bg: "var(--cafyz-border)" },
   edit: { color: "#22c55e", bg: "rgba(34,197,94,0.1)" },
 };
 
@@ -169,8 +169,8 @@ export function Roles() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 style={{ color: "#e8eef8", fontFamily: "var(--font-display)", fontWeight: 700 }}>User Roles & Access</h2>
-          <p style={{ color: "#6b82a0", fontSize: "0.78rem" }}>Manage team members and their permissions</p>
+          <h2 style={{ color: "var(--cafyz-text)", fontFamily: "var(--font-display)", fontWeight: 700 }}>User Roles & Access</h2>
+          <p style={{ color: "var(--cafyz-muted)", fontSize: "0.78rem" }}>Manage team members and their permissions</p>
         </div>
         <button
           onClick={() => setShowAddForm(true)}
@@ -182,9 +182,9 @@ export function Roles() {
       </div>
 
       {/* User list */}
-      <div className="rounded-2xl overflow-hidden" style={{ background: "#0d1326", border: "1px solid rgba(30,127,255,0.1)" }}>
+      <div className="rounded-2xl overflow-hidden" style={{ background: "var(--cafyz-surface)", border: "1px solid var(--cafyz-border)" }}>
         <div className="grid grid-cols-12 gap-2 px-4 py-3 text-xs font-semibold uppercase tracking-wider border-b"
-          style={{ color: "#6b82a0", borderColor: "rgba(30,127,255,0.08)", fontFamily: "var(--font-mono)" }}>
+          style={{ color: "var(--cafyz-muted)", borderColor: "rgba(30,127,255,0.08)", fontFamily: "var(--font-mono)" }}>
           <div className="col-span-4">Name</div>
           <div className="col-span-3 hidden sm:block">Email</div>
           <div className="col-span-2">Role</div>
@@ -210,11 +210,11 @@ export function Roles() {
                 </span>
               </div>
               <div>
-                <p style={{ color: "#e8eef8", fontSize: "0.85rem", fontWeight: 500 }}>{user.name}</p>
-                <p style={{ color: "#6b82a0", fontSize: "0.7rem", fontFamily: "var(--font-mono)" }}>PIN: ••••</p>
+                <p style={{ color: "var(--cafyz-text)", fontSize: "0.85rem", fontWeight: 500 }}>{user.name}</p>
+                <p style={{ color: "var(--cafyz-muted)", fontSize: "0.7rem", fontFamily: "var(--font-mono)" }}>PIN: ••••</p>
               </div>
             </div>
-            <div className="col-span-3 hidden sm:block" style={{ color: "#6b82a0", fontSize: "0.78rem" }}>{user.email}</div>
+            <div className="col-span-3 hidden sm:block" style={{ color: "var(--cafyz-muted)", fontSize: "0.78rem" }}>{user.email}</div>
             <div className="col-span-2">
               <span className="text-xs px-2 py-0.5 rounded-full capitalize font-medium"
                 style={{ background: `${roleColors[user.role]}15`, color: roleColors[user.role] }}>
@@ -223,7 +223,7 @@ export function Roles() {
             </div>
             <div className="col-span-2 hidden md:block">
               <span className="text-xs px-2 py-0.5 rounded-full"
-                style={user.active ? { background: "rgba(34,197,94,0.1)", color: "#22c55e" } : { background: "rgba(107,130,160,0.1)", color: "#6b82a0" }}>
+                style={user.active ? { background: "rgba(34,197,94,0.1)", color: "#22c55e" } : { background: "rgba(107,130,160,0.1)", color: "var(--cafyz-muted)" }}>
                 {user.active ? "Active" : "Inactive"}
               </span>
             </div>
@@ -231,18 +231,18 @@ export function Roles() {
               <button
                 onClick={() => startUserEdit(user)}
                 title="Edit profile"
-                className="p-1.5 rounded-lg hover:bg-[rgba(30,127,255,0.08)] text-[#6b82a0] hover:text-[#1e7fff] transition-all">
+                className="p-1.5 rounded-lg hover:bg-[rgba(30,127,255,0.08)] text-[var(--cafyz-muted)] hover:text-[#1e7fff] transition-all">
                 <UserCog size={13} />
               </button>
               <button
                 onClick={() => startAccessEdit(user)}
                 title="Edit screen access"
-                className="p-1.5 rounded-lg hover:bg-[rgba(30,127,255,0.08)] text-[#6b82a0] hover:text-[#1e7fff] transition-all">
+                className="p-1.5 rounded-lg hover:bg-[rgba(30,127,255,0.08)] text-[var(--cafyz-muted)] hover:text-[#1e7fff] transition-all">
                 <Shield size={13} />
               </button>
               <button
                 onClick={() => removeUser(user)}
-                className="p-1.5 rounded-lg hover:bg-[rgba(255,59,92,0.08)] text-[#6b82a0] hover:text-[#ff3b5c] transition-all">
+                className="p-1.5 rounded-lg hover:bg-[rgba(255,59,92,0.08)] text-[var(--cafyz-muted)] hover:text-[#ff3b5c] transition-all">
                 <Trash2 size={13} />
               </button>
             </div>
@@ -251,16 +251,16 @@ export function Roles() {
       </div>
 
       {/* Access matrix */}
-      <div className="rounded-2xl overflow-hidden" style={{ background: "#0d1326", border: "1px solid rgba(30,127,255,0.1)" }}>
+      <div className="rounded-2xl overflow-hidden" style={{ background: "var(--cafyz-surface)", border: "1px solid var(--cafyz-border)" }}>
         <button
           onClick={() => setShowMatrix(m => !m)}
           className="w-full flex items-center justify-between px-4 py-4"
         >
           <div className="flex items-center gap-2">
             <Shield size={16} style={{ color: "#1e7fff" }} />
-            <span style={{ color: "#e8eef8", fontFamily: "var(--font-display)", fontWeight: 600 }}>Default Role Access</span>
+            <span style={{ color: "var(--cafyz-text)", fontFamily: "var(--font-display)", fontWeight: 600 }}>Default Role Access</span>
           </div>
-          {showMatrix ? <ChevronUp size={16} style={{ color: "#6b82a0" }} /> : <ChevronDown size={16} style={{ color: "#6b82a0" }} />}
+          {showMatrix ? <ChevronUp size={16} style={{ color: "var(--cafyz-muted)" }} /> : <ChevronDown size={16} style={{ color: "var(--cafyz-muted)" }} />}
         </button>
         <AnimatePresence>
           {showMatrix && (
@@ -270,7 +270,7 @@ export function Roles() {
               exit={{ height: 0, opacity: 0 }}
               className="overflow-hidden"
             >
-              <p className="px-4 pb-2" style={{ color: "#6b82a0", fontSize: "0.72rem" }}>
+              <p className="px-4 pb-2" style={{ color: "var(--cafyz-muted)", fontSize: "0.72rem" }}>
                 Reference only — use Edit Access on a team member to save custom permissions.
               </p>
               {/* Role tabs */}
@@ -278,7 +278,7 @@ export function Roles() {
                 {(Object.keys(roleColors) as Role[]).map(r => (
                   <button key={r} onClick={() => setSelectedRole(r)}
                     className="px-3 py-1.5 rounded-full text-xs capitalize flex-shrink-0 transition-all font-medium"
-                    style={selectedRole === r ? { background: `${roleColors[r]}20`, color: roleColors[r], border: `1px solid ${roleColors[r]}40` } : { background: "#111b35", color: "#6b82a0" }}>
+                    style={selectedRole === r ? { background: `${roleColors[r]}20`, color: roleColors[r], border: `1px solid ${roleColors[r]}40` } : { background: "var(--cafyz-surface-2)", color: "var(--cafyz-muted)" }}>
                     {r}
                   </button>
                 ))}
@@ -288,8 +288,8 @@ export function Roles() {
                 <table className="w-full" style={{ borderCollapse: "separate", borderSpacing: "0 4px" }}>
                   <thead>
                     <tr>
-                      <th style={{ color: "#6b82a0", fontSize: "0.7rem", textAlign: "left", paddingBottom: 8, fontFamily: "var(--font-mono)" }}>Screen</th>
-                      <th style={{ color: "#6b82a0", fontSize: "0.7rem", textAlign: "center", paddingBottom: 8, fontFamily: "var(--font-mono)" }}>Access</th>
+                      <th style={{ color: "var(--cafyz-muted)", fontSize: "0.7rem", textAlign: "left", paddingBottom: 8, fontFamily: "var(--font-mono)" }}>Screen</th>
+                      <th style={{ color: "var(--cafyz-muted)", fontSize: "0.7rem", textAlign: "center", paddingBottom: 8, fontFamily: "var(--font-mono)" }}>Access</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -298,7 +298,7 @@ export function Roles() {
                       const cfg = accessColors[access];
                       return (
                         <tr key={screen.id}>
-                          <td style={{ color: "#a8bdd4", fontSize: "0.82rem", paddingRight: 12, paddingBottom: 6 }}>{screen.label}</td>
+                          <td style={{ color: "var(--cafyz-text-secondary)", fontSize: "0.82rem", paddingRight: 12, paddingBottom: 6 }}>{screen.label}</td>
                           <td style={{ paddingBottom: 6 }}>
                             <span
                               className="px-3 py-1 rounded-lg text-xs font-semibold capitalize inline-block"
@@ -322,64 +322,64 @@ export function Roles() {
       <AnimatePresence>
         {showAddForm && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
-            style={{ background: "rgba(6,9,26,0.85)", backdropFilter: "blur(8px)" }}
+            style={{ background: "var(--cafyz-overlay)", backdropFilter: "blur(8px)" }}
             onClick={() => setShowAddForm(false)}>
             <motion.div
               initial={{ opacity: 0, scale: 0.92 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.92 }}
               className="w-full max-w-md rounded-2xl p-5 space-y-4"
-              style={{ background: "#0d1326", border: "1px solid rgba(30,127,255,0.2)" }}
+              style={{ background: "var(--cafyz-surface)", border: "1px solid rgba(30,127,255,0.2)" }}
               onClick={e => e.stopPropagation()}
             >
               <div className="flex items-center justify-between">
-                <h3 style={{ fontFamily: "var(--font-display)", color: "#e8eef8", fontWeight: 700 }}>Add Team Member</h3>
-                <button onClick={() => setShowAddForm(false)} style={{ color: "#6b82a0" }}><X size={18} /></button>
+                <h3 style={{ fontFamily: "var(--font-display)", color: "var(--cafyz-text)", fontWeight: 700 }}>Add Team Member</h3>
+                <button onClick={() => setShowAddForm(false)} style={{ color: "var(--cafyz-muted)" }}><X size={18} /></button>
               </div>
               <div className="space-y-3">
                 {[{ label: "Full Name", field: "name", type: "text", placeholder: "Ravi Sharma" },
                   { label: "Email", field: "email", type: "email", placeholder: "ravi@restaurant.com" }].map(f => (
                   <div key={f.field}>
-                    <label style={{ color: "#a8bdd4", fontSize: "0.78rem", display: "block", marginBottom: 4 }}>{f.label}</label>
+                    <label style={{ color: "var(--cafyz-text-secondary)", fontSize: "0.78rem", display: "block", marginBottom: 4 }}>{f.label}</label>
                     <input type={f.type} placeholder={f.placeholder} value={(newUser as any)[f.field]}
                       onChange={e => setNewUser(u => ({ ...u, [f.field]: e.target.value }))}
-                      className="w-full rounded-xl px-3 py-2.5 text-sm outline-none placeholder:text-[#6b82a0]"
-                      style={{ background: "#111b35", color: "#e8eef8", border: "1px solid rgba(30,127,255,0.12)" }} />
+                      className="w-full rounded-xl px-3 py-2.5 text-sm outline-none placeholder:text-[var(--cafyz-muted)]"
+                      style={{ background: "var(--cafyz-surface-2)", color: "var(--cafyz-text)", border: "1px solid rgba(30,127,255,0.12)" }} />
                   </div>
                 ))}
                 <div>
-                  <label style={{ color: "#a8bdd4", fontSize: "0.78rem", display: "block", marginBottom: 4 }}>Role</label>
+                  <label style={{ color: "var(--cafyz-text-secondary)", fontSize: "0.78rem", display: "block", marginBottom: 4 }}>Role</label>
                   <select value={newUser.role} onChange={e => setNewUser(u => ({ ...u, role: e.target.value as Role }))}
                     className="w-full rounded-xl px-3 py-2.5 text-sm outline-none"
-                    style={{ background: "#111b35", color: "#e8eef8", border: "1px solid rgba(30,127,255,0.12)" }}>
+                    style={{ background: "var(--cafyz-surface-2)", color: "var(--cafyz-text)", border: "1px solid rgba(30,127,255,0.12)" }}>
                     {(Object.keys(roleColors) as Role[]).filter(r => r !== "owner").map(r => <option key={r} value={r} className="capitalize">{r}</option>)}
                   </select>
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label style={{ color: "#a8bdd4", fontSize: "0.78rem", display: "block", marginBottom: 4 }}>Password</label>
-                    <div className="flex items-center gap-2 rounded-xl px-3 py-2.5" style={{ background: "#111b35", border: "1px solid rgba(30,127,255,0.12)" }}>
+                    <label style={{ color: "var(--cafyz-text-secondary)", fontSize: "0.78rem", display: "block", marginBottom: 4 }}>Password</label>
+                    <div className="flex items-center gap-2 rounded-xl px-3 py-2.5" style={{ background: "var(--cafyz-surface-2)", border: "1px solid rgba(30,127,255,0.12)" }}>
                       <input type={showPin ? "text" : "password"} placeholder="••••••••" value={newUser.password}
                         onChange={e => setNewUser(u => ({ ...u, password: e.target.value }))}
-                        className="flex-1 bg-transparent outline-none text-sm placeholder:text-[#6b82a0]" style={{ color: "#e8eef8" }} />
-                      <button onClick={() => setShowPin(p => !p)} style={{ color: "#6b82a0" }}>
+                        className="flex-1 bg-transparent outline-none text-sm placeholder:text-[var(--cafyz-muted)]" style={{ color: "var(--cafyz-text)" }} />
+                      <button onClick={() => setShowPin(p => !p)} style={{ color: "var(--cafyz-muted)" }}>
                         {showPin ? <EyeOff size={14} /> : <Eye size={14} />}
                       </button>
                     </div>
                   </div>
                   <div>
-                    <label style={{ color: "#a8bdd4", fontSize: "0.78rem", display: "block", marginBottom: 4 }}>4-digit PIN</label>
+                    <label style={{ color: "var(--cafyz-text-secondary)", fontSize: "0.78rem", display: "block", marginBottom: 4 }}>4-digit PIN</label>
                     <input type="text" maxLength={4} placeholder="1234" value={newUser.pin}
                       onChange={e => setNewUser(u => ({ ...u, pin: e.target.value.replace(/\D/g, "") }))}
-                      className="w-full rounded-xl px-3 py-2.5 text-sm outline-none placeholder:text-[#6b82a0]"
-                      style={{ background: "#111b35", color: "#e8eef8", border: "1px solid rgba(30,127,255,0.12)", fontFamily: "var(--font-mono)", letterSpacing: "0.3em" }} />
+                      className="w-full rounded-xl px-3 py-2.5 text-sm outline-none placeholder:text-[var(--cafyz-muted)]"
+                      style={{ background: "var(--cafyz-surface-2)", color: "var(--cafyz-text)", border: "1px solid rgba(30,127,255,0.12)", fontFamily: "var(--font-mono)", letterSpacing: "0.3em" }} />
                   </div>
                 </div>
               </div>
               <div className="flex gap-2 pt-2">
                 <button onClick={() => setShowAddForm(false)}
                   className="flex-1 py-2.5 rounded-xl text-sm font-semibold"
-                  style={{ background: "rgba(30,127,255,0.06)", color: "#6b82a0", border: "1px solid rgba(30,127,255,0.1)" }}>
+                  style={{ background: "rgba(30,127,255,0.06)", color: "var(--cafyz-muted)", border: "1px solid var(--cafyz-border)" }}>
                   Cancel
                 </button>
                 <button
@@ -397,21 +397,21 @@ export function Roles() {
       <AnimatePresence>
         {accessEditId && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
-            style={{ background: "rgba(6,9,26,0.85)", backdropFilter: "blur(8px)" }}
+            style={{ background: "var(--cafyz-overlay)", backdropFilter: "blur(8px)" }}
             onClick={() => setAccessEditId(null)}>
             <motion.div
               initial={{ opacity: 0, scale: 0.92 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.92 }}
               className="w-full max-w-lg rounded-2xl p-5 space-y-4 max-h-[85vh] overflow-y-auto"
-              style={{ background: "#0d1326", border: "1px solid rgba(30,127,255,0.2)" }}
+              style={{ background: "var(--cafyz-surface)", border: "1px solid rgba(30,127,255,0.2)" }}
               onClick={e => e.stopPropagation()}
             >
               <div className="flex items-center justify-between">
-                <h3 style={{ fontFamily: "var(--font-display)", color: "#e8eef8", fontWeight: 700 }}>Edit Screen Access</h3>
-                <button onClick={() => setAccessEditId(null)} style={{ color: "#6b82a0" }}><X size={18} /></button>
+                <h3 style={{ fontFamily: "var(--font-display)", color: "var(--cafyz-text)", fontWeight: 700 }}>Edit Screen Access</h3>
+                <button onClick={() => setAccessEditId(null)} style={{ color: "var(--cafyz-muted)" }}><X size={18} /></button>
               </div>
-              <p style={{ color: "#6b82a0", fontSize: "0.78rem" }}>
+              <p style={{ color: "var(--cafyz-muted)", fontSize: "0.78rem" }}>
                 Override default role permissions for {staffUsers.find(u => u.id === accessEditId)?.name ?? "this user"}.
               </p>
               <div className="space-y-2">
@@ -420,7 +420,7 @@ export function Roles() {
                   const cfg = accessColors[access];
                   return (
                     <div key={screen.id} className="flex items-center justify-between py-1.5">
-                      <span style={{ color: "#a8bdd4", fontSize: "0.82rem" }}>{screen.label}</span>
+                      <span style={{ color: "var(--cafyz-text-secondary)", fontSize: "0.82rem" }}>{screen.label}</span>
                       <button
                         onClick={() => {
                           const next = accessCycle[(accessCycle.indexOf(access) + 1) % 3];
@@ -438,7 +438,7 @@ export function Roles() {
               <div className="flex gap-2 pt-2">
                 <button onClick={() => setAccessEditId(null)}
                   className="flex-1 py-2.5 rounded-xl text-sm font-semibold"
-                  style={{ background: "rgba(30,127,255,0.06)", color: "#6b82a0", border: "1px solid rgba(30,127,255,0.1)" }}>
+                  style={{ background: "rgba(30,127,255,0.06)", color: "var(--cafyz-muted)", border: "1px solid var(--cafyz-border)" }}>
                   Cancel
                 </button>
                 <button onClick={() => void saveAccess()} disabled={savingAccess}
@@ -455,45 +455,45 @@ export function Roles() {
       <AnimatePresence>
         {editUserId && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
-            style={{ background: "rgba(6,9,26,0.85)", backdropFilter: "blur(8px)" }}
+            style={{ background: "var(--cafyz-overlay)", backdropFilter: "blur(8px)" }}
             onClick={() => setEditUserId(null)}>
             <motion.div
               initial={{ opacity: 0, scale: 0.92 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.92 }}
               className="w-full max-w-md rounded-2xl p-5 space-y-4"
-              style={{ background: "#0d1326", border: "1px solid rgba(30,127,255,0.2)" }}
+              style={{ background: "var(--cafyz-surface)", border: "1px solid rgba(30,127,255,0.2)" }}
               onClick={e => e.stopPropagation()}
             >
               <div className="flex items-center justify-between">
-                <h3 style={{ fontFamily: "var(--font-display)", color: "#e8eef8", fontWeight: 700 }}>Edit Team Member</h3>
-                <button onClick={() => setEditUserId(null)} style={{ color: "#6b82a0" }}><X size={18} /></button>
+                <h3 style={{ fontFamily: "var(--font-display)", color: "var(--cafyz-text)", fontWeight: 700 }}>Edit Team Member</h3>
+                <button onClick={() => setEditUserId(null)} style={{ color: "var(--cafyz-muted)" }}><X size={18} /></button>
               </div>
               <div className="space-y-3">
                 <div>
-                  <label style={{ color: "#a8bdd4", fontSize: "0.78rem", display: "block", marginBottom: 4 }}>Full Name</label>
+                  <label style={{ color: "var(--cafyz-text-secondary)", fontSize: "0.78rem", display: "block", marginBottom: 4 }}>Full Name</label>
                   <input type="text" value={editDraft.name} onChange={e => setEditDraft(d => ({ ...d, name: e.target.value }))}
                     className="w-full rounded-xl px-3 py-2.5 text-sm outline-none"
-                    style={{ background: "#111b35", color: "#e8eef8", border: "1px solid rgba(30,127,255,0.12)" }} />
+                    style={{ background: "var(--cafyz-surface-2)", color: "var(--cafyz-text)", border: "1px solid rgba(30,127,255,0.12)" }} />
                 </div>
                 <div>
-                  <label style={{ color: "#a8bdd4", fontSize: "0.78rem", display: "block", marginBottom: 4 }}>Email</label>
+                  <label style={{ color: "var(--cafyz-text-secondary)", fontSize: "0.78rem", display: "block", marginBottom: 4 }}>Email</label>
                   <input type="email" value={editDraft.email} onChange={e => setEditDraft(d => ({ ...d, email: e.target.value }))}
                     className="w-full rounded-xl px-3 py-2.5 text-sm outline-none"
-                    style={{ background: "#111b35", color: "#e8eef8", border: "1px solid rgba(30,127,255,0.12)" }} />
+                    style={{ background: "var(--cafyz-surface-2)", color: "var(--cafyz-text)", border: "1px solid rgba(30,127,255,0.12)" }} />
                 </div>
                 {editDraft.role !== "owner" && (
                   <div>
-                    <label style={{ color: "#a8bdd4", fontSize: "0.78rem", display: "block", marginBottom: 4 }}>Role</label>
+                    <label style={{ color: "var(--cafyz-text-secondary)", fontSize: "0.78rem", display: "block", marginBottom: 4 }}>Role</label>
                     <select value={editDraft.role} onChange={e => setEditDraft(d => ({ ...d, role: e.target.value as Role }))}
                       className="w-full rounded-xl px-3 py-2.5 text-sm outline-none capitalize"
-                      style={{ background: "#111b35", color: "#e8eef8", border: "1px solid rgba(30,127,255,0.12)" }}>
+                      style={{ background: "var(--cafyz-surface-2)", color: "var(--cafyz-text)", border: "1px solid rgba(30,127,255,0.12)" }}>
                       {(Object.keys(roleColors) as Role[]).filter(r => r !== "owner").map(r => <option key={r} value={r}>{r}</option>)}
                     </select>
                   </div>
                 )}
-                <div className="rounded-xl p-3 flex items-center justify-between" style={{ background: "#111b35", border: "1px solid rgba(30,127,255,0.08)" }}>
-                  <span style={{ color: "#a8bdd4", fontSize: "0.82rem" }}>Active</span>
+                <div className="rounded-xl p-3 flex items-center justify-between" style={{ background: "var(--cafyz-surface-2)", border: "1px solid rgba(30,127,255,0.08)" }}>
+                  <span style={{ color: "var(--cafyz-text-secondary)", fontSize: "0.82rem" }}>Active</span>
                   <button type="button" onClick={() => setEditDraft(d => ({ ...d, active: !d.active }))}
                     className="rounded-full relative transition-all"
                     style={{ background: editDraft.active ? "#22c55e" : "rgba(30,127,255,0.12)", width: 40, height: 22 }}>
@@ -505,7 +505,7 @@ export function Roles() {
               <div className="flex gap-2 pt-2">
                 <button onClick={() => setEditUserId(null)}
                   className="flex-1 py-2.5 rounded-xl text-sm font-semibold"
-                  style={{ background: "rgba(30,127,255,0.06)", color: "#6b82a0", border: "1px solid rgba(30,127,255,0.1)" }}>
+                  style={{ background: "rgba(30,127,255,0.06)", color: "var(--cafyz-muted)", border: "1px solid var(--cafyz-border)" }}>
                   Cancel
                 </button>
                 <button onClick={() => void saveUserEdit()} disabled={savingUser}

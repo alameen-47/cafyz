@@ -17,8 +17,11 @@
       <script>
         (function () {
           var t = localStorage.getItem('cafyz_theme');
-          document.documentElement.classList.add(t === 'light' ? 'light' : 'dark');
-          document.documentElement.dataset.theme = t === 'light' ? 'light' : 'dark';
+          var light = t === 'light';
+          document.documentElement.classList.add(light ? 'light' : 'dark');
+          document.documentElement.dataset.theme = light ? 'light' : 'dark';
+          var meta = document.querySelector('meta[name="theme-color"]');
+          if (meta) meta.setAttribute('content', light ? '#e8edf4' : '#06091a');
         })();
       </script>
       <style>

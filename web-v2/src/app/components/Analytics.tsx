@@ -155,14 +155,14 @@ function DualAreaChart({ data, cur = "₹" }: { data: RevPoint[]; cur?: string }
   if (!hasData) {
     return (
       <div style={{ height: 180 }} className="flex items-center justify-center">
-        <span style={{ color: "#6b82a0", fontSize: "0.8rem" }}>No paid orders in this period yet</span>
+        <span style={{ color: "var(--cafyz-muted)", fontSize: "0.8rem" }}>No paid orders in this period yet</span>
       </div>
     );
   }
   if (data.length < 2) {
     return (
       <div style={{ height: 180 }} className="flex items-center justify-center">
-        <span style={{ color: "#6b82a0", fontSize: "0.8rem" }}>Not enough data for a trend line yet</span>
+        <span style={{ color: "var(--cafyz-muted)", fontSize: "0.8rem" }}>Not enough data for a trend line yet</span>
       </div>
     );
   }
@@ -179,13 +179,13 @@ function DualAreaChart({ data, cur = "₹" }: { data: RevPoint[]; cur?: string }
       {gridYs.map((y, i) => (
         <g key={i}>
           <line x1={padL} y1={y} x2={W - padR} y2={y} stroke="rgba(30,127,255,0.06)" strokeDasharray="4 3" />
-          <text x={padL - 4} y={y + 4} textAnchor="end" fill="#6b82a0" fontSize={9}>
+          <text x={padL - 4} y={y + 4} textAnchor="end" fill="var(--cafyz-muted)" fontSize={9}>
             {compactMoney(cur, max * [0.25, 0.5, 0.75, 1][i])}
           </text>
         </g>
       ))}
       {data.map((d, i) => i % labelEvery === 0 && (
-        <text key={i} x={xs[i]} y={H - 6} textAnchor="middle" fill="#6b82a0" fontSize={9}>{d.month}</text>
+        <text key={i} x={xs[i]} y={H - 6} textAnchor="middle" fill="var(--cafyz-muted)" fontSize={9}>{d.month}</text>
       ))}
       <path d={areaPath(yRev)} fill="#1e7fff" fillOpacity={0.1} />
       <path d={linePath(yRev)} fill="none" stroke="#1e7fff" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
@@ -200,7 +200,7 @@ function HorizontalBarChart({ data, cur = "₹" }: { data: ItemPoint[]; cur?: st
   if (data.length === 0) {
     return (
       <div className="py-8 text-center">
-        <span style={{ color: "#6b82a0", fontSize: "0.8rem" }}>No sales recorded for this period yet</span>
+        <span style={{ color: "var(--cafyz-muted)", fontSize: "0.8rem" }}>No sales recorded for this period yet</span>
       </div>
     );
   }
@@ -211,7 +211,7 @@ function HorizontalBarChart({ data, cur = "₹" }: { data: ItemPoint[]; cur?: st
         const pct = (item.revenue / max) * 100;
         return (
           <div key={item.name + i} className="flex items-center gap-3">
-            <span className="text-right flex-shrink-0" style={{ color: "#a8bdd4", fontSize: "0.72rem", width: 140, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            <span className="text-right flex-shrink-0" style={{ color: "var(--cafyz-text-secondary)", fontSize: "0.72rem", width: 140, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
               {item.name}
             </span>
             <div className="flex-1 h-3 rounded-full overflow-hidden" style={{ background: "rgba(30,127,255,0.08)" }}>
@@ -223,7 +223,7 @@ function HorizontalBarChart({ data, cur = "₹" }: { data: ItemPoint[]; cur?: st
                 style={{ background: i === 0 ? "#1e7fff" : i === 2 ? "#00c6ff" : "#1e4a88" }}
               />
             </div>
-            <span style={{ color: "#6b82a0", fontFamily: "var(--font-mono)", fontSize: "0.72rem", width: 72, textAlign: "right", flexShrink: 0 }}>
+            <span style={{ color: "var(--cafyz-muted)", fontFamily: "var(--font-mono)", fontSize: "0.72rem", width: 72, textAlign: "right", flexShrink: 0 }}>
               {compactMoney(cur, item.revenue)}
             </span>
           </div>
@@ -239,7 +239,7 @@ function RadarChart({ data }: { data: RadarPoint[] }) {
   if (n < 2) {
     return (
       <div style={{ height: 200 }} className="flex items-center justify-center">
-        <span style={{ color: "#6b82a0", fontSize: "0.8rem" }}>Not enough categories sold yet</span>
+        <span style={{ color: "var(--cafyz-muted)", fontSize: "0.8rem" }}>Not enough categories sold yet</span>
       </div>
     );
   }
@@ -263,7 +263,7 @@ function RadarChart({ data }: { data: RadarPoint[] }) {
   return (
     <svg viewBox="0 0 220 220" className="w-full" style={{ height: 200 }}>
       {rings.map((scale, i) => (
-        <path key={i} d={ringPath(scale)} fill="none" stroke="rgba(30,127,255,0.1)" strokeWidth={1} />
+        <path key={i} d={ringPath(scale)} fill="none" stroke="var(--cafyz-border)" strokeWidth={1} />
       ))}
       {[...Array(n)].map((_, i) => {
         const { x, y } = pt(i, r);
@@ -276,7 +276,7 @@ function RadarChart({ data }: { data: RadarPoint[] }) {
         return (
           <g key={d.metric}>
             <circle cx={x} cy={y} r={3} fill="#1e7fff" />
-            <text x={lp.x} y={lp.y + 4} textAnchor="middle" fill="#6b82a0" fontSize={8.5}>{d.metric}</text>
+            <text x={lp.x} y={lp.y + 4} textAnchor="middle" fill="var(--cafyz-muted)" fontSize={8.5}>{d.metric}</text>
           </g>
         );
       })}
@@ -292,14 +292,14 @@ function LineSparkline({ data }: { data: HourPoint[] }) {
   if (!hasCovers) {
     return (
       <div style={{ height: 120 }} className="flex items-center justify-center">
-        <span style={{ color: "#6b82a0", fontSize: "0.8rem" }}>No cover activity in this period yet</span>
+        <span style={{ color: "var(--cafyz-muted)", fontSize: "0.8rem" }}>No cover activity in this period yet</span>
       </div>
     );
   }
   if (data.length < 2) {
     return (
       <div style={{ height: 120 }} className="flex items-center justify-center">
-        <span style={{ color: "#6b82a0", fontSize: "0.8rem" }}>Not enough hourly data yet</span>
+        <span style={{ color: "var(--cafyz-muted)", fontSize: "0.8rem" }}>Not enough hourly data yet</span>
       </div>
     );
   }
@@ -316,12 +316,12 @@ function LineSparkline({ data }: { data: HourPoint[] }) {
         return (
           <g key={i}>
             <line x1={padL} y1={y} x2={W - padR} y2={y} stroke="rgba(30,127,255,0.06)" strokeDasharray="4 3" />
-            <text x={padL - 4} y={y + 4} textAnchor="end" fill="#6b82a0" fontSize={8}>{Math.round(max * t)}</text>
+            <text x={padL - 4} y={y + 4} textAnchor="end" fill="var(--cafyz-muted)" fontSize={8}>{Math.round(max * t)}</text>
           </g>
         );
       })}
       {data.map((d, i) => i % 2 === 0 && (
-        <text key={d.hour} x={xs[i]} y={H - 4} textAnchor="middle" fill="#6b82a0" fontSize={8}>{d.hour}</text>
+        <text key={d.hour} x={xs[i]} y={H - 4} textAnchor="middle" fill="var(--cafyz-muted)" fontSize={8}>{d.hour}</text>
       ))}
       <path d={linePath} fill="none" stroke="#00c6ff" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" />
       <circle cx={xs[peak]} cy={ys[peak]} r={4} fill="#00c6ff" />
@@ -496,25 +496,25 @@ export function Analytics() {
     <div className="p-3 sm:p-4 md:p-6 space-y-4 md:space-y-6">
       <div className="space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-2 p-1 rounded-xl w-fit flex-wrap" style={{ background: "#0d1326", border: "1px solid rgba(30,127,255,0.1)" }}>
+          <div className="flex items-center gap-2 p-1 rounded-xl w-fit flex-wrap" style={{ background: "var(--cafyz-surface)", border: "1px solid var(--cafyz-border)" }}>
             {periods.map(p => (
               <button key={p} type="button" onClick={() => setPreset(p)}
                 className="px-3 py-1.5 rounded-lg text-xs font-medium transition-all"
-                style={period === p ? { background: "linear-gradient(135deg, #1e7fff, #00c6ff)", color: "white" } : { color: "#6b82a0" }}>
+                style={period === p ? { background: "linear-gradient(135deg, #1e7fff, #00c6ff)", color: "white" } : { color: "var(--cafyz-muted)" }}>
                 {p}
               </button>
             ))}
           </div>
           <div className="flex items-center gap-2">
             {periodLabel && (
-              <span style={{ color: "#6b82a0", fontSize: "0.72rem" }}>{periodLabel}</span>
+              <span style={{ color: "var(--cafyz-muted)", fontSize: "0.72rem" }}>{periodLabel}</span>
             )}
             <button
               type="button"
               onClick={() => void load(true)}
               disabled={loading || refreshing}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold"
-              style={{ background: "rgba(30,127,255,0.1)", color: "#1e7fff", opacity: loading || refreshing ? 0.6 : 1 }}
+              style={{ background: "var(--cafyz-border)", color: "#1e7fff", opacity: loading || refreshing ? 0.6 : 1 }}
             >
               {refreshing ? <Loader2 size={13} className="animate-spin" /> : <RefreshCw size={13} />}
               Refresh
@@ -523,29 +523,29 @@ export function Analytics() {
         </div>
 
         <div className="flex flex-wrap items-end gap-3 rounded-xl px-4 py-3"
-          style={{ background: "#0d1326", border: "1px solid rgba(30,127,255,0.08)" }}>
+          style={{ background: "var(--cafyz-surface)", border: "1px solid rgba(30,127,255,0.08)" }}>
           <label className="flex flex-col gap-1">
-            <span style={{ color: "#6b82a0", fontSize: "0.68rem", textTransform: "uppercase", letterSpacing: "0.05em" }}>From</span>
+            <span style={{ color: "var(--cafyz-muted)", fontSize: "0.68rem", textTransform: "uppercase", letterSpacing: "0.05em" }}>From</span>
             <input type="date" value={customFrom} max={customTo}
               onChange={e => {
                 setCustomFrom(e.target.value);
                 setPeriod("Custom");
               }}
               className="rounded-lg px-2.5 py-1.5 text-xs"
-              style={{ background: "#080c1e", border: "1px solid rgba(30,127,255,0.15)", color: "#e8eef8" }} />
+              style={{ background: "var(--cafyz-surface-subtle)", border: "1px solid rgba(30,127,255,0.15)", color: "var(--cafyz-text)" }} />
           </label>
           <label className="flex flex-col gap-1">
-            <span style={{ color: "#6b82a0", fontSize: "0.68rem", textTransform: "uppercase", letterSpacing: "0.05em" }}>To</span>
+            <span style={{ color: "var(--cafyz-muted)", fontSize: "0.68rem", textTransform: "uppercase", letterSpacing: "0.05em" }}>To</span>
             <input type="date" value={customTo} min={customFrom}
               onChange={e => {
                 setCustomTo(e.target.value);
                 setPeriod("Custom");
               }}
               className="rounded-lg px-2.5 py-1.5 text-xs"
-              style={{ background: "#080c1e", border: "1px solid rgba(30,127,255,0.15)", color: "#e8eef8" }} />
+              style={{ background: "var(--cafyz-surface-subtle)", border: "1px solid rgba(30,127,255,0.15)", color: "var(--cafyz-text)" }} />
           </label>
           {filterRangeCaption && (
-            <p style={{ color: "#a8bdd4", fontSize: "0.78rem", marginLeft: "auto" }}>
+            <p style={{ color: "var(--cafyz-text-secondary)", fontSize: "0.78rem", marginLeft: "auto" }}>
               Showing <span style={{ color: "#1e7fff", fontWeight: 600 }}>{filterRangeCaption}</span>
             </p>
           )}
@@ -562,17 +562,17 @@ export function Analytics() {
       {loading ? (
         <div className="flex flex-col items-center justify-center py-24 gap-3">
           <Loader2 size={28} className="animate-spin" style={{ color: "#1e7fff" }} />
-          <p style={{ color: "#6b82a0", fontSize: "0.85rem" }}>Loading analytics…</p>
+          <p style={{ color: "var(--cafyz-muted)", fontSize: "0.85rem" }}>Loading analytics…</p>
         </div>
       ) : (
         <>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5">
             {kpis.map((kpi, i) => (
               <motion.div key={kpi.label} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}
-                className="rounded-2xl p-4" style={{ background: "#0d1326", border: "1px solid rgba(30,127,255,0.1)" }}>
-                <div style={{ color: "#6b82a0", fontSize: "0.7rem", marginBottom: 4 }}>{kpi.label}</div>
-                <div style={{ color: "#e8eef8", fontFamily: "var(--font-display)", fontWeight: 700, fontSize: "1.1rem" }}>{kpi.value}</div>
-                <div className="flex items-center gap-1 mt-1" style={{ color: "#6b82a0", fontSize: "0.72rem" }}>
+                className="rounded-2xl p-4" style={{ background: "var(--cafyz-surface)", border: "1px solid var(--cafyz-border)" }}>
+                <div style={{ color: "var(--cafyz-muted)", fontSize: "0.7rem", marginBottom: 4 }}>{kpi.label}</div>
+                <div style={{ color: "var(--cafyz-text)", fontFamily: "var(--font-display)", fontWeight: 700, fontSize: "1.1rem" }}>{kpi.value}</div>
+                <div className="flex items-center gap-1 mt-1" style={{ color: "var(--cafyz-muted)", fontSize: "0.72rem" }}>
                   {kpi.up ? <TrendingUp size={10} style={{ color: "#22c55e" }} /> : <TrendingDown size={10} style={{ color: "#f59e0b" }} />}
                   {kpi.change}
                 </div>
@@ -581,56 +581,56 @@ export function Analytics() {
           </div>
 
           <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}
-            className="rounded-2xl p-5" style={{ background: "#0d1326", border: "1px solid rgba(30,127,255,0.1)" }}>
+            className="rounded-2xl p-5" style={{ background: "var(--cafyz-surface)", border: "1px solid var(--cafyz-border)" }}>
             <div className="flex items-center justify-between mb-1">
-              <h3 style={{ color: "#e8eef8", fontFamily: "var(--font-display)", fontWeight: 600 }}>Revenue Trend</h3>
+              <h3 style={{ color: "var(--cafyz-text)", fontFamily: "var(--font-display)", fontWeight: 600 }}>Revenue Trend</h3>
               <span className="flex items-center gap-1.5 text-xs" style={{ color: "#1e7fff" }}>
                 <span className="w-3 h-0.5 rounded inline-block" style={{ background: "#1e7fff" }} /> Paid revenue
               </span>
             </div>
-            <p style={{ color: "#6b82a0", fontSize: "0.75rem", marginBottom: 12 }}>Daily paid revenue · {filterRangeCaption || periodLabel}</p>
+            <p style={{ color: "var(--cafyz-muted)", fontSize: "0.75rem", marginBottom: 12 }}>Daily paid revenue · {filterRangeCaption || periodLabel}</p>
             <DualAreaChart data={revTrend} cur={cur} />
           </motion.div>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 md:gap-4">
             <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.35 }}
-              className="lg:col-span-2 rounded-2xl p-5" style={{ background: "#0d1326", border: "1px solid rgba(30,127,255,0.1)" }}>
-              <h3 style={{ color: "#e8eef8", fontFamily: "var(--font-display)", fontWeight: 600, marginBottom: 4 }}>Top Performing Items</h3>
-              <p style={{ color: "#6b82a0", fontSize: "0.75rem", marginBottom: 16 }}>By revenue from paid orders</p>
+              className="lg:col-span-2 rounded-2xl p-5" style={{ background: "var(--cafyz-surface)", border: "1px solid var(--cafyz-border)" }}>
+              <h3 style={{ color: "var(--cafyz-text)", fontFamily: "var(--font-display)", fontWeight: 600, marginBottom: 4 }}>Top Performing Items</h3>
+              <p style={{ color: "var(--cafyz-muted)", fontSize: "0.75rem", marginBottom: 16 }}>By revenue from paid orders</p>
               <HorizontalBarChart data={topItems} cur={cur} />
             </motion.div>
 
             <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}
-              className="rounded-2xl p-5" style={{ background: "#0d1326", border: "1px solid rgba(30,127,255,0.1)" }}>
-              <h3 style={{ color: "#e8eef8", fontFamily: "var(--font-display)", fontWeight: 600, marginBottom: 4 }}>Sales by Category</h3>
-              <p style={{ color: "#6b82a0", fontSize: "0.75rem", marginBottom: 4 }}>Share of items sold</p>
+              className="rounded-2xl p-5" style={{ background: "var(--cafyz-surface)", border: "1px solid var(--cafyz-border)" }}>
+              <h3 style={{ color: "var(--cafyz-text)", fontFamily: "var(--font-display)", fontWeight: 600, marginBottom: 4 }}>Sales by Category</h3>
+              <p style={{ color: "var(--cafyz-muted)", fontSize: "0.75rem", marginBottom: 4 }}>Share of items sold</p>
               <RadarChart data={radar} />
             </motion.div>
           </div>
 
           <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.45 }}
-            className="rounded-2xl p-5" style={{ background: "#0d1326", border: "1px solid rgba(30,127,255,0.1)" }}>
-            <h3 style={{ color: "#e8eef8", fontFamily: "var(--font-display)", fontWeight: 600, marginBottom: 4 }}>Covers by Hour</h3>
-            <p style={{ color: "#6b82a0", fontSize: "0.75rem", marginBottom: 12 }}>Paid orders · {filterRangeCaption || periodLabel}</p>
+            className="rounded-2xl p-5" style={{ background: "var(--cafyz-surface)", border: "1px solid var(--cafyz-border)" }}>
+            <h3 style={{ color: "var(--cafyz-text)", fontFamily: "var(--font-display)", fontWeight: 600, marginBottom: 4 }}>Covers by Hour</h3>
+            <p style={{ color: "var(--cafyz-muted)", fontSize: "0.75rem", marginBottom: 12 }}>Paid orders · {filterRangeCaption || periodLabel}</p>
             <LineSparkline data={hourly} />
           </motion.div>
 
           {/* Reports — thermal printer + browser fallback */}
           <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }}
-            className="rounded-2xl p-5 space-y-4" style={{ background: "#0d1326", border: "1px solid rgba(30,127,255,0.1)" }}>
+            className="rounded-2xl p-5 space-y-4" style={{ background: "var(--cafyz-surface)", border: "1px solid var(--cafyz-border)" }}>
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
-                <h3 style={{ color: "#e8eef8", fontFamily: "var(--font-display)", fontWeight: 600 }}>Reports & Printouts</h3>
-                <p style={{ color: "#6b82a0", fontSize: "0.75rem", marginTop: 4 }}>
+                <h3 style={{ color: "var(--cafyz-text)", fontFamily: "var(--font-display)", fontWeight: 600 }}>Reports & Printouts</h3>
+                <p style={{ color: "var(--cafyz-muted)", fontSize: "0.75rem", marginTop: 4 }}>
                   Print on connected thermal printers (Bluetooth/USB) or use the browser print dialog.
                 </p>
                 {(periodLabel || filterRangeCaption) && (
                   <div className="mt-3 inline-flex flex-col gap-0.5 rounded-lg px-3 py-2"
                     style={{ background: "rgba(30,127,255,0.06)", border: "1px solid rgba(30,127,255,0.12)" }}>
-                    <span style={{ color: "#6b82a0", fontSize: "0.65rem", textTransform: "uppercase", letterSpacing: "0.06em" }}>
+                    <span style={{ color: "var(--cafyz-muted)", fontSize: "0.65rem", textTransform: "uppercase", letterSpacing: "0.06em" }}>
                       Report period
                     </span>
-                    <span style={{ color: "#e8eef8", fontSize: "0.82rem", fontWeight: 600 }}>{periodLabel}</span>
+                    <span style={{ color: "var(--cafyz-text)", fontSize: "0.82rem", fontWeight: 600 }}>{periodLabel}</span>
                     {filterRangeCaption && (
                       <span style={{ color: "#1e7fff", fontSize: "0.75rem" }}>{filterRangeCaption}</span>
                     )}
@@ -638,7 +638,7 @@ export function Analytics() {
                 )}
               </div>
               <div className="rounded-xl px-3 py-2" style={{ background: "rgba(30,127,255,0.06)", border: "1px solid rgba(30,127,255,0.12)" }}>
-                <p style={{ color: "#6b82a0", fontSize: "0.65rem", textTransform: "uppercase", letterSpacing: "0.06em" }}>Printer</p>
+                <p style={{ color: "var(--cafyz-muted)", fontSize: "0.65rem", textTransform: "uppercase", letterSpacing: "0.06em" }}>Printer</p>
                 <p style={{ color: livePrinter.type === "none" ? "#fbbf24" : "#22c55e", fontSize: "0.78rem", fontWeight: 600 }}>
                   {livePrinter.type === "none"
                     ? "Not connected — configure in Restaurant profile"
@@ -648,15 +648,15 @@ export function Analytics() {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <div className="rounded-xl p-4 space-y-3" style={{ background: "#080c1e", border: "1px solid rgba(30,127,255,0.08)" }}>
+              <div className="rounded-xl p-4 space-y-3" style={{ background: "var(--cafyz-surface-subtle)", border: "1px solid rgba(30,127,255,0.08)" }}>
                 <div className="flex items-start gap-3">
                   <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
                     style={{ background: "rgba(30,127,255,0.12)" }}>
                     <FileText size={18} style={{ color: "#1e7fff" }} />
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p style={{ color: "#e8eef8", fontWeight: 700, fontSize: "0.9rem" }}>Sales Summary Report</p>
-                    <p style={{ color: "#6b82a0", fontSize: "0.75rem", marginTop: 4, lineHeight: 1.5 }}>
+                    <p style={{ color: "var(--cafyz-text)", fontWeight: 700, fontSize: "0.9rem" }}>Sales Summary Report</p>
+                    <p style={{ color: "var(--cafyz-muted)", fontSize: "0.75rem", marginTop: 4, lineHeight: 1.5 }}>
                       KPIs, top items, category breakdown, peak hour — {filterRangeCaption || periodLabel}.
                     </p>
                   </div>
@@ -668,7 +668,7 @@ export function Analytics() {
                   className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold transition-all"
                   style={{
                     background: "linear-gradient(135deg, #1e7fff, #00c6ff)",
-                    color: "#fff",
+                    color: "var(--cafyz-text-strong)",
                     opacity: printBusy || analyticsData?.revenue.totalOrders === 0 ? 0.55 : 1,
                   }}
                 >
@@ -677,15 +677,15 @@ export function Analytics() {
                 </button>
               </div>
 
-              <div className="rounded-xl p-4 space-y-3" style={{ background: "#080c1e", border: "1px solid rgba(30,127,255,0.08)" }}>
+              <div className="rounded-xl p-4 space-y-3" style={{ background: "var(--cafyz-surface-subtle)", border: "1px solid rgba(30,127,255,0.08)" }}>
                 <div className="flex items-start gap-3">
                   <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
                     style={{ background: "rgba(168,85,247,0.12)" }}>
                     <CalendarRange size={18} style={{ color: "#a855f7" }} />
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p style={{ color: "#e8eef8", fontWeight: 700, fontSize: "0.9rem" }}>Daily Breakdown Report</p>
-                    <p style={{ color: "#6b82a0", fontSize: "0.75rem", marginTop: 4, lineHeight: 1.5 }}>
+                    <p style={{ color: "var(--cafyz-text)", fontWeight: 700, fontSize: "0.9rem" }}>Daily Breakdown Report</p>
+                    <p style={{ color: "var(--cafyz-muted)", fontSize: "0.75rem", marginTop: 4, lineHeight: 1.5 }}>
                       Day-by-day orders and revenue for {filterRangeCaption || periodLabel}.
                     </p>
                   </div>
@@ -709,7 +709,7 @@ export function Analytics() {
             </div>
 
             {user?.role && ["owner", "manager"].includes(user.role) && (
-              <p className="flex items-center gap-1.5" style={{ color: "#6b82a0", fontSize: "0.72rem" }}>
+              <p className="flex items-center gap-1.5" style={{ color: "var(--cafyz-muted)", fontSize: "0.72rem" }}>
                 <ChevronRight size={12} />
                 Pair printers in Restaurant → Receipt &amp; Printer Test if not connected.
               </p>
@@ -717,10 +717,10 @@ export function Analytics() {
           </motion.div>
 
           {!error && kpis.length > 0 && kpis[0].value === formatMoney(0) && (
-            <div className="rounded-xl px-4 py-6 text-center flex flex-col items-center gap-2" style={{ background: "#0d1326", border: "1px dashed rgba(30,127,255,0.15)" }}>
-              <BarChart3 size={24} style={{ color: "#6b82a0" }} />
-              <p style={{ color: "#a8bdd4", fontSize: "0.88rem", fontWeight: 600 }}>No paid sales in this period</p>
-              <p style={{ color: "#6b82a0", fontSize: "0.78rem" }}>Complete payments in POS — charts update automatically.</p>
+            <div className="rounded-xl px-4 py-6 text-center flex flex-col items-center gap-2" style={{ background: "var(--cafyz-surface)", border: "1px dashed rgba(30,127,255,0.15)" }}>
+              <BarChart3 size={24} style={{ color: "var(--cafyz-muted)" }} />
+              <p style={{ color: "var(--cafyz-text-secondary)", fontSize: "0.88rem", fontWeight: 600 }}>No paid sales in this period</p>
+              <p style={{ color: "var(--cafyz-muted)", fontSize: "0.78rem" }}>Complete payments in POS — charts update automatically.</p>
             </div>
           )}
         </>

@@ -68,7 +68,7 @@ function roleStatus(
 }
 
 const STATUS_COLOR = {
-  none: '#6b82a0',
+  none: 'var(--cafyz-muted)',
   configured: '#f59e0b',
   connected: '#22c55e',
 } as const;
@@ -107,12 +107,12 @@ function PanelBody({
       <div className="flex items-center justify-between px-1 pb-2">
         <div className="flex items-center gap-1.5">
           <Printer size={13} style={{ color: '#1e7fff' }} />
-          <span style={{ color: '#e8eef8', fontFamily: 'var(--font-display)', fontWeight: 600, fontSize: '0.8rem' }}>
+          <span style={{ color: 'var(--cafyz-text)', fontFamily: 'var(--font-display)', fontWeight: 600, fontSize: '0.8rem' }}>
             Printer setup
           </span>
         </div>
         {onClose && (
-          <button type="button" onClick={onClose} className="p-1 min-w-[32px] min-h-[44px] flex items-center justify-center" style={{ color: '#6b82a0' }} aria-label="Close">
+          <button type="button" onClick={onClose} className="p-1 min-w-[32px] min-h-[44px] flex items-center justify-center" style={{ color: 'var(--cafyz-muted)' }} aria-label="Close">
             <X size={14} />
           </button>
         )}
@@ -120,18 +120,18 @@ function PanelBody({
 
       <PrinterHelpBanner />
 
-      <div className="mb-2.5 px-2.5 py-2 rounded-lg" style={{ background: 'rgba(30,127,255,0.06)', border: '1px solid rgba(30,127,255,0.1)' }}>
-        <p style={{ color: '#6b82a0', fontSize: '0.6rem', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 4 }}>
+      <div className="mb-2.5 px-2.5 py-2 rounded-lg" style={{ background: 'rgba(30,127,255,0.06)', border: '1px solid var(--cafyz-border)' }}>
+        <p style={{ color: 'var(--cafyz-muted)', fontSize: '0.6rem', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 4 }}>
           This device
         </p>
         {live.type !== 'none' ? (
           <div className="flex items-center gap-2">
             {live.type === 'bluetooth' ? <BluetoothIcon size={14} /> : <Usb size={14} style={{ color: '#1e7fff' }} />}
-            <span style={{ color: '#e8eef8', fontSize: '0.78rem', fontWeight: 600 }} className="truncate flex-1">{live.name}</span>
+            <span style={{ color: 'var(--cafyz-text)', fontSize: '0.78rem', fontWeight: 600 }} className="truncate flex-1">{live.name}</span>
             <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: '#22c55e' }} />
           </div>
         ) : (
-          <p style={{ color: '#6b82a0', fontSize: '0.75rem' }}>No printer connected — tap Pick Bluetooth printer below</p>
+          <p style={{ color: 'var(--cafyz-muted)', fontSize: '0.75rem' }}>No printer connected — tap Pick Bluetooth printer below</p>
         )}
       </div>
 
@@ -140,8 +140,8 @@ function PanelBody({
           <button key={role} type="button" disabled={busy} onClick={() => setConnectTarget(role)}
             className="flex-1 py-1.5 rounded-md text-[0.68rem] font-semibold capitalize min-h-[44px]"
             style={{
-              background: connectTarget === role ? 'rgba(30,127,255,0.18)' : 'transparent',
-              color: connectTarget === role ? '#e8eef8' : '#6b82a0',
+              background: connectTarget === role ? 'var(--cafyz-border-strong)' : 'transparent',
+              color: connectTarget === role ? 'var(--cafyz-text)' : 'var(--cafyz-muted)',
             }}>
             {role}
           </button>
@@ -159,8 +159,8 @@ function PanelBody({
               style={{ background: 'rgba(30,127,255,0.05)', border: '1px solid rgba(30,127,255,0.08)' }}>
               <Icon size={14} style={{ color: '#1e7fff' }} />
               <div className="flex-1 min-w-0">
-                <p style={{ color: '#6b82a0', fontSize: '0.6rem', textTransform: 'uppercase' }}>{roleLabel(role)}</p>
-                <p style={{ color: assignment ? '#e8eef8' : '#6b82a0', fontSize: '0.72rem' }} className="truncate">
+                <p style={{ color: 'var(--cafyz-muted)', fontSize: '0.6rem', textTransform: 'uppercase' }}>{roleLabel(role)}</p>
+                <p style={{ color: assignment ? 'var(--cafyz-text)' : 'var(--cafyz-muted)', fontSize: '0.72rem' }} className="truncate">
                   {assignment ? `${assignment.name} · ${assignment.channel.toUpperCase()}` : 'Not configured'}
                 </p>
                 <p style={{ color: STATUS_COLOR[status], fontSize: '0.62rem', marginTop: 2 }}>
@@ -170,7 +170,7 @@ function PanelBody({
               {assignment && (
                 <button type="button" disabled={busy} onClick={() => onClearAssignment(role)}
                   className="text-[0.6rem] px-1.5 py-1 rounded min-h-[32px]"
-                  style={{ color: '#6b82a0', background: 'rgba(255,255,255,0.04)' }}>
+                  style={{ color: 'var(--cafyz-muted)', background: 'rgba(255,255,255,0.04)' }}>
                   Clear
                 </button>
               )}
@@ -186,21 +186,21 @@ function PanelBody({
       )}
 
       <div className="space-y-1.5 mb-2">
-        <p style={{ color: '#6b82a0', fontSize: '0.62rem', textTransform: 'uppercase', letterSpacing: '0.04em', paddingInline: 2 }}>
+        <p style={{ color: 'var(--cafyz-muted)', fontSize: '0.62rem', textTransform: 'uppercase', letterSpacing: '0.04em', paddingInline: 2 }}>
           Connect as {roleLabel(connectTarget)}
         </p>
 
         {canUseClassicBluetooth() && (
           <div className="space-y-1">
-            <p style={{ color: '#6b82a0', fontSize: '0.62rem', paddingInline: 2 }}>
+            <p style={{ color: 'var(--cafyz-muted)', fontSize: '0.62rem', paddingInline: 2 }}>
               Paired printers (tap to connect)
             </p>
             {loadingPaired ? (
-              <p className="flex items-center gap-2 px-2 py-2 text-[0.72rem]" style={{ color: '#6b82a0' }}>
+              <p className="flex items-center gap-2 px-2 py-2 text-[0.72rem]" style={{ color: 'var(--cafyz-muted)' }}>
                 <Loader2 size={12} className="animate-spin" /> Loading paired devices…
               </p>
             ) : pairedPrinters.length === 0 ? (
-              <p className="px-2 py-2 rounded-lg text-[0.68rem]" style={{ color: '#6b82a0', background: 'rgba(30,127,255,0.04)' }}>
+              <p className="px-2 py-2 rounded-lg text-[0.68rem]" style={{ color: 'var(--cafyz-muted)', background: 'rgba(30,127,255,0.04)' }}>
                 No paired printers found. Pair your printer in Android Settings → Bluetooth, then return here.
               </p>
             ) : (
@@ -209,10 +209,10 @@ function PanelBody({
                   onClick={() => onConnectClassic(device)}
                   className="w-full px-2.5 py-2.5 rounded-lg text-left min-h-[44px]"
                   style={{ background: 'rgba(30,127,255,0.08)', border: '1px solid rgba(30,127,255,0.12)' }}>
-                  <span style={{ color: '#e8eef8', fontSize: '0.75rem', fontWeight: 600 }} className="block truncate">
+                  <span style={{ color: 'var(--cafyz-text)', fontSize: '0.75rem', fontWeight: 600 }} className="block truncate">
                     {device.name}
                   </span>
-                  <span style={{ color: '#6b82a0', fontSize: '0.62rem' }}>
+                  <span style={{ color: 'var(--cafyz-muted)', fontSize: '0.62rem' }}>
                     {device.address} · {device.type}
                   </span>
                 </button>
@@ -233,7 +233,7 @@ function PanelBody({
         {canUseClassicBluetooth() && env.canUseBluetooth && (
           <button type="button" disabled={busy} onClick={onConnectBle}
             className="w-full py-2 rounded-lg text-xs font-medium flex items-center justify-center gap-1.5 min-h-[40px]"
-            style={{ background: 'rgba(30,127,255,0.06)', color: '#6b82a0' }}>
+            style={{ background: 'rgba(30,127,255,0.06)', color: 'var(--cafyz-muted)' }}>
             <Bluetooth size={12} /> Scan for BLE-only printer
           </button>
         )}
@@ -241,7 +241,7 @@ function PanelBody({
         {!isIosDevice() && env.usbAvailable && env.platform !== 'ios' && (
           <button type="button" disabled={busy} onClick={onConnectUSB}
             className="w-full py-2.5 rounded-lg text-xs font-semibold flex items-center justify-center gap-2 min-h-[44px]"
-            style={{ background: 'rgba(30,127,255,0.1)', color: '#a8bdd4', border: '1px solid rgba(30,127,255,0.2)', opacity: busy ? 0.7 : 1 }}>
+            style={{ background: 'var(--cafyz-border)', color: 'var(--cafyz-text-secondary)', border: '1px solid rgba(30,127,255,0.2)', opacity: busy ? 0.7 : 1 }}>
             <Usb size={14} /> Connect USB printer
           </button>
         )}
@@ -249,14 +249,14 @@ function PanelBody({
         {env.canUseBluetooth && (
           <button type="button" disabled={busy} onClick={onReconnect}
             className="w-full py-2 rounded-lg text-xs font-medium flex items-center justify-center gap-1.5 min-h-[40px]"
-            style={{ background: 'rgba(30,127,255,0.06)', color: '#6b82a0' }}>
+            style={{ background: 'rgba(30,127,255,0.06)', color: 'var(--cafyz-muted)' }}>
             <RefreshCw size={12} /> Reconnect saved printer
           </button>
         )}
       </div>
 
       <div className="space-y-1.5 pt-1 border-t" style={{ borderColor: 'rgba(30,127,255,0.08)' }}>
-        <p style={{ color: '#6b82a0', fontSize: '0.62rem', textTransform: 'uppercase', letterSpacing: '0.04em', paddingTop: 8, paddingInline: 2 }}>
+        <p style={{ color: 'var(--cafyz-muted)', fontSize: '0.62rem', textTransform: 'uppercase', letterSpacing: '0.04em', paddingTop: 8, paddingInline: 2 }}>
           Test print
         </p>
         <div className="grid grid-cols-2 gap-1.5">
@@ -546,9 +546,9 @@ export function PrinterSetupPanel({
       animate={{ opacity: 1, y: 0, scale: 1 }}
       className={compact ? 'relative w-full rounded-xl p-3 mb-2' : 'rounded-xl p-3 w-full max-w-sm'}
       style={{
-        background: '#0d1326',
+        background: 'var(--cafyz-surface)',
         border: '1px solid rgba(30,127,255,0.2)',
-        boxShadow: compact ? 'none' : '0 10px 40px rgba(0,0,0,0.55)',
+        boxShadow: compact ? 'none' : '0 10px 40px var(--cafyz-overlay)',
         maxHeight: modal ? 'min(90dvh, 640px)' : undefined,
         overflowY: modal ? 'auto' : undefined,
       }}
@@ -565,7 +565,7 @@ export function PrinterSetupPanel({
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           className="fixed inset-0 z-[80] flex items-end sm:items-center justify-center p-3 sm:p-6"
-          style={{ background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(4px)' }}
+          style={{ background: 'var(--cafyz-overlay)', backdropFilter: 'blur(4px)' }}
           onClick={onClose}
         >
           <div onClick={e => e.stopPropagation()} className="w-full max-w-sm">

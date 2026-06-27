@@ -93,23 +93,23 @@ function AreaSparkline({ data, color, labels, cur = "₹" }: { data: number[]; c
         return (
           <g key={i}>
             <line x1={padL} y1={y} x2={W - padR} y2={y} stroke="rgba(30,127,255,0.07)" strokeDasharray="4 4" />
-            <text x={padL - 5} y={y + 3.5} textAnchor="end" fill="#6b82a0" fontSize={9}>{compactMoney(cur, val)}</text>
+            <text x={padL - 5} y={y + 3.5} textAnchor="end" fill="var(--cafyz-muted)" fontSize={9}>{compactMoney(cur, val)}</text>
           </g>
         );
       })}
       {(labels ?? []).map((lbl, i) => i % 2 === 0 && xs[i] != null && (
-        <text key={i} x={xs[i]} y={H - 4} textAnchor="middle" fill="#6b82a0" fontSize={9}>{lbl}</text>
+        <text key={i} x={xs[i]} y={H - 4} textAnchor="middle" fill="var(--cafyz-muted)" fontSize={9}>{lbl}</text>
       ))}
       <path d={areaPath} fill={color} fillOpacity={0.12} />
       <path d={linePath} fill="none" stroke={color} strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" />
       {xs.map((x, i) => (
         <circle key={i} cx={x} cy={ys[i]} r={i === data.length - 1 ? 4 : 2.5}
-          fill={i === data.length - 1 ? color : "#0d1326"} stroke={color} strokeWidth={1.5} />
+          fill={i === data.length - 1 ? color : "var(--cafyz-surface)"} stroke={color} strokeWidth={1.5} />
       ))}
       {data.length > 0 && (
         <>
           <rect x={xs[xs.length - 1] - 28} y={ys[ys.length - 1] - 22} width={56} height={16} rx={4} fill={color} fillOpacity={0.9} />
-          <text x={xs[xs.length - 1]} y={ys[ys.length - 1] - 11} textAnchor="middle" fill="#fff" fontSize={9} fontWeight="bold">
+          <text x={xs[xs.length - 1]} y={ys[ys.length - 1] - 11} textAnchor="middle" fill="var(--cafyz-text-strong)" fontSize={9} fontWeight="bold">
             {compactMoney(cur, lastVal)}
           </text>
         </>
@@ -146,7 +146,7 @@ function BarSparkline({ data, color, cur = "₹" }: { data: { day: string; reven
                 {compactMoney(cur, d.revenue)}
               </text>
             )}
-            <text x={x + barW / 2} y={H - 5} textAnchor="middle" fill="#6b82a0" fontSize={9}>{d.day}</text>
+            <text x={x + barW / 2} y={H - 5} textAnchor="middle" fill="var(--cafyz-muted)" fontSize={9}>{d.day}</text>
           </g>
         );
       })}
@@ -178,7 +178,7 @@ function DonutChart({ data, centerValue, centerLabel = "items" }: { data: CatDat
   if (data.length === 0) {
     return (
       <div className="flex items-center justify-center" style={{ width: size, height: size }}>
-        <span style={{ color: "#6b82a0", fontSize: "0.75rem" }}>No sales yet</span>
+        <span style={{ color: "var(--cafyz-muted)", fontSize: "0.75rem" }}>No sales yet</span>
       </div>
     );
   }
@@ -191,10 +191,10 @@ function DonutChart({ data, centerValue, centerLabel = "items" }: { data: CatDat
           strokeDasharray={`${s.dashLen.toFixed(2)} ${s.gapLen.toFixed(2)}`} strokeLinecap="round"
           style={{ transform: `rotate(${s.rotation}deg)`, transformOrigin: `${cx}px ${cy}px` }} />
       ))}
-      <text x={cx} y={cy - 6} textAnchor="middle" fill="#e8eef8" fontSize={18} fontWeight="700" style={{ fontFamily: "var(--font-display)" }}>
+      <text x={cx} y={cy - 6} textAnchor="middle" fill="var(--cafyz-text)" fontSize={18} fontWeight="700" style={{ fontFamily: "var(--font-display)" }}>
         {centerValue ?? total}
       </text>
-      <text x={cx} y={cy + 10} textAnchor="middle" fill="#6b82a0" fontSize={9}>{centerLabel}</text>
+      <text x={cx} y={cy + 10} textAnchor="middle" fill="var(--cafyz-muted)" fontSize={9}>{centerLabel}</text>
     </svg>
   );
 }
@@ -318,8 +318,8 @@ export function Dashboard() {
       {/* Header row */}
       <div className="flex items-center justify-between gap-3">
         <div>
-          <h2 style={{ color: "#e8eef8", fontFamily: "var(--font-display)", fontWeight: 700, fontSize: "1.1rem" }}>Overview</h2>
-          <p style={{ color: "#6b82a0", fontSize: "0.75rem" }}>
+          <h2 style={{ color: "var(--cafyz-text)", fontFamily: "var(--font-display)", fontWeight: 700, fontSize: "1.1rem" }}>Overview</h2>
+          <p style={{ color: "var(--cafyz-muted)", fontSize: "0.75rem" }}>
             {stats ? (
               <>
                 <UserCheck size={12} className="inline mr-1" style={{ verticalAlign: "-2px" }} />
@@ -332,7 +332,7 @@ export function Dashboard() {
         </div>
         <button type="button" onClick={() => void load(true)} disabled={refreshing}
           className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold"
-          style={{ background: "rgba(30,127,255,0.1)", color: "#1e7fff", border: "1px solid rgba(30,127,255,0.15)" }}>
+          style={{ background: "var(--cafyz-border)", color: "#1e7fff", border: "1px solid rgba(30,127,255,0.15)" }}>
           <RefreshCw size={14} className={refreshing ? "animate-spin" : ""} />
           Refresh
         </button>
@@ -358,12 +358,12 @@ export function Dashboard() {
             <button key={a.id} type="button"
               onClick={() => { if (a.id === "pos") goToPos(); else goToPage(a.id); }}
               className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl flex-shrink-0 transition-all min-h-[44px]"
-              style={{ background: "#0d1326", border: `1px solid ${a.color}33` }}>
+              style={{ background: "var(--cafyz-surface)", border: `1px solid ${a.color}33` }}>
               <span className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
                 style={{ background: `${a.color}18` }}>
                 <Icon size={16} style={{ color: a.color }} />
               </span>
-              <span style={{ color: "#e8eef8", fontSize: "0.78rem", fontWeight: 600 }}>{a.label}</span>
+              <span style={{ color: "var(--cafyz-text)", fontSize: "0.78rem", fontWeight: 600 }}>{a.label}</span>
             </button>
           );
         })}
@@ -377,15 +377,15 @@ export function Dashboard() {
             <motion.button key={kpi.label} type="button" onClick={() => goToPage(kpi.page)}
               initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.07 }}
               className="rounded-2xl p-3 sm:p-4 relative overflow-hidden text-left transition-all hover:border-[rgba(30,127,255,0.25)]"
-              style={{ background: "#0d1326", border: "1px solid rgba(30,127,255,0.1)" }}>
+              style={{ background: "var(--cafyz-surface)", border: "1px solid var(--cafyz-border)" }}>
               <div className="absolute top-0 right-0 w-20 h-20 rounded-full opacity-10 blur-xl"
                 style={{ background: kpi.color, transform: "translate(30%,-30%)" }} />
               <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl flex items-center justify-center mb-2 sm:mb-3"
                 style={{ background: `${kpi.color}18` }}>
                 <Icon size={16} style={{ color: kpi.color }} />
               </div>
-              <div style={{ color: "#6b82a0", fontSize: "0.68rem", marginBottom: 2 }}>{kpi.label}</div>
-              <div style={{ color: "#fff", fontFamily: "var(--font-display)", fontWeight: 700, fontSize: "1.15rem", lineHeight: 1.2, marginBottom: 4 }}>
+              <div style={{ color: "var(--cafyz-muted)", fontSize: "0.68rem", marginBottom: 2 }}>{kpi.label}</div>
+              <div style={{ color: "var(--cafyz-text-strong)", fontFamily: "var(--font-display)", fontWeight: 700, fontSize: "1.15rem", lineHeight: 1.2, marginBottom: 4 }}>
                 {loading ? "—" : kpi.value}
               </div>
               <div className="flex items-center gap-1" style={{ color: kpi.up ? "#22c55e" : "#ff3b5c", fontSize: "0.68rem" }}>
@@ -401,11 +401,11 @@ export function Dashboard() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 md:gap-4">
         <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}
           className="lg:col-span-2 rounded-2xl p-3 sm:p-4"
-          style={{ background: "#0d1326", border: "1px solid rgba(30,127,255,0.1)" }}>
+          style={{ background: "var(--cafyz-surface)", border: "1px solid var(--cafyz-border)" }}>
           <div className="flex items-center justify-between mb-3">
             <div>
-              <h3 style={{ color: "#e8eef8", fontFamily: "var(--font-display)", fontWeight: 600, fontSize: "0.92rem" }}>7-Day Revenue</h3>
-              <p style={{ color: "#6b82a0", fontSize: "0.72rem" }}>Paid orders · daily</p>
+              <h3 style={{ color: "var(--cafyz-text)", fontFamily: "var(--font-display)", fontWeight: 600, fontSize: "0.92rem" }}>7-Day Revenue</h3>
+              <p style={{ color: "var(--cafyz-muted)", fontSize: "0.72rem" }}>Paid orders · daily</p>
             </div>
             <span className="text-xs px-2.5 py-1 rounded-full" style={{ background: "rgba(30,127,255,0.12)", color: "#1e7fff" }}>
               {formatMoney(weekTotal)}
@@ -413,7 +413,7 @@ export function Dashboard() {
           </div>
           <div className="w-full overflow-hidden">
             {loading ? (
-              <div className="h-40 flex items-center justify-center"><span style={{ color: "#6b82a0", fontSize: "0.8rem" }}>Loading…</span></div>
+              <div className="h-40 flex items-center justify-center"><span style={{ color: "var(--cafyz-muted)", fontSize: "0.8rem" }}>Loading…</span></div>
             ) : revRows.length >= 1 ? (
               <AreaSparkline
                 data={revRows.map(d => d.revenue)}
@@ -423,35 +423,35 @@ export function Dashboard() {
               />
             ) : !hasProAnalytics ? (
               <div className="h-40 flex flex-col items-center justify-center gap-2 px-4 text-center">
-                <span style={{ color: "#6b82a0", fontSize: "0.8rem" }}>Revenue charts require the Pro plan</span>
+                <span style={{ color: "var(--cafyz-muted)", fontSize: "0.8rem" }}>Revenue charts require the Pro plan</span>
                 <button type="button" onClick={() => goToPage("license")} className="text-xs font-semibold px-3 py-1.5 rounded-lg" style={{ background: "rgba(30,127,255,0.12)", color: "#1e7fff" }}>View plans</button>
               </div>
             ) : (
-              <div className="h-40 flex items-center justify-center"><span style={{ color: "#6b82a0", fontSize: "0.8rem" }}>No paid orders this week yet</span></div>
+              <div className="h-40 flex items-center justify-center"><span style={{ color: "var(--cafyz-muted)", fontSize: "0.8rem" }}>No paid orders this week yet</span></div>
             )}
           </div>
         </motion.div>
 
         <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.35 }}
           className="rounded-2xl p-3 sm:p-4"
-          style={{ background: "#0d1326", border: "1px solid rgba(30,127,255,0.1)" }}>
-          <h3 style={{ color: "#e8eef8", fontFamily: "var(--font-display)", fontWeight: 600, fontSize: "0.92rem", marginBottom: 2 }}>Items by Category</h3>
-          <p style={{ color: "#6b82a0", fontSize: "0.72rem", marginBottom: 12 }}>This week's sales mix</p>
+          style={{ background: "var(--cafyz-surface)", border: "1px solid var(--cafyz-border)" }}>
+          <h3 style={{ color: "var(--cafyz-text)", fontFamily: "var(--font-display)", fontWeight: 600, fontSize: "0.92rem", marginBottom: 2 }}>Items by Category</h3>
+          <p style={{ color: "var(--cafyz-muted)", fontSize: "0.72rem", marginBottom: 12 }}>This week's sales mix</p>
           <div className="flex lg:flex-col items-center gap-4 lg:gap-2">
             <div className="flex-shrink-0">
               <DonutChart data={categoryData} centerValue={itemsSold} centerLabel="sold" />
             </div>
             <div className="flex-1 w-full space-y-2">
               {categoryData.length === 0 && !loading && (
-                <p style={{ color: "#6b82a0", fontSize: "0.75rem", textAlign: "center" }}>No item sales this week</p>
+                <p style={{ color: "var(--cafyz-muted)", fontSize: "0.75rem", textAlign: "center" }}>No item sales this week</p>
               )}
               {categoryData.map(cat => (
                 <div key={cat.name} className="flex items-center justify-between">
                   <div className="flex items-center gap-2 min-w-0">
                     <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ background: cat.color }} />
-                    <span className="truncate" style={{ color: "#a8bdd4", fontSize: "0.73rem" }}>{cat.name}</span>
+                    <span className="truncate" style={{ color: "var(--cafyz-text-secondary)", fontSize: "0.73rem" }}>{cat.name}</span>
                   </div>
-                  <span style={{ color: "#e8eef8", fontSize: "0.78rem", fontFamily: "var(--font-mono)", fontWeight: 700 }}>{cat.value}%</span>
+                  <span style={{ color: "var(--cafyz-text)", fontSize: "0.78rem", fontFamily: "var(--font-mono)", fontWeight: 700 }}>{cat.value}%</span>
                 </div>
               ))}
             </div>
@@ -463,29 +463,29 @@ export function Dashboard() {
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-3 md:gap-4">
         <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}
           className="lg:col-span-2 rounded-2xl p-3 sm:p-4"
-          style={{ background: "#0d1326", border: "1px solid rgba(30,127,255,0.1)" }}>
-          <h3 style={{ color: "#e8eef8", fontFamily: "var(--font-display)", fontWeight: 600, fontSize: "0.92rem", marginBottom: 2 }}>Daily Totals</h3>
-          <p style={{ color: "#6b82a0", fontSize: "0.72rem", marginBottom: 8 }}>Bar view · this week</p>
+          style={{ background: "var(--cafyz-surface)", border: "1px solid var(--cafyz-border)" }}>
+          <h3 style={{ color: "var(--cafyz-text)", fontFamily: "var(--font-display)", fontWeight: 600, fontSize: "0.92rem", marginBottom: 2 }}>Daily Totals</h3>
+          <p style={{ color: "var(--cafyz-muted)", fontSize: "0.72rem", marginBottom: 8 }}>Bar view · this week</p>
           <BarSparkline data={revRows.length ? revRows : [{ day: "—", revenue: 0 }]} cur={cur} color="#1e7fff" />
         </motion.div>
 
         <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.45 }}
           className="lg:col-span-3 rounded-2xl p-3 sm:p-4"
-          style={{ background: "#0d1326", border: "1px solid rgba(30,127,255,0.1)" }}>
+          style={{ background: "var(--cafyz-surface)", border: "1px solid var(--cafyz-border)" }}>
           <div className="flex items-center justify-between mb-3">
-            <h3 style={{ color: "#e8eef8", fontFamily: "var(--font-display)", fontWeight: 600, fontSize: "0.92rem" }}>Recent Orders</h3>
+            <h3 style={{ color: "var(--cafyz-text)", fontFamily: "var(--font-display)", fontWeight: 600, fontSize: "0.92rem" }}>Recent Orders</h3>
             <button type="button" onClick={() => goToPage("orders")} className="flex items-center gap-1" style={{ color: "#1e7fff", fontSize: "0.75rem" }}>
               View all <ChevronRight size={12} />
             </button>
           </div>
           <div className="space-y-2">
             {loading && (
-              <p style={{ color: "#6b82a0", fontSize: "0.8rem", textAlign: "center", padding: "2rem 0" }}>Loading orders…</p>
+              <p style={{ color: "var(--cafyz-muted)", fontSize: "0.8rem", textAlign: "center", padding: "2rem 0" }}>Loading orders…</p>
             )}
             {!loading && recentOrders.length === 0 && (
               <div className="flex flex-col items-center justify-center py-10 gap-2">
-                <ShoppingBag size={24} style={{ color: "#6b82a0" }} />
-                <p style={{ color: "#6b82a0", fontSize: "0.8rem" }}>No orders yet — start from POS</p>
+                <ShoppingBag size={24} style={{ color: "var(--cafyz-muted)" }} />
+                <p style={{ color: "var(--cafyz-muted)", fontSize: "0.8rem" }}>No orders yet — start from POS</p>
                 <button type="button" onClick={goToPos}
                   className="mt-1 px-4 py-2 rounded-xl text-xs font-semibold"
                   style={{ background: "linear-gradient(135deg, #1e7fff, #00c6ff)", color: "#fff" }}>
@@ -498,20 +498,20 @@ export function Dashboard() {
                 className="w-full flex items-center gap-2 sm:gap-3 p-2.5 sm:p-3 rounded-xl transition-all text-left hover:border-[rgba(30,127,255,0.2)]"
                 style={{ border: "1px solid rgba(30,127,255,0.06)" }}>
                 <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
-                  style={{ background: "rgba(30,127,255,0.1)" }}>
+                  style={{ background: "var(--cafyz-border)" }}>
                   <span style={{ color: "#1e7fff", fontSize: "0.6rem", fontFamily: "var(--font-mono)", fontWeight: 700 }}>
                     {order.table}
                   </span>
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-1.5">
-                    <span style={{ color: "#e8eef8", fontSize: "0.78rem", fontFamily: "var(--font-mono)", fontWeight: 700 }}>{order.id}</span>
-                    <span style={{ color: "#6b82a0", fontSize: "0.68rem" }}>{order.time}</span>
+                    <span style={{ color: "var(--cafyz-text)", fontSize: "0.78rem", fontFamily: "var(--font-mono)", fontWeight: 700 }}>{order.id}</span>
+                    <span style={{ color: "var(--cafyz-muted)", fontSize: "0.68rem" }}>{order.time}</span>
                   </div>
-                  <p className="truncate" style={{ color: "#6b82a0", fontSize: "0.72rem" }}>{order.items}</p>
+                  <p className="truncate" style={{ color: "var(--cafyz-muted)", fontSize: "0.72rem" }}>{order.items}</p>
                 </div>
                 <div className="text-right flex-shrink-0">
-                  <p style={{ color: "#e8eef8", fontSize: "0.82rem", fontFamily: "var(--font-mono)", fontWeight: 700 }}>{formatMoney(order.amount)}</p>
+                  <p style={{ color: "var(--cafyz-text)", fontSize: "0.82rem", fontFamily: "var(--font-mono)", fontWeight: 700 }}>{formatMoney(order.amount)}</p>
                   <span className="text-xs px-1.5 py-0.5 rounded-full capitalize"
                     style={{ background: statusBg[order.status], color: statusColors[order.status] }}>
                     {order.status}

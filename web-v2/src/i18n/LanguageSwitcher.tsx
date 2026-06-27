@@ -46,8 +46,8 @@ export function LanguageSwitcher({ variant = 'header', className = '' }: Languag
         className="flex items-center gap-1.5 rounded-xl transition-all active:scale-95"
         style={{
           background: 'rgba(30,127,255,0.08)',
-          border: '1px solid rgba(30,127,255,0.18)',
-          color: '#a8bdd4',
+          border: '1px solid var(--cafyz-border-strong)',
+          color: 'var(--cafyz-text-secondary)',
           padding: variant === 'login' ? '8px 12px' : '6px 10px',
           fontSize: variant === 'login' ? '0.82rem' : '0.75rem',
           fontWeight: 600,
@@ -67,7 +67,7 @@ export function LanguageSwitcher({ variant = 'header', className = '' }: Languag
             transition={{ type: 'spring', damping: 28, stiffness: 380 }}
             className="absolute right-0 mt-2 z-[80] min-w-[168px] rounded-xl overflow-hidden py-1"
             style={{
-              background: '#0d1326',
+              background: 'var(--cafyz-surface)',
               border: '1px solid rgba(30,127,255,0.2)',
               boxShadow: '0 12px 32px rgba(0,0,0,0.5)',
             }}
@@ -81,10 +81,10 @@ export function LanguageSwitcher({ variant = 'header', className = '' }: Languag
                   onClick={() => pick(opt.code)}
                   className="w-full flex items-center gap-2 px-3 py-2.5 text-left transition-colors hover:bg-[rgba(30,127,255,0.08)]"
                 >
-                  <span style={{ color: '#e8eef8', fontSize: '0.88rem', fontWeight: active ? 700 : 500, flex: 1 }}>
+                  <span style={{ color: 'var(--cafyz-text)', fontSize: '0.88rem', fontWeight: active ? 700 : 500, flex: 1 }}>
                     {opt.nativeLabel}
                   </span>
-                  <span style={{ color: '#6b82a0', fontSize: '0.68rem' }}>{opt.label}</span>
+                  <span style={{ color: 'var(--cafyz-muted)', fontSize: '0.68rem' }}>{opt.label}</span>
                   {active && <Check size={14} style={{ color: '#1e7fff', flexShrink: 0 }} />}
                 </button>
               );

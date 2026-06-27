@@ -65,7 +65,7 @@ function CartPanel({
   const canPay = cart.length > 0 && !!selectedTable && billStatus !== "paid";
 
   const statusMeta: Record<BillStatus, { label: string; color: string; bg: string }> = {
-    empty: { label: "Select a table to start", color: "#6b82a0", bg: "rgba(107,130,160,0.1)" },
+    empty: { label: "Select a table to start", color: "var(--cafyz-muted)", bg: "rgba(107,130,160,0.1)" },
     building: { label: "New order — not sent yet", color: "#f59e0b", bg: "rgba(245,158,11,0.12)" },
     kitchen: { label: "In kitchen — ready to pay", color: "#22c55e", bg: "rgba(34,197,94,0.12)" },
     paid: { label: "Payment complete", color: "#1e7fff", bg: "rgba(30,127,255,0.12)" },
@@ -75,28 +75,28 @@ function CartPanel({
   return (
     <div className="flex flex-col h-full min-h-0">
       {/* Header */}
-      <div className="flex-shrink-0 px-3 sm:px-4 pt-3 sm:pt-4 pb-3 space-y-3 border-b" style={{ borderColor: "rgba(30,127,255,0.1)" }}>
+      <div className="flex-shrink-0 px-3 sm:px-4 pt-3 sm:pt-4 pb-3 space-y-3 border-b" style={{ borderColor: "var(--cafyz-border)" }}>
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0 flex-1">
             {isMobile ? (
-              <h3 style={{ color: "#e8eef8", fontFamily: "var(--font-display)", fontWeight: 700, fontSize: "1.05rem" }}>
+              <h3 style={{ color: "var(--cafyz-text)", fontFamily: "var(--font-display)", fontWeight: 700, fontSize: "1.05rem" }}>
                 Order Bill
               </h3>
             ) : (
-              <h3 style={{ color: "#e8eef8", fontFamily: "var(--font-display)", fontWeight: 700, fontSize: "0.95rem" }}>
+              <h3 style={{ color: "var(--cafyz-text)", fontFamily: "var(--font-display)", fontWeight: 700, fontSize: "0.95rem" }}>
                 Current Bill
               </h3>
             )}
             {tableName ? (
               <p style={{ color: "#1e7fff", fontSize: "0.82rem", fontWeight: 600, marginTop: 2 }}>{tableName}</p>
             ) : (
-              <p style={{ color: "#6b82a0", fontSize: "0.75rem", marginTop: 2 }}>No table selected</p>
+              <p style={{ color: "var(--cafyz-muted)", fontSize: "0.75rem", marginTop: 2 }}>No table selected</p>
             )}
           </div>
           {isMobile && onClose && (
             <button onClick={onClose} aria-label="Close bill"
               className="p-2 rounded-xl flex-shrink-0 min-w-[44px] min-h-[44px] flex items-center justify-center"
-              style={{ background: "rgba(30,127,255,0.08)", color: "#6b82a0" }}>
+              style={{ background: "rgba(30,127,255,0.08)", color: "var(--cafyz-muted)" }}>
               <X size={18} />
             </button>
           )}
@@ -114,16 +114,16 @@ function CartPanel({
 
         <div className="grid grid-cols-[1fr_auto] gap-2 items-end">
           <div>
-            <label style={{ color: "#6b82a0", fontSize: "0.68rem", display: "block", marginBottom: 4 }}>Table</label>
+            <label style={{ color: "var(--cafyz-muted)", fontSize: "0.68rem", display: "block", marginBottom: 4 }}>Table</label>
             <select value={selectedTable} onChange={e => onTableChange(e.target.value)}
               className="w-full rounded-xl px-3 py-2.5 text-sm outline-none min-h-[44px]"
-              style={{ background: "#0d1326", color: "#e8eef8", border: "1px solid rgba(30,127,255,0.15)", fontFamily: "var(--font-mono)" }}>
+              style={{ background: "var(--cafyz-surface)", color: "var(--cafyz-text)", border: "1px solid rgba(30,127,255,0.15)", fontFamily: "var(--font-mono)" }}>
               <option value="">Choose table…</option>
               {tables.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
             </select>
           </div>
           <div className="flex flex-col items-end justify-end">
-            <label style={{ color: "#6b82a0", fontSize: "0.68rem", marginBottom: 6, display: "block" }}>Takeaway</label>
+            <label style={{ color: "var(--cafyz-muted)", fontSize: "0.68rem", marginBottom: 6, display: "block" }}>Takeaway</label>
             <button type="button" onClick={onParcelToggle} aria-pressed={isParcel}
               className="w-12 h-7 rounded-full relative transition-all flex-shrink-0"
               style={{ background: isParcel ? "#1e7fff" : "rgba(30,127,255,0.12)" }}>
@@ -139,16 +139,16 @@ function CartPanel({
         {cart.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-10 px-4 text-center gap-3 rounded-xl"
             style={{ border: "1px dashed rgba(30,127,255,0.12)" }}>
-            <ReceiptText size={28} style={{ color: "#6b82a0" }} />
+            <ReceiptText size={28} style={{ color: "var(--cafyz-muted)" }} />
             <div>
-              <p style={{ color: "#a8bdd4", fontSize: "0.85rem", fontWeight: 600 }}>Bill is empty</p>
-              <p style={{ color: "#6b82a0", fontSize: "0.75rem", marginTop: 4 }}>Tap menu items to add them here</p>
+              <p style={{ color: "var(--cafyz-text-secondary)", fontSize: "0.85rem", fontWeight: 600 }}>Bill is empty</p>
+              <p style={{ color: "var(--cafyz-muted)", fontSize: "0.75rem", marginTop: 4 }}>Tap menu items to add them here</p>
             </div>
           </div>
         ) : (
           <div className="space-y-1">
             <div className="grid grid-cols-[2rem_1fr_auto] gap-2 px-1 pb-1.5 border-b"
-              style={{ borderColor: "rgba(30,127,255,0.08)", color: "#6b82a0", fontSize: "0.65rem", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.04em" }}>
+              style={{ borderColor: "rgba(30,127,255,0.08)", color: "var(--cafyz-muted)", fontSize: "0.65rem", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.04em" }}>
               <span>Qty</span>
               <span>Item</span>
               <span className="text-right">Amount</span>
@@ -167,10 +167,10 @@ function CartPanel({
                       <div className="flex flex-col items-center gap-0.5">
                         <button disabled={busy} onClick={() => onUpdateQty(item.id, 1)}
                           className="w-7 h-7 rounded-md flex items-center justify-center"
-                          style={{ background: "rgba(30,127,255,0.1)" }}>
+                          style={{ background: "var(--cafyz-border)" }}>
                           <Plus size={12} style={{ color: "#1e7fff" }} />
                         </button>
-                        <span style={{ color: "#e8eef8", fontFamily: "var(--font-mono)", fontWeight: 700, fontSize: "0.8rem" }}>{item.qty}</span>
+                        <span style={{ color: "var(--cafyz-text)", fontFamily: "var(--font-mono)", fontWeight: 700, fontSize: "0.8rem" }}>{item.qty}</span>
                         <button disabled={busy} onClick={() => onUpdateQty(item.id, -1)}
                           className="w-7 h-7 rounded-md flex items-center justify-center"
                           style={{ background: "rgba(255,59,92,0.1)" }}>
@@ -178,19 +178,19 @@ function CartPanel({
                         </button>
                       </div>
                     ) : (
-                      <span style={{ color: "#e8eef8", fontFamily: "var(--font-mono)", fontWeight: 700, fontSize: "0.85rem" }}>{item.qty}</span>
+                      <span style={{ color: "var(--cafyz-text)", fontFamily: "var(--font-mono)", fontWeight: 700, fontSize: "0.85rem" }}>{item.qty}</span>
                     )}
                   </div>
                   <div className="min-w-0">
-                    <p style={{ color: "#e8eef8", fontSize: "0.82rem", fontWeight: 500, lineHeight: 1.3 }} className="truncate">
+                    <p style={{ color: "var(--cafyz-text)", fontSize: "0.82rem", fontWeight: 500, lineHeight: 1.3 }} className="truncate">
                       <span className="mr-1.5" aria-hidden>{item.emoji}</span>{item.name}
                     </p>
-                    <p style={{ color: "#6b82a0", fontSize: "0.68rem", marginTop: 2 }}>
+                    <p style={{ color: "var(--cafyz-muted)", fontSize: "0.68rem", marginTop: 2 }}>
                       {formatMoney(cur, item.price)} each
                     </p>
                   </div>
                   <div className="text-right flex flex-col items-end gap-1">
-                    <span style={{ color: "#e8eef8", fontFamily: "var(--font-mono)", fontWeight: 700, fontSize: "0.82rem" }}>
+                    <span style={{ color: "var(--cafyz-text)", fontFamily: "var(--font-mono)", fontWeight: 700, fontSize: "0.82rem" }}>
                       {formatMoney(cur, item.price * item.qty)}
                     </span>
                     {editMode && (
@@ -204,7 +204,7 @@ function CartPanel({
                 </motion.div>
               ))}
             </AnimatePresence>
-            <p style={{ color: "#6b82a0", fontSize: "0.72rem", paddingTop: 8 }}>
+            <p style={{ color: "var(--cafyz-muted)", fontSize: "0.72rem", paddingTop: 8 }}>
               {itemCount} item{itemCount !== 1 ? "s" : ""} on this bill
             </p>
           </div>
@@ -213,12 +213,12 @@ function CartPanel({
 
       {/* Totals + actions */}
       <div className="flex-shrink-0 px-3 sm:px-4 py-3 space-y-3 border-t safe-area-pb"
-        style={{ borderColor: "rgba(30,127,255,0.1)", background: "rgba(6,9,26,0.6)" }}>
+        style={{ borderColor: "var(--cafyz-border)", background: "var(--cafyz-overlay)" }}>
 
         <div className="space-y-1.5">
           <div className="flex justify-between items-center">
-            <span style={{ color: "#a8bdd4", fontSize: "0.8rem" }}>Subtotal</span>
-            <span style={{ color: "#e8eef8", fontFamily: "var(--font-mono)", fontSize: "0.85rem", fontWeight: 600 }}>
+            <span style={{ color: "var(--cafyz-text-secondary)", fontSize: "0.8rem" }}>Subtotal</span>
+            <span style={{ color: "var(--cafyz-text)", fontFamily: "var(--font-mono)", fontSize: "0.85rem", fontWeight: 600 }}>
               {formatMoney(cur, subtotal)}
             </span>
           </div>
@@ -226,10 +226,10 @@ function CartPanel({
             <>
               <button type="button" onClick={onBreakdownToggle}
                 className="w-full flex items-center justify-between py-0.5">
-                <span style={{ color: "#6b82a0", fontSize: "0.72rem" }}>
+                <span style={{ color: "var(--cafyz-muted)", fontSize: "0.72rem" }}>
                   {breakdownOpen ? "Hide" : "Show"} fees & tax
                 </span>
-                {breakdownOpen ? <ChevronUp size={14} style={{ color: "#6b82a0" }} /> : <ChevronDown size={14} style={{ color: "#6b82a0" }} />}
+                {breakdownOpen ? <ChevronUp size={14} style={{ color: "var(--cafyz-muted)" }} /> : <ChevronDown size={14} style={{ color: "var(--cafyz-muted)" }} />}
               </button>
               <AnimatePresence initial={false}>
                 {breakdownOpen && (
@@ -237,14 +237,14 @@ function CartPanel({
                     className="overflow-hidden space-y-1 pl-1">
                     {serviceRate > 0 && (
                       <div className="flex justify-between">
-                        <span style={{ color: "#6b82a0", fontSize: "0.72rem" }}>Service ({serviceRate}%)</span>
-                        <span style={{ color: "#a8bdd4", fontFamily: "var(--font-mono)", fontSize: "0.72rem" }}>{formatMoney(cur, service)}</span>
+                        <span style={{ color: "var(--cafyz-muted)", fontSize: "0.72rem" }}>Service ({serviceRate}%)</span>
+                        <span style={{ color: "var(--cafyz-text-secondary)", fontFamily: "var(--font-mono)", fontSize: "0.72rem" }}>{formatMoney(cur, service)}</span>
                       </div>
                     )}
                     {taxRate > 0 && (
                       <div className="flex justify-between">
-                        <span style={{ color: "#6b82a0", fontSize: "0.72rem" }}>{taxLabel} ({taxRate}%)</span>
-                        <span style={{ color: "#a8bdd4", fontFamily: "var(--font-mono)", fontSize: "0.72rem" }}>{formatMoney(cur, tax)}</span>
+                        <span style={{ color: "var(--cafyz-muted)", fontSize: "0.72rem" }}>{taxLabel} ({taxRate}%)</span>
+                        <span style={{ color: "var(--cafyz-text-secondary)", fontFamily: "var(--font-mono)", fontSize: "0.72rem" }}>{formatMoney(cur, tax)}</span>
                       </div>
                     )}
                   </motion.div>
@@ -256,8 +256,8 @@ function CartPanel({
 
         <div className="flex items-center justify-between px-3 py-3 rounded-xl"
           style={{ background: "linear-gradient(135deg, rgba(30,127,255,0.15), rgba(0,198,255,0.08))", border: "1px solid rgba(30,127,255,0.2)" }}>
-          <span style={{ color: "#e8eef8", fontWeight: 700, fontSize: isMobile ? "0.95rem" : "0.88rem" }}>Total to pay</span>
-          <span style={{ color: "#fff", fontFamily: "var(--font-mono)", fontWeight: 800, fontSize: isMobile ? "1.5rem" : "1.35rem" }}>
+          <span style={{ color: "var(--cafyz-text)", fontWeight: 700, fontSize: isMobile ? "0.95rem" : "0.88rem" }}>Total to pay</span>
+          <span style={{ color: "var(--cafyz-text-strong)", fontFamily: "var(--font-mono)", fontWeight: 800, fontSize: isMobile ? "1.5rem" : "1.35rem" }}>
             {formatMoney(cur, grandTotal)}
           </span>
         </div>
@@ -298,7 +298,7 @@ function CartPanel({
           <div className="flex gap-1.5 flex-wrap">
             <button type="button" onClick={onEditToggle}
               className="px-3 py-2 rounded-lg text-xs font-medium min-h-[40px]"
-              style={editMode ? { background: "rgba(245,158,11,0.15)", color: "#f59e0b" } : { background: "rgba(30,127,255,0.06)", color: "#a8bdd4" }}>
+              style={editMode ? { background: "rgba(245,158,11,0.15)", color: "#f59e0b" } : { background: "rgba(30,127,255,0.06)", color: "var(--cafyz-text-secondary)" }}>
               {editMode ? "Done editing" : "Edit items"}
             </button>
             <button type="button" onClick={onClear} disabled={cart.length === 0}
@@ -357,7 +357,7 @@ function OpenBillsStrip({
   return (
     <div className="flex-shrink-0 border-b" style={{ borderColor: "rgba(30,127,255,0.08)" }}>
       <div className="flex items-center justify-between px-3 pt-3 pb-1.5">
-        <p style={{ color: "#a8bdd4", fontSize: "0.72rem", fontWeight: 600, letterSpacing: "0.04em", textTransform: "uppercase" }}>
+        <p style={{ color: "var(--cafyz-text-secondary)", fontSize: "0.72rem", fontWeight: 600, letterSpacing: "0.04em", textTransform: "uppercase" }}>
           Open bills
         </p>
         {pending.length > 0 && (
@@ -371,7 +371,7 @@ function OpenBillsStrip({
         <button type="button" onClick={onNewBill}
           className="flex items-center gap-2 rounded-xl px-3.5 py-2.5 flex-shrink-0 transition-all min-h-[52px] min-w-[108px]"
           style={{
-            background: isNewBillActive ? "rgba(30,127,255,0.14)" : "#0d1326",
+            background: isNewBillActive ? "rgba(30,127,255,0.14)" : "var(--cafyz-surface)",
             borderStyle: isNewBillActive ? "solid" : "dashed",
             borderWidth: 1,
             borderColor: isNewBillActive ? "rgba(30,127,255,0.45)" : "rgba(30,127,255,0.22)",
@@ -380,15 +380,15 @@ function OpenBillsStrip({
             style={{ background: "rgba(30,127,255,0.15)" }}>
             <Plus size={15} style={{ color: "#1e7fff" }} />
           </span>
-          <span style={{ color: isNewBillActive ? "#e8eef8" : "#a8bdd4", fontSize: "0.78rem", fontWeight: 700 }}>
+          <span style={{ color: isNewBillActive ? "var(--cafyz-text)" : "var(--cafyz-text-secondary)", fontSize: "0.78rem", fontWeight: 700 }}>
             New bill
           </span>
         </button>
 
         {pending.length === 0 ? (
           <div className="flex items-center px-3 py-2.5 rounded-xl flex-shrink-0 min-h-[52px]"
-            style={{ background: "#0d1326", border: "1px dashed rgba(30,127,255,0.12)" }}>
-            <span style={{ color: "#6b82a0", fontSize: "0.75rem" }}>No open table bills yet</span>
+            style={{ background: "var(--cafyz-surface)", border: "1px dashed rgba(30,127,255,0.12)" }}>
+            <span style={{ color: "var(--cafyz-muted)", fontSize: "0.75rem" }}>No open table bills yet</span>
           </div>
         ) : (
           pending.map(b => {
@@ -399,13 +399,13 @@ function OpenBillsStrip({
                 disabled={!b.table_id}
                 className="flex items-center gap-3 rounded-xl px-3.5 py-2.5 flex-shrink-0 transition-all min-h-[52px] disabled:opacity-50"
                 style={{
-                  background: isActive ? "rgba(30,127,255,0.14)" : "#0d1326",
-                  border: `1px solid ${isActive ? "rgba(30,127,255,0.4)" : "rgba(30,127,255,0.1)"}`,
+                  background: isActive ? "rgba(30,127,255,0.14)" : "var(--cafyz-surface)",
+                  border: `1px solid ${isActive ? "rgba(30,127,255,0.4)" : "var(--cafyz-border)"}`,
                   minWidth: 132,
                 }}>
                 <div className="text-left min-w-0 flex-1">
-                  <p className="truncate" style={{ color: "#e8eef8", fontSize: "0.8rem", fontWeight: 700 }}>{b.table_name}</p>
-                  <p style={{ color: "#6b82a0", fontSize: "0.68rem" }}>
+                  <p className="truncate" style={{ color: "var(--cafyz-text)", fontSize: "0.8rem", fontWeight: 700 }}>{b.table_name}</p>
+                  <p style={{ color: "var(--cafyz-muted)", fontSize: "0.68rem" }}>
                     {b.items} item{b.items !== 1 ? "s" : ""} · {b.since}
                   </p>
                 </div>
@@ -445,7 +445,7 @@ function MobileBillFab({
         <ShoppingCart size={18} className="text-white" />
       </span>
       <div className="text-left min-w-0 flex-1">
-        <p className="truncate" style={{ color: "#fff", fontWeight: 700, fontSize: "0.82rem", lineHeight: 1.2 }}>
+        <p className="truncate" style={{ color: "var(--cafyz-text-strong)", fontWeight: 700, fontSize: "0.82rem", lineHeight: 1.2 }}>
           {hasItems ? "View bill" : "Open bill"}
         </p>
         <p className="truncate" style={{ color: "rgba(255,255,255,0.82)", fontSize: "0.68rem", lineHeight: 1.2 }}>
@@ -851,11 +851,11 @@ export function POS() {
         {/* Search + categories */}
         <div className="px-3 pb-2 space-y-2 flex-shrink-0">
           <div className="flex items-center gap-2 rounded-xl px-3 py-2.5"
-            style={{ background: "#0d1326", border: "1px solid rgba(30,127,255,0.1)" }}>
-            <Search size={14} style={{ color: "#6b82a0" }} />
+            style={{ background: "var(--cafyz-surface)", border: "1px solid var(--cafyz-border)" }}>
+            <Search size={14} style={{ color: "var(--cafyz-muted)" }} />
             <input type="text" placeholder="Search menu..." value={search} onChange={e => setSearch(e.target.value)}
-              className="flex-1 bg-transparent outline-none text-sm placeholder:text-[#6b82a0]"
-              style={{ color: "#e8eef8" }} />
+              className="flex-1 bg-transparent outline-none text-sm placeholder:text-[var(--cafyz-muted)]"
+              style={{ color: "var(--cafyz-text)" }} />
           </div>
           <div className="flex gap-1.5 overflow-x-auto scrollbar-hide pb-0.5">
             {catTabs.map(c => (
@@ -863,7 +863,7 @@ export function POS() {
                 className="px-3 py-1.5 rounded-full text-xs whitespace-nowrap flex-shrink-0 font-medium transition-all"
                 style={activeCat === c.id
                   ? { background: "linear-gradient(135deg, #1e7fff, #00c6ff)", color: "#fff" }
-                  : { background: "#0d1326", color: "#6b82a0", border: "1px solid rgba(30,127,255,0.1)" }}>
+                  : { background: "var(--cafyz-surface)", color: "var(--cafyz-muted)", border: "1px solid var(--cafyz-border)" }}>
                 {c.label}
               </button>
             ))}
@@ -879,7 +879,7 @@ export function POS() {
                 <motion.button key={item.id} whileTap={{ scale: 0.94 }} onClick={() => addToCart(item)}
                   className="rounded-2xl p-3 text-left relative transition-all"
                   style={{
-                    background: inCart ? "rgba(30,127,255,0.08)" : "#0d1326",
+                    background: inCart ? "rgba(30,127,255,0.08)" : "var(--cafyz-surface)",
                     border: `1px solid ${inCart ? "rgba(30,127,255,0.25)" : "rgba(30,127,255,0.08)"}`,
                     minHeight: 100,
                   }}>
@@ -888,12 +888,12 @@ export function POS() {
                       style={{ background: "rgba(245,158,11,0.15)", color: "#f59e0b", fontSize: "0.58rem" }}>★</span>
                   ) : null}
                   <div className="text-2xl mb-1.5">{item.symbol}</div>
-                  <p style={{ color: "#e8eef8", fontSize: "0.78rem", fontWeight: 600, lineHeight: 1.3 }}>{item.name}</p>
+                  <p style={{ color: "var(--cafyz-text)", fontSize: "0.78rem", fontWeight: 600, lineHeight: 1.3 }}>{item.name}</p>
                   <p style={{ color: "#1e7fff", fontFamily: "var(--font-mono)", fontWeight: 700, fontSize: "0.85rem", marginTop: 3 }}>{cur}{item.price}</p>
                   {inCart && (
                     <div className="absolute bottom-2 right-2 w-5 h-5 rounded-full flex items-center justify-center"
                       style={{ background: "#1e7fff" }}>
-                      <span style={{ color: "#fff", fontSize: "0.58rem", fontWeight: 700 }}>{inCart.qty}</span>
+                      <span style={{ color: "var(--cafyz-text-strong)", fontSize: "0.58rem", fontWeight: 700 }}>{inCart.qty}</span>
                     </div>
                   )}
                 </motion.button>
@@ -901,7 +901,7 @@ export function POS() {
             })}
             {filtered.length === 0 && (
               <div className="col-span-full flex items-center justify-center h-32">
-                <p style={{ color: "#6b82a0", fontSize: "0.8rem" }}>
+                <p style={{ color: "var(--cafyz-muted)", fontSize: "0.8rem" }}>
                   {search ? `No results for "${search}"` : "No items in this category"}
                 </p>
               </div>
@@ -912,7 +912,7 @@ export function POS() {
 
       {/* ── Desktop: right sidebar cart ── */}
       <div className="hidden lg:flex w-80 xl:w-96 flex-col flex-shrink-0 border-l"
-        style={{ background: "#080c1e", borderColor: "rgba(30,127,255,0.1)" }}>
+        style={{ background: "var(--cafyz-surface-subtle)", borderColor: "var(--cafyz-border)" }}>
         <CartPanel {...cartProps} />
       </div>
 
@@ -939,7 +939,7 @@ export function POS() {
               initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }}
               transition={{ type: "spring", damping: 30, stiffness: 300 }}
               className="lg:hidden fixed bottom-0 left-0 right-0 z-50 rounded-t-3xl overflow-hidden flex flex-col"
-              style={{ background: "#080c1e", border: "1px solid rgba(30,127,255,0.15)", maxHeight: "92dvh" }}
+              style={{ background: "var(--cafyz-surface-subtle)", border: "1px solid rgba(30,127,255,0.15)", maxHeight: "92dvh" }}
             >
               {/* Drag handle */}
               <div className="flex justify-center pt-3 pb-1 flex-shrink-0">

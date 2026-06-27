@@ -32,33 +32,33 @@ export function TrialExpiredModal({ expiresAt, founderEmail, currentPlan = 'basi
   };
 
   return (
-    <div className="fixed inset-0 z-[110] flex items-start justify-center p-4 pt-[max(5rem,env(safe-area-inset-top))]" style={{ background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(8px)' }}>
+    <div className="fixed inset-0 z-[110] flex items-start justify-center p-4 pt-[max(5rem,env(safe-area-inset-top))]" style={{ background: 'var(--cafyz-overlay)', backdropFilter: 'blur(8px)' }}>
       <motion.div
         initial={{ opacity: 0, y: -16 }}
         animate={{ opacity: 1, y: 0 }}
         className="w-full max-w-lg rounded-2xl p-6"
-        style={{ background: '#0d1326', border: '1px solid rgba(255,59,92,0.25)', boxShadow: '0 20px 60px rgba(0,0,0,0.5)' }}
+        style={{ background: 'var(--cafyz-surface)', border: '1px solid rgba(255,59,92,0.25)', boxShadow: 'var(--cafyz-shadow-lg)' }}
       >
         <div className="flex items-start gap-3 mb-4">
           <div className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: 'rgba(255,59,92,0.12)' }}>
             <Clock size={22} style={{ color: '#ff3b5c' }} />
           </div>
           <div>
-            <h2 style={{ color: '#e8eef8', fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: '1.15rem' }}>
+            <h2 style={{ color: 'var(--cafyz-text)', fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: '1.15rem' }}>
               Renew your Cafyz subscription
             </h2>
-            <p style={{ color: '#6b82a0', fontSize: '0.82rem', marginTop: 6, lineHeight: 1.55 }}>
+            <p style={{ color: 'var(--cafyz-muted)', fontSize: '0.82rem', marginTop: 6, lineHeight: 1.55 }}>
               Your trial or license ended{expiryLabel ? ` on ${expiryLabel}` : ''}. Contact Cafyz to renew — your restaurant data is safe.
             </p>
           </div>
         </div>
 
-        <div className="rounded-xl px-4 py-3 mb-4" style={{ background: '#111b35', border: '1px solid rgba(30,127,255,0.12)' }}>
-          <p style={{ color: '#a8bdd4', fontSize: '0.8rem', lineHeight: 1.5 }}>
+        <div className="rounded-xl px-4 py-3 mb-4" style={{ background: 'var(--cafyz-surface-2)', border: '1px solid rgba(30,127,255,0.12)' }}>
+          <p style={{ color: 'var(--cafyz-text-secondary)', fontSize: '0.8rem', lineHeight: 1.5 }}>
             Email:{' '}
             <a href={`mailto:${email}`} style={{ color: '#1e7fff', fontWeight: 600 }}>{email}</a>
           </p>
-          <p style={{ color: '#6b82a0', fontSize: '0.72rem', marginTop: 6 }}>
+          <p style={{ color: 'var(--cafyz-muted)', fontSize: '0.72rem', marginTop: 6 }}>
             Tap below to send a renewal request. The founder receives Approve / Deny links by email.
           </p>
         </div>
@@ -78,7 +78,7 @@ export function TrialExpiredModal({ expiresAt, founderEmail, currentPlan = 'basi
             type="button"
             onClick={onGoLicense}
             className="flex-1 py-3 rounded-xl text-sm font-semibold"
-            style={{ background: 'rgba(30,127,255,0.1)', color: '#1e7fff', border: '1px solid rgba(30,127,255,0.2)' }}
+            style={{ background: 'var(--cafyz-border)', color: '#1e7fff', border: '1px solid rgba(30,127,255,0.2)' }}
           >
             License & plans
           </button>
