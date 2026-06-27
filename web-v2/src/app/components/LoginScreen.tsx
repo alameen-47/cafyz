@@ -32,26 +32,26 @@ function PinPad({ onSubmit }: { onSubmit: (pin: string) => void }) {
   };
 
   return (
-    <div className="space-y-4">
-      <div className="flex justify-center gap-3">
+    <div className="space-y-3 sm:space-y-4">
+      <div className="flex justify-center gap-2 sm:gap-3">
         {[0,1,2,3].map(i => (
           <motion.div
             key={i}
             animate={{ scale: pin.length > i ? 1.1 : 1 }}
-            className="w-12 h-12 rounded-xl border-2 flex items-center justify-center"
+            className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl border-2 flex items-center justify-center"
             style={{ borderColor: pin.length > i ? "#1e7fff" : "rgba(30,127,255,0.2)", background: pin.length > i ? "rgba(30,127,255,0.12)" : "transparent" }}
           >
-            {pin.length > i && <div className="w-3 h-3 rounded-full" style={{ background: "#1e7fff" }} />}
+            {pin.length > i && <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full" style={{ background: "#1e7fff" }} />}
           </motion.div>
         ))}
       </div>
-      <div className="grid grid-cols-3 gap-2">
+      <div className="grid grid-cols-3 gap-1.5 sm:gap-2">
         {keys.map((k, i) => (
           <motion.button
             key={i}
             whileTap={{ scale: 0.92 }}
             onClick={() => press(k)}
-            className="h-12 rounded-xl text-lg font-semibold transition-all flex items-center justify-center"
+            className="h-10 sm:h-12 rounded-xl text-base sm:text-lg font-semibold transition-all flex items-center justify-center"
             style={k === "" ? { pointerEvents: "none" } : {
               background: k === "⌫" ? "rgba(255,59,92,0.08)" : "rgba(30,127,255,0.06)",
               color: k === "⌫" ? "#ff3b5c" : "#e8eef8",
@@ -68,7 +68,7 @@ function PinPad({ onSubmit }: { onSubmit: (pin: string) => void }) {
 
 function ActivityLoader({ label, sublabel }: { label: string; sublabel?: string }) {
   return (
-    <div className="flex flex-col items-center justify-center py-12 gap-5 text-center">
+    <div className="flex flex-col items-center justify-center py-8 sm:py-12 gap-4 sm:gap-5 text-center">
       <div className="relative w-16 h-16" aria-hidden>
         <div className="absolute inset-0 rounded-full" style={{ border: "2px solid rgba(30,127,255,0.12)" }} />
         <div className="absolute inset-0 rounded-full border-2 border-transparent border-t-[#1e7fff] animate-spin" />
@@ -249,7 +249,7 @@ export function LoginScreen({ onLogin }: { onLogin?: () => void }) {
   };
 
   return (
-    <div className="app-screen app-native-inset-top flex" style={{ background: "#06091a" }}>
+    <div className="login-screen app-screen app-native-inset-top flex flex-col lg:flex-row overflow-hidden" style={{ background: "#06091a" }}>
       {/* Left hero panel — desktop only */}
       <div
         className="hidden lg:flex flex-col justify-between w-[480px] flex-shrink-0 p-10"
@@ -298,37 +298,40 @@ export function LoginScreen({ onLogin }: { onLogin?: () => void }) {
         <p style={{ color: "#6b82a0", fontSize: "0.72rem" }}>© 2026 Cafyz Technologies. All rights reserved.</p>
       </div>
 
-      {/* Right form panel */}
-      <div className="flex-1 flex flex-col min-h-0 overflow-y-auto relative lg:justify-center">
-        <div className="absolute top-4 right-4 sm:top-6 sm:right-6 z-10">
+      {/* Form panel */}
+      <div className="login-screen-form-shell flex-1 flex flex-col min-h-0 min-w-0 lg:justify-center relative">
+        <div className="hidden lg:block absolute top-4 right-4 sm:top-6 sm:right-6 z-10">
           <LanguageSwitcher variant="login" />
         </div>
 
-        {/* Mobile / tablet: logo band = 30% of screen height, form in the remaining space */}
-        <header className="lg:hidden w-full flex flex-col items-center justify-center flex-shrink-0 px-4
-          h-[30dvh] min-h-[30dvh] max-h-[30dvh]
-          pt-[max(0.75rem,env(safe-area-inset-top))]">
-          <CafyzLogo
-            size="loginMobile"
-            className="drop-shadow-[0_10px_36px_rgba(30,127,255,0.28)]"
-          />
+        {/* Mobile: compact header — logo centered, language top-right */}
+        <header className="login-screen-header lg:hidden flex-shrink-0 w-full px-3 sm:px-4 pt-[max(0.35rem,env(safe-area-inset-top))] pb-2 sm:pb-3">
+          <div className="relative flex items-center justify-center min-h-[2.25rem]">
+            <div className="absolute right-0 top-0 z-10">
+              <LanguageSwitcher variant="login" />
+            </div>
+            <CafyzLogo
+              size="loginMobile"
+              className="login-screen-logo drop-shadow-[0_10px_36px_rgba(30,127,255,0.28)]"
+            />
+          </div>
         </header>
 
-        <div className="flex-1 w-full min-h-0 flex flex-col items-center overflow-y-auto px-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] lg:flex-none lg:overflow-visible lg:justify-center lg:p-6 lg:pt-6">
-        <div className="w-full max-w-[400px] min-h-[min(72dvh,520px)] flex flex-col justify-center">
+        <div className="login-screen-scroll flex-1 min-h-0 overflow-y-auto">
+        <div className="login-screen-inner w-full max-w-[400px] mx-auto px-4 sm:px-6 py-2 sm:py-4 pb-[max(1.25rem,env(safe-area-inset-bottom))] lg:px-6 lg:py-8 lg:min-h-full lg:flex lg:flex-col lg:justify-center">
           <AnimatePresence mode="wait" initial={false}>
             {authState === "login" && (
-              <motion.div key="login" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -16 }} className="space-y-6">
+              <motion.div key="login" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -16 }} className="space-y-4 sm:space-y-6">
                 <div>
-                  <h2 style={{ fontFamily: "var(--font-display)", fontWeight: 700, color: "#e8eef8", fontSize: "1.6rem" }}>{t("Welcome back")}</h2>
-                  <p style={{ color: "#6b82a0", fontSize: "0.85rem", marginTop: 4 }}>{t("Sign in to your Cafyz account")}</p>
+                  <h2 className="text-xl sm:text-[1.6rem]" style={{ fontFamily: "var(--font-display)", fontWeight: 700, color: "#e8eef8" }}>{t("Welcome back")}</h2>
+                  <p style={{ color: "#6b82a0", fontSize: "0.8rem", marginTop: 4 }}>{t("Sign in to your Cafyz account")}</p>
                 </div>
 
                 {/* Auth method tabs */}
                 <div className="flex gap-1 p-1 rounded-xl" style={{ background: "#0d1326", border: "1px solid rgba(30,127,255,0.1)" }}>
                   {(["password","pin","otp"] as AuthMethod[]).map(m => (
                     <button key={m} onClick={() => setMethod(m)}
-                      className="flex-1 py-2 rounded-lg text-sm capitalize transition-all font-medium"
+                      className="flex-1 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm capitalize transition-all font-medium"
                       style={method === m ? { background: "linear-gradient(135deg, #1e7fff, #00c6ff)", color: "#fff" } : { color: "#6b82a0" }}
                     >
                       {m === "password" ? t("Email / Mobile") : m === "pin" ? "PIN" : "OTP"}
@@ -417,7 +420,7 @@ export function LoginScreen({ onLogin }: { onLogin?: () => void }) {
             )}
 
             {authState === "inquiry" && (
-              <motion.div key="inquiry" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -12 }} className="space-y-4 relative">
+              <motion.div key="inquiry" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -12 }} className="space-y-3 sm:space-y-4 relative">
                 {inquirySubmitting ? (
                   <ActivityLoader
                     label="Sending your trial request…"
@@ -427,8 +430,8 @@ export function LoginScreen({ onLogin }: { onLogin?: () => void }) {
                   <>
                 <div>
                   <button type="button" onClick={() => goToSignIn()} style={{ color: "#6b82a0", fontSize: "0.8rem" }}>← Back to sign in</button>
-                  <h2 style={{ fontFamily: "var(--font-display)", fontWeight: 700, color: "#e8eef8", fontSize: "1.6rem", marginTop: 10 }}>Start your free trial</h2>
-                  <p style={{ color: "#6b82a0", fontSize: "0.85rem", marginTop: 4, lineHeight: 1.5 }}>
+                  <h2 className="text-xl sm:text-[1.6rem]" style={{ fontFamily: "var(--font-display)", fontWeight: 700, color: "#e8eef8", marginTop: 10 }}>Start your free trial</h2>
+                  <p style={{ color: "#6b82a0", fontSize: "0.8rem", marginTop: 4, lineHeight: 1.5 }}>
                     Request access — no password needed now. Our founder will review your request and email you login credentials once approved. You can sign in later with your email or mobile number.
                   </p>
                 </div>
@@ -492,15 +495,15 @@ export function LoginScreen({ onLogin }: { onLogin?: () => void }) {
                 initial={{ opacity: 0, y: 16 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -12 }}
-                className="space-y-6"
+                className="space-y-4 sm:space-y-6"
               >
-                <div className="rounded-2xl p-6 text-center space-y-4"
+                <div className="rounded-2xl p-4 sm:p-6 text-center space-y-3 sm:space-y-4"
                   style={{ background: "rgba(34,197,94,0.08)", border: "1px solid rgba(34,197,94,0.22)" }}>
                   <div className="flex justify-center">
                     <CheckCircle2 size={44} style={{ color: "#22c55e" }} strokeWidth={1.75} />
                   </div>
                   <div>
-                    <h2 style={{ fontFamily: "var(--font-display)", fontWeight: 700, color: "#e8eef8", fontSize: "1.35rem" }}>
+                    <h2 className="text-lg sm:text-[1.35rem]" style={{ fontFamily: "var(--font-display)", fontWeight: 700, color: "#e8eef8" }}>
                       Trial request received
                     </h2>
                     <p style={{ color: "#a8bdd4", fontSize: "0.85rem", marginTop: 10, lineHeight: 1.6 }}>
@@ -544,17 +547,17 @@ export function LoginScreen({ onLogin }: { onLogin?: () => void }) {
             )}
 
             {authState === "otp-verify" && (
-              <motion.div key="otp" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-6">
+              <motion.div key="otp" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-4 sm:space-y-6">
                 <div>
                   <button onClick={() => setAuthState("login")} style={{ color: "#6b82a0", fontSize: "0.8rem" }}>← Back</button>
-                  <h2 style={{ fontFamily: "var(--font-display)", fontWeight: 700, color: "#e8eef8", fontSize: "1.6rem", marginTop: 8 }}>Verify OTP</h2>
+                  <h2 className="text-xl sm:text-[1.6rem] mt-2" style={{ fontFamily: "var(--font-display)", fontWeight: 700, color: "#e8eef8" }}>Verify OTP</h2>
                   <p style={{ color: "#6b82a0", fontSize: "0.85rem", marginTop: 4 }}>Sent to {phone || "+91 98765 43210"}</p>
                 </div>
-                <div className="flex gap-2 justify-center">
+                <div className="flex gap-1.5 sm:gap-2 justify-center">
                   {otp.map((v, i) => (
                     <input key={i} id={`otp-${i}`} type="text" maxLength={1} value={v}
                       onChange={e => handleOtpChange(i, e.target.value)}
-                      className="w-11 h-12 rounded-xl text-center text-lg font-bold outline-none"
+                      className="w-10 h-11 sm:w-11 sm:h-12 rounded-xl text-center text-base sm:text-lg font-bold outline-none"
                       style={{ background: "#0d1326", border: `1px solid ${v ? "#1e7fff" : "rgba(30,127,255,0.15)"}`, color: "#e8eef8" }} />
                   ))}
                 </div>
@@ -570,10 +573,10 @@ export function LoginScreen({ onLogin }: { onLogin?: () => void }) {
             )}
 
             {authState === "forgot" && (
-              <motion.div key="forgot" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-6">
+              <motion.div key="forgot" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-4 sm:space-y-6">
                 <div>
                   <button onClick={() => setAuthState("login")} style={{ color: "#6b82a0", fontSize: "0.8rem" }}>← Back to sign in</button>
-                  <h2 style={{ fontFamily: "var(--font-display)", fontWeight: 700, color: "#e8eef8", fontSize: "1.6rem", marginTop: 8 }}>Reset Password</h2>
+                  <h2 className="text-xl sm:text-[1.6rem] mt-2" style={{ fontFamily: "var(--font-display)", fontWeight: 700, color: "#e8eef8" }}>Reset Password</h2>
                   <p style={{ color: "#6b82a0", fontSize: "0.85rem", marginTop: 4 }}>We'll send a reset link to your email.</p>
                 </div>
                 <div>
@@ -593,10 +596,10 @@ export function LoginScreen({ onLogin }: { onLogin?: () => void }) {
             )}
 
             {authState === "reset" && (
-              <motion.div key="reset" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-6">
+              <motion.div key="reset" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-4 sm:space-y-6">
                 <div>
                   <button onClick={() => setAuthState("login")} style={{ color: "#6b82a0", fontSize: "0.8rem" }}>← Back to sign in</button>
-                  <h2 style={{ fontFamily: "var(--font-display)", fontWeight: 700, color: "#e8eef8", fontSize: "1.6rem", marginTop: 8 }}>Set a new password</h2>
+                  <h2 className="text-xl sm:text-[1.6rem] mt-2" style={{ fontFamily: "var(--font-display)", fontWeight: 700, color: "#e8eef8" }}>Set a new password</h2>
                   <p style={{ color: "#6b82a0", fontSize: "0.85rem", marginTop: 4 }}>Choose a new password for your account.</p>
                 </div>
                 <div>

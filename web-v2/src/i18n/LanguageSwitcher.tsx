@@ -55,7 +55,7 @@ export function LanguageSwitcher({ variant = 'header', className = '' }: Languag
         }}
       >
         <Globe size={variant === 'login' ? 15 : 14} style={{ color: '#1e7fff', flexShrink: 0 }} />
-        <span className="lang-switcher-label truncate max-w-[5.5rem] sm:max-w-none">{btnLabel}</span>
+        <span className={`lang-switcher-label truncate ${variant === 'login' ? 'max-w-[4.5rem] sm:max-w-none' : 'max-w-[5.5rem] sm:max-w-none'}`}>{btnLabel}</span>
       </button>
 
       <AnimatePresence>

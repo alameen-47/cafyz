@@ -76,3 +76,43 @@ body.cap-native .app-main-spacer {
 .pos-fab-bottom {
   bottom: calc(var(--app-mobile-nav-height) + env(safe-area-inset-bottom, 0px) + 0.625rem);
 }
+
+/* Login screen — small phones & short viewports */
+.login-screen {
+  background: #06091a;
+}
+
+.login-screen-scroll {
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
+}
+
+@media (max-width: 1023px) {
+  .login-screen-scroll {
+    scroll-padding-bottom: max(1rem, env(safe-area-inset-bottom, 0px));
+  }
+}
+
+@media (max-height: 700px) {
+  .login-screen-header {
+    padding-bottom: 0.5rem;
+  }
+
+  .login-screen-inner {
+    padding-top: 0.25rem;
+  }
+}
+
+@media (max-height: 580px) {
+  .login-screen-logo {
+    max-height: 2.5rem !important;
+    width: min(9rem, 62vw) !important;
+  }
+}
+
+@media (max-width: 360px) {
+  .login-screen-inner {
+    padding-left: 0.875rem;
+    padding-right: 0.875rem;
+  }
+}

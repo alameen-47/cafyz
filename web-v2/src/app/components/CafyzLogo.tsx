@@ -21,8 +21,8 @@ const LOGO_SIZE: Record<CafyzLogoSize, string> = {
   login: 'w-[min(100%,19.8rem)] sm:w-[min(100%,25rem)]',
   /** Expanded app sidebar on large screens */
   sidebar: 'w-[min(100%,11rem)] max-h-[3.5rem] lg:w-[min(100%,13rem)] lg:max-h-16',
-  /** Small screens: fits within the 30% viewport logo band */
-  loginMobile: 'w-[min(30vw,30dvh)] max-w-[min(30vw,30dvh)] max-h-[min(24dvh,30vw)] h-auto',
+  /** Compact login header on phones — scales with width, capped height */
+  loginMobile: 'w-[min(10.5rem,68vw)] max-h-[clamp(2.75rem,11dvh,4.25rem)] h-auto',
 };
 
 export function CafyzLogo({
