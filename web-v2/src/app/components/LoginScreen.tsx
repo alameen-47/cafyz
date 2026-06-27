@@ -249,7 +249,7 @@ export function LoginScreen({ onLogin }: { onLogin?: () => void }) {
   };
 
   return (
-    <div className="login-screen app-screen app-native-inset-top flex flex-col lg:flex-row overflow-hidden" style={{ background: "#06091a" }}>
+    <div className="login-screen app-screen app-native-inset-top flex h-full min-h-[100dvh] w-full flex-col overflow-hidden lg:flex-row" style={{ background: "#06091a" }}>
       {/* Left hero panel — desktop only */}
       <div
         className="hidden lg:flex flex-col justify-between w-[480px] flex-shrink-0 p-10"
@@ -298,31 +298,25 @@ export function LoginScreen({ onLogin }: { onLogin?: () => void }) {
         <p style={{ color: "#6b82a0", fontSize: "0.72rem" }}>© 2026 Cafyz Technologies. All rights reserved.</p>
       </div>
 
-      {/* Form panel */}
-      <div className="login-screen-form-shell flex-1 flex flex-col min-h-0 min-w-0 lg:justify-center relative">
-        <div className="hidden lg:block absolute top-4 right-4 sm:top-6 sm:right-6 z-10">
+      {/* Form panel — full screen, content centered */}
+      <div className="login-screen-form-shell relative flex h-full min-h-0 w-full flex-1 flex-col">
+        <div className="absolute top-[max(0.5rem,env(safe-area-inset-top))] right-3 z-20 sm:right-4 lg:top-6 lg:right-6">
           <LanguageSwitcher variant="login" />
         </div>
 
-        {/* Mobile: compact header — logo centered, language top-right */}
-        <header className="login-screen-header lg:hidden flex-shrink-0 w-full px-3 sm:px-4 pt-[max(0.35rem,env(safe-area-inset-top))] pb-2 sm:pb-3">
-          <div className="relative flex items-center justify-center min-h-[2.25rem]">
-            <div className="absolute right-0 top-0 z-10">
-              <LanguageSwitcher variant="login" />
+        <div className="login-screen-scroll flex-1 min-h-0">
+          <div className="login-screen-inner px-4 sm:px-6 lg:px-6 lg:py-8">
+            <div className="login-screen-brand mb-5 flex flex-shrink-0 justify-center sm:mb-6 lg:hidden">
+              <CafyzLogo
+                size="loginMobile"
+                className="login-screen-logo drop-shadow-[0_10px_36px_rgba(30,127,255,0.28)]"
+              />
             </div>
-            <CafyzLogo
-              size="loginMobile"
-              className="login-screen-logo drop-shadow-[0_10px_36px_rgba(30,127,255,0.28)]"
-            />
-          </div>
-        </header>
-
-        <div className="login-screen-scroll flex-1 min-h-0 overflow-y-auto">
-        <div className="login-screen-inner w-full max-w-[400px] mx-auto px-4 sm:px-6 py-2 sm:py-4 pb-[max(1.25rem,env(safe-area-inset-bottom))] lg:px-6 lg:py-8 lg:min-h-full lg:flex lg:flex-col lg:justify-center">
+            <div className="login-screen-form">
           <AnimatePresence mode="wait" initial={false}>
             {authState === "login" && (
               <motion.div key="login" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -16 }} className="space-y-4 sm:space-y-6">
-                <div>
+                <div className="text-center lg:text-left">
                   <h2 className="text-xl sm:text-[1.6rem]" style={{ fontFamily: "var(--font-display)", fontWeight: 700, color: "#e8eef8" }}>{t("Welcome back")}</h2>
                   <p style={{ color: "#6b82a0", fontSize: "0.8rem", marginTop: 4 }}>{t("Sign in to your Cafyz account")}</p>
                 </div>
@@ -621,7 +615,8 @@ export function LoginScreen({ onLogin }: { onLogin?: () => void }) {
               </motion.div>
             )}
           </AnimatePresence>
-        </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>

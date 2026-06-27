@@ -77,29 +77,67 @@ body.cap-native .app-main-spacer {
   bottom: calc(var(--app-mobile-nav-height) + env(safe-area-inset-bottom, 0px) + 0.625rem);
 }
 
-/* Login screen — small phones & short viewports */
+/* Login screen — full viewport, centered content on phones */
 .login-screen {
   background: #06091a;
+  width: 100%;
+  height: 100%;
+  min-height: 100dvh;
+  box-sizing: border-box;
+}
+
+.login-screen-form-shell {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  box-sizing: border-box;
 }
 
 .login-screen-scroll {
   -webkit-overflow-scrolling: touch;
   overscroll-behavior-y: contain;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
 
-@media (max-width: 1023px) {
-  .login-screen-scroll {
-    scroll-padding-bottom: max(1rem, env(safe-area-inset-bottom, 0px));
+.login-screen-inner {
+  width: 100%;
+  max-width: 400px;
+  margin: auto;
+  flex: 1 0 auto;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: stretch;
+  min-height: min(100%, 100%);
+  box-sizing: border-box;
+  padding-top: max(2.75rem, calc(env(safe-area-inset-top, 0px) + 0.5rem));
+  padding-bottom: max(1rem, env(safe-area-inset-bottom, 0px));
+}
+
+.login-screen-form {
+  width: 100%;
+}
+
+@media (min-width: 1024px) {
+  .login-screen-inner {
+    min-height: 100%;
+    padding-top: 2rem;
   }
 }
 
 @media (max-height: 700px) {
-  .login-screen-header {
-    padding-bottom: 0.5rem;
+  .login-screen-brand {
+    margin-bottom: 0.75rem !important;
   }
 
   .login-screen-inner {
-    padding-top: 0.25rem;
+    padding-top: max(2.25rem, calc(env(safe-area-inset-top, 0px) + 0.35rem));
   }
 }
 
