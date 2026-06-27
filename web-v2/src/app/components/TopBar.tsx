@@ -6,6 +6,7 @@ import { UserProfileDropdown } from "./UserProfileDropdown";
 import { searchApi, type ApiSearchResult } from "../../services/api";
 import { LanguageSwitcher } from "../../i18n/LanguageSwitcher";
 import { useLanguage } from "../../i18n/LanguageProvider";
+import { isFounderRole } from "../../config/access";
 import { useNotifications } from "../../hooks/useNotifications";
 import { usePushNotifications } from "../../hooks/usePushNotifications";
 
@@ -114,6 +115,7 @@ export function TopBar({ active, onMobileMenuOpen, onNavigate, onLogout, role, p
   const searchRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const notificationsEnabled = role !== "founder";
+  const founderUser = isFounderRole(role);
   const {
     items: notifItems,
     unread: unreadNotifs,
@@ -211,7 +213,8 @@ export function TopBar({ active, onMobileMenuOpen, onNavigate, onLogout, role, p
         <span style={{ color: "var(--cafyz-text-secondary)", fontFamily: "var(--font-mono)", fontSize: "0.78rem", fontWeight: 600 }}>{time}</span>
       </div>
 
-      {/* Global search — desktop only */}
+      {/* Global search — desktop only (restaurant users) */}
+      {!founderUser && (
       <div ref={searchRef} className="hidden md:block relative flex-shrink-0" style={{ width: 220 }}>
         <div
           className="flex items-center gap-2 rounded-xl px-3 py-2 transition-all duration-200"
@@ -309,6 +312,7 @@ export function TopBar({ active, onMobileMenuOpen, onNavigate, onLogout, role, p
           )}
         </AnimatePresence>
       </div>
+      )}
 
       {/* Language — compact on mobile, full label on desktop */}
       <LanguageSwitcher variant="compact" className="flex-shrink-0 sm:hidden" />
@@ -325,7 +329,8 @@ export function TopBar({ active, onMobileMenuOpen, onNavigate, onLogout, role, p
         <Headset size={17} />
       </button>
 
-      {/* Notification bell */}
+      {/* Notification bell — restaurant users only */}
+      {notificationsEnabled && (
       <div ref={notifRef} className="relative flex-shrink-0">
         <button
           onClick={() => { setNotifOpen(o => !o); setProfileOpen(false); }}
@@ -351,6 +356,7 @@ export function TopBar({ active, onMobileMenuOpen, onNavigate, onLogout, role, p
           onNavigate={onNavigate}
         />
       </div>
+      )}
 
       {/* Avatar / profile */}
       <div ref={profileRef} className="relative flex-shrink-0">
@@ -363,7 +369,7 @@ export function TopBar({ active, onMobileMenuOpen, onNavigate, onLogout, role, p
           </div>
           <div className="hidden md:block text-left">
             <p style={{ color: "var(--cafyz-text)", fontSize: "0.78rem", fontWeight: 600, lineHeight: 1.2 }}>{userName}</p>
-            <p style={{ color: "var(--cafyz-muted)", fontSize: "0.62rem", textTransform: "capitalize" }}>{role}</p>
+            <p style={{ color: "var(--cafyz-muted)", fontSize: "0.62rem", textTransform: "capitalize" }}>{founderUser ? "Super Admin" : role}</p>
           </div>
           <ChevronDown size={13} className="hidden md:block" style={{ color: "var(--cafyz-muted)", transform: profileOpen ? "rotate(180deg)" : "rotate(0)", transition: "transform 0.2s" }} />
         </button>

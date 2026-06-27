@@ -25,8 +25,18 @@ export const ROLE_PAGES: Record<Role, PageId[]> = {
   cashier: ['pos', 'orders', 'tables', 'menu', 'profile', 'license'],
   waiter: ['orders', 'tables', 'menu', 'profile', 'license'],
   kitchen: ['kds', 'profile', 'license'],
-  founder: ['founder', 'dashboard', 'pos', 'orders', 'tables', 'menu', 'kds', 'staff', 'analytics', 'inventory', 'reservations', 'roles', 'profile', 'license'],
+  founder: ['founder'],
 };
+
+export const FOUNDER_ONLY_PAGES: PageId[] = ['founder'];
+
+export const RESTAURANT_PAGES: PageId[] = [
+  'dashboard', 'pos', 'orders', 'tables', 'menu', 'kds', 'staff', 'analytics', 'inventory', 'reservations', 'roles', 'profile', 'license',
+];
+
+export function isFounderRole(role: Role | string): boolean {
+  return role === 'founder';
+}
 
 export const PAGE_PLAN_MIN: Partial<Record<PageId, Plan>> = {
   kds: 'pro',
@@ -69,7 +79,7 @@ export function allowedPages(
   plan: Plan,
   accessOverride?: PageId[] | null,
 ): PageId[] {
-  if (role === 'founder') return ROLE_PAGES.founder;
+  if (isFounderRole(role)) return ROLE_PAGES.founder;
   const planPages = getDynamicPlanPanels(plan);
   const rolePages = ROLE_PAGES[role] ?? ROLE_PAGES.waiter;
   const base = planPages.filter(p => rolePages.includes(p));
@@ -84,6 +94,8 @@ export function canAccessPage(
   accessOverride?: PageId[] | null,
   accessJson?: string | null,
 ): boolean {
+  if (page === 'founder') return isFounderRole(role);
+  if (isFounderRole(role)) return false;
   if (!allowedPages(role, plan, accessOverride).includes(page)) return false;
   return hasPageScreenAccess(page, role, accessJson);
 }

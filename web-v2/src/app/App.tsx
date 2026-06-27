@@ -28,7 +28,7 @@ import { useAuth, type Plan, type Role } from "./auth";
 import { NavContext } from "./nav";
 import { licensesApi, usersApi, TRIAL_EXPIRED_EVENT, type ApiSubscriptionStatus } from "../services/api";
 import {
-  allowedPages, canAccessPage, planMeetsRequirement, requiredPlanForPage, type PageId,
+  allowedPages, canAccessPage, isFounderRole, planMeetsRequirement, requiredPlanForPage, type PageId,
 } from "../config/access";
 import { useKitchenPrintWorker } from "../hooks/useKitchenPrintWorker";
 import { usePlanConfig } from "./PlanConfigProvider";
@@ -115,20 +115,28 @@ export default function App() {
   const plan = (user?.plan ?? "basic") as Plan;
   const permitted = user ? allowedPages(role, plan, accessPages) : [];
 
-  // Deep link: /?page=founder — founders land on Founder Console by default
+  // Founders: founder console only. Tenants: never land on founder routes.
   useEffect(() => {
     if (!user) return;
+    if (isFounderRole(user.role)) {
+      setActivePage("founder");
+      return;
+    }
     const page = new URLSearchParams(window.location.search).get("page") as PageId | null;
+    if (page === "founder") return;
     if (page && pages[page] && canAccessPage(page, role, plan, accessPages, accessJson)) {
       setActivePage(page);
-    } else if (user.role === "founder") {
-      setActivePage("founder");
     }
   }, [user?.id, user?.role, role, plan, accessPages, accessJson]);
 
   const navigate = useCallback((page: string) => {
     const p = page as PageId;
     if (!user) return;
+    if (isFounderRole(role)) {
+      if (p === "founder") setActivePage("founder");
+      return;
+    }
+    if (p === "founder") return;
     if (!canAccessPage(p, role, plan, accessPages, accessJson)) {
       const req = requiredPlanForPage(p);
       if (req && !planMeetsRequirement(plan, req)) {
@@ -161,7 +169,7 @@ export default function App() {
     return (<><Toaster position="bottom-right" richColors closeButton /><LoginScreen /></>);
   }
 
-  const trialExpired = subscription?.trial_expired && user.role !== "founder";
+  const trialExpired = subscription?.trial_expired && !isFounderRole(user.role);
   const lockedExceptLicense = trialExpired && activePage !== "license";
   const effectivePlan = (subscription?.plan ?? plan) as Plan;
   const showRenewalBanner = user.role === "owner" && subscription
@@ -185,8 +193,9 @@ export default function App() {
     );
   }
 
-  const PageComponent = pages[activePage] || Dashboard;
+  const PageComponent = pages[activePage] || (isFounderRole(role) ? FounderConsole : Dashboard);
   const isFullHeight = fullHeightPages.has(activePage);
+  const isFounder = isFounderRole(role);
 
   return (
     <NavContext.Provider value={{ goToTableOrder, goToPos, goToPage: navigate, posTableId, clearPosTable: () => setPosTableId(null) }}>
@@ -250,13 +259,13 @@ export default function App() {
           />
 
           <main className={`flex-1 cafyz-main-scroll ${isFullHeight ? "app-main-full overflow-hidden" : "app-main-scroll overflow-y-auto"}`}>
-            {permitted.includes(activePage) ? <PageComponent /> : <License />}
-            {!isFullHeight && <div className="app-main-spacer lg:hidden h-20" />}
+            {permitted.includes(activePage) ? <PageComponent /> : (isFounder ? <FounderConsole /> : <Dashboard />)}
+            {!isFullHeight && !isFounder && <div className="app-main-spacer lg:hidden h-20" />}
           </main>
         </div>
 
-        <MobileNav active={activePage} onNavigate={navigate} permittedPages={permitted} />
-        <AIAssistantWidget screen={activePage} onNewBill={goToPos} />
+        {!isFounder && <MobileNav active={activePage} onNavigate={navigate} permittedPages={permitted} />}
+        {!isFounder && <AIAssistantWidget screen={activePage} onNewBill={goToPos} />}
       </div>
     </NavContext.Provider>
   );

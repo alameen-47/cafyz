@@ -83,6 +83,8 @@ export function effectiveScreenAccess(role: string, accessJson?: string | null):
 }
 
 export function hasPageScreenAccess(page: PageId, role: string, accessJson?: string | null): boolean {
+  if (page === 'founder') return role === 'founder';
+  if (role === 'founder') return false;
   const screens = PAGE_SCREEN_MAP[page];
   if (!screens?.length) return true;
   const access = effectiveScreenAccess(role, accessJson);

@@ -1,5 +1,6 @@
 import { motion, AnimatePresence } from "motion/react";
-import { User, Settings, Shield, Moon, Sun, LogOut, ChevronRight, Zap } from "lucide-react";
+import { User, Settings, Shield, LogOut, ChevronRight, Zap, Crown } from "lucide-react";
+import { isFounderRole } from "../../config/access";
 
 interface UserProfileDropdownProps {
   open: boolean;
@@ -21,12 +22,15 @@ const roleColors: Record<string, string> = {
 
 export function UserProfileDropdown({ open, onClose, onNavigate, onLogout, role, plan, userName = "User", userEmail = "", userInitials = "?" }: UserProfileDropdownProps) {
   const initials = (userInitials || userName.split(" ").map(n => n[0]).join("")).slice(0, 2).toUpperCase();
-  const menuItems = [
-    { icon: User,     label: "My Profile",        action: () => onNavigate("profile") },
-    { icon: Settings, label: "Restaurant Settings",action: () => onNavigate("profile") },
-    { icon: Shield,   label: "Roles & Permissions",action: () => onNavigate("roles") },
-    { icon: Zap,      label: "Upgrade Plan",       action: () => onNavigate("license") },
-  ];
+  const founderUser = isFounderRole(role);
+  const menuItems = founderUser
+    ? []
+    : [
+        { icon: User, label: "My Profile", action: () => onNavigate("profile") },
+        { icon: Settings, label: "Restaurant Settings", action: () => onNavigate("profile") },
+        { icon: Shield, label: "Roles & Permissions", action: () => onNavigate("roles") },
+        { icon: Zap, label: "Upgrade Plan", action: () => onNavigate("license") },
+      ];
 
   return (
     <AnimatePresence>
@@ -57,35 +61,48 @@ export function UserProfileDropdown({ open, onClose, onNavigate, onLogout, role,
                   <div className="flex items-center gap-2 mt-1">
                     <span className="text-xs px-1.5 py-0.5 rounded-full capitalize"
                       style={{ background: `${roleColors[role] || "#1e7fff"}15`, color: roleColors[role] || "#1e7fff" }}>
-                      {role}
+                      {founderUser ? "Super Admin" : role}
                     </span>
-                    <span className="text-xs px-1.5 py-0.5 rounded-full capitalize"
-                      style={{ background: `${planColors[plan] || "#1e7fff"}15`, color: planColors[plan] || "#1e7fff" }}>
-                      {plan}
-                    </span>
+                    {!founderUser && (
+                      <span className="text-xs px-1.5 py-0.5 rounded-full capitalize"
+                        style={{ background: `${planColors[plan] || "#1e7fff"}15`, color: planColors[plan] || "#1e7fff" }}>
+                        {plan}
+                      </span>
+                    )}
                   </div>
                 </div>
               </div>
             </div>
 
-            {/* Menu items */}
-            <div className="py-1">
-              {menuItems.map(item => {
-                const Icon = item.icon;
-                return (
-                  <button key={item.label}
-                    onClick={() => { item.action(); onClose(); }}
-                    className="w-full flex items-center gap-3 px-4 py-2.5 text-sm transition-all hover:bg-[var(--cafyz-surface-hover)]">
-                    <Icon size={15} style={{ color: "var(--cafyz-muted)", flexShrink: 0 }} />
-                    <span style={{ color: "var(--cafyz-text-secondary)", flex: 1, textAlign: "left" }}>{item.label}</span>
-                    <ChevronRight size={13} style={{ color: "var(--cafyz-muted)" }} />
-                  </button>
-                );
-              })}
-            </div>
+            {/* Menu items — restaurant users only */}
+            {menuItems.length > 0 && (
+              <div className="py-1">
+                {menuItems.map(item => {
+                  const Icon = item.icon;
+                  return (
+                    <button key={item.label}
+                      onClick={() => { item.action(); onClose(); }}
+                      className="w-full flex items-center gap-3 px-4 py-2.5 text-sm transition-all hover:bg-[var(--cafyz-surface-hover)]">
+                      <Icon size={15} style={{ color: "var(--cafyz-muted)", flexShrink: 0 }} />
+                      <span style={{ color: "var(--cafyz-text-secondary)", flex: 1, textAlign: "left" }}>{item.label}</span>
+                      <ChevronRight size={13} style={{ color: "var(--cafyz-muted)" }} />
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+
+            {founderUser && (
+              <div className="px-4 py-3 border-b" style={{ borderColor: "var(--cafyz-border)" }}>
+                <div className="flex items-center gap-2 text-xs" style={{ color: "var(--cafyz-muted)" }}>
+                  <Crown size={14} style={{ color: "#ff3b5c" }} />
+                  Founder console — platform administration only
+                </div>
+              </div>
+            )}
 
             {/* Divider + logout */}
-            <div className="border-t py-1" style={{ borderColor: "var(--cafyz-border)" }}>
+            <div className={`${menuItems.length > 0 || founderUser ? "border-t" : ""} py-1`} style={{ borderColor: "var(--cafyz-border)" }}>
               <button onClick={() => { onLogout(); onClose(); }}
                 className="w-full flex items-center gap-3 px-4 py-2.5 text-sm transition-all hover:bg-[rgba(255,59,92,0.06)]">
                 <LogOut size={15} style={{ color: "#ff3b5c", flexShrink: 0 }} />

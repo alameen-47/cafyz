@@ -9,7 +9,7 @@ import {
 
 import type { Plan, Role } from "../auth";
 import type { PageId } from "../../config/access";
-import { planMeetsRequirement, requiredPlanForPage } from "../../config/access";
+import { isFounderRole, planMeetsRequirement, requiredPlanForPage } from "../../config/access";
 import { usePlanConfig } from "../PlanConfigProvider";
 import { useThemeMode } from "../ThemeProvider";
 import { CafyzLogo } from "./CafyzLogo";
@@ -74,7 +74,8 @@ export function Sidebar({
   };
 
   const PlanIcon = planConfig[plan].icon;
-  const groups = ["main", "kitchen", "manage", "settings", "founder"];
+  const founderUser = isFounderRole(role);
+  const groups = founderUser ? ["founder"] : ["main", "kitchen", "manage", "settings"];
   const groupLabels: Record<string, string> = {
     main: "Operations", kitchen: "Kitchen & Bookings", manage: "Management", settings: "Settings", founder: "Super Admin"
   };
@@ -185,9 +186,9 @@ export function Sidebar({
 
         {/* Bottom: plan badge + user + logout */}
         <div className="flex-shrink-0 border-t cafyz-sidebar-border-t p-3 space-y-2">
-          {/* Plan badge */}
+          {/* Plan badge — restaurant users only */}
           <AnimatePresence>
-            {!collapsed && (
+            {!collapsed && !founderUser && (
               <motion.button
                 initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
                 onClick={() => handleNav("license")}
@@ -199,6 +200,18 @@ export function Sidebar({
                   {planConfig[plan].label} Plan
                 </span>
               </motion.button>
+            )}
+            {!collapsed && founderUser && (
+              <motion.div
+                initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                className="w-full flex items-center gap-2 px-3 py-2 rounded-xl"
+                style={{ background: "rgba(255,59,92,0.08)", border: "1px solid rgba(255,59,92,0.2)" }}
+              >
+                <Crown size={14} style={{ color: "#ff3b5c" }} />
+                <span style={{ color: "#ff3b5c", fontSize: "0.75rem", fontWeight: 700 }}>
+                  Super Admin
+                </span>
+              </motion.div>
             )}
           </AnimatePresence>
 
