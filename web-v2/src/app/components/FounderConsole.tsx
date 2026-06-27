@@ -23,6 +23,15 @@ const shortDate = (iso?: string) => iso ? new Date(iso).toLocaleDateString(undef
 
 type KeyFilter = "all" | "unused" | "used" | "revoked";
 
+function isUnusedLicenseKey(k: ApiLicenseKey): boolean {
+  const rid = k.restaurant_id;
+  return rid == null || String(rid).trim() === "";
+}
+
+function isUsedLicenseKey(k: ApiLicenseKey): boolean {
+  return !isUnusedLicenseKey(k);
+}
+
 function DeleteAction({ disabled, onClick, label = "Delete" }: { disabled?: boolean; onClick: () => void; label?: string }) {
   return (
     <button
@@ -242,7 +251,7 @@ export function FounderConsole() {
   };
 
   const removeLicenseKey = async (lk: ApiLicenseKey) => {
-    const msg = lk.restaurant_id
+    const msg = isUsedLicenseKey(lk)
       ? `Delete key ${lk.key_code}? It is linked to ${lk.restaurant_name ?? "a restaurant"}.`
       : `Delete unused key ${lk.key_code}?`;
     if (!window.confirm(msg)) return;
@@ -258,14 +267,24 @@ export function FounderConsole() {
   };
 
   const deleteUnusedKeys = async () => {
-    const count = keys.filter(k => !k.restaurant_id).length;
+    const targets = keys.filter(isUnusedLicenseKey);
+    const count = targets.length;
     if (!count) { toast.error("No unused license keys to delete"); return; }
     if (!window.confirm(`Permanently delete ${count} unused license key(s)?`)) return;
     setBusy(true);
     try {
-      const res = await founderApi.bulkDeleteLicenseKeys({ unused_only: true });
-      setKeys(prev => prev.filter(k => k.restaurant_id));
-      toast.success("Unused keys deleted", `${res.deleted} removed`);
+      let deleted = 0;
+      try {
+        const res = await founderApi.bulkDeleteLicenseKeys({ unused_only: true });
+        deleted = res.deleted;
+      } catch {
+        for (const k of targets) {
+          await founderApi.deleteLicenseKey(k.id);
+          deleted += 1;
+        }
+      }
+      setKeys(prev => prev.filter(isUsedLicenseKey));
+      toast.success("Unused keys deleted", `${deleted} removed`);
       void load();
     } catch (e) {
       toast.error("Couldn't delete unused keys", (e as Error).message);
@@ -273,14 +292,24 @@ export function FounderConsole() {
   };
 
   const deleteRevokedKeys = async () => {
-    const count = keys.filter(k => Number(k.is_active) === 0).length;
+    const targets = keys.filter(k => Number(k.is_active) === 0);
+    const count = targets.length;
     if (!count) { toast.error("No revoked keys to delete"); return; }
     if (!window.confirm(`Permanently delete ${count} revoked license key(s)?`)) return;
     setBusy(true);
     try {
-      const res = await founderApi.bulkDeleteLicenseKeys({ revoked_only: true });
+      let deleted = 0;
+      try {
+        const res = await founderApi.bulkDeleteLicenseKeys({ revoked_only: true });
+        deleted = res.deleted;
+      } catch {
+        for (const k of targets) {
+          await founderApi.deleteLicenseKey(k.id);
+          deleted += 1;
+        }
+      }
       setKeys(prev => prev.filter(k => Number(k.is_active) !== 0));
-      toast.success("Revoked keys deleted", `${res.deleted} removed`);
+      toast.success("Revoked keys deleted", `${deleted} removed`);
       void load();
     } catch (e) {
       toast.error("Couldn't delete revoked keys", (e as Error).message);
@@ -368,14 +397,14 @@ export function FounderConsole() {
   const pendingTrials = stats?.pending_license_requests ?? inquiries.filter(i => i.status === "pending").length;
   const filteredUsers = users.filter(u => !userFilter || u.restaurant_id === userFilter);
   const filteredKeys = keys.filter(k => {
-    if (keyFilter === "unused") return !k.restaurant_id;
-    if (keyFilter === "used") return Boolean(k.restaurant_id);
+    if (keyFilter === "unused") return isUnusedLicenseKey(k);
+    if (keyFilter === "used") return isUsedLicenseKey(k);
     if (keyFilter === "revoked") return Number(k.is_active) === 0;
     return true;
   });
   const resolvedInquiryCount = inquiries.filter(i => i.status !== "pending").length;
   const resolvedLicReqCount = licReqs.filter(r => r.status !== "pending").length;
-  const unusedKeyCount = keys.filter(k => !k.restaurant_id).length;
+  const unusedKeyCount = keys.filter(isUnusedLicenseKey).length;
   const revokedKeyCount = keys.filter(k => Number(k.is_active) === 0).length;
 
   return (

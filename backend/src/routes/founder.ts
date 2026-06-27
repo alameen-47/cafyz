@@ -12,6 +12,12 @@ import { ADMIN_EMAIL, sendMailReliable, smtpFrom } from '../services/email.js';
 import { cacheDel, cacheDelPrefix } from '../cache.js';
 import { bumpTokenVersion } from '../services/tokenVersion.js';
 import { invalidateUserAuthCache } from '../middleware/auth.js';
+import {
+  deleteLicenseKeyById,
+  deleteLicenseKeysByIds,
+  deleteRevokedLicenseKeys,
+  deleteUnusedLicenseKeys,
+} from '../services/founderCleanup.js';
 
 const router = Router();
 const onlyFounder = [requireAuth, requireRole('founder')] as const;
@@ -405,9 +411,8 @@ router.delete('/license-keys/:id', ...onlyFounder, async (req, res, next) => {
   try {
     const id = String(req.params.id);
     const db = getDb();
-    const row = await db.execute({ sql: `SELECT id FROM license_keys WHERE id=? LIMIT 1`, args: [id] });
-    if (!row.rows.length) { res.status(404).json({ error: 'License key not found' }); return; }
-    await db.execute({ sql: `DELETE FROM license_keys WHERE id=?`, args: [id] });
+    const ok = await deleteLicenseKeyById(db, id);
+    if (!ok) { res.status(404).json({ error: 'License key not found' }); return; }
     res.status(204).end();
   } catch (e) { next(e); }
 });
@@ -423,22 +428,11 @@ router.post('/license-keys/bulk-delete', ...onlyFounder, async (req, res, next) 
     const db = getDb();
     let deleted = 0;
     if (body.unused_only) {
-      const r = await db.execute({
-        sql: `DELETE FROM license_keys WHERE restaurant_id IS NULL`,
-        args: [],
-      });
-      deleted = Number(r.rowsAffected ?? 0);
+      deleted = await deleteUnusedLicenseKeys(db);
     } else if (body.revoked_only) {
-      const r = await db.execute({
-        sql: `DELETE FROM license_keys WHERE is_active=0`,
-        args: [],
-      });
-      deleted = Number(r.rowsAffected ?? 0);
+      deleted = await deleteRevokedLicenseKeys(db);
     } else if (body.ids?.length) {
-      for (const id of body.ids) {
-        const r = await db.execute({ sql: `DELETE FROM license_keys WHERE id=?`, args: [id] });
-        deleted += Number(r.rowsAffected ?? 0);
-      }
+      deleted = await deleteLicenseKeysByIds(db, body.ids);
     } else {
       res.status(400).json({ error: 'Provide ids, unused_only, or revoked_only' });
       return;
