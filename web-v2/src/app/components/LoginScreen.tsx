@@ -298,21 +298,23 @@ export function LoginScreen({ onLogin }: { onLogin?: () => void }) {
         <p style={{ color: "#6b82a0", fontSize: "0.72rem" }}>© 2026 Cafyz Technologies. All rights reserved.</p>
       </div>
 
-      {/* Form panel — full screen, content centered */}
-      <div className="login-screen-form-shell relative flex h-full min-h-0 w-full flex-1 flex-col">
+      {/* Form panel — 30% logo band + 70% fixed credentials panel (mobile) */}
+      <div className="login-screen-form-shell relative flex h-full min-h-0 w-full flex-1 flex-col overflow-hidden">
         <div className="absolute top-[max(0.5rem,env(safe-area-inset-top))] right-3 z-20 sm:right-4 lg:top-6 lg:right-6">
           <LanguageSwitcher variant="login" />
         </div>
 
-        <div className="login-screen-scroll flex-1 min-h-0">
-          <div className="login-screen-inner px-4 sm:px-6 lg:px-6 lg:py-8">
-            <div className="login-screen-brand mb-5 flex flex-shrink-0 justify-center sm:mb-6 lg:hidden">
-              <CafyzLogo
-                size="loginMobile"
-                className="login-screen-logo drop-shadow-[0_10px_36px_rgba(30,127,255,0.28)]"
-              />
-            </div>
-            <div className="login-screen-form">
+        <div className="login-screen-logo-band lg:hidden">
+          <CafyzLogo
+            size="loginMobile"
+            className="login-screen-logo drop-shadow-[0_10px_36px_rgba(30,127,255,0.28)]"
+          />
+        </div>
+
+        <div className="login-screen-panel flex-1 min-h-0">
+          <div className="login-screen-panel-scroll h-full">
+            <div className="login-screen-panel-inner px-4 sm:px-6 lg:px-6 lg:py-8">
+              <div className="login-screen-credentials">
           <AnimatePresence mode="wait" initial={false}>
             {authState === "login" && (
               <motion.div key="login" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -16 }} className="space-y-4 sm:space-y-6">
@@ -615,6 +617,7 @@ export function LoginScreen({ onLogin }: { onLogin?: () => void }) {
               </motion.div>
             )}
           </AnimatePresence>
+              </div>
             </div>
           </div>
         </div>
