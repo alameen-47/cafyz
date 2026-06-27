@@ -107,32 +107,57 @@ function appMailDomain(): string | null {
   }
 }
 
-/** Resend `from` — use verified domain (e.g. noreply@ametronyx.com), not onboarding@resend.dev in production. */
-export function resolveResendFrom(): string {
-  const name = process.env.SMTP_FROM_NAME ?? 'Cafyz';
-  const testFallback = `"${name}" <onboarding@resend.dev>`;
+function isFreeMailAddress(email: string): boolean {
+  const domain = email.split('@')[1]?.toLowerCase() ?? '';
+  return FREE_MAIL_DOMAINS.has(domain);
+}
 
+function verifiedSenderFromEnv(defaultName: string): string | null {
   const senderEmail = (
     process.env.RESEND_SENDER_EMAIL?.trim()
     ?? (process.env.RESEND_FROM?.trim() ? parseFromHeader(stripEnvQuotes(process.env.RESEND_FROM)).email : null)
   )?.toLowerCase();
 
-  if (senderEmail && senderEmail !== 'onboarding@resend.dev') {
-    const domain = senderEmail.split('@')[1] ?? '';
-    if (!FREE_MAIL_DOMAINS.has(domain)) {
-      const displayName = process.env.RESEND_FROM?.trim()
-        ? (parseFromHeader(stripEnvQuotes(process.env.RESEND_FROM)).name ?? name)
-        : name;
-      return `"${displayName}" <${senderEmail}>`;
+  if (!senderEmail || senderEmail === 'onboarding@resend.dev' || isFreeMailAddress(senderEmail)) {
+    if (senderEmail && isFreeMailAddress(senderEmail)) {
+      // eslint-disable-next-line no-console
+      console.warn(`[Resend] Cannot send from @${senderEmail.split('@')[1]}. Using verified app domain instead.`);
     }
-    // eslint-disable-next-line no-console
-    console.warn(`[Resend] Cannot send from @${domain}. Using verified app domain instead.`);
+    return null;
   }
+
+  const displayName = process.env.RESEND_FROM?.trim()
+    ? (parseFromHeader(stripEnvQuotes(process.env.RESEND_FROM)).name ?? defaultName)
+    : defaultName;
+  return `"${displayName}" <${senderEmail}>`;
+}
+
+/**
+ * Resend `from` — never use free-mail domains (Gmail etc.); Resend rejects them with 403.
+ * Optional override keeps display name but still maps unverified addresses to the app domain.
+ */
+export function resolveResendFrom(override?: string): string {
+  const defaultName = process.env.SMTP_FROM_NAME ?? 'Cafyz';
+  const testFallback = `"${defaultName}" <onboarding@resend.dev>`;
+
+  if (override?.trim()) {
+    const parsed = parseFromHeader(stripEnvQuotes(override));
+    const displayName = parsed.name ?? defaultName;
+    if (!isFreeMailAddress(parsed.email)) {
+      return `"${displayName}" <${parsed.email.toLowerCase()}>`;
+    }
+  }
+
+  const fromEnv = verifiedSenderFromEnv(defaultName);
+  if (fromEnv) return fromEnv;
 
   const mailDomain = appMailDomain();
   if (mailDomain) {
     const local = process.env.RESEND_SENDER_LOCAL ?? 'noreply';
-    return `"${name}" <${local}@${mailDomain}>`;
+    const displayName = override?.trim()
+      ? (parseFromHeader(stripEnvQuotes(override)).name ?? defaultName)
+      : defaultName;
+    return `"${displayName}" <${local}@${mailDomain}>`;
   }
 
   return testFallback;
@@ -156,9 +181,8 @@ async function sendViaResend(mail: nodemailer.SendMailOptions): Promise<EmailSen
   const to = normalizeRecipients(mail.to);
   if (!to.length) return { ok: false, error: 'Missing recipient' };
 
-  const from = typeof mail.from === 'string' && mail.from.trim()
-    ? stripEnvQuotes(mail.from)
-    : resolveResendFrom();
+  const requestedFrom = typeof mail.from === 'string' && mail.from.trim() ? mail.from : undefined;
+  const from = resolveResendFrom(requestedFrom);
   const body: Record<string, unknown> = {
     from,
     to,
@@ -167,21 +191,31 @@ async function sendViaResend(mail: nodemailer.SendMailOptions): Promise<EmailSen
   };
   if (mail.replyTo) body.reply_to = mail.replyTo;
 
+  const timeoutMs = Number(process.env.EMAIL_HTTP_TIMEOUT_MS ?? 15000);
+  const maxAttempts = 3;
+
   try {
-    const res = await fetch('https://api.resend.com/emails', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(body),
-      signal: AbortSignal.timeout(Number(process.env.EMAIL_HTTP_TIMEOUT_MS ?? 15000)),
-    });
-    if (!res.ok) {
-      const errText = await res.text();
-      return { ok: false, error: `Resend ${res.status}: ${errText.slice(0, 300)}` };
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      if (attempt > 0) {
+        await new Promise((r) => setTimeout(r, 650 * attempt));
+      }
+      const res = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(body),
+        signal: AbortSignal.timeout(timeoutMs),
+      });
+      if (res.status === 429 && attempt < maxAttempts - 1) continue;
+      if (!res.ok) {
+        const errText = await res.text();
+        return { ok: false, error: `Resend ${res.status}: ${errText.slice(0, 300)}` };
+      }
+      return { ok: true, provider: 'resend' };
     }
-    return { ok: true, provider: 'resend' };
+    return { ok: false, error: 'Resend 429: rate limited' };
   } catch (e) {
     return { ok: false, error: (e as Error).message };
   }
@@ -291,6 +325,13 @@ function buildAllTransporters(): nodemailer.Transporter[] {
 }
 
 export function smtpFrom(system = false): string {
+  if (isResendConfigured()) {
+    const base = resolveResendFrom();
+    if (!system) return base;
+    const parsed = parseFromHeader(base);
+    const name = `${parsed.name ?? 'Cafyz'} System`;
+    return `"${name}" <${parsed.email}>`;
+  }
   const addr = process.env.SMTP_FROM ?? process.env.SMTP_USER ?? 'noreply@cafyz.io';
   const name = process.env.SMTP_FROM_NAME ?? 'Cafyz';
   return system ? `"${name} System" <${addr}>` : `"${name}" <${addr}>`;
@@ -298,6 +339,7 @@ export function smtpFrom(system = false): string {
 
 /** Founder-branded sender for trial / renewal reminders (uses RESEND_FROM or FOUNDER_EMAIL). */
 export function founderFrom(): string {
+  if (isResendConfigured()) return resolveResendFrom();
   const explicit = process.env.RESEND_FROM?.trim();
   if (explicit) return stripEnvQuotes(explicit);
   const founder = process.env.FOUNDER_EMAIL?.trim();
@@ -382,6 +424,9 @@ export async function sendMailReliable(
     result = await tryBrevo() ?? await tryResend();
   } else if (prefer === 'resend') {
     result = await tryResend();
+    if (!result && !isRenderSmtpBlocked() && isSmtpConfigured()) {
+      return sendViaSmtp(mail, timeoutMs);
+    }
   } else {
     result = await tryResend() ?? await tryBrevo();
   }

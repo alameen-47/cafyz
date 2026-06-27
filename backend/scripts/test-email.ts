@@ -3,7 +3,7 @@
  * Usage: npm run email:test
  */
 import '../src/loadEnv.js';
-import { ADMIN_EMAIL, isResendConfigured, sendMailReliable } from '../src/services/email.js';
+import { ADMIN_EMAIL, isResendConfigured, resolveResendFrom, sendMailReliable } from '../src/services/email.js';
 
 async function main() {
   const to = process.env.FOUNDER_EMAIL ?? ADMIN_EMAIL;
@@ -12,13 +12,16 @@ async function main() {
     process.exit(1);
   }
 
+  const from = resolveResendFrom();
+  console.log(`Sending test email from ${from} to ${to}`);
+
   const r = await sendMailReliable({
     to,
     subject: `[Cafyz] Resend test — ${new Date().toISOString().slice(0, 19)}`,
     html: '<p><strong>Resend is working.</strong> Trial approval emails will use this channel.</p>',
   });
 
-  console.log(JSON.stringify({ to, ...r }, null, 2));
+  console.log(JSON.stringify({ from, to, ...r }, null, 2));
   process.exit(r.ok ? 0 : 1);
 }
 
