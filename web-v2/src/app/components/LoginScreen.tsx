@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { Eye, EyeOff, ArrowRight, Phone, Lock, Mail, Delete, ChevronRight, Star, Store, User } from "lucide-react";
+import { Eye, EyeOff, ArrowRight, Phone, Lock, Mail, Delete, ChevronRight, Star, Store, User, CheckCircle2 } from "lucide-react";
 import { toast } from "./Toast";
 import { useAuth } from "../auth";
 import { authApi, inquiryApi, type ApiPlanConfig } from "../../services/api";
@@ -11,7 +11,7 @@ import { useLanguage } from "../../i18n/LanguageProvider";
 import { CafyzLogo } from "./CafyzLogo";
 
 type AuthMethod = "password" | "pin" | "otp";
-type AuthState = "login" | "forgot" | "reset" | "otp-verify" | "inquiry";
+type AuthState = "login" | "forgot" | "reset" | "otp-verify" | "inquiry" | "inquiry-sent";
 
 const stats = [
   { label: "Restaurants", value: "2,400+" },
@@ -66,6 +66,28 @@ function PinPad({ onSubmit }: { onSubmit: (pin: string) => void }) {
   );
 }
 
+function ActivityLoader({ label, sublabel }: { label: string; sublabel?: string }) {
+  return (
+    <div className="flex flex-col items-center justify-center py-12 gap-5 text-center">
+      <div className="relative w-16 h-16" aria-hidden>
+        <div className="absolute inset-0 rounded-full" style={{ border: "2px solid rgba(30,127,255,0.12)" }} />
+        <div className="absolute inset-0 rounded-full border-2 border-transparent border-t-[#1e7fff] animate-spin" />
+        <div
+          className="absolute inset-2 rounded-full border-2 border-transparent border-b-[#00c6ff] animate-spin"
+          style={{ animationDirection: "reverse", animationDuration: "0.85s" }}
+        />
+        <div className="absolute inset-[18px] rounded-full" style={{ background: "rgba(30,127,255,0.2)" }} />
+      </div>
+      <div>
+        <p style={{ color: "#e8eef8", fontSize: "0.95rem", fontWeight: 600 }}>{label}</p>
+        {sublabel ? (
+          <p style={{ color: "#6b82a0", fontSize: "0.8rem", marginTop: 6, lineHeight: 1.5, maxWidth: 280 }}>{sublabel}</p>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
 export function LoginScreen({ onLogin }: { onLogin?: () => void }) {
   const { t } = useLanguage();
   const { plans: planConfigs } = usePlanConfig();
@@ -104,16 +126,26 @@ export function LoginScreen({ onLogin }: { onLogin?: () => void }) {
   }, []);
 
   const [inq, setInq] = useState({ name: "", restaurant: "", email: "", phone: "", plan: "premium", message: "" });
+  const [inquirySubmitting, setInquirySubmitting] = useState(false);
+  const [inquirySentMessage, setInquirySentMessage] = useState("");
   const setInqField = (k: keyof typeof inq, v: string) => setInq(s => ({ ...s, [k]: v }));
+
+  const goToSignIn = (prefillEmail?: string) => {
+    if (prefillEmail) setEmail(prefillEmail);
+    setMethod("password");
+    setAuthState("login");
+    setInquirySubmitting(false);
+  };
 
   function errMsg(e: unknown) { return e instanceof Error ? e.message : "Something went wrong"; }
 
   const submitInquiry = async () => {
+    if (inquirySubmitting) return;
     if (!inq.name.trim() || !inq.restaurant.trim() || !inq.email.trim() || !inq.phone.trim()) {
       toast.error("Name, restaurant, email, and mobile number are required");
       return;
     }
-    setLoading(true);
+    setInquirySubmitting(true);
     try {
       const res = await inquiryApi.submit({
         name: inq.name.trim(),
@@ -123,14 +155,16 @@ export function LoginScreen({ onLogin }: { onLogin?: () => void }) {
         plan: inq.plan,
         message: inq.message.trim() || undefined,
       });
-      toast.success("Trial request sent", {
-        description: res.message || "We'll email your login details once the founder approves your request.",
-      });
-      setAuthState("login");
+      const submittedEmail = inq.email.trim().toLowerCase();
+      setInquirySentMessage(
+        res.message || "Your trial request is pending founder approval. We'll email your login details once approved.",
+      );
+      setEmail(submittedEmail);
+      setAuthState("inquiry-sent");
     } catch (e) {
       toast.error(errMsg(e));
     } finally {
-      setLoading(false);
+      setInquirySubmitting(false);
     }
   };
 
@@ -281,8 +315,8 @@ export function LoginScreen({ onLogin }: { onLogin?: () => void }) {
         </header>
 
         <div className="flex-1 w-full min-h-0 flex flex-col items-center overflow-y-auto px-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] lg:flex-none lg:overflow-visible lg:justify-center lg:p-6 lg:pt-6">
-        <div className="w-full max-w-[400px]">
-          <AnimatePresence mode="wait">
+        <div className="w-full max-w-[400px] min-h-[min(72dvh,520px)] flex flex-col justify-center">
+          <AnimatePresence mode="wait" initial={false}>
             {authState === "login" && (
               <motion.div key="login" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -16 }} className="space-y-6">
                 <div>
@@ -383,9 +417,16 @@ export function LoginScreen({ onLogin }: { onLogin?: () => void }) {
             )}
 
             {authState === "inquiry" && (
-              <motion.div key="inquiry" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -16 }} className="space-y-4">
+              <motion.div key="inquiry" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -12 }} className="space-y-4 relative">
+                {inquirySubmitting ? (
+                  <ActivityLoader
+                    label="Sending your trial request…"
+                    sublabel="We're notifying our founder and sending you a confirmation email. This usually takes a few seconds."
+                  />
+                ) : (
+                  <>
                 <div>
-                  <button onClick={() => setAuthState("login")} style={{ color: "#6b82a0", fontSize: "0.8rem" }}>← Back to sign in</button>
+                  <button type="button" onClick={() => goToSignIn()} style={{ color: "#6b82a0", fontSize: "0.8rem" }}>← Back to sign in</button>
                   <h2 style={{ fontFamily: "var(--font-display)", fontWeight: 700, color: "#e8eef8", fontSize: "1.6rem", marginTop: 10 }}>Start your free trial</h2>
                   <p style={{ color: "#6b82a0", fontSize: "0.85rem", marginTop: 4, lineHeight: 1.5 }}>
                     Request access — no password needed now. Our founder will review your request and email you login credentials once approved. You can sign in later with your email or mobile number.
@@ -432,13 +473,72 @@ export function LoginScreen({ onLogin }: { onLogin?: () => void }) {
                     className="w-full rounded-xl px-3 py-3 text-sm outline-none placeholder:text-[#6b82a0] resize-none"
                     style={{ background: "#0d1326", color: "#e8eef8", border: "1px solid rgba(30,127,255,0.15)" }} />
                 </div>
-                <motion.button whileTap={{ scale: 0.97 }} onClick={submitInquiry} disabled={loading}
+                <motion.button whileTap={{ scale: 0.97 }} onClick={submitInquiry} disabled={inquirySubmitting}
                   className="w-full py-3 rounded-xl text-sm font-semibold flex items-center justify-center gap-2 transition-all hover:opacity-90"
-                  style={{ background: "linear-gradient(135deg, #1e7fff, #00c6ff)", color: "#fff", opacity: loading ? 0.7 : 1 }}>
-                  {loading ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <>Request free trial <ArrowRight size={16} /></>}
+                  style={{ background: "linear-gradient(135deg, #1e7fff, #00c6ff)", color: "#fff", opacity: inquirySubmitting ? 0.7 : 1 }}>
+                  <>Request free trial <ArrowRight size={16} /></>
                 </motion.button>
                 <p style={{ color: "#6b82a0", fontSize: "0.72rem", textAlign: "center", lineHeight: 1.5 }}>
                   You'll receive a confirmation email now. Login credentials are sent after founder approval — use email or mobile with your password to sign in.
+                </p>
+                  </>
+                )}
+              </motion.div>
+            )}
+
+            {authState === "inquiry-sent" && (
+              <motion.div
+                key="inquiry-sent"
+                initial={{ opacity: 0, y: 16 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -12 }}
+                className="space-y-6"
+              >
+                <div className="rounded-2xl p-6 text-center space-y-4"
+                  style={{ background: "rgba(34,197,94,0.08)", border: "1px solid rgba(34,197,94,0.22)" }}>
+                  <div className="flex justify-center">
+                    <CheckCircle2 size={44} style={{ color: "#22c55e" }} strokeWidth={1.75} />
+                  </div>
+                  <div>
+                    <h2 style={{ fontFamily: "var(--font-display)", fontWeight: 700, color: "#e8eef8", fontSize: "1.35rem" }}>
+                      Trial request received
+                    </h2>
+                    <p style={{ color: "#a8bdd4", fontSize: "0.85rem", marginTop: 10, lineHeight: 1.6 }}>
+                      {inquirySentMessage}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="rounded-xl p-4 space-y-3" style={{ background: "#0d1326", border: "1px solid rgba(30,127,255,0.1)" }}>
+                  <p style={{ color: "#6b82a0", fontSize: "0.72rem", fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase" }}>What happens next</p>
+                  {[
+                    "Check your inbox for a confirmation email.",
+                    "Our founder reviews your request (usually within 24 hours).",
+                    "Once approved, you'll get login credentials by email.",
+                    "Sign in with your email or mobile number and password.",
+                  ].map((step, i) => (
+                    <div key={step} className="flex gap-3 items-start">
+                      <span className="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 text-xs font-bold"
+                        style={{ background: "rgba(30,127,255,0.12)", color: "#1e7fff" }}>
+                        {i + 1}
+                      </span>
+                      <p style={{ color: "#a8bdd4", fontSize: "0.82rem", lineHeight: 1.5 }}>{step}</p>
+                    </div>
+                  ))}
+                </div>
+
+                <motion.button
+                  whileTap={{ scale: 0.97 }}
+                  type="button"
+                  onClick={() => goToSignIn(email || inq.email.trim().toLowerCase())}
+                  className="w-full py-3 rounded-xl text-sm font-semibold flex items-center justify-center gap-2 transition-all hover:opacity-90"
+                  style={{ background: "linear-gradient(135deg, #1e7fff, #00c6ff)", color: "#fff" }}
+                >
+                  Back to sign in <ArrowRight size={16} />
+                </motion.button>
+
+                <p style={{ color: "#6b82a0", fontSize: "0.72rem", textAlign: "center", lineHeight: 1.5 }}>
+                  Already approved? Use the credentials from your approval email to sign in above.
                 </p>
               </motion.div>
             )}
