@@ -1,5 +1,6 @@
 import type { Client } from '@libsql/client';
 import { getDb } from '../db.js';
+import { rowString } from '../dbRows.js';
 
 /** Keys generated but not yet activated on a restaurant. */
 export const UNUSED_LICENSE_KEY_WHERE = `(restaurant_id IS NULL OR TRIM(COALESCE(restaurant_id, '')) = '')`;
@@ -21,7 +22,7 @@ async function selectIds(db: Client, where: string, args: (string | number)[] = 
     sql: `SELECT id FROM license_keys WHERE ${where}`,
     args,
   });
-  return rows.rows.map(r => String((r as { id: string }).id));
+  return rows.rows.map(r => rowString(r, 'id'));
 }
 
 export async function deleteLicenseKeysByIds(db: Client, ids: string[]): Promise<number> {
