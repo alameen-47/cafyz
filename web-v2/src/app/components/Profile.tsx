@@ -3,11 +3,11 @@ import { motion } from "motion/react";
 import QRCode from "qrcode";
 import {
   Camera, Save, Globe, DollarSign, FileText, MapPin, Phone, Shield, QrCode,
-  Download, User, Lock, Link2, Building2, Trash2, Loader2,
+  Download, Link2, Building2, Trash2, Loader2,
   Printer, ReceiptText, ChefHat, RefreshCw, CheckCircle2, AlertCircle,
 } from "lucide-react";
 import { toast } from "./Toast";
-import { restaurantApi, authApi, publicApi, RESTAURANT_SETTINGS_CHANGED_EVENT, type ApiRestaurant } from "../../services/api";
+import { restaurantApi, publicApi, RESTAURANT_SETTINGS_CHANGED_EVENT, type ApiRestaurant } from "../../services/api";
 import {
   uploadRestaurantLogo,
   removeRestaurantLogoEverywhere,
@@ -16,6 +16,7 @@ import {
 import { getCurrencySymbol, resolveCurrencySymbol, setActiveCurrency, symbolForCode } from "../../utils/currency";
 import { computeBillTotals } from "../../utils/billTotals";
 import { useAuth } from "../auth";
+import { canManagePlan } from "../../config/access";
 import { PrinterSetupPanel } from "./PrinterSetupPanel";
 import {
   autoReconnectBluetooth,
@@ -189,12 +190,7 @@ export function Profile() {
     }
   }, [generateQr, menuIdentifier]);
 
-  // Manager / owner account (the logged-in user) — scoped to this restaurant.
-  const [account, setAccount] = useState({ name: "", email: "", phone: "", role: "" });
-  const [savingAccount, setSavingAccount] = useState(false);
-  const [pw, setPw] = useState({ current: "", next: "", confirm: "" });
-  const [savingPw, setSavingPw] = useState(false);
-
+  // QR code — encodes this restaurant's live public menu URL
   const [printBusy, setPrintBusy] = useState(false);
   const [showPrinterModal, setShowPrinterModal] = useState(false);
   const [kitchenPrinter, setKitchenPrinter] = useState<PrinterAssignment | null>(null);
@@ -241,10 +237,6 @@ export function Profile() {
       setKitchenPrinter(r.kitchen_printer ?? null);
       setCashierPrinter(r.cashier_printer ?? null);
     }).catch(e => toast.error("Couldn't load settings", (e as Error).message));
-
-    authApi.me().then(u => {
-      setAccount({ name: u.name ?? "", email: u.email ?? "", phone: u.phone ?? "", role: u.role ?? "" });
-    }).catch(e => toast.error("Couldn't load your account", (e as Error).message));
   }, []);
 
   useEffect(() => {
@@ -349,52 +341,6 @@ export function Profile() {
     }
   };
 
-  // ── Manager account (the logged-in user) ─────────────────────────────────────
-  const handleSaveAccount = async () => {
-    if (!account.name.trim() || !account.email.trim()) {
-      toast.error("Name and email are required", "");
-      return;
-    }
-    setSavingAccount(true);
-    try {
-      const updated = await authApi.updateProfile({
-        name: account.name.trim(),
-        email: account.email.trim().toLowerCase(),
-        phone: account.phone.trim(),
-      });
-      setAccount({ name: updated.name, email: updated.email, phone: updated.phone ?? "", role: updated.role });
-      // Keep the cached session in sync so the sidebar avatar/name refresh on reload.
-      try {
-        const stored = localStorage.getItem("cafyz_user");
-        if (stored) {
-          const u = JSON.parse(stored);
-          u.name = updated.name; u.email = updated.email; u.initials = updated.initials || u.initials;
-          localStorage.setItem("cafyz_user", JSON.stringify(u));
-        }
-      } catch { /* non-fatal */ }
-      toast.success("Account updated", "Your manager details have been saved.");
-    } catch (e) {
-      toast.error("Couldn't update account", (e as Error).message);
-    } finally {
-      setSavingAccount(false);
-    }
-  };
-
-  const handleChangePassword = async () => {
-    if (pw.next.length < 8) { toast.error("Password too short", "Use at least 8 characters."); return; }
-    if (pw.next !== pw.confirm) { toast.error("Passwords don't match", ""); return; }
-    setSavingPw(true);
-    try {
-      await authApi.changePassword(pw.current, pw.next);
-      setPw({ current: "", next: "", confirm: "" });
-      toast.success("Password changed", "Use your new password next time you sign in.");
-    } catch (e) {
-      toast.error("Couldn't change password", (e as Error).message);
-    } finally {
-      setSavingPw(false);
-    }
-  };
-
   const handleRestaurantPrinterUpdate = (r: ApiRestaurant) => {
     setKitchenPrinter(r.kitchen_printer ?? null);
     setCashierPrinter(r.cashier_printer ?? null);
@@ -405,7 +351,7 @@ export function Profile() {
     setPrintBusy(true);
     try {
       const method = await printTest(
-        profilePrintTestOpts(profile, logoUrl, account.name),
+        profilePrintTestOpts(profile, logoUrl, user?.name),
         { channel: "dialog" },
       );
       toast.success(
@@ -427,7 +373,7 @@ export function Profile() {
     setPrintBusy(true);
     try {
       const method = await printTest(
-        { ...profilePrintTestOpts(profile, logoUrl, account.name), restaurantId: user.restaurant_id },
+        { ...profilePrintTestOpts(profile, logoUrl, user?.name), restaurantId: user.restaurant_id },
         { channel: "auto" },
       );
       refreshPrinter();
@@ -456,7 +402,7 @@ export function Profile() {
         logoUrl,
         ticketId: "TEST",
         tableName: "TEST",
-        serverName: account.name || "Staff",
+        serverName: user?.name || "Staff",
         covers: 2,
         station: "Grill",
         items: [
@@ -480,6 +426,19 @@ export function Profile() {
   };
 
   const initials = nameInitials(profile.name, "??");
+  const managerUser = canManagePlan(user?.role ?? "");
+
+  if (!managerUser) {
+    return (
+      <div className="p-6 flex flex-col items-center justify-center min-h-[40vh] text-center max-w-md mx-auto">
+        <Shield size={32} style={{ color: "var(--cafyz-muted)", marginBottom: 12 }} />
+        <p style={{ color: "var(--cafyz-text)", fontWeight: 600 }}>Managers only</p>
+        <p style={{ color: "var(--cafyz-muted)", fontSize: "0.82rem", marginTop: 6, lineHeight: 1.55 }}>
+          Restaurant settings and plan details are managed by owners and managers. Use the profile menu (top right) for your personal account, password, and PIN.
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="p-3 sm:p-4 md:p-6 space-y-4 max-w-3xl w-full">
@@ -517,7 +476,7 @@ export function Profile() {
                 >
                   {profile.name || user?.restaurant_name || "Your restaurant"}
                 </h2>
-                {user?.plan && (
+                {user?.plan && canManagePlan(user.role) && (
                   <span
                     className="px-2 py-0.5 rounded-full text-[0.65rem] font-semibold uppercase tracking-wide flex-shrink-0"
                     style={{ background: "var(--cafyz-badge-bg)", color: "var(--cafyz-brand)", border: "1px solid var(--cafyz-accent-border)" }}
@@ -545,26 +504,26 @@ export function Profile() {
               className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 text-xs font-bold"
               style={{ background: "rgba(30,127,255,0.12)", color: "#1e7fff" }}
             >
-              {(account.name || user?.name || "?").slice(0, 2).toUpperCase()}
+              {(user?.name || "?").slice(0, 2).toUpperCase()}
             </div>
             <div className="min-w-0 flex-1">
               <p className="truncate" style={{ color: "var(--cafyz-text)", fontSize: "0.8rem", fontWeight: 600 }}>
-                {account.name || user?.name || "Account"}
+                {user?.name || "Account"}
               </p>
               <p className="truncate" style={{ color: "var(--cafyz-muted)", fontSize: "0.7rem" }}>
-                {account.email || user?.email || "—"}
+                {user?.email || "—"}
               </p>
             </div>
-            {account.role && (
+            {user?.role && (
               <span
                 className="px-2 py-1 rounded-lg text-[0.65rem] font-semibold flex-shrink-0"
                 style={{
-                  background: account.role === "owner" ? "rgba(168,85,247,0.14)" : "var(--cafyz-badge-bg)",
-                  color: account.role === "owner" ? "#a855f7" : "var(--cafyz-brand)",
-                  border: `1px solid ${account.role === "owner" ? "rgba(168,85,247,0.25)" : "var(--cafyz-accent-border)"}`,
+                  background: user.role === "owner" ? "rgba(168,85,247,0.14)" : "var(--cafyz-badge-bg)",
+                  color: user.role === "owner" ? "#a855f7" : "var(--cafyz-brand)",
+                  border: `1px solid ${user.role === "owner" ? "rgba(168,85,247,0.25)" : "var(--cafyz-accent-border)"}`,
                 }}
               >
-                {ROLE_LABEL[account.role] ?? account.role}
+                {ROLE_LABEL[user.role] ?? user.role}
               </span>
             )}
           </div>
@@ -631,41 +590,6 @@ export function Profile() {
             )}
           </div>
         </div>
-      </Section>
-
-      {/* Manager account (the logged-in user) */}
-      <Section title="Manager Account" icon={User} subtitle="Your login & identity">
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <InputField label="Full Name" value={account.name} onChange={v => setAccount(a => ({ ...a, name: v }))} placeholder="Your name" />
-          <InputField label="Login Email" value={account.email} onChange={v => setAccount(a => ({ ...a, email: v }))} type="email" placeholder="you@restaurant.com" />
-          <InputField label="Phone" value={account.phone} onChange={v => setAccount(a => ({ ...a, phone: v }))} placeholder="+971500000000" />
-          <InputField label="Role" value={ROLE_LABEL[account.role] ?? account.role} onChange={() => {}} disabled />
-        </div>
-        <button
-          onClick={handleSaveAccount}
-          disabled={savingAccount}
-          className="flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold transition-all"
-          style={{ background: "rgba(30,127,255,0.12)", color: "#1e7fff", opacity: savingAccount ? 0.6 : 1 }}
-        >
-          {savingAccount ? <Loader2 size={13} className="animate-spin" /> : <Save size={13} />} Save account
-        </button>
-      </Section>
-
-      {/* Security */}
-      <Section title="Security" icon={Lock} subtitle="Change password">
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          <InputField label="Current Password" value={pw.current} onChange={v => setPw(p => ({ ...p, current: v }))} type="password" />
-          <InputField label="New Password" value={pw.next} onChange={v => setPw(p => ({ ...p, next: v }))} type="password" placeholder="Min 8 characters" />
-          <InputField label="Confirm New Password" value={pw.confirm} onChange={v => setPw(p => ({ ...p, confirm: v }))} type="password" />
-        </div>
-        <button
-          onClick={handleChangePassword}
-          disabled={savingPw || !pw.current || !pw.next}
-          className="flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold transition-all"
-          style={{ background: "rgba(30,127,255,0.12)", color: "#1e7fff", opacity: (savingPw || !pw.current || !pw.next) ? 0.5 : 1 }}
-        >
-          {savingPw ? <Loader2 size={13} className="animate-spin" /> : <Lock size={13} />} Update password
-        </button>
       </Section>
 
       {/* Contact */}

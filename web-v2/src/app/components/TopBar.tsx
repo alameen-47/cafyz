@@ -3,12 +3,14 @@ import { Bell, Search, ChevronDown, Menu, Clock, X, UtensilsCrossed, LayoutGrid,
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { NotificationDropdown } from "./NotificationDropdown";
 import { UserProfileDropdown } from "./UserProfileDropdown";
+import { AccountSettingsModal } from "./AccountSettingsModal";
 import { PrinterSetupPanel } from "./PrinterSetupPanel";
 import { searchApi, restaurantApi, type ApiSearchResult, type ApiRestaurant } from "../../services/api";
 import { getRestaurantLogo } from "../../services/restaurantLogoStorage";
 import { LanguageSwitcher } from "../../i18n/LanguageSwitcher";
 import { useLanguage } from "../../i18n/LanguageProvider";
 import { isFounderRole } from "../../config/access";
+import type { PageId } from "../../config/access";
 import { useNotifications } from "../../hooks/useNotifications";
 import { usePushNotifications } from "../../hooks/usePushNotifications";
 import { nameInitials } from "../../utils/initials";
@@ -78,6 +80,7 @@ interface TopBarProps {
   onLogout: () => void;
   role: string;
   plan: string;
+  permittedPages?: PageId[];
   userName?: string;
   userEmail?: string;
   userInitials?: string;
@@ -105,7 +108,7 @@ function useDebounce<T>(value: T, delay: number): T {
   return debounced;
 }
 
-export function TopBar({ active, onMobileMenuOpen, onNavigate, onLogout, role, plan, userName = "there", userEmail = "", userInitials = "?" }: TopBarProps) {
+export function TopBar({ active, onMobileMenuOpen, onNavigate, onLogout, role, plan, permittedPages = [], userName = "there", userEmail = "", userInitials = "?" }: TopBarProps) {
   const { t } = useLanguage();
   const [searchQuery, setSearchQuery] = useState("");
   const [searchFocused, setSearchFocused] = useState(false);
@@ -113,6 +116,7 @@ export function TopBar({ active, onMobileMenuOpen, onNavigate, onLogout, role, p
   const [searchLoading, setSearchLoading] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
+  const [accountOpen, setAccountOpen] = useState(false);
   const [printerOpen, setPrinterOpen] = useState(false);
   const [restaurant, setRestaurant] = useState<ApiRestaurant | null>(null);
   const notifRef = useRef<HTMLDivElement>(null);
@@ -389,15 +393,20 @@ export function TopBar({ active, onMobileMenuOpen, onNavigate, onLogout, role, p
           open={profileOpen}
           onClose={() => setProfileOpen(false)}
           onNavigate={(p) => { onNavigate(p); setProfileOpen(false); }}
+          onOpenAccountSettings={() => { setAccountOpen(true); setProfileOpen(false); }}
           onOpenPrinter={founderUser ? undefined : openPrinterSetup}
           onLogout={onLogout}
           role={role}
-          plan={plan}
+          permittedPages={permittedPages}
           userName={userName}
           userEmail={userEmail}
           userInitials={initials}
         />
       </div>
+      <AccountSettingsModal
+        open={accountOpen}
+        onClose={() => setAccountOpen(false)}
+      />
       {printerOpen && (
         restaurant ? (
           <PrinterSetupPanel

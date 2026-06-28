@@ -4,6 +4,7 @@ import { Plus, Trash2, Shield, Eye, EyeOff, ChevronDown, ChevronUp, Check, X, Us
 import { toast } from "./Toast";
 import { usersApi, ACCESS_CHANGED_EVENT, type ApiUser } from "../../services/api";
 import { useAuth } from "../auth";
+import { canManagePlan } from "../../config/access";
 import { optionalValidPhone } from "../../utils/phone";
 import { nameInitials } from "../../utils/initials";
 import {
@@ -31,10 +32,10 @@ const defaultMatrix: Record<Role, ScreenAccessMap> = {
   owner: Object.fromEntries(screens.map(s => [s.id, "edit"])) as ScreenAccessMap,
   manager: Object.fromEntries(screens.map(s => [s.id, "edit"])) as ScreenAccessMap,
   cashier: {
-    pos: "edit", menu: "edit", inventory: "edit", reports: "view", roles: "view", license: "view",
+    pos: "edit", menu: "edit", inventory: "edit", reports: "view", roles: "view",
   },
-  waiter: { waiter: "edit", license: "view" },
-  kitchen: { kds: "edit", license: "view" },
+  waiter: { waiter: "edit" },
+  kitchen: { kds: "edit" },
 };
 
 const roleColors: Record<Role, string> = {
@@ -177,6 +178,7 @@ export function Roles() {
 
   const removeUser = async (u: StaffUser) => {
     if (u.role === "owner") { toast.error("Can't remove owner", "The owner account cannot be deleted"); return; }
+    if (!window.confirm(`Remove ${u.name} from your team? They will lose access immediately — even if they changed their own profile or password.`)) return;
     try {
       await usersApi.delete(u.id);
       setStaffUsers(prev => prev.filter(x => x.id !== u.id));
@@ -217,6 +219,18 @@ export function Roles() {
       toast.error("Couldn't add member", (e as Error).message);
     }
   };
+
+  if (!canManagePlan(currentUser?.role ?? "")) {
+    return (
+      <div className="p-6 flex flex-col items-center justify-center min-h-[40vh] text-center">
+        <Shield size={32} style={{ color: "var(--cafyz-muted)", marginBottom: 12 }} />
+        <p style={{ color: "var(--cafyz-text)", fontWeight: 600 }}>Managers only</p>
+        <p style={{ color: "var(--cafyz-muted)", fontSize: "0.82rem", marginTop: 6, maxWidth: 320 }}>
+          Team management is available to owners and managers. Contact your manager if you need access changes.
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="p-3 sm:p-4 md:p-6 space-y-4">

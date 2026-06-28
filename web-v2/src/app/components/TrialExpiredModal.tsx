@@ -11,9 +11,13 @@ interface Props {
   currentPlan?: Plan;
   onGoLicense: () => void;
   onRenewalSubmitted?: () => void;
+  /** Staff/waiter/kitchen — no plan UI, contact manager instead. */
+  staffMode?: boolean;
 }
 
-export function TrialExpiredModal({ expiresAt, founderEmail, currentPlan = 'basic', onGoLicense, onRenewalSubmitted }: Props) {
+export function TrialExpiredModal({
+  expiresAt, founderEmail, currentPlan = 'basic', onGoLicense, onRenewalSubmitted, staffMode = false,
+}: Props) {
   const [requesting, setRequesting] = useState(false);
   const expiryLabel = expiresAt ? new Date(expiresAt).toLocaleDateString() : null;
   const email = founderEmail ?? 'cafyzofficial@gmail.com';
@@ -45,44 +49,50 @@ export function TrialExpiredModal({ expiresAt, founderEmail, currentPlan = 'basi
           </div>
           <div>
             <h2 style={{ color: 'var(--cafyz-text)', fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: '1.15rem' }}>
-              Renew your Cafyz subscription
+              {staffMode ? 'Restaurant subscription expired' : 'Renew your Cafyz subscription'}
             </h2>
             <p style={{ color: 'var(--cafyz-muted)', fontSize: '0.82rem', marginTop: 6, lineHeight: 1.55 }}>
-              Your trial or license ended{expiryLabel ? ` on ${expiryLabel}` : ''}. Contact Cafyz to renew — your restaurant data is safe.
+              {staffMode
+                ? `Your restaurant's trial or license ended${expiryLabel ? ` on ${expiryLabel}` : ''}. Contact your manager or owner to renew — you cannot access the system until they do.`
+                : `Your trial or license ended${expiryLabel ? ` on ${expiryLabel}` : ''}. Contact Cafyz to renew — your restaurant data is safe.`}
             </p>
           </div>
         </div>
 
-        <div className="rounded-xl px-4 py-3 mb-4" style={{ background: 'var(--cafyz-surface-2)', border: '1px solid var(--cafyz-border)' }}>
-          <p style={{ color: 'var(--cafyz-text-secondary)', fontSize: '0.8rem', lineHeight: 1.5 }}>
-            Email:{' '}
-            <a href={`mailto:${email}`} style={{ color: '#1e7fff', fontWeight: 600 }}>{email}</a>
-          </p>
-          <p style={{ color: 'var(--cafyz-muted)', fontSize: '0.72rem', marginTop: 6 }}>
-            Tap below to send a renewal request. The founder receives Approve / Deny links by email.
-          </p>
-        </div>
+        {!staffMode && (
+          <>
+            <div className="rounded-xl px-4 py-3 mb-4" style={{ background: 'var(--cafyz-surface-2)', border: '1px solid var(--cafyz-border)' }}>
+              <p style={{ color: 'var(--cafyz-text-secondary)', fontSize: '0.8rem', lineHeight: 1.5 }}>
+                Email:{' '}
+                <a href={`mailto:${email}`} style={{ color: '#1e7fff', fontWeight: 600 }}>{email}</a>
+              </p>
+              <p style={{ color: 'var(--cafyz-muted)', fontSize: '0.72rem', marginTop: 6 }}>
+                Tap below to send a renewal request. The founder receives Approve / Deny links by email.
+              </p>
+            </div>
 
-        <div className="flex flex-col sm:flex-row gap-2">
-          <button
-            type="button"
-            onClick={() => void contactRenewal()}
-            disabled={requesting}
-            className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-semibold"
-            style={{ background: 'linear-gradient(135deg, #1e7fff, #00c6ff)', color: '#fff', opacity: requesting ? 0.7 : 1 }}
-          >
-            {requesting ? <Loader2 size={16} className="animate-spin" /> : <Mail size={16} />}
-            {requesting ? 'Sending…' : 'Contact Cafyz to renew'}
-          </button>
-          <button
-            type="button"
-            onClick={onGoLicense}
-            className="flex-1 py-3 rounded-xl text-sm font-semibold"
-            style={{ background: 'var(--cafyz-subtle-bg)', color: 'var(--cafyz-brand)', border: '1px solid var(--cafyz-accent-border)' }}
-          >
-            License & plans
-          </button>
-        </div>
+            <div className="flex flex-col sm:flex-row gap-2">
+              <button
+                type="button"
+                onClick={() => void contactRenewal()}
+                disabled={requesting}
+                className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-semibold"
+                style={{ background: 'linear-gradient(135deg, #1e7fff, #00c6ff)', color: '#fff', opacity: requesting ? 0.7 : 1 }}
+              >
+                {requesting ? <Loader2 size={16} className="animate-spin" /> : <Mail size={16} />}
+                {requesting ? 'Sending…' : 'Contact Cafyz to renew'}
+              </button>
+              <button
+                type="button"
+                onClick={onGoLicense}
+                className="flex-1 py-3 rounded-xl text-sm font-semibold"
+                style={{ background: 'var(--cafyz-subtle-bg)', color: 'var(--cafyz-brand)', border: '1px solid var(--cafyz-accent-border)' }}
+              >
+                License & plans
+              </button>
+            </div>
+          </>
+        )}
       </motion.div>
     </div>
   );

@@ -29,10 +29,10 @@ const ROLE_DEFAULTS: Record<string, ScreenAccessMap> = {
   owner: Object.fromEntries(SCREEN_IDS.map(s => [s, 'edit'])) as ScreenAccessMap,
   manager: Object.fromEntries(SCREEN_IDS.map(s => [s, 'edit'])) as ScreenAccessMap,
   cashier: {
-    pos: 'edit', menu: 'edit', inventory: 'edit', reports: 'view', roles: 'view', license: 'view',
+    pos: 'edit', menu: 'edit', inventory: 'edit', reports: 'view', roles: 'view',
   },
-  waiter: { waiter: 'edit', license: 'view' },
-  kitchen: { kds: 'edit', license: 'view' },
+  waiter: { waiter: 'edit' },
+  kitchen: { kds: 'edit' },
   founder: {},
 };
 

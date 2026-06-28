@@ -22,9 +22,9 @@ export const PLAN_PANELS: Record<Plan, PageId[]> = {
 export const ROLE_PAGES: Record<Role, PageId[]> = {
   owner: ['dashboard', 'pos', 'orders', 'tables', 'menu', 'kds', 'staff', 'analytics', 'inventory', 'reservations', 'roles', 'profile', 'license'],
   manager: ['dashboard', 'pos', 'orders', 'tables', 'menu', 'kds', 'staff', 'analytics', 'inventory', 'reservations', 'roles', 'profile', 'license'],
-  cashier: ['pos', 'orders', 'tables', 'menu', 'profile', 'license'],
-  waiter: ['orders', 'tables', 'menu', 'profile', 'license'],
-  kitchen: ['kds', 'profile', 'license'],
+  cashier: ['pos', 'orders', 'tables', 'menu'],
+  waiter: ['orders', 'tables', 'menu'],
+  kitchen: ['kds'],
   founder: ['founder'],
 };
 
@@ -36,6 +36,11 @@ export const RESTAURANT_PAGES: PageId[] = [
 
 export function isFounderRole(role: Role | string): boolean {
   return role === 'founder';
+}
+
+/** Owners and managers — plan, license, restaurant settings, staff management. */
+export function canManagePlan(role: Role | string): boolean {
+  return role === 'owner' || role === 'manager';
 }
 
 export const PAGE_PLAN_MIN: Partial<Record<PageId, Plan>> = {

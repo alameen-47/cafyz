@@ -9,7 +9,7 @@ import {
 
 import type { Plan, Role } from "../auth";
 import type { PageId } from "../../config/access";
-import { isFounderRole, planMeetsRequirement, requiredPlanForPage } from "../../config/access";
+import { isFounderRole, planMeetsRequirement, requiredPlanForPage, canManagePlan } from "../../config/access";
 import { usePlanConfig } from "../PlanConfigProvider";
 import { useThemeMode } from "../ThemeProvider";
 import { CafyzLogo } from "./CafyzLogo";
@@ -186,9 +186,9 @@ export function Sidebar({
 
         {/* Bottom: plan badge + user + logout */}
         <div className="flex-shrink-0 border-t cafyz-sidebar-border-t p-3 space-y-2">
-          {/* Plan badge — restaurant users only */}
+          {/* Plan badge — owners & managers only */}
           <AnimatePresence>
-            {!collapsed && !founderUser && (
+            {!collapsed && !founderUser && canManagePlan(role) && allowedPages.includes("license") && (
               <motion.button
                 initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
                 onClick={() => handleNav("license")}

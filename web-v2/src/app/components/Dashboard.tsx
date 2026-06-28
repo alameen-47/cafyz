@@ -10,7 +10,7 @@ import { dashboardApi, ordersApi, menuApi, menuCategoriesApi,
   type ApiDashboardStats, type ApiRevenueRow,
 } from "../../services/api";
 import { useAuth } from "../auth";
-import { planMeetsRequirement } from "../../config/access";
+import { planMeetsRequirement, canManagePlan } from "../../config/access";
 import { formatMoney, getCurrencySymbol } from "../../utils/currency";
 import { useAppNav } from "../nav";
 
@@ -211,6 +211,7 @@ export function Dashboard() {
   const { goToPage, goToPos } = useAppNav();
   const { user } = useAuth();
   const hasProAnalytics = planMeetsRequirement(user?.plan ?? "basic", "pro");
+  const showPlanCta = canManagePlan(user?.role ?? "");
   const [revRows, setRevRows] = useState<{ day: string; revenue: number }[]>([]);
   const [weekTotal, setWeekTotal] = useState(0);
   const [todayRevenue, setTodayRevenue] = useState(0);
@@ -423,8 +424,12 @@ export function Dashboard() {
               />
             ) : !hasProAnalytics ? (
               <div className="h-40 flex flex-col items-center justify-center gap-2 px-4 text-center">
-                <span style={{ color: "var(--cafyz-muted)", fontSize: "0.8rem" }}>Revenue charts require the Pro plan</span>
+                <span style={{ color: "var(--cafyz-muted)", fontSize: "0.8rem" }}>
+                  {showPlanCta ? "Revenue charts require the Pro plan" : "Revenue charts require the Pro plan — ask your manager to upgrade"}
+                </span>
+                {showPlanCta && (
                 <button type="button" onClick={() => goToPage("license")} className="text-xs font-semibold px-3 py-1.5 rounded-lg" style={{ background: "rgba(30,127,255,0.12)", color: "#1e7fff" }}>View plans</button>
+                )}
               </div>
             ) : (
               <div className="h-40 flex items-center justify-center"><span style={{ color: "var(--cafyz-muted)", fontSize: "0.8rem" }}>No paid orders this week yet</span></div>

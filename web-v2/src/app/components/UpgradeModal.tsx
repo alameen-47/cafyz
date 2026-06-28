@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import { motion } from 'motion/react';
 import { X, Crown, Zap, Shield } from 'lucide-react';
 import { useAuth, type Plan } from '../auth';
-import { PAGE_LABELS, PLAN_ORDER, type PageId } from '../../config/access';
+import { PAGE_LABELS, PLAN_ORDER, canManagePlan, type PageId } from '../../config/access';
 import { usePlanConfig } from '../PlanConfigProvider';
 import { formatPlanPrice, formatBillingSuffix, getPlanConfig } from '../../services/planConfigStore';
 
@@ -23,6 +23,7 @@ export function UpgradeModal({ requiredPlan, featurePage, onClose, onGoLicense }
   const { user } = useAuth();
   const { plans } = usePlanConfig();
   const currentPlan = (user?.plan ?? 'basic') as Plan;
+  const managerUser = canManagePlan(user?.role ?? '');
   const featureLabel = featurePage ? PAGE_LABELS[featurePage] : PLAN_META[requiredPlan].label;
   const plansToShow = PLAN_ORDER.filter(p => PLAN_ORDER.indexOf(p) >= PLAN_ORDER.indexOf(requiredPlan));
 
@@ -48,14 +49,17 @@ export function UpgradeModal({ requiredPlan, featurePage, onClose, onGoLicense }
               Unlock {featureLabel}
             </h2>
             <p style={{ color: 'var(--cafyz-muted)', fontSize: '0.82rem', marginTop: 6 }}>
-              Your {PLAN_META[currentPlan].label} plan does not include this feature. Upgrade to {PLAN_META[requiredPlan].label} or activate a license key.
+              {managerUser
+                ? `Your ${PLAN_META[currentPlan].label} plan does not include this feature. Upgrade to ${PLAN_META[requiredPlan].label} or activate a license key.`
+                : `This feature is not included in your restaurant's current plan. Ask your manager or owner to upgrade.`}
             </p>
           </div>
           <button onClick={onClose} className="p-1.5 rounded-lg" style={{ color: 'var(--cafyz-muted)' }}><X size={16} /></button>
         </div>
 
-        <div className="space-y-2 mb-5">
-          {plansToShow.map(plan => {
+        {managerUser && (
+          <div className="space-y-2 mb-5">
+            {plansToShow.map(plan => {
             const Meta = PLAN_META[plan];
             const Icon = Meta.icon;
             const cfg = getPlanConfig(plan) ?? plans.find(p => p.plan === plan);
@@ -72,14 +76,17 @@ export function UpgradeModal({ requiredPlan, featurePage, onClose, onGoLicense }
               </div>
             );
           })}
-        </div>
+          </div>
+        )}
 
         <div className="flex gap-2">
           <button onClick={onClose} className="flex-1 py-2.5 rounded-xl text-sm" style={{ background: 'var(--cafyz-subtle-bg)', color: 'var(--cafyz-text-secondary)', border: '1px solid var(--cafyz-border)' }}>Maybe later</button>
+          {managerUser && (
           <button onClick={() => { onGoLicense(); onClose(); }} className="flex-1 py-2.5 rounded-xl text-sm font-semibold"
             style={{ background: 'linear-gradient(135deg, #1e7fff, #00c6ff)', color: '#fff' }}>
             Activate license →
           </button>
+          )}
         </div>
       </motion.div>
     </div>

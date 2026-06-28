@@ -24,7 +24,7 @@ import { useAuth, type Plan, type Role } from "./auth";
 import { NavContext } from "./nav";
 import { licensesApi, authApi, TRIAL_EXPIRED_EVENT, ACCESS_CHANGED_EVENT, type ApiSubscriptionStatus } from "../services/api";
 import {
-  canAccessPage, isFounderRole, permittedPages, planMeetsRequirement, requiredPlanForPage, type PageId,
+  canAccessPage, isFounderRole, canManagePlan, permittedPages, planMeetsRequirement, requiredPlanForPage, type PageId,
 } from "../config/access";
 import { useKitchenPrintWorker } from "../hooks/useKitchenPrintWorker";
 import { usePlanConfig } from "./PlanConfigProvider";
@@ -189,25 +189,37 @@ export default function App() {
   }
 
   const trialExpired = subscription?.trial_expired && !isFounderRole(user.role);
-  const lockedExceptLicense = trialExpired && activePage !== "license";
+  const canRenew = canManagePlan(user.role);
   const effectivePlan = (subscription?.plan ?? plan) as Plan;
-  const showRenewalBanner = user.role === "owner" && subscription
+  const showRenewalBanner = canRenew && subscription
     && (subscription.trial_expired || (subscription.trial_days_left != null && subscription.trial_days_left <= 3));
 
-  if (lockedExceptLicense) {
+  if (trialExpired) {
     return (
       <>
         <Toaster position="bottom-right" richColors closeButton />
         <TrialExpiredModal
+          staffMode={!canRenew}
           expiresAt={subscription?.trial_expires_at}
           founderEmail={subscription?.founder_email}
           currentPlan={effectivePlan}
           onGoLicense={() => setActivePage("license")}
           onRenewalSubmitted={() => { void loadSubscription(); }}
         />
-        <div className="flex app-screen app-native-inset-top w-full overflow-hidden cafyz-app-shell">
-          <License />
-        </div>
+        {canRenew ? (
+          <div className="flex app-screen app-native-inset-top w-full overflow-hidden cafyz-app-shell">
+            <License />
+          </div>
+        ) : (
+          <div className="flex app-screen app-native-inset-top w-full flex-col items-center justify-center p-6 text-center cafyz-app-shell">
+            <p style={{ color: "var(--cafyz-text)", fontFamily: "var(--font-display)", fontWeight: 700, fontSize: "1.1rem", marginBottom: 8 }}>
+              Restaurant subscription expired
+            </p>
+            <p style={{ color: "var(--cafyz-muted)", fontSize: "0.85rem", maxWidth: 360, lineHeight: 1.55 }}>
+              Please contact your manager or owner to renew. Your work data is safe.
+            </p>
+          </div>
+        )}
       </>
     );
   }
@@ -272,6 +284,7 @@ export default function App() {
             onLogout={logout}
             role={role}
             plan={plan}
+            permittedPages={permitted}
             userName={user.name}
             userEmail={user.email}
             userInitials={user.initials}

@@ -1,39 +1,51 @@
 import { motion, AnimatePresence } from "motion/react";
-import { User, Settings, Shield, LogOut, ChevronRight, Zap, Crown, Printer } from "lucide-react";
-import { isFounderRole } from "../../config/access";
+import { User, Settings, Shield, LogOut, ChevronRight, Crown, Printer, CreditCard } from "lucide-react";
+import { isFounderRole, canManagePlan, type PageId } from "../../config/access";
 import { nameInitials } from "../../utils/initials";
 
 interface UserProfileDropdownProps {
   open: boolean;
   onClose: () => void;
   onNavigate: (page: string) => void;
+  onOpenAccountSettings?: () => void;
   onOpenPrinter?: () => void;
   onLogout: () => void;
   role: string;
-  plan: string;
+  permittedPages?: PageId[];
   userName?: string;
   userEmail?: string;
   userInitials?: string;
 }
 
-const planColors: Record<string, string> = { basic: "var(--cafyz-muted)", pro: "#1e7fff", premium: "#a855f7" };
 const roleColors: Record<string, string> = {
   owner: "#a855f7", manager: "#1e7fff", cashier: "#22d3ee",
   waiter: "#00c6ff", kitchen: "#f59e0b", founder: "#ff3b5c",
 };
 
-export function UserProfileDropdown({ open, onClose, onNavigate, onOpenPrinter, onLogout, role, plan, userName = "User", userEmail = "", userInitials = "?" }: UserProfileDropdownProps) {
+export function UserProfileDropdown({
+  open, onClose, onNavigate, onOpenAccountSettings, onOpenPrinter, onLogout,
+  role, permittedPages = [], userName = "User", userEmail = "", userInitials = "?",
+}: UserProfileDropdownProps) {
   const initials = userInitials || nameInitials(userName);
   const founderUser = isFounderRole(role);
+  const managerUser = canManagePlan(role);
+  const can = (page: PageId) => permittedPages.includes(page);
+
   const menuItems = founderUser
     ? []
     : [
-        { icon: User, label: "My Profile", action: () => onNavigate("profile") },
-        { icon: Settings, label: "Restaurant Settings", action: () => onNavigate("profile") },
-        { icon: Printer, label: "Printer setup", action: () => onOpenPrinter?.() },
-        { icon: Shield, label: "Roles & Permissions", action: () => onNavigate("roles") },
-        { icon: Zap, label: "Upgrade Plan", action: () => onNavigate("license") },
-      ].filter(item => item.label !== "Printer setup" || onOpenPrinter);
+        { icon: User, label: "Account Settings", action: () => onOpenAccountSettings?.() },
+        ...(managerUser && can("profile")
+          ? [{ icon: Settings, label: "Restaurant Settings", action: () => onNavigate("profile") }]
+          : []),
+        ...(onOpenPrinter ? [{ icon: Printer, label: "Printer setup", action: () => onOpenPrinter() }] : []),
+        ...(managerUser && can("roles")
+          ? [{ icon: Shield, label: "Roles & Permissions", action: () => onNavigate("roles") }]
+          : []),
+        ...(managerUser && can("license")
+          ? [{ icon: CreditCard, label: "License & Plan", action: () => onNavigate("license") }]
+          : []),
+      ].filter(item => item.label !== "Account Settings" || onOpenAccountSettings);
 
   return (
     <AnimatePresence>
@@ -51,7 +63,6 @@ export function UserProfileDropdown({ open, onClose, onNavigate, onOpenPrinter, 
               border: "1px solid var(--cafyz-border-strong)",
               boxShadow: "var(--cafyz-shadow-lg)",
             }}>
-            {/* User info */}
             <div className="px-4 py-4 border-b" style={{ borderColor: "var(--cafyz-border)" }}>
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-xl flex items-center justify-center"
@@ -66,18 +77,11 @@ export function UserProfileDropdown({ open, onClose, onNavigate, onOpenPrinter, 
                       style={{ background: `${roleColors[role] || "#1e7fff"}15`, color: roleColors[role] || "#1e7fff" }}>
                       {founderUser ? "Super Admin" : role}
                     </span>
-                    {!founderUser && (
-                      <span className="text-xs px-1.5 py-0.5 rounded-full capitalize"
-                        style={{ background: `${planColors[plan] || "#1e7fff"}15`, color: planColors[plan] || "#1e7fff" }}>
-                        {plan}
-                      </span>
-                    )}
                   </div>
                 </div>
               </div>
             </div>
 
-            {/* Menu items — restaurant users only */}
             {menuItems.length > 0 && (
               <div className="py-1">
                 {menuItems.map(item => {
@@ -104,7 +108,6 @@ export function UserProfileDropdown({ open, onClose, onNavigate, onOpenPrinter, 
               </div>
             )}
 
-            {/* Divider + logout */}
             <div className={`${menuItems.length > 0 || founderUser ? "border-t" : ""} py-1`} style={{ borderColor: "var(--cafyz-border)" }}>
               <button onClick={() => { onLogout(); onClose(); }}
                 className="w-full flex items-center gap-3 px-4 py-2.5 text-sm transition-all hover:bg-[rgba(255,59,92,0.06)]">
