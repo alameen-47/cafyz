@@ -7,13 +7,14 @@ import {
   Printer, ReceiptText, ChefHat, RefreshCw, CheckCircle2, AlertCircle,
 } from "lucide-react";
 import { toast } from "./Toast";
-import { restaurantApi, authApi, publicApi, type ApiRestaurant } from "../../services/api";
+import { restaurantApi, authApi, publicApi, RESTAURANT_SETTINGS_CHANGED_EVENT, type ApiRestaurant } from "../../services/api";
 import {
   uploadRestaurantLogo,
   removeRestaurantLogoEverywhere,
   syncRestaurantLogoCacheAsync,
 } from "../../services/restaurantLogoStorage";
-import { getCurrencySymbol, setActiveCurrencyCode } from "../../utils/currency";
+import { getCurrencySymbol, resolveCurrencySymbol, setActiveCurrency, symbolForCode } from "../../utils/currency";
+import { computeBillTotals } from "../../utils/billTotals";
 import { useAuth } from "../auth";
 import { PrinterSetupPanel } from "./PrinterSetupPanel";
 import {
@@ -24,6 +25,8 @@ import {
 } from "../../services/PrintService";
 import { getPublicMenuIdentifier, getPublicMenuUrl } from "../../config/site";
 import { subscribeMenuChanged } from "../../utils/menuEvents";
+import { nameInitials } from "../../utils/initials";
+import { useThemeMode } from "../ThemeProvider";
 
 const CURRENCIES = ["USD", "EUR", "GBP", "AED", "SAR", "INR", "PKR", "BDT", "NGN", "ZAR"];
 const LANGUAGES: [string, string][] = [["en", "English"], ["ar", "Arabic"], ["fr", "French"], ["es", "Spanish"], ["de", "German"], ["hi", "Hindi"], ["ur", "Urdu"]];
@@ -31,8 +34,8 @@ const MAX_LOGO_BYTES = 2 * 1024 * 1024; // 2 MB — matches restaurantLogoStorag
 
 const EMPTY = {
   name: "", tagline: "", email: "", phone: "", website: "", address: "", city: "", state: "", pincode: "",
-  country: "", currency: "USD", language: "en", dateFormat: "DD/MM/YYYY", taxName: "Tax",
-  taxRate: "", serviceCharge: "", receiptFooter: "", vatNumber: "",
+  country: "", currency: "USD", currencySymbol: "$", language: "en", dateFormat: "DD/MM/YYYY", taxName: "Tax",
+  taxRate: "", serviceCharge: "", taxIncluded: false, receiptFooter: "", vatNumber: "",
 };
 
 // Defined at module scope (NOT inside Profile) so they keep a stable component
@@ -49,7 +52,7 @@ function InputField({ label, value, onChange, type = "text", placeholder = "", d
         disabled={disabled}
         onChange={e => onChange(e.target.value)}
         className="w-full rounded-xl px-3 py-2.5 text-sm outline-none placeholder:text-[var(--cafyz-muted)] transition-all focus:ring-1 focus:ring-[rgba(30,127,255,0.4)] disabled:opacity-60"
-        style={{ background: "var(--cafyz-surface-2)", color: "var(--cafyz-text)", border: "1px solid rgba(30,127,255,0.12)" }}
+        style={{ background: "var(--cafyz-surface-2)", color: "var(--cafyz-text)", border: "1px solid var(--cafyz-border)" }}
       />
     </div>
   );
@@ -63,7 +66,7 @@ function Section({ title, icon: Icon, children, subtitle }: { title: string; ico
       className="rounded-2xl p-5 space-y-4"
       style={{ background: "var(--cafyz-surface)", border: "1px solid var(--cafyz-border)" }}
     >
-      <div className="flex items-center gap-2 pb-2 border-b" style={{ borderColor: "rgba(30,127,255,0.08)" }}>
+      <div className="flex items-center gap-2 pb-2 border-b" style={{ borderColor: "var(--cafyz-border)" }}>
         <Icon size={16} style={{ color: "#1e7fff" }} />
         <h3 style={{ color: "var(--cafyz-text)", fontFamily: "var(--font-display)", fontWeight: 600, fontSize: "0.95rem" }}>{title}</h3>
         {subtitle && <span style={{ color: "var(--cafyz-muted)", fontSize: "0.72rem", marginLeft: "auto" }}>{subtitle}</span>}
@@ -84,6 +87,13 @@ function profileAddressLine(profile: typeof EMPTY): string {
 }
 
 function profilePrintTestOpts(profile: typeof EMPTY, logoUrl: string, serverName: string) {
+  const subtotal = 19.0;
+  const totals = computeBillTotals({
+    subtotal,
+    serviceRatePct: profile.serviceCharge ? Number(profile.serviceCharge) : 18,
+    taxRatePct: profile.taxRate ? Number(profile.taxRate) : 8.75,
+    taxIncluded: profile.taxIncluded,
+  });
   return {
     restaurantName: profile.name || "Restaurant",
     logoUrl,
@@ -91,9 +101,15 @@ function profilePrintTestOpts(profile: typeof EMPTY, logoUrl: string, serverName
     phone: profile.phone || undefined,
     taxId: profile.vatNumber || undefined,
     taxLabel: profile.taxName || "Tax",
-    taxRate: profile.taxRate ? Number(profile.taxRate) : undefined,
-    serviceRate: profile.serviceCharge ? Number(profile.serviceCharge) : undefined,
-    currencySymbol: getCurrencySymbol(profile.currency),
+    taxRate: totals.taxRate,
+    taxIncluded: totals.taxIncluded,
+    serviceRate: totals.serviceRate,
+    subtotal: totals.subtotal,
+    service: totals.service,
+    tax: totals.tax,
+    total: totals.grandTotal,
+    currencySymbol: profile.currencySymbol || getCurrencySymbol(profile.currency),
+    currencyCode: profile.currency,
     footer: profile.receiptFooter || undefined,
     serverName: serverName || "Staff",
   };
@@ -101,6 +117,7 @@ function profilePrintTestOpts(profile: typeof EMPTY, logoUrl: string, serverName
 
 export function Profile() {
   const { user } = useAuth();
+  const { theme } = useThemeMode();
   const [saved, setSaved] = useState(false);
   const [busy, setBusy] = useState(false);
   const [slug, setSlug] = useState("");
@@ -133,11 +150,15 @@ export function Profile() {
     try {
       const dataUrl = await QRCode.toDataURL(url, {
         width: 256, margin: 2,
-        color: { dark: "#06091a", light: "#ffffff" },
+        color: { dark: theme === "light" ? "#0f172a" : "#06091a", light: "#ffffff" },
       });
       setQrDataUrl(dataUrl);
     } catch { /* non-fatal */ }
-  }, []);
+  }, [theme]);
+
+  useEffect(() => {
+    if (menuIdentifier) void generateQr(menuIdentifier);
+  }, [theme, menuIdentifier, generateQr]);
 
   const refreshMenuLink = useCallback(async (identifier?: string) => {
     const id = identifier || menuIdentifier;
@@ -184,7 +205,7 @@ export function Profile() {
 
   useEffect(() => {
     const hint = kitchenPrinter?.name || cashierPrinter?.name;
-    void autoReconnectBluetooth(hint).finally(refreshPrinter);
+    void autoReconnectBluetooth(hint).catch(() => {}).finally(refreshPrinter);
   }, [kitchenPrinter?.name, cashierPrinter?.name, refreshPrinter]);
 
   useEffect(() => {
@@ -207,10 +228,12 @@ export function Profile() {
         pincode: r.postal_code ?? "",
         country: r.country ?? "",
         currency: r.currency_code ?? "USD",
+        currencySymbol: resolveCurrencySymbol(r.currency_code, r.currency_symbol),
         language: r.language_code ?? "en",
         dateFormat: r.date_format ?? "DD/MM/YYYY",
         taxName: r.tax_type ?? "Tax",
         taxRate: r.tax_rate_pct != null ? String(r.tax_rate_pct) : "",
+        taxIncluded: r.tax_included === 1 || r.tax_included === true,
         serviceCharge: r.service_charge_pct != null ? String(r.service_charge_pct) : "",
         receiptFooter: r.receipt_footer ?? "",
         vatNumber: r.tax_id ?? "",
@@ -254,15 +277,18 @@ export function Profile() {
         postal_code: profile.pincode,
         country: profile.country,
         currency_code: profile.currency,
+        currency_symbol: resolveCurrencySymbol(profile.currency, profile.currencySymbol),
         language_code: profile.language,
         date_format: profile.dateFormat,
         tax_type: profile.taxName,
         tax_rate_pct: profile.taxRate ? Number(profile.taxRate) : null,
+        tax_included: profile.taxIncluded,
         service_charge_pct: profile.serviceCharge ? Number(profile.serviceCharge) : null,
         receipt_footer: profile.receiptFooter,
         tax_id: profile.vatNumber,
       });
-      setActiveCurrencyCode(profile.currency);
+      setActiveCurrency(profile.currency, resolveCurrencySymbol(profile.currency, profile.currencySymbol));
+      window.dispatchEvent(new Event(RESTAURANT_SETTINGS_CHANGED_EVENT));
       setSaved(true);
       void refreshMenuLink();
       toast.success("Profile saved", "Your restaurant settings have been updated");
@@ -453,7 +479,7 @@ export function Profile() {
     }
   };
 
-  const initials = (profile.name || "??").split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase();
+  const initials = nameInitials(profile.name, "??");
 
   return (
     <div className="p-3 sm:p-4 md:p-6 space-y-4 max-w-3xl w-full">
@@ -463,9 +489,9 @@ export function Profile() {
         animate={{ opacity: 1, y: 0 }}
         className="rounded-2xl overflow-hidden"
         style={{
-          background: "linear-gradient(135deg, var(--cafyz-border) 0%, rgba(13,19,38,0.95) 55%)",
+          background: "var(--cafyz-hero-gradient)",
           border: "1px solid var(--cafyz-border-strong)",
-          boxShadow: "0 8px 32px rgba(0,0,0,0.2)",
+          boxShadow: "var(--cafyz-hero-shadow)",
         }}
       >
         <div className="px-4 py-3.5 sm:px-5 sm:py-4 flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
@@ -476,7 +502,7 @@ export function Profile() {
                 background: logoUrl
                   ? `url(${logoUrl}) center/cover no-repeat`
                   : "linear-gradient(135deg, #1e7fff, #00c6ff)",
-                color: "var(--cafyz-text-strong)",
+                color: logoUrl ? "var(--cafyz-text-strong)" : "var(--cafyz-on-gradient)",
                 border: "1px solid rgba(30,127,255,0.25)",
                 boxShadow: "0 4px 16px rgba(30,127,255,0.2)",
               }}
@@ -494,7 +520,7 @@ export function Profile() {
                 {user?.plan && (
                   <span
                     className="px-2 py-0.5 rounded-full text-[0.65rem] font-semibold uppercase tracking-wide flex-shrink-0"
-                    style={{ background: "rgba(30,127,255,0.14)", color: "#1e7fff", border: "1px solid rgba(30,127,255,0.22)" }}
+                    style={{ background: "var(--cafyz-badge-bg)", color: "var(--cafyz-brand)", border: "1px solid var(--cafyz-accent-border)" }}
                   >
                     {user.plan}
                   </span>
@@ -513,7 +539,7 @@ export function Profile() {
 
           <div
             className="flex items-center gap-2.5 px-3 py-2 rounded-xl sm:max-w-[280px]"
-            style={{ background: "var(--cafyz-overlay)", border: "1px solid var(--cafyz-border)" }}
+            style={{ background: "var(--cafyz-hero-inset-bg)", border: "1px solid var(--cafyz-border)" }}
           >
             <div
               className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 text-xs font-bold"
@@ -533,9 +559,9 @@ export function Profile() {
               <span
                 className="px-2 py-1 rounded-lg text-[0.65rem] font-semibold flex-shrink-0"
                 style={{
-                  background: account.role === "owner" ? "rgba(168,85,247,0.14)" : "var(--cafyz-border)",
-                  color: account.role === "owner" ? "#c084fc" : "#1e7fff",
-                  border: `1px solid ${account.role === "owner" ? "rgba(168,85,247,0.25)" : "rgba(30,127,255,0.2)"}`,
+                  background: account.role === "owner" ? "rgba(168,85,247,0.14)" : "var(--cafyz-badge-bg)",
+                  color: account.role === "owner" ? "#a855f7" : "var(--cafyz-brand)",
+                  border: `1px solid ${account.role === "owner" ? "rgba(168,85,247,0.25)" : "var(--cafyz-accent-border)"}`,
                 }}
               >
                 {ROLE_LABEL[account.role] ?? account.role}
@@ -546,7 +572,7 @@ export function Profile() {
 
         <div
           className="px-4 py-2 sm:px-5 flex flex-wrap items-center gap-x-3 gap-y-1"
-          style={{ background: "rgba(0,0,0,0.15)", borderTop: "1px solid rgba(30,127,255,0.08)" }}
+          style={{ background: "var(--cafyz-hero-footer-bg)", borderTop: "1px solid var(--cafyz-border)" }}
         >
           <span className="flex items-center gap-1.5" style={{ color: "var(--cafyz-muted)", fontSize: "0.7rem" }}>
             <Shield size={12} style={{ color: "#1e7fff", flexShrink: 0 }} />
@@ -572,9 +598,9 @@ export function Profile() {
               disabled={uploadingLogo}
               className="w-20 h-20 rounded-2xl flex items-center justify-center overflow-hidden"
               style={{
-                background: logoUrl ? "#0a1024" : "linear-gradient(135deg, #1e7fff, #00c6ff)",
-                boxShadow: "0 0 20px rgba(30,127,255,0.3)",
-                border: logoUrl ? "1px solid rgba(30,127,255,0.2)" : "none",
+                background: logoUrl ? "var(--cafyz-logo-plate-bg)" : "linear-gradient(135deg, #1e7fff, #00c6ff)",
+                boxShadow: logoUrl ? "var(--cafyz-shadow-sm)" : "0 0 20px rgba(30,127,255,0.3)",
+                border: logoUrl ? "1px solid var(--cafyz-border)" : "none",
                 cursor: uploadingLogo ? "wait" : "pointer",
               }}
             >
@@ -657,7 +683,7 @@ export function Profile() {
               placeholder="https://your-restaurant.com"
               onChange={e => update("website", e.target.value)}
               className="w-full rounded-xl px-3 py-2.5 text-sm outline-none placeholder:text-[var(--cafyz-muted)] transition-all focus:ring-1 focus:ring-[rgba(30,127,255,0.4)]"
-              style={{ background: "var(--cafyz-surface-2)", color: "var(--cafyz-text)", border: "1px solid rgba(30,127,255,0.12)" }}
+              style={{ background: "var(--cafyz-surface-2)", color: "var(--cafyz-text)", border: "1px solid var(--cafyz-border)" }}
             />
           </div>
         </div>
@@ -676,20 +702,29 @@ export function Profile() {
 
       {/* Localisation */}
       <Section title="Localisation" icon={Globe}>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           <div>
             <label style={{ color: "var(--cafyz-text-secondary)", fontSize: "0.78rem", display: "block", marginBottom: 5 }}>Currency</label>
-            <select value={profile.currency} onChange={e => update("currency", e.target.value)}
+            <select value={profile.currency} onChange={e => {
+              const code = e.target.value;
+              setProfile(p => ({ ...p, currency: code, currencySymbol: symbolForCode(code) }));
+            }}
               className="w-full rounded-xl px-3 py-2.5 text-sm outline-none"
-              style={{ background: "var(--cafyz-surface-2)", color: "var(--cafyz-text)", border: "1px solid rgba(30,127,255,0.12)" }}>
+              style={{ background: "var(--cafyz-surface-2)", color: "var(--cafyz-text)", border: "1px solid var(--cafyz-border)" }}>
               {CURRENCIES.map(c => <option key={c}>{c}</option>)}
             </select>
           </div>
+          <InputField
+            label="Currency symbol"
+            value={profile.currencySymbol ?? ""}
+            onChange={v => update("currencySymbol", v)}
+            placeholder="₹"
+          />
           <div>
             <label style={{ color: "var(--cafyz-text-secondary)", fontSize: "0.78rem", display: "block", marginBottom: 5 }}>Language</label>
             <select value={profile.language} onChange={e => update("language", e.target.value)}
               className="w-full rounded-xl px-3 py-2.5 text-sm outline-none"
-              style={{ background: "var(--cafyz-surface-2)", color: "var(--cafyz-text)", border: "1px solid rgba(30,127,255,0.12)" }}>
+              style={{ background: "var(--cafyz-surface-2)", color: "var(--cafyz-text)", border: "1px solid var(--cafyz-border)" }}>
               {LANGUAGES.map(([v,l]) => <option key={v} value={v}>{l}</option>)}
             </select>
           </div>
@@ -697,7 +732,7 @@ export function Profile() {
             <label style={{ color: "var(--cafyz-text-secondary)", fontSize: "0.78rem", display: "block", marginBottom: 5 }}>Date Format</label>
             <select value={profile.dateFormat} onChange={e => update("dateFormat", e.target.value)}
               className="w-full rounded-xl px-3 py-2.5 text-sm outline-none"
-              style={{ background: "var(--cafyz-surface-2)", color: "var(--cafyz-text)", border: "1px solid rgba(30,127,255,0.12)" }}>
+              style={{ background: "var(--cafyz-surface-2)", color: "var(--cafyz-text)", border: "1px solid var(--cafyz-border)" }}>
               {["DD/MM/YYYY","MM/DD/YYYY","YYYY-MM-DD"].map(f => <option key={f}>{f}</option>)}
             </select>
           </div>
@@ -712,6 +747,40 @@ export function Profile() {
           <InputField label="Service Charge (%)" value={profile.serviceCharge} onChange={v => update("serviceCharge", v)} type="number" />
           <InputField label="Tax/VAT Number" value={profile.vatNumber} onChange={v => update("vatNumber", v)} />
         </div>
+        <div className="rounded-xl p-3 space-y-2" style={{ background: "var(--cafyz-surface-2)", border: "1px solid var(--cafyz-border)" }}>
+          <p style={{ color: "var(--cafyz-text-secondary)", fontSize: "0.82rem", fontWeight: 600 }}>Tax on menu prices</p>
+          <p style={{ color: "var(--cafyz-muted)", fontSize: "0.72rem", lineHeight: 1.45 }}>
+            {profile.taxIncluded
+              ? "Tax included — menu prices already contain tax. Total due stays the same; tax is shown for reference on the bill and receipt."
+              : "Tax excluded — tax is calculated on subtotal + service and added to the total due at checkout."}
+          </p>
+          <div className="flex flex-wrap gap-2 pt-1">
+            <button
+              type="button"
+              onClick={() => setProfile(p => ({ ...p, taxIncluded: false }))}
+              className="px-3 py-2 rounded-lg text-xs font-semibold transition-all"
+              style={{
+                background: !profile.taxIncluded ? "rgba(30,127,255,0.15)" : "var(--cafyz-badge-bg)",
+                color: !profile.taxIncluded ? "#1e7fff" : "var(--cafyz-muted)",
+                border: `1px solid ${!profile.taxIncluded ? "rgba(30,127,255,0.35)" : "var(--cafyz-border)"}`,
+              }}
+            >
+              Tax excluded
+            </button>
+            <button
+              type="button"
+              onClick={() => setProfile(p => ({ ...p, taxIncluded: true }))}
+              className="px-3 py-2 rounded-lg text-xs font-semibold transition-all"
+              style={{
+                background: profile.taxIncluded ? "rgba(34,197,94,0.12)" : "var(--cafyz-badge-bg)",
+                color: profile.taxIncluded ? "#22c55e" : "var(--cafyz-muted)",
+                border: `1px solid ${profile.taxIncluded ? "rgba(34,197,94,0.3)" : "var(--cafyz-border)"}`,
+              }}
+            >
+              Tax included
+            </button>
+          </div>
+        </div>
       </Section>
 
       {/* Receipt */}
@@ -723,7 +792,7 @@ export function Profile() {
             onChange={e => update("receiptFooter", e.target.value)}
             rows={2}
             className="w-full rounded-xl px-3 py-2.5 text-sm outline-none resize-none"
-            style={{ background: "var(--cafyz-surface-2)", color: "var(--cafyz-text)", border: "1px solid rgba(30,127,255,0.12)" }}
+            style={{ background: "var(--cafyz-surface-2)", color: "var(--cafyz-text)", border: "1px solid var(--cafyz-border)" }}
           />
         </div>
       </Section>
@@ -734,7 +803,7 @@ export function Profile() {
           Print a sample receipt with your logo, address, tax rates, and footer so you can see exactly how it will look on paper.
         </p>
         <div className="rounded-xl px-3 py-2.5 flex flex-wrap items-center gap-x-3 gap-y-1"
-          style={{ background: "var(--cafyz-surface-2)", border: "1px solid rgba(30,127,255,0.12)" }}>
+          style={{ background: "var(--cafyz-surface-2)", border: "1px solid var(--cafyz-border)" }}>
           <span style={{ color: "var(--cafyz-muted)", fontSize: "0.72rem" }}>Printer</span>
           <span style={{ color: livePrinter.type === "none" ? "#fbbf24" : "#22c55e", fontSize: "0.78rem", fontWeight: 600 }}>
             {livePrinter.type === "none"
@@ -755,7 +824,7 @@ export function Profile() {
             onClick={handlePreviewReceipt}
             disabled={printBusy}
             className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold transition-all"
-            style={{ background: "rgba(30,127,255,0.12)", color: "#1e7fff", border: "1px solid rgba(30,127,255,0.2)", opacity: printBusy ? 0.6 : 1 }}
+            style={{ background: "var(--cafyz-badge-bg)", color: "var(--cafyz-brand)", border: "1px solid var(--cafyz-accent-border)", opacity: printBusy ? 0.6 : 1 }}
           >
             {printBusy ? <Loader2 size={13} className="animate-spin" /> : <ReceiptText size={13} />}
             Browser preview
@@ -775,7 +844,7 @@ export function Profile() {
             onClick={handlePrintKitchen}
             disabled={printBusy}
             className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold transition-all"
-            style={{ background: "rgba(30,127,255,0.06)", color: "var(--cafyz-text-secondary)", border: "1px solid rgba(30,127,255,0.15)", opacity: printBusy ? 0.6 : 1 }}
+            style={{ background: "var(--cafyz-accent-soft)", color: "var(--cafyz-text-secondary)", border: "1px solid var(--cafyz-border)", opacity: printBusy ? 0.6 : 1 }}
           >
             {printBusy ? <Loader2 size={13} className="animate-spin" /> : <ChefHat size={13} />}
             Print kitchen test
@@ -831,7 +900,7 @@ export function Profile() {
             </div>
 
             <div className="rounded-xl px-3 py-2.5"
-              style={{ background: "var(--cafyz-surface-2)", border: "1px solid rgba(30,127,255,0.12)" }}>
+              style={{ background: "var(--cafyz-surface-2)", border: "1px solid var(--cafyz-border)" }}>
               <div className="flex flex-wrap items-center gap-2">
                 {menuSync.loading ? (
                   <span className="flex items-center gap-1.5" style={{ color: "var(--cafyz-muted)", fontSize: "0.75rem" }}>
@@ -880,7 +949,7 @@ export function Profile() {
                 }}
                 disabled={!qrDataUrl}
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all"
-                style={{ background: "rgba(30,127,255,0.12)", color: "#1e7fff", border: "1px solid rgba(30,127,255,0.2)", opacity: qrDataUrl ? 1 : 0.5 }}>
+                style={{ background: "var(--cafyz-badge-bg)", color: "var(--cafyz-brand)", border: "1px solid var(--cafyz-accent-border)", opacity: qrDataUrl ? 1 : 0.5 }}>
                 <Download size={12} /> Download PNG
               </button>
             </div>

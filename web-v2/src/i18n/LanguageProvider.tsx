@@ -1,4 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { Capacitor } from '@capacitor/core';
 import {
   applyLanguageToDocument,
   getActiveLanguageCode,
@@ -31,6 +32,9 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const apply = () => applyLanguageToDocument(langRef.current);
     apply();
+
+    // DOM-walking translation fights React on native WebViews and can freeze the app.
+    if (Capacitor.isNativePlatform()) return;
 
     const debounced = debounce(apply, 120);
     const observer = new MutationObserver(() => debounced());

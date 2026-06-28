@@ -66,9 +66,12 @@ const RequestOtpSchema = z.object({ phone: z.string().min(8) });
 const VerifyOtpSchema = z.object({ phone: z.string().min(8), otp: z.string().regex(/^\d{6}$/) });
 
 const PinSchema = z.object({
-  email: z.string().email(),
+  login: z.string().min(3).optional(),
+  email: z.string().optional(),
   pin: z.string().length(4),
   device_id: z.string().min(8).max(128),
+}).refine((d) => Boolean(d.login?.trim() || d.email?.trim()), {
+  message: 'Email or mobile number is required',
 });
 const ForgotPasswordSchema = z.object({ email: z.string().email() });
 const ResetPasswordSchema = z.object({
@@ -299,39 +302,45 @@ router.post('/verify-otp', async (req, res, next) => {
   } catch (e) { next(e); }
 });
 
-// POST /api/auth/pin  (mobile PIN login)
+// POST /api/auth/pin  (mobile PIN login — email or phone + 4-digit PIN)
 router.post('/pin', async (req, res, next) => {
   try {
-    const { email, pin, device_id } = PinSchema.parse(req.body);
-    const emailNorm = email.trim().toLowerCase();
+    const body = PinSchema.parse(req.body);
+    const { pin, device_id } = body;
+    const rawLogin = (body.login ?? body.email ?? '').trim();
+    const identifier = resolveLoginIdentifier(rawLogin);
+    if (!identifier) {
+      res.status(401).json({ error: 'Invalid credentials' });
+      return;
+    }
     const deviceIdNorm = device_id.trim();
     const db = getDb();
-    const row = await db.execute({
-      sql: `SELECT u.*, r.name as restaurant_name, r.plan as restaurant_plan
-            FROM users u
-            JOIN restaurants r ON r.id = u.restaurant_id
-            WHERE LOWER(u.email)=?
-            ORDER BY u.created_at DESC
-            LIMIT 1`,
-      args: [emailNorm],
-    });
+    const row = await findUsersForLogin(identifier);
     if (!row.rows.length) {
       res.status(401).json({ error: 'Invalid credentials' });
       return;
     }
-    const u = row.rows[0] as Record<string, unknown>;
-    if (String(u.status) === 'off') {
-      res.status(403).json({ error: 'This user is currently inactive. Contact your manager.' });
+
+    let u: Record<string, unknown> | null = null;
+    for (const candidate of row.rows) {
+      const rowUser = candidate as Record<string, unknown>;
+      if (rowUser.pin_hash && await bcrypt.compare(pin, String(rowUser.pin_hash))) {
+        u = rowUser;
+        break;
+      }
+    }
+    if (!u) {
+      res.status(401).json({ error: 'Invalid PIN for this account' });
       return;
     }
-    if (!u.pin_hash || !(await bcrypt.compare(pin, String(u.pin_hash)))) {
-      res.status(401).json({ error: 'Invalid PIN for this account' });
+    if (String(u.status) === 'off') {
+      res.status(403).json({ error: 'This user is currently inactive. Contact your manager.' });
       return;
     }
 
     const pinnedDevice = String(u.pin_device_id ?? '').trim();
     if (pinnedDevice && pinnedDevice !== deviceIdNorm) {
-      res.status(403).json({ error: 'PIN login is restricted to your registered device. Use email login to register this device.' });
+      res.status(403).json({ error: 'PIN login is restricted to your registered device. Use email or mobile login to register this device.' });
       return;
     }
     if (!pinnedDevice) {

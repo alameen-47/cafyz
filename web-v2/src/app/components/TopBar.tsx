@@ -1,14 +1,17 @@
+import { motion, AnimatePresence } from "motion/react";
 import { Bell, Search, ChevronDown, Menu, Clock, X, UtensilsCrossed, LayoutGrid, ShoppingBag, Users, Package, CalendarCheck, Headset } from "lucide-react";
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
-import { motion, AnimatePresence } from "motion/react";
 import { NotificationDropdown } from "./NotificationDropdown";
 import { UserProfileDropdown } from "./UserProfileDropdown";
-import { searchApi, type ApiSearchResult } from "../../services/api";
+import { PrinterSetupPanel } from "./PrinterSetupPanel";
+import { searchApi, restaurantApi, type ApiSearchResult, type ApiRestaurant } from "../../services/api";
+import { getRestaurantLogo } from "../../services/restaurantLogoStorage";
 import { LanguageSwitcher } from "../../i18n/LanguageSwitcher";
 import { useLanguage } from "../../i18n/LanguageProvider";
 import { isFounderRole } from "../../config/access";
 import { useNotifications } from "../../hooks/useNotifications";
 import { usePushNotifications } from "../../hooks/usePushNotifications";
+import { nameInitials } from "../../utils/initials";
 
 const pageLabels: Record<string, { title: string; subtitle: string }> = {
   dashboard:    { title: "Dashboard",          subtitle: "Welcome back, Alex" },
@@ -110,6 +113,8 @@ export function TopBar({ active, onMobileMenuOpen, onNavigate, onLogout, role, p
   const [searchLoading, setSearchLoading] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
+  const [printerOpen, setPrinterOpen] = useState(false);
+  const [restaurant, setRestaurant] = useState<ApiRestaurant | null>(null);
   const notifRef = useRef<HTMLDivElement>(null);
   const profileRef = useRef<HTMLDivElement>(null);
   const searchRef = useRef<HTMLDivElement>(null);
@@ -128,7 +133,7 @@ export function TopBar({ active, onMobileMenuOpen, onNavigate, onLogout, role, p
   } = useNotifications(notificationsEnabled);
   usePushNotifications(notificationsEnabled);
   const time = useClock();
-  const initials = (userInitials || userName.split(" ").map(n => n[0]).join("")).slice(0, 2).toUpperCase();
+  const initials = userInitials || nameInitials(userName);
   const debouncedQuery = useDebounce(searchQuery, 280);
 
   const page = useMemo(() => {
@@ -139,6 +144,13 @@ export function TopBar({ active, onMobileMenuOpen, onNavigate, onLogout, role, p
     };
   }, [active, t]);
   const showDropdown = searchFocused && (searchQuery.length >= 2 || searchResults.length > 0);
+
+  const openPrinterSetup = useCallback(() => {
+    setProfileOpen(false);
+    setNotifOpen(false);
+    setPrinterOpen(true);
+    if (!restaurant) void restaurantApi.me().then(setRestaurant).catch(() => {});
+  }, [restaurant]);
 
   useEffect(() => {
     if (debouncedQuery.length < 2) {
@@ -202,7 +214,7 @@ export function TopBar({ active, onMobileMenuOpen, onNavigate, onLogout, role, p
           {page.title}
         </h1>
         <p className="truncate hidden sm:block" style={{ color: "var(--cafyz-muted)", fontSize: "0.67rem" }}>
-          {active === "dashboard" ? `${t("Welcome back,")} ${userName.split(" ")[0]}` : page.subtitle}
+          {active === "dashboard" ? `${t("Welcome back,")} ${(userName ?? "").trim().split(/\s+/)[0] || "there"}` : page.subtitle}
         </p>
       </div>
 
@@ -377,6 +389,7 @@ export function TopBar({ active, onMobileMenuOpen, onNavigate, onLogout, role, p
           open={profileOpen}
           onClose={() => setProfileOpen(false)}
           onNavigate={(p) => { onNavigate(p); setProfileOpen(false); }}
+          onOpenPrinter={founderUser ? undefined : openPrinterSetup}
           onLogout={onLogout}
           role={role}
           plan={plan}
@@ -385,6 +398,26 @@ export function TopBar({ active, onMobileMenuOpen, onNavigate, onLogout, role, p
           userInitials={initials}
         />
       </div>
+      {printerOpen && (
+        restaurant ? (
+          <PrinterSetupPanel
+            modal
+            onClose={() => setPrinterOpen(false)}
+            kitchen={restaurant.kitchen_printer?.name}
+            cashier={restaurant.cashier_printer?.name}
+            kitchenPrinter={restaurant.kitchen_printer ?? null}
+            cashierPrinter={restaurant.cashier_printer ?? null}
+            restaurantName={restaurant.name}
+            restaurantId={restaurant.id}
+            logoUrl={getRestaurantLogo(restaurant.id, restaurant.logo_url)}
+            onRestaurantUpdate={setRestaurant}
+          />
+        ) : (
+          <div className="fixed inset-0 z-[80] flex items-center justify-center" style={{ background: "var(--cafyz-overlay)" }}>
+            <div className="w-8 h-8 border-2 border-white/20 border-t-[#1e7fff] rounded-full animate-spin" />
+          </div>
+        )
+      )}
     </header>
   );
 }

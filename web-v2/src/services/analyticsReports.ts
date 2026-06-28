@@ -8,7 +8,8 @@ function restaurantMeta(r: ApiRestaurant): RestaurantPrintMeta {
   const parts = [r.address_line1, r.city, r.country].filter(Boolean);
   return {
     restaurantName: r.name,
-    currencySymbol: getCurrencySymbol(r.currency_code),
+    currencySymbol: getCurrencySymbol(r.currency_code, r.currency_symbol),
+    currencyCode: r.currency_code,
     logoUrl: getRestaurantLogo(r.id, r.logo_url),
     addressLine: parts.join(', ') || undefined,
     phone: r.contact_phone || undefined,
@@ -43,10 +44,10 @@ export function buildSalesReportFromAnalytics(
   );
 
   const metrics = [
-    { label: 'Gross revenue', value: formatMoney(totalRev, restaurant.currency_code) },
+    { label: 'Gross revenue', value: formatMoney(totalRev, restaurant.currency_code, restaurant.currency_symbol) },
     { label: 'Paid orders', value: String(totalOrders) },
     { label: 'Items sold', value: String(totalQty) },
-    { label: 'Avg order', value: formatMoney(avg, restaurant.currency_code) },
+    { label: 'Avg order', value: formatMoney(avg, restaurant.currency_code, restaurant.currency_symbol) },
     { label: 'Revenue vs prior', value: `${deltas.revenuePct >= 0 ? '+' : ''}${deltas.revenuePct}%` },
     { label: 'Tables now', value: `${tables_occupied}/${tables_total} (${occ}%)` },
     { label: 'Peak hour', value: peakHour.covers > 0 ? `${peakHour.label} (${peakHour.covers})` : '—' },

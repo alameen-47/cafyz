@@ -53,7 +53,7 @@ export function TrialExpiredModal({ expiresAt, founderEmail, currentPlan = 'basi
           </div>
         </div>
 
-        <div className="rounded-xl px-4 py-3 mb-4" style={{ background: 'var(--cafyz-surface-2)', border: '1px solid rgba(30,127,255,0.12)' }}>
+        <div className="rounded-xl px-4 py-3 mb-4" style={{ background: 'var(--cafyz-surface-2)', border: '1px solid var(--cafyz-border)' }}>
           <p style={{ color: 'var(--cafyz-text-secondary)', fontSize: '0.8rem', lineHeight: 1.5 }}>
             Email:{' '}
             <a href={`mailto:${email}`} style={{ color: '#1e7fff', fontWeight: 600 }}>{email}</a>
@@ -78,7 +78,7 @@ export function TrialExpiredModal({ expiresAt, founderEmail, currentPlan = 'basi
             type="button"
             onClick={onGoLicense}
             className="flex-1 py-3 rounded-xl text-sm font-semibold"
-            style={{ background: 'var(--cafyz-border)', color: '#1e7fff', border: '1px solid rgba(30,127,255,0.2)' }}
+            style={{ background: 'var(--cafyz-subtle-bg)', color: 'var(--cafyz-brand)', border: '1px solid var(--cafyz-accent-border)' }}
           >
             License & plans
           </button>

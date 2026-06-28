@@ -41,6 +41,16 @@ describe('POST /api/users', () => {
     expect(res.body).not.toHaveProperty('password_hash');
   });
 
+  it('manager can create a user with mobile for OTP/PIN login', async () => {
+    const res = await request(app)
+      .post('/api/users')
+      .set('Authorization', `Bearer ${managerToken}`)
+      .send({ name: 'Mobile Staff', email: 'mobile-staff@test.com', phone: '+971500000099', role: 'waiter' });
+    expect(res.status).toBe(201);
+    expect(res.body.phone).toBe('+971500000099');
+    expect(res.body.pin_delivery).toBeDefined();
+  });
+
   it('rejects duplicate email', async () => {
     await request(app)
       .post('/api/users')
@@ -72,6 +82,19 @@ describe('PUT /api/users/:id', () => {
       .send({ role: 'cashier' });
     expect(res.status).toBe(200);
     expect(res.body.role).toBe('cashier');
+  });
+
+  it('manager can save screen access overrides', async () => {
+    const list = await request(app).get('/api/users').set('Authorization', `Bearer ${managerToken}`);
+    const waiter = list.body.find((u: { role: string }) => u.role === 'waiter');
+    const res = await request(app)
+      .put(`/api/users/${waiter.id}`)
+      .set('Authorization', `Bearer ${managerToken}`)
+      .send({ access_json: { kds: 'view' } });
+    expect(res.status).toBe(200);
+    const parsed = JSON.parse(res.body.access_json);
+    expect(parsed.waiter).toBe('edit');
+    expect(parsed.kds).toBe('view');
   });
 });
 

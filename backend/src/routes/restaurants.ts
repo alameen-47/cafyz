@@ -81,6 +81,7 @@ const UpdateRestaurantSchema = z.object({
   tax_id:        optionalText(80),
   website_url:   optionalUrl,
   currency_code: z.enum(['USD', 'EUR', 'GBP', 'AED', 'SAR', 'INR', 'PKR', 'BDT', 'NGN', 'ZAR']).optional(),
+  currency_symbol: z.preprocess((v) => trimString(v), z.string().min(1).max(8)).optional(),
   language_code: z.enum(['en', 'ar', 'fr', 'es', 'de', 'hi', 'ur']).optional(),
   date_format:   z.enum(['DD/MM/YYYY', 'MM/DD/YYYY', 'YYYY-MM-DD']).optional(),
   service_charge_pct: optionalPercent,
@@ -245,6 +246,7 @@ router.put('/me', requireAuth, requireRole('owner', 'manager', 'cashier', 'kitch
     if (data.tax_id        !== undefined) { sets.push('tax_id=?');        args.push(data.tax_id || null); }
     if (data.website_url   !== undefined) { sets.push('website_url=?');   args.push(data.website_url || null); }
     if (data.currency_code !== undefined) { sets.push('currency_code=?'); args.push(data.currency_code); }
+    if (data.currency_symbol !== undefined) { sets.push('currency_symbol=?'); args.push(data.currency_symbol); }
     if (data.language_code !== undefined) { sets.push('language_code=?'); args.push(data.language_code); }
     if (data.date_format   !== undefined) { sets.push('date_format=?');   args.push(data.date_format); }
     if (data.service_charge_pct !== undefined) { sets.push('service_charge_pct=?'); args.push(data.service_charge_pct); }

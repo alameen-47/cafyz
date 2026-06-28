@@ -1,21 +1,23 @@
 import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import {
-  Search, Plus, Minus, Printer, ChevronDown, ChevronUp,
+  Search, Plus, Minus, ChevronDown, ChevronUp,
   CreditCard, Banknote, X, Check, Wifi, Bluetooth, Usb,
   ReceiptText, ShoppingCart,
 } from "lucide-react";
 import { toast } from "./Toast";
 import {
   menuApi, menuCategoriesApi, ordersApi, restaurantApi, tablesApi,
+  RESTAURANT_SETTINGS_CHANGED_EVENT,
   type ApiMenuItem, type ApiMenuCategory, type ApiTable, type ApiRestaurant,
 } from "../../services/api";
-import { getCurrencySymbol } from "../../utils/currency";
+import { getCurrencySymbol, getActiveCurrencyCode, applyRestaurantCurrency } from "../../utils/currency";
+import { computeBillTotals } from "../../utils/billTotals";
 import { getRestaurantLogo, syncRestaurantLogoCacheAsync } from "../../services/restaurantLogoStorage";
 import { print, type ReceiptData } from "../../services/PrintService";
 import { useAppNav } from "../nav";
 import { useAuth } from "../auth";
-import { PrinterSetupPanel } from "./PrinterSetupPanel";
+import { PrinterStatusBadge } from "./PrinterStatusBadge";
 
 interface CartItem { id: string; name: string; price: number; qty: number; emoji: string; orderItemId?: string; addedNow?: boolean }
 type PaymentState = "open" | "sent" | "card" | "cash" | "comped";
@@ -39,25 +41,23 @@ function formatMoney(cur: string, amount: number) {
 }
 
 function CartPanel({
-  cart, selectedTable, tables, tableName, billStatus, isParcel, editMode, breakdownOpen, showPrinter, charged, busy,
-  cur, subtotal, service, tax, grandTotal, serviceRate, taxRate, taxLabel,
-  kitchenPrinter, cashierPrinter, restaurantName, restaurantId, logoUrl,
+  cart, selectedTable, tables, tableName, billStatus, isParcel, editMode, breakdownOpen, charged, busy,
+  cur, subtotal, service, tax, grandTotal, serviceRate, taxRate, taxLabel, taxIncluded,
+  kitchenPrinter, cashierPrinter,
   sendable, onSend,
-  onTableChange, onParcelToggle, onEditToggle, onBreakdownToggle, onPrinterToggle,
-  onUpdateQty, onClear, onCharge, onCash, onClose, onRestaurantUpdate,
+  onTableChange, onParcelToggle, onEditToggle, onBreakdownToggle,
+  onUpdateQty, onClear, onCharge, onCash, onClose,
   isMobile,
 }: {
   cart: CartItem[]; selectedTable: string; tables: ApiTable[]; tableName: string; billStatus: BillStatus;
-  isParcel: boolean; editMode: boolean; breakdownOpen: boolean; showPrinter: boolean; charged: boolean; busy: boolean;
+  isParcel: boolean; editMode: boolean; breakdownOpen: boolean; charged: boolean; busy: boolean;
   cur: string; subtotal: number; service: number; tax: number; grandTotal: number;
-  serviceRate: number; taxRate: number; taxLabel: string; kitchenPrinter?: string | null; cashierPrinter?: string | null;
-  restaurantName?: string; restaurantId?: string; logoUrl?: string | null;
+  serviceRate: number; taxRate: number; taxLabel: string; taxIncluded: boolean; kitchenPrinter?: string | null; cashierPrinter?: string | null;
   sendable: boolean; onSend: () => void;
   onTableChange: (t: string) => void; onParcelToggle: () => void; onEditToggle: () => void;
-  onBreakdownToggle: () => void; onPrinterToggle: () => void;
+  onBreakdownToggle: () => void;
   onUpdateQty: (id: string, d: number) => void; onClear: () => void;
   onCharge: () => void; onCash: () => void; onClose?: () => void;
-  onRestaurantUpdate: (r: ApiRestaurant) => void;
   isMobile?: boolean;
 }) {
   const itemCount = cart.reduce((s, c) => s + c.qty, 0);
@@ -111,6 +111,8 @@ function CartPanel({
               style={{ background: "rgba(0,198,255,0.15)", color: "#00c6ff" }}>Parcel</span>
           )}
         </div>
+
+        <PrinterStatusBadge kitchen={kitchenPrinter} cashier={cashierPrinter} />
 
         <div className="grid grid-cols-[1fr_auto] gap-2 items-end">
           <div>
@@ -243,7 +245,9 @@ function CartPanel({
                     )}
                     {taxRate > 0 && (
                       <div className="flex justify-between">
-                        <span style={{ color: "var(--cafyz-muted)", fontSize: "0.72rem" }}>{taxLabel} ({taxRate}%)</span>
+                        <span style={{ color: "var(--cafyz-muted)", fontSize: "0.72rem" }}>
+                          {taxLabel} ({taxRate}%){taxIncluded ? " incl." : ""}
+                        </span>
                         <span style={{ color: "var(--cafyz-text-secondary)", fontFamily: "var(--font-mono)", fontSize: "0.72rem" }}>{formatMoney(cur, tax)}</span>
                       </div>
                     )}
@@ -269,13 +273,6 @@ function CartPanel({
             <ReceiptText size={16} /> Send to kitchen
           </motion.button>
         )}
-
-        <AnimatePresence>
-          {showPrinter && isMobile && (
-            <PrinterSetupPanel compact onClose={onPrinterToggle} kitchen={kitchenPrinter} cashier={cashierPrinter}
-              onRestaurantUpdate={onRestaurantUpdate} restaurantName={restaurantName} restaurantId={restaurantId} logoUrl={logoUrl} />
-          )}
-        </AnimatePresence>
 
         <div className={`grid gap-2 ${canPay ? "grid-cols-2" : "grid-cols-1"}`}>
           {canPay && (
@@ -306,17 +303,6 @@ function CartPanel({
               style={{ background: "rgba(255,59,92,0.08)", color: "#ff3b5c" }}>
               Clear bill
             </button>
-          </div>
-          <div className="relative flex-shrink-0">
-            <button type="button" onClick={onPrinterToggle} aria-label="Printer settings"
-              className="w-11 h-11 rounded-xl flex items-center justify-center"
-              style={{ background: "rgba(30,127,255,0.08)", border: "1px solid rgba(30,127,255,0.15)" }}>
-              <Printer size={17} style={{ color: "#1e7fff" }} />
-            </button>
-            {!isMobile && showPrinter && (
-              <PrinterSetupPanel onClose={onPrinterToggle} kitchen={kitchenPrinter} cashier={cashierPrinter}
-                onRestaurantUpdate={onRestaurantUpdate} restaurantName={restaurantName} restaurantId={restaurantId} logoUrl={logoUrl} />
-            )}
           </div>
         </div>
       </div>
@@ -478,7 +464,6 @@ export function POS() {
   const [payState, setPayState] = useState<PaymentState>("open");
   const [isParcel, setIsParcel] = useState(false);
   const [breakdownOpen, setBreakdownOpen] = useState(false);
-  const [showPrinter, setShowPrinter] = useState(false);
   const [editMode, setEditMode] = useState(false);
   const [charged, setCharged] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -494,9 +479,22 @@ export function POS() {
         setActiveCat("all");
         setTables(t);
         setRestaurant(r);
+        applyRestaurantCurrency(r);
         void syncRestaurantLogoCacheAsync(r);
       })
       .catch(() => { /* render empty on failure */ });
+  }, []);
+
+  useEffect(() => {
+    const refreshRestaurant = () => {
+      void restaurantApi.me().then(r => {
+        setRestaurant(r);
+        applyRestaurantCurrency(r);
+        void syncRestaurantLogoCacheAsync(r);
+      }).catch(() => {});
+    };
+    window.addEventListener(RESTAURANT_SETTINGS_CHANGED_EVENT, refreshRestaurant);
+    return () => window.removeEventListener(RESTAURANT_SETTINGS_CHANGED_EVENT, refreshRestaurant);
   }, []);
 
   // ── Pending table bills (kitchen-sent orders) — polled like the cashier panel ─
@@ -507,14 +505,22 @@ export function POS() {
       const rows = liveRows.filter(o => o.status === 'sent');
       const enriched: PendingBill[] = rows.map((o) => {
         const items = (o.items ?? []).reduce((s, it) => s + it.qty, 0);
-        const total = o.subtotal ?? (o.items ?? []).reduce((s, it) => s + (it.price ?? 0) * it.qty, 0);
+        const itemSubtotal = o.subtotal ?? (o.items ?? []).reduce((s, it) => s + (it.price ?? 0) * it.qty, 0);
+        const total = restaurant
+          ? computeBillTotals({
+            subtotal: itemSubtotal,
+            serviceRatePct: restaurant.service_charge_pct,
+            taxRatePct: restaurant.tax_rate_pct,
+            taxIncluded: restaurant.tax_included,
+          }).grandTotal
+          : itemSubtotal;
         return { id: o.id, table_id: o.table_id, table_name: o.table_name || "No table", items, total, since: relSince(o.created_at) };
       });
       setPending(mergePendingByTable(enriched));
     } catch {
       setPending([]);
     }
-  }, []);
+  }, [restaurant]);
 
   useEffect(() => {
     void refreshPending();
@@ -525,7 +531,7 @@ export function POS() {
   }, [refreshPending]);
 
   // ── Derived ────────────────────────────────────────────────────────────────
-  const cur = getCurrencySymbol(restaurant?.currency_code);
+  const cur = getCurrencySymbol(restaurant?.currency_code, restaurant?.currency_symbol);
   const catTabs = [{ id: "all", label: "All" }, ...categories.map(c => ({ id: c.slug, label: c.label }))];
   const filtered = menu
     .filter(m => activeCat === "all" || m.category === activeCat)
@@ -534,16 +540,14 @@ export function POS() {
       (m.description ?? "").toLowerCase().includes(search.trim().toLowerCase()));
 
   const subtotal = cart.reduce((s, c) => s + c.price * c.qty, 0);
-  const serviceRate = Math.max(0, Number(restaurant?.service_charge_pct ?? 18));
-  const taxRate = Math.max(0, Number(restaurant?.tax_rate_pct ?? 8.75));
   const taxLabel = (restaurant?.tax_type || "Tax").trim() || "Tax";
-  const taxIncluded = restaurant?.tax_included === 1 || restaurant?.tax_included === true;
-  const service = subtotal * (serviceRate / 100);
-  const taxableAmount = subtotal + service;
-  const tax = taxIncluded && taxRate > 0
-    ? taxableAmount - taxableAmount / (1 + taxRate / 100)
-    : taxableAmount * (taxRate / 100);
-  const grandTotal = taxIncluded ? taxableAmount : taxableAmount + tax;
+  const bill = computeBillTotals({
+    subtotal,
+    serviceRatePct: restaurant?.service_charge_pct ?? 18,
+    taxRatePct: restaurant?.tax_rate_pct ?? 8.75,
+    taxIncluded: restaurant?.tax_included,
+  });
+  const { serviceRate, taxRate, service, tax, grandTotal, taxIncluded } = bill;
 
   const isPaid = payState === "card" || payState === "cash" || payState === "comped";
   const canEditBill = payState === "sent" && !!activeOrderId && !isPaid;
@@ -688,9 +692,12 @@ export function POS() {
     const address = [restaurant?.address_line1, restaurant?.address_line2, restaurant?.city, restaurant?.postal_code, restaurant?.country]
       .filter(Boolean).join(", ");
     const tableObj = tables.find(t => t.id === selectedTable);
+    const code = restaurant?.currency_code ?? getActiveCurrencyCode();
+    const symbol = getCurrencySymbol(code, restaurant?.currency_symbol);
     return {
       restaurantName: restaurant?.name || user?.restaurant_name || "Restaurant",
-      currencySymbol: cur,
+      currencySymbol: symbol,
+      currencyCode: code,
       logoUrl: getRestaurantLogo(user?.restaurant_id ?? restaurant?.id, restaurant?.logo_url),
       addressLine: address || undefined,
       phone: restaurant?.contact_phone || undefined,
@@ -816,24 +823,19 @@ export function POS() {
   const billStatus: BillStatus = isPaid ? "paid" : canEditBill ? "kitchen" : !selectedTable ? "empty" : "building";
 
   const cartProps = {
-    cart, selectedTable, tables, tableName, billStatus, isParcel, editMode, breakdownOpen, showPrinter, charged, busy,
-    cur, subtotal, service, tax, grandTotal, serviceRate, taxRate, taxLabel,
+    cart, selectedTable, tables, tableName, billStatus, isParcel, editMode, breakdownOpen, charged, busy,
+    cur, subtotal, service, tax, grandTotal, serviceRate, taxRate, taxLabel, taxIncluded,
     kitchenPrinter: kitchenPrinterName, cashierPrinter: cashierPrinterName,
-    restaurantName: restaurant?.name ?? 'Cafyz',
-    restaurantId: restaurant?.id,
-    logoUrl: getRestaurantLogo(restaurant?.id, restaurant?.logo_url) ?? null,
     sendable,
     onSend: () => void sendToKitchen(),
     onTableChange: handleTableChange,
     onParcelToggle: () => void toggleParcel(),
     onEditToggle: () => setEditMode(e => !e),
     onBreakdownToggle: () => setBreakdownOpen(o => !o),
-    onPrinterToggle: () => setShowPrinter(p => !p),
     onUpdateQty: (id: string, d: number) => void updateQty(id, d),
     onClear: () => resetBill(),
     onCharge: () => void handleCharge("card"),
     onCash: () => void handleCharge("cash"),
-    onRestaurantUpdate: setRestaurant,
   };
 
   return (

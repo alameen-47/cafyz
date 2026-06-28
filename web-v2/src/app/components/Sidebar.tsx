@@ -274,7 +274,7 @@ export function Sidebar({
         {/* Collapse toggle (desktop) */}
         <button onClick={onToggle}
           className="cafyz-sidebar-collapse-btn hidden lg:flex absolute -right-3 top-20 w-6 h-6 rounded-full items-center justify-center text-[var(--cafyz-muted)] hover:text-[var(--cafyz-nav-hover)] transition-colors z-10"
-          style={{ boxShadow: "0 2px 8px rgba(0,0,0,0.15)" }}>
+          style={{ boxShadow: "var(--cafyz-shadow-sm)" }}>
           {collapsed ? <ChevronRight size={12} /> : <ChevronLeft size={12} />}
         </button>
       </motion.aside>
@@ -295,7 +295,7 @@ export function Sidebar({
               </div>
               <div className="flex gap-2">
                 <button onClick={() => setShowLogoutConfirm(false)} className="flex-1 py-2.5 rounded-xl text-sm font-semibold"
-                  style={{ background: "rgba(30,127,255,0.06)", color: "var(--cafyz-muted)", border: "1px solid var(--cafyz-border)" }}>
+                  style={{ background: "var(--cafyz-accent-soft)", color: "var(--cafyz-muted)", border: "1px solid var(--cafyz-border)" }}>
                   Cancel
                 </button>
                 <button onClick={() => { setShowLogoutConfirm(false); onLogout?.(); }}

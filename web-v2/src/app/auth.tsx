@@ -1,7 +1,8 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
-import { authApi, restaurantApi, licensesApi, type LoginResponse } from '../services/api';
-import { setActiveCurrencyCode } from '../utils/currency';
+import { createContext, useContext, useEffect, useState, useCallback, type ReactNode } from 'react';
+import { authApi, restaurantApi, licensesApi, SESSION_EXPIRED_EVENT, type LoginResponse } from '../services/api';
+import { applyRestaurantCurrency } from '../utils/currency';
 import { syncRestaurantLogoCacheAsync } from '../services/restaurantLogoStorage';
+import { storageGet, storageRemove, storageSet } from '../utils/safeStorage';
 
 export type Role = 'owner' | 'manager' | 'cashier' | 'waiter' | 'kitchen' | 'founder';
 export type Plan = 'basic' | 'pro' | 'premium';
@@ -31,7 +32,7 @@ interface AuthCtx {
   user: AuthUser | null;
   loading: boolean;
   loginEmail: (email: string, password: string) => Promise<void>;
-  loginPin: (email: string, pin: string) => Promise<void>;
+  loginPin: (login: string, pin: string) => Promise<void>;
   requestOtp: (phone: string) => Promise<{ dev_otp?: string; message: string }>;
   verifyOtp: (phone: string, otp: string) => Promise<void>;
   signup: (data: SignupData) => Promise<void>;
@@ -45,12 +46,12 @@ export const useAuth = () => useContext(Ctx);
 
 const DEVICE_KEY = 'cafyz_device_id';
 function deviceId(): string {
-  let id = localStorage.getItem(DEVICE_KEY);
+  let id = storageGet(DEVICE_KEY);
   if (!id) {
     id = typeof crypto !== 'undefined' && 'randomUUID' in crypto
       ? `dev-${crypto.randomUUID()}`
       : `dev-${Date.now().toString(36)}`;
-    localStorage.setItem(DEVICE_KEY, id);
+    storageSet(DEVICE_KEY, id);
   }
   return id;
 }
@@ -68,31 +69,61 @@ function baseUser(d: LoginResponse): Omit<AuthUser, 'plan'> {
   };
 }
 
+function readCachedUser(): AuthUser | null {
+  try {
+    const token = storageGet('cafyz_token');
+    const stored = storageGet('cafyz_user');
+    if (!token || !stored) return null;
+    return JSON.parse(stored) as AuthUser;
+  } catch {
+    return null;
+  }
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<AuthUser | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState<AuthUser | null>(readCachedUser);
+  const [loading, setLoading] = useState(() => {
+    const token = storageGet('cafyz_token');
+    if (!token) return false;
+    return !readCachedUser();
+  });
 
   useEffect(() => {
-    const token = localStorage.getItem('cafyz_token');
+    const onSessionExpired = () => {
+      setUser(null);
+      setLoading(false);
+    };
+    window.addEventListener(SESSION_EXPIRED_EVENT, onSessionExpired);
+    return () => window.removeEventListener(SESSION_EXPIRED_EVENT, onSessionExpired);
+  }, []);
+
+  useEffect(() => {
+    const token = storageGet('cafyz_token');
     if (!token) {
       setLoading(false);
       return;
     }
 
+    const cached = readCachedUser();
+    if (cached) {
+      setUser(cached);
+      setLoading(false);
+    }
+
     void (async () => {
       try {
         const me = await authApi.me();
-        const stored = localStorage.getItem('cafyz_user');
-        let plan: Plan = 'basic';
-        let restaurant_name = '';
+        const stored = storageGet('cafyz_user');
+        let plan: Plan = cached?.plan ?? 'basic';
+        let restaurant_name = cached?.restaurant_name ?? '';
         try {
           const parsed = stored ? JSON.parse(stored) as AuthUser : null;
           plan = parsed?.plan ?? plan;
-          restaurant_name = parsed?.restaurant_name ?? '';
+          restaurant_name = parsed?.restaurant_name ?? restaurant_name;
         } catch { /* ignore corrupt cache */ }
 
         const r = await restaurantApi.me();
-        if (r.currency_code) setActiveCurrencyCode(r.currency_code);
+        applyRestaurantCurrency(r);
         void syncRestaurantLogoCacheAsync(r);
         plan = (r.plan as Plan) ?? plan;
         restaurant_name = String(r.name ?? restaurant_name);
@@ -107,12 +138,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           restaurant_name,
           plan,
         };
-        localStorage.setItem('cafyz_user', JSON.stringify(u));
+        storageSet('cafyz_user', JSON.stringify(u));
         setUser(u);
       } catch {
-        localStorage.removeItem('cafyz_token');
-        localStorage.removeItem('cafyz_user');
-        setUser(null);
+        if (!cached) {
+          storageRemove('cafyz_token');
+          storageRemove('cafyz_user');
+          setUser(null);
+        }
       } finally {
         setLoading(false);
       }
@@ -121,16 +154,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Persist token, then enrich with plan + currency from the restaurant record.
   async function complete(d: LoginResponse) {
-    localStorage.setItem('cafyz_token', d.token);
+    storageSet('cafyz_token', d.token);
     let plan: Plan = ((d as unknown as { restaurant_plan?: string }).restaurant_plan as Plan) || 'basic';
     try {
       const r = await restaurantApi.me();
       if (r.plan) plan = r.plan as Plan;
-      setActiveCurrencyCode(r.currency_code);
+      applyRestaurantCurrency(r);
       void syncRestaurantLogoCacheAsync(r);
     } catch { /* keep login-response plan */ }
     const u: AuthUser = { ...baseUser(d), plan };
-    localStorage.setItem('cafyz_user', JSON.stringify(u));
+    storageSet('cafyz_user', JSON.stringify(u));
     setUser(u);
   }
 
@@ -138,8 +171,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const d = await authApi.login(login.trim(), password, deviceId());
     await complete(d);
   };
-  const loginPin = async (email: string, pin: string) => {
-    const d = await authApi.pin(email.trim().toLowerCase(), pin, deviceId());
+  const loginPin = async (login: string, pin: string) => {
+    const d = await authApi.pin(login.trim(), pin, deviceId());
     await complete(d);
   };
   const requestOtp = async (phone: string) => {
@@ -179,12 +212,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   function logout() {
-    localStorage.removeItem('cafyz_token');
-    localStorage.removeItem('cafyz_user');
+    storageRemove('cafyz_token');
+    storageRemove('cafyz_user');
     setUser(null);
   }
 
-  async function refreshPlan(): Promise<Plan | null> {
+  const refreshPlan = useCallback(async (): Promise<Plan | null> => {
     let next: Plan | null = null;
     try {
       const [r, sub] = await Promise.all([
@@ -200,15 +233,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           plan,
           restaurant_name: String(r.name ?? prev.restaurant_name),
         };
-        localStorage.setItem('cafyz_user', JSON.stringify(u));
+        storageSet('cafyz_user', JSON.stringify(u));
         return u;
       });
-      if (r.currency_code) setActiveCurrencyCode(r.currency_code);
+      if (r.currency_code || r.currency_symbol) applyRestaurantCurrency(r);
       return next;
     } catch {
       return null;
     }
-  }
+  }, []);
 
   return (
     <Ctx.Provider value={{ user, loading, loginEmail, loginPin, requestOtp, verifyOtp, signup, logout, refreshPlan }}>

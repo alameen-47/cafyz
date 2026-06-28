@@ -68,8 +68,8 @@ export function LanguageSwitcher({ variant = 'header', className = '' }: Languag
             className="absolute right-0 mt-2 z-[80] min-w-[168px] rounded-xl overflow-hidden py-1"
             style={{
               background: 'var(--cafyz-surface)',
-              border: '1px solid rgba(30,127,255,0.2)',
-              boxShadow: '0 12px 32px rgba(0,0,0,0.5)',
+              border: '1px solid var(--cafyz-border-strong)',
+              boxShadow: 'var(--cafyz-shadow-lg)',
             }}
           >
             {SUPPORTED_LANGUAGES.map(opt => {
@@ -79,7 +79,7 @@ export function LanguageSwitcher({ variant = 'header', className = '' }: Languag
                   key={opt.code}
                   type="button"
                   onClick={() => pick(opt.code)}
-                  className="w-full flex items-center gap-2 px-3 py-2.5 text-left transition-colors hover:bg-[rgba(30,127,255,0.08)]"
+                  className="w-full flex items-center gap-2 px-3 py-2.5 text-left transition-colors hover:bg-[var(--cafyz-accent-soft)]"
                 >
                   <span style={{ color: 'var(--cafyz-text)', fontSize: '0.88rem', fontWeight: active ? 700 : 500, flex: 1 }}>
                     {opt.nativeLabel}

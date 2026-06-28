@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, Suspense } from "react";
 import { Toaster } from "sonner";
 import { Sidebar } from "./components/Sidebar";
 import { TopBar } from "./components/TopBar";
@@ -9,16 +9,12 @@ import { Orders } from "./components/Orders";
 import { Tables } from "./components/Tables";
 import { MenuPage } from "./components/MenuPage";
 import { Staff } from "./components/Staff";
-import { Analytics } from "./components/Analytics";
 import { Inventory } from "./components/Inventory";
 import { LoginScreen } from "./components/LoginScreen";
-import { POS } from "./components/POS";
 import { KDS } from "./components/KDS";
 import { Roles } from "./components/Roles";
-import { Profile } from "./components/Profile";
 import { License } from "./components/License";
 import { Reservations } from "./components/Reservations";
-import { FounderConsole } from "./components/FounderConsole";
 import { PublicMenu } from "./components/PublicMenu";
 import { UpgradeModal } from "./components/UpgradeModal";
 import { TrialExpiredModal } from "./components/TrialExpiredModal";
@@ -26,14 +22,20 @@ import { RenewalBanner } from "./components/RenewalBanner";
 import { CafyzLogo } from "./components/CafyzLogo";
 import { useAuth, type Plan, type Role } from "./auth";
 import { NavContext } from "./nav";
-import { licensesApi, usersApi, TRIAL_EXPIRED_EVENT, type ApiSubscriptionStatus } from "../services/api";
+import { licensesApi, authApi, TRIAL_EXPIRED_EVENT, ACCESS_CHANGED_EVENT, type ApiSubscriptionStatus } from "../services/api";
 import {
-  allowedPages, canAccessPage, isFounderRole, planMeetsRequirement, requiredPlanForPage, type PageId,
+  canAccessPage, isFounderRole, permittedPages, planMeetsRequirement, requiredPlanForPage, type PageId,
 } from "../config/access";
 import { useKitchenPrintWorker } from "../hooks/useKitchenPrintWorker";
 import { usePlanConfig } from "./PlanConfigProvider";
 import { applyLanguageToDocument, getActiveLanguageCode } from "../i18n";
+import { lazyPage, PageLoadingFallback } from "./lazyPage";
 import "../styles/fonts.css";
+
+const POS = lazyPage(() => import("./components/POS").then(m => ({ default: m.POS })), "POS");
+const Analytics = lazyPage(() => import("./components/Analytics").then(m => ({ default: m.Analytics })), "Analytics");
+const Profile = lazyPage(() => import("./components/Profile").then(m => ({ default: m.Profile })), "Profile");
+const FounderConsole = lazyPage(() => import("./components/FounderConsole").then(m => ({ default: m.FounderConsole })), "Founder Console");
 
 const pages: Record<string, React.ComponentType> = {
   dashboard: Dashboard,
@@ -84,26 +86,43 @@ export default function App() {
       setSubscription(null);
       return null;
     }
-  }, [user, refreshPlan]);
+  }, [user?.id, user?.role, user?.plan, refreshPlan]);
+
+  const loadAccess = useCallback(async () => {
+    if (!user || user.role === "founder") return;
+    try {
+      const me = await authApi.me();
+      setAccessJson(me.access_json ?? null);
+      const legacy = me.access_json ? (() => {
+        try {
+          const parsed = JSON.parse(me.access_json);
+          return Array.isArray(parsed) ? parsed as PageId[] : null;
+        } catch {
+          return null;
+        }
+      })() : null;
+      setAccessPages(legacy);
+    } catch {
+      setAccessJson(null);
+      setAccessPages(null);
+    }
+  }, [user?.id, user?.role]);
 
   useEffect(() => {
     if (!user || user.role === "founder") return;
     void loadSubscription();
-    void usersApi.list().then(list => {
-      const me = list.find(u => u.id === user.id);
-      if (me?.access_json) {
-        setAccessJson(me.access_json);
-        try {
-          const parsed = JSON.parse(me.access_json);
-          if (Array.isArray(parsed)) setAccessPages(parsed as PageId[]);
-        } catch { /* screen map handled via accessJson */ }
-      }
-    }).catch(() => {});
+    void loadAccess();
     const iv = setInterval(() => { void loadSubscription(); }, 60_000);
     const onVis = () => { if (document.visibilityState === "visible") void loadSubscription(); };
+    const onAccessChanged = () => { void loadAccess(); };
     document.addEventListener("visibilitychange", onVis);
-    return () => { clearInterval(iv); document.removeEventListener("visibilitychange", onVis); };
-  }, [user?.id, user?.role, loadSubscription]);
+    window.addEventListener(ACCESS_CHANGED_EVENT, onAccessChanged);
+    return () => {
+      clearInterval(iv);
+      document.removeEventListener("visibilitychange", onVis);
+      window.removeEventListener(ACCESS_CHANGED_EVENT, onAccessChanged);
+    };
+  }, [user?.id, user?.role, loadSubscription, loadAccess]);
 
   useEffect(() => {
     const onTrialExpired = () => { void loadSubscription(); };
@@ -113,7 +132,7 @@ export default function App() {
 
   const role = (user?.role ?? "waiter") as Role;
   const plan = (user?.plan ?? "basic") as Plan;
-  const permitted = user ? allowedPages(role, plan, accessPages) : [];
+  const permitted = user ? permittedPages(role, plan, accessJson, accessPages) : [];
 
   // Founders: founder console only. Tenants: never land on founder routes.
   useEffect(() => {
@@ -259,7 +278,15 @@ export default function App() {
           />
 
           <main className={`flex-1 cafyz-main-scroll ${isFullHeight ? "app-main-full overflow-hidden" : "app-main-scroll overflow-y-auto"}`}>
-            {permitted.includes(activePage) ? <PageComponent /> : (isFounder ? <FounderConsole /> : <Dashboard />)}
+            {permitted.includes(activePage) ? (
+              <Suspense fallback={<PageLoadingFallback />}>
+                <PageComponent />
+              </Suspense>
+            ) : (isFounder ? (
+              <Suspense fallback={<PageLoadingFallback />}>
+                <FounderConsole />
+              </Suspense>
+            ) : <Dashboard />)}
             {!isFullHeight && !isFounder && <div className="app-main-spacer lg:hidden h-20" />}
           </main>
         </div>

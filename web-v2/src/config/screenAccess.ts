@@ -82,6 +82,18 @@ export function effectiveScreenAccess(role: string, accessJson?: string | null):
   return { ...defaultRoleScreenAccess(role), ...parseScreenAccess(accessJson) };
 }
 
+export function accessOverridesForRole(role: string, draft: ScreenAccessMap): ScreenAccessMap {
+  const defaults = defaultRoleScreenAccess(role);
+  const out: ScreenAccessMap = {};
+  for (const screen of ACCESS_MANAGED_SCREENS) {
+    const level = draft[screen.id] ?? defaults[screen.id] ?? 'none';
+    if ((defaults[screen.id] ?? 'none') !== level) {
+      out[screen.id] = level;
+    }
+  }
+  return out;
+}
+
 export function hasPageScreenAccess(page: PageId, role: string, accessJson?: string | null): boolean {
   if (page === 'founder') return role === 'founder';
   if (role === 'founder') return false;

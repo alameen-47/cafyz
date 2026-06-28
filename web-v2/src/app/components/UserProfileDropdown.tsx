@@ -1,11 +1,13 @@
 import { motion, AnimatePresence } from "motion/react";
-import { User, Settings, Shield, LogOut, ChevronRight, Zap, Crown } from "lucide-react";
+import { User, Settings, Shield, LogOut, ChevronRight, Zap, Crown, Printer } from "lucide-react";
 import { isFounderRole } from "../../config/access";
+import { nameInitials } from "../../utils/initials";
 
 interface UserProfileDropdownProps {
   open: boolean;
   onClose: () => void;
   onNavigate: (page: string) => void;
+  onOpenPrinter?: () => void;
   onLogout: () => void;
   role: string;
   plan: string;
@@ -20,17 +22,18 @@ const roleColors: Record<string, string> = {
   waiter: "#00c6ff", kitchen: "#f59e0b", founder: "#ff3b5c",
 };
 
-export function UserProfileDropdown({ open, onClose, onNavigate, onLogout, role, plan, userName = "User", userEmail = "", userInitials = "?" }: UserProfileDropdownProps) {
-  const initials = (userInitials || userName.split(" ").map(n => n[0]).join("")).slice(0, 2).toUpperCase();
+export function UserProfileDropdown({ open, onClose, onNavigate, onOpenPrinter, onLogout, role, plan, userName = "User", userEmail = "", userInitials = "?" }: UserProfileDropdownProps) {
+  const initials = userInitials || nameInitials(userName);
   const founderUser = isFounderRole(role);
   const menuItems = founderUser
     ? []
     : [
         { icon: User, label: "My Profile", action: () => onNavigate("profile") },
         { icon: Settings, label: "Restaurant Settings", action: () => onNavigate("profile") },
+        { icon: Printer, label: "Printer setup", action: () => onOpenPrinter?.() },
         { icon: Shield, label: "Roles & Permissions", action: () => onNavigate("roles") },
         { icon: Zap, label: "Upgrade Plan", action: () => onNavigate("license") },
-      ];
+      ].filter(item => item.label !== "Printer setup" || onOpenPrinter);
 
   return (
     <AnimatePresence>

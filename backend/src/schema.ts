@@ -300,6 +300,7 @@ export async function runMigrations() {
   await addCol(`ALTER TABLE restaurants ADD COLUMN tax_id TEXT`, 'tax_id');
   await addCol(`ALTER TABLE restaurants ADD COLUMN website_url TEXT`, 'website_url');
   await addCol(`ALTER TABLE restaurants ADD COLUMN currency_code TEXT NOT NULL DEFAULT 'USD'`, 'currency_code');
+  await addCol(`ALTER TABLE restaurants ADD COLUMN currency_symbol TEXT`, 'currency_symbol');
   await addCol(`ALTER TABLE restaurants ADD COLUMN language_code TEXT NOT NULL DEFAULT 'en'`, 'language_code');
   await addCol(`ALTER TABLE restaurants ADD COLUMN date_format TEXT NOT NULL DEFAULT 'DD/MM/YYYY'`, 'date_format');
   await addCol(`ALTER TABLE restaurants ADD COLUMN service_charge_pct REAL`, 'service_charge_pct');

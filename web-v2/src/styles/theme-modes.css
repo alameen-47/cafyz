@@ -80,6 +80,16 @@ html:not(.light) {
   --cafyz-success-bg: rgba(34, 197, 94, 0.12);
   --cafyz-on-gradient: #ffffff;
   --cafyz-brand: #1e7fff;
+
+  --cafyz-hero-gradient: linear-gradient(135deg, rgba(30, 127, 255, 0.14) 0%, rgba(13, 19, 38, 0.96) 58%);
+  --cafyz-hero-footer-bg: rgba(0, 0, 0, 0.18);
+  --cafyz-hero-shadow: 0 8px 32px rgba(0, 0, 0, 0.22);
+  --cafyz-hero-inset-bg: rgba(8, 12, 30, 0.45);
+  --cafyz-logo-plate-bg: #0a1024;
+  --cafyz-media-scrim: linear-gradient(to top, rgba(13, 19, 38, 0.65) 0%, transparent 55%);
+  --cafyz-banner-warn-bg: linear-gradient(135deg, #0d2040 0%, #0d1326 100%);
+  --cafyz-banner-expired-bg: linear-gradient(135deg, #2a1020 0%, #1a0d26 100%);
+  --cafyz-nav-pill-bg: rgba(30, 127, 255, 0.14);
 }
 
 html.light {
@@ -162,6 +172,16 @@ html.light {
   --cafyz-brand: #1565e0;
   --primary: #1565e0;
   --ring: rgba(21, 101, 224, 0.35);
+
+  --cafyz-hero-gradient: linear-gradient(135deg, #ffffff 0%, #f8fafc 42%, #e8f2ff 100%);
+  --cafyz-hero-footer-bg: rgba(30, 127, 255, 0.06);
+  --cafyz-hero-shadow: 0 8px 28px rgba(15, 23, 42, 0.08), 0 1px 3px rgba(15, 23, 42, 0.04);
+  --cafyz-hero-inset-bg: rgba(255, 255, 255, 0.92);
+  --cafyz-logo-plate-bg: #f1f5f9;
+  --cafyz-media-scrim: linear-gradient(to top, rgba(15, 23, 42, 0.52) 0%, transparent 55%);
+  --cafyz-banner-warn-bg: linear-gradient(135deg, #eff6ff 0%, #ffffff 100%);
+  --cafyz-banner-expired-bg: linear-gradient(135deg, #fef2f2 0%, #fff7ed 100%);
+  --cafyz-nav-pill-bg: rgba(30, 127, 255, 0.14);
 }
 
 html.dark body,

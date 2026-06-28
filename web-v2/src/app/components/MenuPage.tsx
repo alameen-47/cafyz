@@ -175,7 +175,6 @@ function ItemModal({ item, itemCategories, onSave, onClose }: {
           </div>
           {imageUploadError && <p style={{ color: "#ff3b5c", fontSize: "0.72rem" }}>{imageUploadError}</p>}
           <p style={{ color: "var(--cafyz-muted)", fontSize: "0.68rem" }}>JPEG, PNG, WebP, GIF, or HEIC · max 8 MB</p>
-          <Field label="Or paste image URL (optional)" value={form.image} onChange={v => setField("image", v)} placeholder="https://…" />
 
           <div className="grid grid-cols-2 gap-3">
             <div className="col-span-2"><Field label="Item Name *" value={form.name} onChange={v => setField("name", v)} error={errors.name} placeholder="Butter Chicken" /></div>
@@ -501,7 +500,7 @@ export function MenuPage() {
                 {/* Image */}
                 <div className="relative h-36 overflow-hidden" style={{ background: "var(--cafyz-surface-2)" }}>
                   <img src={item.image || FALLBACK_IMG} alt={item.name} className="w-full h-full object-cover" />
-                  <div className="absolute inset-0" style={{ background: "linear-gradient(to top, rgba(13,19,38,0.65) 0%, transparent 55%)" }} />
+                  <div className="absolute inset-0" style={{ background: "var(--cafyz-media-scrim)" }} />
                   <div className="absolute top-2 left-2 flex items-center gap-1.5">
                     {item.isPopular && (
                       <span className="text-xs px-2 py-0.5 rounded-full font-semibold"

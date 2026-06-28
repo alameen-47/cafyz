@@ -2,9 +2,13 @@
 // Thermal printer support via Web Bluetooth, Web USB, or browser print dialog.
 // ESC/POS command builder is self-contained — no dependencies.
 
+import { Capacitor } from '@capacitor/core';
 import { getRestaurantLogo } from './restaurantLogoStorage';
 import { logoDataUrlToEscPos } from './logoThermalRaster';
 import { escapeHtml } from '../utils/escapeHtml';
+import { encodeThermalText, toThermalAscii } from '../utils/thermalText';
+import { currencySymbolForPrint, formatMoneyForPrint, getActiveCurrencyCode, getCurrencySymbol } from '../utils/currency';
+import { computeBillTotals } from '../utils/billTotals';
 import { formatPrinterConnectError, getPrinterEnvironment } from './printerEnvironment';
 import {
   canUseNativeBle,
@@ -46,9 +50,8 @@ class EscPosBuilder {
   underlineOff() { return this.push(ESC, 0x2d, 0x00); }     // ESC - 0
 
   text(str: string) {
-    const enc = new TextEncoder();
-    const bytes = enc.encode(str);
-    this.buf.push(...bytes);
+    const bytes = encodeThermalText(str);
+    for (let i = 0; i < bytes.length; i++) this.buf.push(bytes[i]);
     return this;
   }
 
@@ -79,6 +82,7 @@ class EscPosBuilder {
 export interface ReceiptData {
   restaurantName: string;
   currencySymbol?: string;
+  currencyCode?: string;
   logoUrl?:       string;
   addressLine?:   string;
   phone?:         string;
@@ -121,8 +125,7 @@ export interface KitchenTicketData {
 export function buildReceipt(data: ReceiptData, width = 32, logoBytes?: Uint8Array): Uint8Array {
   const b = new EscPosBuilder();
   const W = width;
-  const symbol = data.currencySymbol || '$';
-  const fmt = (n: number) => `${symbol}${n.toFixed(2)}`;
+  const fmt = (n: number) => formatMoneyForPrint(n, data.currencySymbol, data.currencyCode);
   const date = data.dateStr ?? new Date().toLocaleString('en-GB', {
     day: '2-digit', month: 'short', year: 'numeric',
     hour: '2-digit', minute: '2-digit',
@@ -180,7 +183,7 @@ export function buildReceipt(data: ReceiptData, width = 32, logoBytes?: Uint8Arr
   // Footer
   b.nl().alignCenter()
    .text(data.footer || 'Thank you for your visit!').nl()
-   .text('cafyz.com').nl(2);
+   .text('cafyz.ametronyx.com').nl(2);
 
   b.feed(4).cut();
 
@@ -189,7 +192,7 @@ export function buildReceipt(data: ReceiptData, width = 32, logoBytes?: Uint8Arr
 
 // Build styled HTML receipt for the browser print dialog
 export function buildReceiptHTML(data: ReceiptData): string {
-  const symbol = data.currencySymbol || '$';
+  const symbol = data.currencySymbol || getCurrencySymbol(data.currencyCode);
   const fmt = (n: number) => `${symbol}${n.toFixed(2)}`;
   const date = data.dateStr ?? new Date().toLocaleString('en-GB', {
     day: '2-digit', month: 'short', year: 'numeric',
@@ -719,6 +722,10 @@ function waitForWindowImages(win: Window, onReady: () => void, onLogoError?: () 
 
 function printDialog(receiptData: ReceiptData): Promise<void> {
   return new Promise((resolve, reject) => {
+    if (Capacitor.isNativePlatform()) {
+      reject(new Error('Configure a Bluetooth cashier printer in Profile → Printer setup.'));
+      return;
+    }
     const win = window.open('', '_blank', 'width=340,height=600');
     if (!win) {
       reject(new Error('Pop-up blocked — please allow pop-ups for this site.'));
@@ -753,6 +760,9 @@ function printDialog(receiptData: ReceiptData): Promise<void> {
 }
 
 function printDialogHtml(html: string): void {
+  if (Capacitor.isNativePlatform()) {
+    throw new Error('Browser print preview is not available in the mobile app. Use a configured printer.');
+  }
   const win  = window.open('', '_blank', 'width=340,height=600');
   if (!win) throw new Error('Pop-up blocked — please allow pop-ups for this site.');
   win.document.write(html);
@@ -857,20 +867,33 @@ export async function printTest(opts: {
   taxId?: string;
   taxLabel?: string;
   taxRate?: number;
+  taxIncluded?: boolean;
   serviceRate?: number;
+  subtotal?: number;
+  service?: number;
+  tax?: number;
+  total?: number;
   currencySymbol?: string;
+  currencyCode?: string;
   footer?: string;
   serverName?: string;
 }, printOptions?: { channel?: PrintChannel }): Promise<'bluetooth' | 'usb' | 'dialog'> {
   const logoUrl = resolveLogoUrl(opts.logoUrl, opts.restaurantId);
-  const subtotal = 19.0;
-  const serviceRate = opts.serviceRate ?? 18;
-  const taxRate = opts.taxRate ?? 8.75;
-  const service = Math.round(subtotal * serviceRate) / 100;
-  const tax = Math.round((subtotal + service) * taxRate) / 100;
+  const currencyCode = opts.currencyCode ?? getActiveCurrencyCode();
+  const currencySymbol = opts.currencySymbol ?? getCurrencySymbol(currencyCode);
+  const subtotal = opts.subtotal ?? 19.0;
+  const totals = computeBillTotals({
+    subtotal,
+    serviceRatePct: opts.serviceRate ?? 18,
+    taxRatePct: opts.taxRate ?? 8.75,
+    taxIncluded: opts.taxIncluded ?? false,
+  });
+  const service = opts.service ?? totals.service;
+  const tax = opts.tax ?? totals.tax;
   const sample: ReceiptData = {
     restaurantName: opts.restaurantName || 'Cafyz',
-    currencySymbol: opts.currencySymbol,
+    currencySymbol,
+    currencyCode,
     logoUrl,
     addressLine: opts.addressLine,
     phone: opts.phone,
@@ -885,10 +908,11 @@ export async function printTest(opts: {
     subtotal,
     service,
     tax,
-    total: subtotal + service + tax,
-    serviceRate,
-    taxRate,
+    total: opts.total ?? totals.grandTotal,
+    serviceRate: totals.serviceRate,
+    taxRate: totals.taxRate,
     taxLabel: opts.taxLabel,
+    taxIncluded: totals.taxIncluded,
     payMethod: 'TEST',
     note: 'Printer test — sample line items.',
     footer: opts.footer,
@@ -973,6 +997,7 @@ function printKitchenDialog(data: KitchenTicketData): Promise<void> {
 export interface RestaurantPrintMeta {
   restaurantName: string;
   currencySymbol?: string;
+  currencyCode?: string;
   logoUrl?:       string;
   addressLine?:   string;
   phone?:         string;
@@ -1042,7 +1067,7 @@ function reportHeader(meta: RestaurantPrintMeta, title: string, periodLabel: str
 }
 
 export function buildSalesReportHTML(data: SalesReportData): string {
-  const symbol = data.currencySymbol || '$';
+  const symbol = data.currencySymbol || getCurrencySymbol(data.currencyCode);
   const fmt = (n: number) => `${symbol}${n.toFixed(2)}`;
   const metrics = data.metrics.map(m => `
     <div class="metric"><div class="metric-label">${m.label}</div><div class="metric-val">${m.value}</div></div>`).join('');
@@ -1067,7 +1092,7 @@ export function buildSalesReportHTML(data: SalesReportData): string {
 }
 
 export function buildMonthlyReportHTML(data: MonthlyReportData): string {
-  const symbol = data.currencySymbol || '$';
+  const symbol = data.currencySymbol || getCurrencySymbol(data.currencyCode);
   const fmt = (n: number) => `${symbol}${n.toFixed(2)}`;
   const rows = data.days.map(d => `
     <tr><td>${d.day}</td><td class="num">${d.orders}</td><td class="num">${fmt(d.revenue)}</td></tr>`).join('');
@@ -1091,7 +1116,7 @@ export function buildMonthlyReportHTML(data: MonthlyReportData): string {
 
 export function buildDemoSalesReport(meta: RestaurantPrintMeta): SalesReportData {
   const today = new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
-  const symbol = meta.currencySymbol || '$';
+  const symbol = getCurrencySymbol(meta.currencyCode, meta.currencySymbol);
   return {
     ...meta,
     title: 'Daily Sales Report',
@@ -1151,11 +1176,12 @@ export async function printMonthlyReport(data: MonthlyReportData, restaurantId?:
 // ── Thermal ESC/POS report layout (58 mm / 32 chars) ───────────────────────────
 
 function truncReportLine(str: string, max: number): string {
-  return str.length > max ? `${str.slice(0, max - 1)}…` : str;
+  const line = toThermalAscii(str);
+  return line.length > max ? `${line.slice(0, max - 3)}...` : line;
 }
 
 export function buildSalesReportEscPos(data: SalesReportData, width = 32, logoBytes?: Uint8Array): Uint8Array {
-  const fmt = (n: number) => `${data.currencySymbol || '$'}${n.toFixed(2)}`;
+  const fmt = (n: number) => formatMoneyForPrint(n, data.currencySymbol, data.currencyCode);
   const b = new EscPosBuilder();
   const W = width;
 
@@ -1197,7 +1223,7 @@ export function buildSalesReportEscPos(data: SalesReportData, width = 32, logoBy
 }
 
 export function buildMonthlyReportEscPos(data: MonthlyReportData, width = 32, logoBytes?: Uint8Array): Uint8Array {
-  const fmt = (n: number) => `${data.currencySymbol || '$'}${n.toFixed(2)}`;
+  const fmt = (n: number) => formatMoneyForPrint(n, data.currencySymbol, data.currencyCode);
   const b = new EscPosBuilder();
   const W = width;
 

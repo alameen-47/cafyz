@@ -3,8 +3,9 @@
 // every request. On 401 the session is cleared and the user is redirected.
 import { Capacitor } from '@capacitor/core';
 import { toastBus } from './toastBus';
-import { setActiveCurrencyCode } from '../utils/currency';
+import { applyRestaurantCurrency } from '../utils/currency';
 import { tt } from '../i18n/translateToast';
+import { storageGet, storageRemove, storageSet } from '../utils/safeStorage';
 
 // In dev, relative URLs go through the Vite proxy (→ localhost:4000).
 // Native USB/emulator dev uses http://localhost:4000 with `adb reverse tcp:4000 tcp:4000`.
@@ -32,22 +33,40 @@ const inflightGets = new Map<string, Promise<unknown>>();
 /** Dispatched when the API returns 402 TRIAL_EXPIRED — App listens to lock the shell. */
 export const TRIAL_EXPIRED_EVENT = 'cafyz:trial-expired';
 
+/** Dispatched on 401 — AuthProvider clears user without a broken native redirect. */
+export const SESSION_EXPIRED_EVENT = 'cafyz:session-expired';
+
+/** Dispatched after role/permission changes — App reloads nav access. */
+export const ACCESS_CHANGED_EVENT = 'cafyz:access-changed';
+
+/** Dispatched when restaurant settings (currency, tax, etc.) are saved. */
+export const RESTAURANT_SETTINGS_CHANGED_EVENT = 'cafyz:restaurant-settings-changed';
+
+function notifySessionExpired(): void {
+  storageRemove('cafyz_token');
+  storageRemove('cafyz_user');
+  if (!sessionToastShown) {
+    sessionToastShown = true;
+    toastBus.error('Session expired — please sign in again.');
+  }
+  window.dispatchEvent(new Event(SESSION_EXPIRED_EVENT));
+  // Capacitor serves only index.html — /login 404s and looks like a crash.
+  if (Capacitor.isNativePlatform()) return;
+  window.location.href = '/login';
+}
+
 const DEVICE_KEY = 'cafyz_device_id';
 
 /** Stable id for trial-request cooldown + auth device binding. */
 export function getDeviceId(): string {
-  try {
-    let id = localStorage.getItem(DEVICE_KEY);
-    if (!id || id.length < 10) {
-      id = typeof crypto !== 'undefined' && crypto.randomUUID
-        ? crypto.randomUUID()
-        : `dev_${Math.random().toString(16).slice(2)}_${Date.now()}`;
-      localStorage.setItem(DEVICE_KEY, id);
-    }
-    return id;
-  } catch {
-    return `dev_${Math.random().toString(16).slice(2)}_${Date.now()}`;
+  let id = storageGet(DEVICE_KEY);
+  if (!id || id.length < 10) {
+    id = typeof crypto !== 'undefined' && crypto.randomUUID
+      ? crypto.randomUUID()
+      : `dev_${Math.random().toString(16).slice(2)}_${Date.now()}`;
+    storageSet(DEVICE_KEY, id);
   }
+  return id;
 }
 
 async function request<T = unknown>(
@@ -64,7 +83,7 @@ async function request<T = unknown>(
     && !!bodyObj
     && ('kitchen_printer' in bodyObj || 'cashier_printer' in bodyObj);
 
-  const token = localStorage.getItem('cafyz_token');
+  const token = storageGet('cafyz_token');
   const controller = new AbortController();
   const timeoutId = window.setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
   let res: Response;
@@ -88,17 +107,12 @@ async function request<T = unknown>(
   }
 
   if (res.status === 401) {
-    localStorage.removeItem('cafyz_token');
-    localStorage.removeItem('cafyz_user');
-    // Only hard-redirect on interactive requests (not background polling /me validation)
+    // Only notify on interactive requests (not background /me validation).
     if (!path.includes('/api/auth/me')) {
-      window.location.href = '/login';
-      if (!sessionToastShown) {
-        sessionToastShown = true;
-        const sessionMsg = 'Session expired — please sign in again.';
-        toastBus.error(sessionMsg);
-      }
-      throw new Error('Session expired — please sign in again.');
+      notifySessionExpired();
+    } else {
+      storageRemove('cafyz_token');
+      storageRemove('cafyz_user');
     }
     throw new Error('Session expired — please sign in again.');
   }
@@ -144,9 +158,13 @@ async function request<T = unknown>(
     toastBus.success(successMessage);
   }
   if (path.startsWith('/api/restaurants/me') && data && typeof data === 'object') {
-    const maybeCode = (data as { currency_code?: unknown }).currency_code;
-    if (typeof maybeCode === 'string') setActiveCurrencyCode(maybeCode);
-    // UI language is chosen by the user (login/header); do not override from restaurant settings.
+    const row = data as { currency_code?: unknown; currency_symbol?: unknown };
+    if (typeof row.currency_code === 'string' || typeof row.currency_symbol === 'string') {
+      applyRestaurantCurrency({
+        currency_code: typeof row.currency_code === 'string' ? row.currency_code : undefined,
+        currency_symbol: typeof row.currency_symbol === 'string' ? row.currency_symbol : undefined,
+      });
+    }
   }
   return data as T;
 }
@@ -171,8 +189,8 @@ export const authApi = {
     post<{ ok: boolean; message: string; dev_otp?: string }>('/api/auth/request-otp', { phone }),
   verifyOtp: (phone: string, otp: string) =>
     post<LoginResponse>('/api/auth/verify-otp', { phone, otp }),
-  pin: (email: string, pin: string, device_id: string) =>
-    post<LoginResponse>('/api/auth/pin', { email, pin, device_id }),
+  pin: (login: string, pin: string, device_id: string) =>
+    post<LoginResponse>('/api/auth/pin', { login, pin, device_id }),
   forgotPassword: (email: string) =>
     post<{ ok: boolean; message: string; dev_reset_url?: string }>('/api/auth/forgot-password', { email }),
   resetPassword: (token: string, password: string) =>
@@ -199,7 +217,7 @@ export const restaurantApi = {
     address_line1?: string; address_line2?: string;
     city?: string; country?: string; postal_code?: string;
     tax_id?: string; website_url?: string;
-    currency_code?: string; language_code?: string; date_format?: string;
+    currency_code?: string; currency_symbol?: string; language_code?: string; date_format?: string;
     service_charge_pct?: number | null; tax_rate_pct?: number | null;
     tax_type?: string; tax_included?: boolean;
     receipt_footer?: string;
@@ -230,6 +248,7 @@ export interface PublicMenuItem {
 export interface PublicMenuResponse {
   restaurant: {
     id: string; name: string; logo_url?: string | null; currency_code: string;
+    currency_symbol?: string | null;
     city?: string | null; country?: string | null; tagline?: string | null;
   };
   categories: { slug: string; label: string; sort_order: number }[];
@@ -261,7 +280,7 @@ export const menuApi = {
   update: (id: string, d: Partial<CreateMenuItemPayload>)                     => put<ApiMenuItem>(`/api/menu/${id}`, d),
   delete: (id: string)                                                        => del(`/api/menu/${id}`),
   uploadImage: async (file: File): Promise<{ url: string; public_id: string }> => {
-    const token = localStorage.getItem('cafyz_token');
+    const token = storageGet('cafyz_token');
     const form = new FormData();
     form.append('image', file, file.name || 'menu-item.jpg');
     const res = await fetch(`${BASE}/api/menu/upload-image`, {
@@ -270,9 +289,7 @@ export const menuApi = {
       body: form,
     });
     if (res.status === 401) {
-      localStorage.removeItem('cafyz_token');
-      localStorage.removeItem('cafyz_user');
-      window.location.href = '/login';
+      notifySessionExpired();
       throw new Error('Session expired — please sign in again.');
     }
     let data: { error?: string; url?: string; public_id?: string } = {};
@@ -543,7 +560,7 @@ export interface ApiRestaurant {
   logo_url?: string; contact_phone?: string; contact_email?: string;
   address_line1?: string; address_line2?: string; city?: string;
   country?: string; postal_code?: string; tax_id?: string; website_url?: string;
-  currency_code?: string; language_code?: string; date_format?: string;
+  currency_code?: string; currency_symbol?: string; language_code?: string; date_format?: string;
   service_charge_pct?: number | null; tax_rate_pct?: number | null;
   tax_type?: string; tax_included?: number | boolean;
   receipt_footer?: string;

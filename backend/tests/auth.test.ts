@@ -53,6 +53,13 @@ describe('POST /api/auth/pin', () => {
     const res = await request(app).post('/api/auth/pin').send({ email: 'manager@test.com', pin: '0000', device_id: 'device-test-1' });
     expect(res.status).toBe(401);
   });
+
+  it('logs in with phone + PIN', async () => {
+    const res = await request(app).post('/api/auth/pin').send({ login: '+971500000001', pin: '1234', device_id: 'device-test-1' });
+    expect(res.status).toBe(200);
+    expect(res.body).toHaveProperty('token');
+    expect(res.body.user.phone).toBe('+971500000001');
+  });
 });
 
 describe('OTP auth flow', () => {

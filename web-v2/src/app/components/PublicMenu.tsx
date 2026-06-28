@@ -51,7 +51,7 @@ export function PublicMenu({ restaurantId }: { restaurantId?: string }) {
     };
   }, [rid, loadMenu]);
 
-  const cur = getCurrencySymbol(data?.restaurant.currency_code);
+  const cur = getCurrencySymbol(data?.restaurant.currency_code, data?.restaurant.currency_symbol);
   const labelBySlug = new Map((data?.categories ?? []).map(c => [c.slug, c.label]));
   const categories = ["All", ...(data?.categories ?? []).map(c => c.label)];
   const items = (data?.items ?? []).map(m => ({

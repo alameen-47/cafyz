@@ -59,9 +59,9 @@ export function RenewalBanner({
         <div
           className="mx-auto max-w-3xl rounded-2xl px-4 py-3 flex flex-wrap items-center gap-3 pointer-events-auto shadow-lg"
           style={{
-            background: expired ? "linear-gradient(135deg, #2a1020, #1a0d26)" : "linear-gradient(135deg, #0d2040, var(--cafyz-surface))",
-            border: `1px solid ${expired ? "rgba(255,59,92,0.35)" : "rgba(30,127,255,0.35)"}`,
-            boxShadow: "0 12px 40px rgba(0,0,0,0.45)",
+            background: expired ? "var(--cafyz-banner-expired-bg)" : "var(--cafyz-banner-warn-bg)",
+            border: `1px solid ${expired ? "rgba(255,59,92,0.35)" : "var(--cafyz-accent-border)"}`,
+            boxShadow: "var(--cafyz-shadow-lg)",
           }}
         >
           <AlertTriangle size={20} style={{ color: expired ? "#ff3b5c" : "#f59e0b", flexShrink: 0 }} />

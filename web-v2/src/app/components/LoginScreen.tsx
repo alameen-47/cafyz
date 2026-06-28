@@ -102,7 +102,7 @@ export function LoginScreen({ onLogin }: { onLogin?: () => void }) {
   });
   const [showPass, setShowPass] = useState(false);
   const [email, setEmail] = useState("");
-  const [pinEmail, setPinEmail] = useState("");
+  const [pinLogin, setPinLogin] = useState("");
   const [password, setPassword] = useState("");
   const [phone, setPhone] = useState("");
   const [otp, setOtp] = useState(["","","","","",""]);
@@ -179,9 +179,9 @@ export function LoginScreen({ onLogin }: { onLogin?: () => void }) {
 
   // Staff PIN login (needs the work email)
   const submitPin = async (pinValue: string) => {
-    if (!pinEmail.trim()) { toast.error("Enter your work email for PIN login"); return; }
+    if (!pinLogin.trim()) { toast.error("Enter your work email or mobile number for PIN login"); return; }
     setLoading(true);
-    try { await loginPin(pinEmail, pinValue); onLogin?.(); }
+    try { await loginPin(pinLogin, pinValue); onLogin?.(); }
     catch (e) { toast.error(errMsg(e)); }
     finally { setLoading(false); }
   };
@@ -367,10 +367,10 @@ export function LoginScreen({ onLogin }: { onLogin?: () => void }) {
                 {method === "pin" && (
                   <div className="space-y-4">
                     <div>
-                      <label style={{ color: "#a8bdd4", fontSize: "0.8rem", display: "block", marginBottom: 6 }}>{t("Email address")}</label>
+                      <label style={{ color: "#a8bdd4", fontSize: "0.8rem", display: "block", marginBottom: 6 }}>{t("Email or mobile")}</label>
                       <div className="flex items-center gap-2 rounded-xl px-3 py-3" style={{ background: "#0d1326", border: "1px solid rgba(30,127,255,0.15)" }}>
-                        <Mail size={15} style={{ color: "#6b82a0" }} />
-                        <input type="email" placeholder="staff@restaurant.com" value={pinEmail} onChange={e => setPinEmail(e.target.value)} className="flex-1 bg-transparent outline-none text-sm placeholder:text-[#6b82a0]" style={{ color: "#e8eef8" }} />
+                        <Phone size={15} style={{ color: "#6b82a0" }} />
+                        <input type="text" placeholder="staff@restaurant.com or +971500000000" value={pinLogin} onChange={e => setPinLogin(e.target.value)} className="flex-1 bg-transparent outline-none text-sm placeholder:text-[#6b82a0]" style={{ color: "#e8eef8" }} />
                       </div>
                     </div>
                     <PinPad onSubmit={(pin) => submitPin(pin)} />

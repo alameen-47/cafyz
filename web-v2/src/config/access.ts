@@ -21,7 +21,7 @@ export const PLAN_PANELS: Record<Plan, PageId[]> = {
 
 export const ROLE_PAGES: Record<Role, PageId[]> = {
   owner: ['dashboard', 'pos', 'orders', 'tables', 'menu', 'kds', 'staff', 'analytics', 'inventory', 'reservations', 'roles', 'profile', 'license'],
-  manager: ['dashboard', 'pos', 'orders', 'tables', 'menu', 'kds', 'staff', 'analytics', 'inventory', 'reservations', 'profile', 'license'],
+  manager: ['dashboard', 'pos', 'orders', 'tables', 'menu', 'kds', 'staff', 'analytics', 'inventory', 'reservations', 'roles', 'profile', 'license'],
   cashier: ['pos', 'orders', 'tables', 'menu', 'profile', 'license'],
   waiter: ['orders', 'tables', 'menu', 'profile', 'license'],
   kitchen: ['kds', 'profile', 'license'],
@@ -85,6 +85,18 @@ export function allowedPages(
   const base = planPages.filter(p => rolePages.includes(p));
   if (!accessOverride?.length) return base;
   return base.filter(p => accessOverride.includes(p));
+}
+
+/** Pages visible in nav + renderable — role, plan, legacy page list, and screen access map. */
+export function permittedPages(
+  role: Role,
+  plan: Plan,
+  accessJson?: string | null,
+  accessOverride?: PageId[] | null,
+): PageId[] {
+  return allowedPages(role, plan, accessOverride).filter(p =>
+    hasPageScreenAccess(p, role, accessJson),
+  );
 }
 
 export function canAccessPage(

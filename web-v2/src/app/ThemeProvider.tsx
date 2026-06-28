@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
 import { Capacitor } from "@capacitor/core";
 import { StatusBar, Style } from "@capacitor/status-bar";
+import { storageGet, storageSet } from "../utils/safeStorage";
 
 export type ThemeMode = "dark" | "light";
 
@@ -16,7 +17,7 @@ const Ctx = createContext<ThemeCtx | null>(null);
 
 function readStoredTheme(): ThemeMode {
   if (typeof window === "undefined") return "dark";
-  return localStorage.getItem(STORAGE_KEY) === "light" ? "light" : "dark";
+  return storageGet(STORAGE_KEY) === "light" ? "light" : "dark";
 }
 
 function applyThemeToDocument(mode: ThemeMode) {
@@ -25,7 +26,7 @@ function applyThemeToDocument(mode: ThemeMode) {
   root.classList.add(mode);
   root.dataset.theme = mode;
   root.style.colorScheme = mode;
-  localStorage.setItem(STORAGE_KEY, mode);
+  storageSet(STORAGE_KEY, mode);
 
   const meta = document.querySelector('meta[name="theme-color"]');
   if (meta) meta.setAttribute("content", mode === "dark" ? "#06091a" : "#e8edf4");

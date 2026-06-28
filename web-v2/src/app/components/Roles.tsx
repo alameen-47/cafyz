@@ -2,10 +2,13 @@ import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Plus, Trash2, Shield, Eye, EyeOff, ChevronDown, ChevronUp, Check, X, UserCog } from "lucide-react";
 import { toast } from "./Toast";
-import { usersApi, type ApiUser } from "../../services/api";
+import { usersApi, ACCESS_CHANGED_EVENT, type ApiUser } from "../../services/api";
+import { useAuth } from "../auth";
+import { optionalValidPhone } from "../../utils/phone";
+import { nameInitials } from "../../utils/initials";
 import {
-  ACCESS_MANAGED_SCREENS, effectiveScreenAccess, sanitizeScreenAccess,
-  type AccessLevel, type ScreenAccessMap, type ScreenId,
+  ACCESS_MANAGED_SCREENS, accessOverridesForRole, defaultRoleScreenAccess, effectiveScreenAccess,
+  type AccessLevel, type ScreenAccessMap,
 } from "../../config/screenAccess";
 
 type Role = "owner" | "manager" | "cashier" | "waiter" | "kitchen";
@@ -15,6 +18,7 @@ interface StaffUser {
   id: string;
   name: string;
   email: string;
+  phone: string;
   role: Role;
   pin: string;
   active: boolean;
@@ -25,7 +29,7 @@ const screens = ACCESS_MANAGED_SCREENS;
 
 const defaultMatrix: Record<Role, ScreenAccessMap> = {
   owner: Object.fromEntries(screens.map(s => [s.id, "edit"])) as ScreenAccessMap,
-  manager: Object.fromEntries(screens.map(s => [s.id, s.id === "roles" ? "view" : "edit"])) as ScreenAccessMap,
+  manager: Object.fromEntries(screens.map(s => [s.id, "edit"])) as ScreenAccessMap,
   cashier: {
     pos: "edit", menu: "edit", inventory: "edit", reports: "view", roles: "view", license: "view",
   },
@@ -45,29 +49,36 @@ const accessColors: Record<Access, { color: string; bg: string }> = {
 };
 
 export function Roles() {
+  const { user: currentUser } = useAuth();
   const [staffUsers, setStaffUsers] = useState<StaffUser[]>([]);
+  const [loading, setLoading] = useState(true);
   const [showAddForm, setShowAddForm] = useState(false);
   const [showMatrix, setShowMatrix] = useState(false);
   const [selectedRole, setSelectedRole] = useState<Role>("manager");
   const matrix = defaultMatrix;
   const [accessEditId, setAccessEditId] = useState<string | null>(null);
   const [editUserId, setEditUserId] = useState<string | null>(null);
-  const [editDraft, setEditDraft] = useState({ name: "", email: "", role: "waiter" as Role, active: true });
+  const [editDraft, setEditDraft] = useState({ name: "", email: "", phone: "", role: "waiter" as Role, active: true, password: "", pin: "" });
   const [savingUser, setSavingUser] = useState(false);
   const [accessDraft, setAccessDraft] = useState<ScreenAccessMap>({});
   const [savingAccess, setSavingAccess] = useState(false);
   const [showPin, setShowPin] = useState(false);
-  const [newUser, setNewUser] = useState({ name: "", email: "", role: "waiter" as Role, password: "", pin: "" });
+  const [newUser, setNewUser] = useState({ name: "", email: "", phone: "", role: "waiter" as Role, password: "", pin: "" });
 
   const load = useCallback(async () => {
+    setLoading(true);
     try {
       const us = await usersApi.list();
-      setStaffUsers(us.map((u: ApiUser) => ({
-        id: u.id, name: u.name, email: u.email, role: u.role as Role, pin: "", active: u.status === "active",
-        access_json: u.access_json,
-      })));
+      setStaffUsers(us
+        .filter((u: ApiUser) => u.role !== "founder")
+        .map((u: ApiUser) => ({
+          id: u.id, name: u.name, email: u.email, phone: u.phone ?? "", role: u.role as Role, pin: "", active: u.status === "active",
+          access_json: u.access_json,
+        })));
     } catch (e) {
       toast.error("Couldn't load users", (e as Error).message);
+    } finally {
+      setLoading(false);
     }
   }, []);
   useEffect(() => { void load(); }, [load]);
@@ -82,8 +93,14 @@ export function Roles() {
   const startUserEdit = (user: StaffUser) => {
     setEditUserId(user.id);
     setAccessEditId(null);
-    setEditDraft({ name: user.name, email: user.email, role: user.role, active: user.active });
+    setEditDraft({ name: user.name, email: user.email, phone: user.phone, role: user.role, active: user.active, password: "", pin: "" });
     setShowAddForm(false);
+  };
+
+  const notifyAccessChanged = (userId: string) => {
+    if (currentUser?.id === userId) {
+      window.dispatchEvent(new Event(ACCESS_CHANGED_EVENT));
+    }
   };
 
   const saveUserEdit = async () => {
@@ -100,16 +117,36 @@ export function Roles() {
     }
     setSavingUser(true);
     try {
-      await usersApi.update(editUserId, {
+      let phone: string | undefined;
+      try {
+        phone = optionalValidPhone(editDraft.phone);
+      } catch (e) {
+        toast.error("Invalid mobile number", (e as Error).message);
+        return;
+      }
+      const payload: Parameters<typeof usersApi.update>[1] = {
         name: editDraft.name.trim(),
         email: editDraft.email.trim().toLowerCase(),
+        phone,
         ...(user.role !== "owner" ? { role: editDraft.role } : {}),
-      });
+      };
+      if (editDraft.password.length >= 8) payload.password = editDraft.password;
+      else if (editDraft.password.length > 0) {
+        toast.error("Password too short", "Use at least 8 characters or leave blank");
+        return;
+      }
+      if (editDraft.pin.length === 4) payload.pin = editDraft.pin;
+      else if (editDraft.pin.length > 0) {
+        toast.error("Invalid PIN", "PIN must be exactly 4 digits");
+        return;
+      }
+      await usersApi.update(editUserId, payload);
       const targetStatus = editDraft.active ? "active" : "off";
       if ((user.active ? "active" : "off") !== targetStatus) {
         await usersApi.updateStatus(editUserId, targetStatus);
       }
       toast.success("User updated", editDraft.name.trim());
+      notifyAccessChanged(editUserId);
       setEditUserId(null);
       await load();
     } catch (e) {
@@ -121,10 +158,14 @@ export function Roles() {
 
   const saveAccess = async () => {
     if (!accessEditId) return;
+    const target = staffUsers.find(u => u.id === accessEditId);
+    if (!target) return;
     setSavingAccess(true);
     try {
-      await usersApi.update(accessEditId, { access_json: sanitizeScreenAccess(accessDraft) });
+      const overrides = accessOverridesForRole(target.role, accessDraft);
+      await usersApi.update(accessEditId, { access_json: overrides });
       toast.success("Access updated", "Permissions saved for this team member");
+      notifyAccessChanged(accessEditId);
       setAccessEditId(null);
       await load();
     } catch (e) {
@@ -147,17 +188,30 @@ export function Roles() {
 
   const addUser = async () => {
     if (!newUser.name || !newUser.email) { toast.error("Missing fields", "Please fill in name and email"); return; }
+    if (newUser.password.length > 0 && newUser.password.length < 8) {
+      toast.error("Password too short", "Use at least 8 characters or leave blank for auto-generated");
+      return;
+    }
+    let phone: string | undefined;
     try {
-      await usersApi.create({
+      phone = optionalValidPhone(newUser.phone);
+    } catch (e) {
+      toast.error("Invalid mobile number", (e as Error).message);
+      return;
+    }
+    try {
+      const created = await usersApi.create({
         name: newUser.name.trim(),
         email: newUser.email.trim().toLowerCase(),
+        phone,
         role: newUser.role,
-        password: newUser.password.length >= 6 ? newUser.password : undefined,
+        password: newUser.password.length >= 8 ? newUser.password : undefined,
         pin: newUser.pin.length === 4 ? newUser.pin : undefined,
       });
       setShowAddForm(false);
-      toast.success("Team member added", `${newUser.name} can now sign in as ${newUser.role}`);
-      setNewUser({ name: "", email: "", role: "waiter", password: "", pin: "" });
+      const delivery = (created as ApiUser & { pin_delivery?: { message?: string } }).pin_delivery?.message;
+      toast.success("Team member added", delivery || `${newUser.name} can sign in with email, mobile + password, PIN, or OTP`);
+      setNewUser({ name: "", email: "", phone: "", role: "waiter", password: "", pin: "" });
       await load();
     } catch (e) {
       toast.error("Couldn't add member", (e as Error).message);
@@ -170,7 +224,7 @@ export function Roles() {
       <div className="flex items-center justify-between">
         <div>
           <h2 style={{ color: "var(--cafyz-text)", fontFamily: "var(--font-display)", fontWeight: 700 }}>User Roles & Access</h2>
-          <p style={{ color: "var(--cafyz-muted)", fontSize: "0.78rem" }}>Manage team members and their permissions</p>
+          <p style={{ color: "var(--cafyz-muted)", fontSize: "0.78rem" }}>Manage team members, mobile login, and permissions</p>
         </div>
         <button
           onClick={() => setShowAddForm(true)}
@@ -185,13 +239,23 @@ export function Roles() {
       <div className="rounded-2xl overflow-hidden" style={{ background: "var(--cafyz-surface)", border: "1px solid var(--cafyz-border)" }}>
         <div className="grid grid-cols-12 gap-2 px-4 py-3 text-xs font-semibold uppercase tracking-wider border-b"
           style={{ color: "var(--cafyz-muted)", borderColor: "rgba(30,127,255,0.08)", fontFamily: "var(--font-mono)" }}>
-          <div className="col-span-4">Name</div>
-          <div className="col-span-3 hidden sm:block">Email</div>
+          <div className="col-span-3">Name</div>
+          <div className="col-span-3 hidden sm:block">Mobile</div>
+          <div className="col-span-2 hidden md:block">Email</div>
           <div className="col-span-2">Role</div>
-          <div className="col-span-2 hidden md:block">Status</div>
+          <div className="col-span-1 hidden lg:block">Status</div>
           <div className="col-span-1">Actions</div>
         </div>
-        {staffUsers.map((user, i) => (
+        {loading ? (
+          <div className="px-4 py-10 text-center" style={{ color: "var(--cafyz-muted)", fontSize: "0.85rem" }}>
+            Loading team members…
+          </div>
+        ) : staffUsers.length === 0 ? (
+          <div className="px-4 py-10 text-center space-y-2">
+            <p style={{ color: "var(--cafyz-text)", fontSize: "0.9rem", fontWeight: 600 }}>No team members yet</p>
+            <p style={{ color: "var(--cafyz-muted)", fontSize: "0.78rem" }}>Add cashiers, waiters, and kitchen staff — they can sign in with email/password or PIN.</p>
+          </div>
+        ) : staffUsers.map((user, i) => (
           <motion.div
             key={user.id}
             initial={{ opacity: 0 }}
@@ -200,28 +264,31 @@ export function Roles() {
             className="grid grid-cols-12 gap-2 px-4 py-3 items-center border-b hover:bg-[rgba(30,127,255,0.03)] transition-all"
             style={{ borderColor: "rgba(30,127,255,0.06)" }}
           >
-            <div className="col-span-4 flex items-center gap-2">
+            <div className="col-span-3 flex items-center gap-2 min-w-0">
               <div
                 className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
                 style={{ background: `${roleColors[user.role]}18` }}
               >
                 <span style={{ color: roleColors[user.role], fontWeight: 700, fontSize: "0.72rem" }}>
-                  {user.name.split(" ").map(n => n[0]).join("")}
+                  {nameInitials(user.name)}
                 </span>
               </div>
-              <div>
-                <p style={{ color: "var(--cafyz-text)", fontSize: "0.85rem", fontWeight: 500 }}>{user.name}</p>
-                <p style={{ color: "var(--cafyz-muted)", fontSize: "0.7rem", fontFamily: "var(--font-mono)" }}>PIN: ••••</p>
+              <div className="min-w-0">
+                <p className="truncate" style={{ color: "var(--cafyz-text)", fontSize: "0.85rem", fontWeight: 500 }}>{user.name}</p>
+                <p className="truncate sm:hidden" style={{ color: "var(--cafyz-muted)", fontSize: "0.7rem" }}>{user.phone || user.email}</p>
               </div>
             </div>
-            <div className="col-span-3 hidden sm:block" style={{ color: "var(--cafyz-muted)", fontSize: "0.78rem" }}>{user.email}</div>
+            <div className="col-span-3 hidden sm:block truncate" style={{ color: "var(--cafyz-muted)", fontSize: "0.78rem" }}>
+              {user.phone || "—"}
+            </div>
+            <div className="col-span-2 hidden md:block truncate" style={{ color: "var(--cafyz-muted)", fontSize: "0.78rem" }}>{user.email}</div>
             <div className="col-span-2">
               <span className="text-xs px-2 py-0.5 rounded-full capitalize font-medium"
                 style={{ background: `${roleColors[user.role]}15`, color: roleColors[user.role] }}>
                 {user.role}
               </span>
             </div>
-            <div className="col-span-2 hidden md:block">
+            <div className="col-span-1 hidden lg:block">
               <span className="text-xs px-2 py-0.5 rounded-full"
                 style={user.active ? { background: "rgba(34,197,94,0.1)", color: "#22c55e" } : { background: "rgba(107,130,160,0.1)", color: "var(--cafyz-muted)" }}>
                 {user.active ? "Active" : "Inactive"}
@@ -242,7 +309,9 @@ export function Roles() {
               </button>
               <button
                 onClick={() => removeUser(user)}
-                className="p-1.5 rounded-lg hover:bg-[rgba(255,59,92,0.08)] text-[var(--cafyz-muted)] hover:text-[#ff3b5c] transition-all">
+                disabled={user.role === "owner"}
+                title={user.role === "owner" ? "Owner cannot be removed" : "Remove user"}
+                className="p-1.5 rounded-lg hover:bg-[rgba(255,59,92,0.08)] text-[var(--cafyz-muted)] hover:text-[#ff3b5c] transition-all disabled:opacity-30 disabled:pointer-events-none">
                 <Trash2 size={13} />
               </button>
             </div>
@@ -338,7 +407,8 @@ export function Roles() {
               </div>
               <div className="space-y-3">
                 {[{ label: "Full Name", field: "name", type: "text", placeholder: "Ravi Sharma" },
-                  { label: "Email", field: "email", type: "email", placeholder: "ravi@restaurant.com" }].map(f => (
+                  { label: "Email", field: "email", type: "email", placeholder: "ravi@restaurant.com" },
+                  { label: "Mobile number", field: "phone", type: "tel", placeholder: "+971500000000" }].map(f => (
                   <div key={f.field}>
                     <label style={{ color: "var(--cafyz-text-secondary)", fontSize: "0.78rem", display: "block", marginBottom: 4 }}>{f.label}</label>
                     <input type={f.type} placeholder={f.placeholder} value={(newUser as any)[f.field]}
@@ -347,6 +417,9 @@ export function Roles() {
                       style={{ background: "var(--cafyz-surface-2)", color: "var(--cafyz-text)", border: "1px solid rgba(30,127,255,0.12)" }} />
                   </div>
                 ))}
+                <p style={{ color: "var(--cafyz-muted)", fontSize: "0.72rem", lineHeight: 1.45 }}>
+                  Mobile enables password, PIN, and OTP sign-in. PIN is SMS’d when a number is provided.
+                </p>
                 <div>
                   <label style={{ color: "var(--cafyz-text-secondary)", fontSize: "0.78rem", display: "block", marginBottom: 4 }}>Role</label>
                   <select value={newUser.role} onChange={e => setNewUser(u => ({ ...u, role: e.target.value as Role }))}
@@ -414,6 +487,17 @@ export function Roles() {
               <p style={{ color: "var(--cafyz-muted)", fontSize: "0.78rem" }}>
                 Override default role permissions for {staffUsers.find(u => u.id === accessEditId)?.name ?? "this user"}.
               </p>
+              <button
+                type="button"
+                onClick={() => {
+                  const target = staffUsers.find(u => u.id === accessEditId);
+                  if (target) setAccessDraft(defaultRoleScreenAccess(target.role));
+                }}
+                className="text-xs font-semibold px-3 py-1.5 rounded-lg"
+                style={{ background: "var(--cafyz-surface-2)", color: "#1e7fff", border: "1px solid var(--cafyz-border)" }}
+              >
+                Reset to role defaults
+              </button>
               <div className="space-y-2">
                 {screens.map(screen => {
                   const access = accessDraft[screen.id] ?? "none";
@@ -482,6 +566,12 @@ export function Roles() {
                     className="w-full rounded-xl px-3 py-2.5 text-sm outline-none"
                     style={{ background: "var(--cafyz-surface-2)", color: "var(--cafyz-text)", border: "1px solid rgba(30,127,255,0.12)" }} />
                 </div>
+                <div>
+                  <label style={{ color: "var(--cafyz-text-secondary)", fontSize: "0.78rem", display: "block", marginBottom: 4 }}>Mobile number</label>
+                  <input type="tel" placeholder="+971500000000" value={editDraft.phone} onChange={e => setEditDraft(d => ({ ...d, phone: e.target.value }))}
+                    className="w-full rounded-xl px-3 py-2.5 text-sm outline-none placeholder:text-[var(--cafyz-muted)]"
+                    style={{ background: "var(--cafyz-surface-2)", color: "var(--cafyz-text)", border: "1px solid rgba(30,127,255,0.12)" }} />
+                </div>
                 {editDraft.role !== "owner" && (
                   <div>
                     <label style={{ color: "var(--cafyz-text-secondary)", fontSize: "0.78rem", display: "block", marginBottom: 4 }}>Role</label>
@@ -500,6 +590,22 @@ export function Roles() {
                     <div className="w-4 h-4 rounded-full bg-white absolute top-1 transition-all"
                       style={{ left: editDraft.active ? "calc(100% - 18px)" : 2 }} />
                   </button>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label style={{ color: "var(--cafyz-text-secondary)", fontSize: "0.78rem", display: "block", marginBottom: 4 }}>New password</label>
+                    <input type="password" placeholder="Leave blank to keep" value={editDraft.password}
+                      onChange={e => setEditDraft(d => ({ ...d, password: e.target.value }))}
+                      className="w-full rounded-xl px-3 py-2.5 text-sm outline-none placeholder:text-[var(--cafyz-muted)]"
+                      style={{ background: "var(--cafyz-surface-2)", color: "var(--cafyz-text)", border: "1px solid rgba(30,127,255,0.12)" }} />
+                  </div>
+                  <div>
+                    <label style={{ color: "var(--cafyz-text-secondary)", fontSize: "0.78rem", display: "block", marginBottom: 4 }}>New PIN</label>
+                    <input type="text" maxLength={4} placeholder="••••" value={editDraft.pin}
+                      onChange={e => setEditDraft(d => ({ ...d, pin: e.target.value.replace(/\D/g, "") }))}
+                      className="w-full rounded-xl px-3 py-2.5 text-sm outline-none placeholder:text-[var(--cafyz-muted)]"
+                      style={{ background: "var(--cafyz-surface-2)", color: "var(--cafyz-text)", border: "1px solid rgba(30,127,255,0.12)", fontFamily: "var(--font-mono)", letterSpacing: "0.3em" }} />
+                  </div>
                 </div>
               </div>
               <div className="flex gap-2 pt-2">
