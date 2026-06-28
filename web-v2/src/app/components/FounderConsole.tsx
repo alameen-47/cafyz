@@ -798,7 +798,7 @@ export function FounderConsole() {
                   </div>
                 </div>
                 <div className="flex items-center gap-2 flex-shrink-0">
-                  <span className="text-xs px-2 py-0.5 rounded-full" style={lk.restaurant_id ? { background: "rgba(34,197,94,0.1)", color: "#22c55e" } : { background: "var(--cafyz-border)", color: "#1e7fff" }}>
+                  <span className="text-xs px-2 py-0.5 rounded-full" style={lk.restaurant_id ? { background: "var(--cafyz-success-bg)", color: "var(--cafyz-success)" } : { background: "var(--cafyz-badge-bg)", color: "var(--cafyz-brand)" }}>
                     {lk.restaurant_id ? "Used" : "Available"}
                   </span>
                   <button onClick={() => void copyKey(lk.key_code)} className="w-7 h-7 rounded-lg flex items-center justify-center transition-all"
@@ -921,9 +921,9 @@ export function FounderConsole() {
                           onClick={() => togglePanel(plan, panel)}
                           className="inline-flex items-center gap-1 text-xs px-2.5 py-1.5 rounded-lg font-medium cursor-pointer select-none active:scale-[0.96]"
                           style={{
-                            background: on ? `${color}22` : "rgba(255,255,255,0.04)",
+                            background: on ? `${color}22` : "var(--cafyz-subtle-bg)",
                             color: on ? color : "var(--cafyz-muted)",
-                            border: on ? `1px solid ${color}45` : "1px solid rgba(255,255,255,0.06)",
+                            border: on ? `1px solid ${color}45` : "1px solid var(--cafyz-border)",
                             boxShadow: on ? `0 0 0 1px ${color}18` : "none",
                             transition: "transform 70ms ease, background-color 90ms ease, border-color 90ms ease, color 90ms ease, box-shadow 90ms ease",
                             WebkitTapHighlightColor: "transparent",

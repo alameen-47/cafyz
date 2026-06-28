@@ -553,7 +553,7 @@ export function Profile() {
             All settings on this page apply only to this restaurant.
           </span>
           {slug && (
-            <span className="sm:ml-auto font-mono truncate max-w-full" style={{ color: "#5a6d85", fontSize: "0.65rem" }}>
+            <span className="sm:ml-auto font-mono truncate max-w-full" style={{ color: "var(--cafyz-muted)", fontSize: "0.65rem" }}>
               ID · {restaurantId ? `${restaurantId.slice(0, 8)}…` : slug}
             </span>
           )}

@@ -61,7 +61,7 @@ function mapTable(
 
 const statusConfig: Record<TableStatus, { color: string; bg: string; border: string; label: string }> = {
   available: { color: "#22c55e", bg: "rgba(34,197,94,0.08)", border: "rgba(34,197,94,0.25)", label: "Available" },
-  occupied: { color: "#1e7fff", bg: "var(--cafyz-border)", border: "rgba(30,127,255,0.3)", label: "Occupied" },
+  occupied: { color: "#1e7fff", bg: "var(--cafyz-badge-bg)", border: "rgba(30,127,255,0.3)", label: "Occupied" },
   reserved: { color: "#f59e0b", bg: "rgba(245,158,11,0.08)", border: "rgba(245,158,11,0.25)", label: "Reserved" },
   cleaning: { color: "var(--cafyz-muted)", bg: "rgba(107,130,160,0.08)", border: "rgba(107,130,160,0.2)", label: "Cleaning" },
 };
@@ -227,7 +227,7 @@ export function Tables() {
       </div>
 
       <div className="flex items-center justify-between">
-        <h3 className="text-white font-semibold" style={{ fontFamily: "var(--font-display)" }}>
+        <h3 className="font-semibold" style={{ fontFamily: "var(--font-display)", color: "var(--cafyz-text-strong)" }}>
           Floor Plan · {filtered.length} tables
         </h3>
         <button

@@ -62,7 +62,7 @@ export function UpgradeModal({ requiredPlan, featurePage, onClose, onGoLicense }
             const priceLine = cfg ? `${formatPlanPrice(cfg)}${formatBillingSuffix(cfg)}` : null;
             return (
               <div key={plan} className="flex items-center gap-3 px-3 py-2.5 rounded-xl"
-                style={{ background: plan === requiredPlan ? 'rgba(30,127,255,0.08)' : 'rgba(255,255,255,0.03)', border: `1px solid ${plan === requiredPlan ? 'rgba(30,127,255,0.2)' : 'rgba(255,255,255,0.06)'}` }}>
+                style={{ background: plan === requiredPlan ? 'var(--cafyz-accent-bg)' : 'var(--cafyz-subtle-bg)', border: `1px solid ${plan === requiredPlan ? 'var(--cafyz-accent-border)' : 'var(--cafyz-border)'}` }}>
                 <Icon size={16} style={{ color: Meta.color }} />
                 <div className="min-w-0 flex-1">
                   <span style={{ color: 'var(--cafyz-text)', fontWeight: 600, fontSize: '0.85rem' }}>{cfg?.label ?? Meta.label}</span>
@@ -75,7 +75,7 @@ export function UpgradeModal({ requiredPlan, featurePage, onClose, onGoLicense }
         </div>
 
         <div className="flex gap-2">
-          <button onClick={onClose} className="flex-1 py-2.5 rounded-xl text-sm" style={{ background: 'rgba(255,255,255,0.06)', color: 'var(--cafyz-text-secondary)' }}>Maybe later</button>
+          <button onClick={onClose} className="flex-1 py-2.5 rounded-xl text-sm" style={{ background: 'var(--cafyz-subtle-bg)', color: 'var(--cafyz-text-secondary)', border: '1px solid var(--cafyz-border)' }}>Maybe later</button>
           <button onClick={() => { onGoLicense(); onClose(); }} className="flex-1 py-2.5 rounded-xl text-sm font-semibold"
             style={{ background: 'linear-gradient(135deg, #1e7fff, #00c6ff)', color: '#fff' }}>
             Activate license →

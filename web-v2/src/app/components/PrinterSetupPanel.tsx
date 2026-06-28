@@ -170,7 +170,7 @@ function PanelBody({
               {assignment && (
                 <button type="button" disabled={busy} onClick={() => onClearAssignment(role)}
                   className="text-[0.6rem] px-1.5 py-1 rounded min-h-[32px]"
-                  style={{ color: 'var(--cafyz-muted)', background: 'rgba(255,255,255,0.04)' }}>
+                  style={{ color: 'var(--cafyz-muted)', background: 'var(--cafyz-subtle-bg)' }}>
                   Clear
                 </button>
               )}

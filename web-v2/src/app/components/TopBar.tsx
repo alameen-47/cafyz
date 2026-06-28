@@ -46,7 +46,7 @@ const typeColor: Record<ApiSearchResult["type"], string> = {
 };
 
 const metaBadge: Record<string, { color: string; bg: string }> = {
-  open:       { color: "#1e7fff",  bg: "var(--cafyz-border)" },
+  open:       { color: "#1e7fff",  bg: "var(--cafyz-badge-bg)" },
   sent:       { color: "#a855f7",  bg: "rgba(168,85,247,0.1)" },
   paid:       { color: "#22c55e",  bg: "rgba(34,197,94,0.1)" },
   voided:     { color: "var(--cafyz-muted)",  bg: "rgba(107,130,160,0.1)" },
@@ -58,7 +58,7 @@ const metaBadge: Record<string, { color: string; bg: string }> = {
   empty:      { color: "#22c55e",  bg: "rgba(34,197,94,0.1)" },
   low:        { color: "#ff3b5c",  bg: "rgba(255,59,92,0.1)" },
   ok:         { color: "#22c55e",  bg: "rgba(34,197,94,0.1)" },
-  confirmed:  { color: "#1e7fff",  bg: "var(--cafyz-border)" },
+  confirmed:  { color: "#1e7fff",  bg: "var(--cafyz-badge-bg)" },
   seated:     { color: "#22c55e",  bg: "rgba(34,197,94,0.1)" },
   cancelled:  { color: "#ff3b5c",  bg: "rgba(255,59,92,0.1)" },
   available:  { color: "#22c55e",  bg: "rgba(34,197,94,0.1)" },

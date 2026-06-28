@@ -21,7 +21,7 @@ interface Reservation {
 
 const statusConfig: Record<ResStatus, { color: string; bg: string; label: string }> = {
   confirmed: { color: "#22c55e", bg: "rgba(34,197,94,0.1)", label: "Confirmed" },
-  seated: { color: "#1e7fff", bg: "var(--cafyz-border)", label: "Seated" },
+  seated: { color: "#1e7fff", bg: "var(--cafyz-badge-bg)", label: "Seated" },
   cancelled: { color: "#ff3b5c", bg: "rgba(255,59,92,0.1)", label: "Cancelled" },
   completed: { color: "var(--cafyz-muted)", bg: "rgba(107,130,160,0.1)", label: "No-show" },
 };

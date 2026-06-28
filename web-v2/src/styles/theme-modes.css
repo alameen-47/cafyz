@@ -65,6 +65,21 @@ html:not(.light) {
   --sidebar-accent: #111b35;
   --sidebar-accent-foreground: #e8eef8;
   --sidebar-border: rgba(30, 127, 255, 0.1);
+
+  --cafyz-accent-bg: rgba(30, 127, 255, 0.1);
+  --cafyz-accent-border: rgba(30, 127, 255, 0.18);
+  --cafyz-accent-soft: rgba(30, 127, 255, 0.06);
+  --cafyz-badge-bg: rgba(30, 127, 255, 0.12);
+  --cafyz-grid-line: rgba(30, 127, 255, 0.08);
+  --cafyz-subtle-bg: rgba(30, 127, 255, 0.06);
+  --cafyz-danger: #ff6b84;
+  --cafyz-danger-bg: rgba(255, 59, 92, 0.12);
+  --cafyz-warning: #fbbf24;
+  --cafyz-warning-bg: rgba(245, 158, 11, 0.12);
+  --cafyz-success: #4ade80;
+  --cafyz-success-bg: rgba(34, 197, 94, 0.12);
+  --cafyz-on-gradient: #ffffff;
+  --cafyz-brand: #1e7fff;
 }
 
 html.light {
@@ -80,8 +95,8 @@ html.light {
   --cafyz-sidebar-border-soft: rgba(15, 23, 42, 0.05);
   --cafyz-text: #0f172a;
   --cafyz-text-strong: #020617;
-  --cafyz-text-secondary: #334155;
-  --cafyz-muted: #64748b;
+  --cafyz-text-secondary: #1e293b;
+  --cafyz-muted: #475569;
   --cafyz-nav-hover: #0f172a;
   --cafyz-nav-active-bg: linear-gradient(135deg, rgba(30, 127, 255, 0.11) 0%, rgba(0, 198, 255, 0.04) 100%);
   --cafyz-nav-active-border: rgba(30, 127, 255, 0.22);
@@ -116,9 +131,9 @@ html.light {
   --popover: #ffffff;
   --popover-foreground: #0f172a;
   --secondary: #f1f5f9;
-  --secondary-foreground: #334155;
+  --secondary-foreground: #1e293b;
   --muted: #eef2f7;
-  --muted-foreground: #64748b;
+  --muted-foreground: #475569;
   --border: rgba(15, 23, 42, 0.09);
   --input: rgba(15, 23, 42, 0.06);
   --input-background: #ffffff;
@@ -126,10 +141,27 @@ html.light {
   --surface-2: #f1f5f9;
   --switch-background: #cbd5e1;
   --sidebar: #ffffff;
-  --sidebar-foreground: #334155;
+  --sidebar-foreground: #1e293b;
   --sidebar-accent: #f1f5f9;
   --sidebar-accent-foreground: #0f172a;
-  --sidebar-border: rgba(15, 23, 42, 0.08);
+  --sidebar-border: rgba(15, 23, 42, 0.1);
+
+  --cafyz-accent-bg: rgba(30, 127, 255, 0.12);
+  --cafyz-accent-border: rgba(30, 127, 255, 0.22);
+  --cafyz-accent-soft: rgba(30, 127, 255, 0.07);
+  --cafyz-badge-bg: rgba(30, 127, 255, 0.14);
+  --cafyz-grid-line: rgba(15, 23, 42, 0.1);
+  --cafyz-subtle-bg: #f1f5f9;
+  --cafyz-danger: #dc2626;
+  --cafyz-danger-bg: rgba(220, 38, 38, 0.1);
+  --cafyz-warning: #b45309;
+  --cafyz-warning-bg: rgba(245, 158, 11, 0.14);
+  --cafyz-success: #15803d;
+  --cafyz-success-bg: rgba(22, 163, 74, 0.12);
+  --cafyz-on-gradient: #ffffff;
+  --cafyz-brand: #1565e0;
+  --primary: #1565e0;
+  --ring: rgba(21, 101, 224, 0.35);
 }
 
 html.dark body,
@@ -205,4 +237,33 @@ html.light .cafyz-panel {
   background: var(--cafyz-surface);
   border: 1px solid var(--cafyz-border-strong);
   box-shadow: var(--cafyz-shadow-md);
+}
+
+/* Readable defaults inside app panels (light + dark) */
+.cafyz-main-scroll,
+.cafyz-panel,
+.cafyz-panel-elevated {
+  color: var(--cafyz-text);
+}
+
+html.light input,
+html.light textarea,
+html.light select {
+  color: var(--cafyz-text);
+}
+
+html.light input::placeholder,
+html.light textarea::placeholder {
+  color: var(--cafyz-input-placeholder);
+  opacity: 1;
+}
+
+html.light .cafyz-subtle-surface {
+  background: var(--cafyz-subtle-bg);
+  border: 1px solid var(--cafyz-border);
+}
+
+html.light .cafyz-accent-surface {
+  background: var(--cafyz-accent-soft);
+  border: 1px solid var(--cafyz-accent-border);
 }

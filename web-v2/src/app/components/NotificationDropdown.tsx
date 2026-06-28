@@ -17,7 +17,7 @@ interface NotificationDropdownProps {
 }
 
 const typeConfig = {
-  order:       { icon: ShoppingBag,   color: "#1e7fff",  bg: "var(--cafyz-border)" },
+  order:       { icon: ShoppingBag,   color: "#1e7fff",  bg: "var(--cafyz-badge-bg)" },
   kds:         { icon: ChefHat,       color: "#a855f7",  bg: "rgba(168,85,247,0.1)" },
   alert:       { icon: AlertTriangle, color: "#f59e0b",  bg: "rgba(245,158,11,0.1)" },
   stock:       { icon: Package,       color: "#ff3b5c",  bg: "rgba(255,59,92,0.1)" },
@@ -109,7 +109,7 @@ export function NotificationDropdown({
             </div>
 
             {error && (
-              <div className="px-4 py-2 text-xs" style={{ color: "#f87171", borderBottom: "1px solid rgba(255,59,92,0.15)" }}>
+              <div className="px-4 py-2 text-xs" style={{ color: "var(--cafyz-danger)", borderBottom: "1px solid var(--cafyz-danger-bg)" }}>
                 {error}
               </div>
             )}

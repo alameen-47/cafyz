@@ -178,7 +178,7 @@ function DualAreaChart({ data, cur = "₹" }: { data: RevPoint[]; cur?: string }
     <svg viewBox={`0 0 ${W} ${H}`} className="w-full" style={{ height: 180 }}>
       {gridYs.map((y, i) => (
         <g key={i}>
-          <line x1={padL} y1={y} x2={W - padR} y2={y} stroke="rgba(30,127,255,0.06)" strokeDasharray="4 3" />
+          <line x1={padL} y1={y} x2={W - padR} y2={y} stroke="var(--cafyz-grid-line)" strokeDasharray="4 3" />
           <text x={padL - 4} y={y + 4} textAnchor="end" fill="var(--cafyz-muted)" fontSize={9}>
             {compactMoney(cur, max * [0.25, 0.5, 0.75, 1][i])}
           </text>
@@ -214,7 +214,7 @@ function HorizontalBarChart({ data, cur = "₹" }: { data: ItemPoint[]; cur?: st
             <span className="text-right flex-shrink-0" style={{ color: "var(--cafyz-text-secondary)", fontSize: "0.72rem", width: 140, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
               {item.name}
             </span>
-            <div className="flex-1 h-3 rounded-full overflow-hidden" style={{ background: "rgba(30,127,255,0.08)" }}>
+            <div className="flex-1 h-3 rounded-full overflow-hidden" style={{ background: "var(--cafyz-accent-bg)" }}>
               <motion.div
                 initial={{ width: 0 }}
                 animate={{ width: `${pct}%` }}
@@ -267,7 +267,7 @@ function RadarChart({ data }: { data: RadarPoint[] }) {
       ))}
       {[...Array(n)].map((_, i) => {
         const { x, y } = pt(i, r);
-        return <line key={i} x1={cx} y1={cy} x2={x} y2={y} stroke="rgba(30,127,255,0.08)" strokeWidth={1} />;
+        return <line key={i} x1={cx} y1={cy} x2={x} y2={y} stroke="var(--cafyz-grid-line)" strokeWidth={1} />;
       })}
       <path d={dataPath} fill="#1e7fff" fillOpacity={0.15} stroke="#1e7fff" strokeWidth={2} />
       {data.map((d, i) => {
@@ -315,7 +315,7 @@ function LineSparkline({ data }: { data: HourPoint[] }) {
         const y = padT + (1 - t) * innerH;
         return (
           <g key={i}>
-            <line x1={padL} y1={y} x2={W - padR} y2={y} stroke="rgba(30,127,255,0.06)" strokeDasharray="4 3" />
+            <line x1={padL} y1={y} x2={W - padR} y2={y} stroke="var(--cafyz-grid-line)" strokeDasharray="4 3" />
             <text x={padL - 4} y={y + 4} textAnchor="end" fill="var(--cafyz-muted)" fontSize={8}>{Math.round(max * t)}</text>
           </g>
         );
@@ -523,7 +523,7 @@ export function Analytics() {
         </div>
 
         <div className="flex flex-wrap items-end gap-3 rounded-xl px-4 py-3"
-          style={{ background: "var(--cafyz-surface)", border: "1px solid rgba(30,127,255,0.08)" }}>
+          style={{ background: "var(--cafyz-surface)", border: "1px solid var(--cafyz-border)" }}>
           <label className="flex flex-col gap-1">
             <span style={{ color: "var(--cafyz-muted)", fontSize: "0.68rem", textTransform: "uppercase", letterSpacing: "0.05em" }}>From</span>
             <input type="date" value={customFrom} max={customTo}
@@ -555,7 +555,7 @@ export function Analytics() {
       {error && !loading && (
         <div className="rounded-xl px-4 py-3 flex items-center gap-2" style={{ background: "rgba(255,59,92,0.08)", border: "1px solid rgba(255,59,92,0.2)" }}>
           <AlertCircle size={16} style={{ color: "#ff3b5c", flexShrink: 0 }} />
-          <p style={{ color: "#f87171", fontSize: "0.82rem" }}>{error}</p>
+          <p style={{ color: "var(--cafyz-danger)", fontSize: "0.82rem" }}>{error}</p>
         </div>
       )}
 
@@ -626,7 +626,7 @@ export function Analytics() {
                 </p>
                 {(periodLabel || filterRangeCaption) && (
                   <div className="mt-3 inline-flex flex-col gap-0.5 rounded-lg px-3 py-2"
-                    style={{ background: "rgba(30,127,255,0.06)", border: "1px solid rgba(30,127,255,0.12)" }}>
+                    style={{ background: "var(--cafyz-accent-soft)", border: "1px solid var(--cafyz-accent-border)" }}>
                     <span style={{ color: "var(--cafyz-muted)", fontSize: "0.65rem", textTransform: "uppercase", letterSpacing: "0.06em" }}>
                       Report period
                     </span>
@@ -637,7 +637,7 @@ export function Analytics() {
                   </div>
                 )}
               </div>
-              <div className="rounded-xl px-3 py-2" style={{ background: "rgba(30,127,255,0.06)", border: "1px solid rgba(30,127,255,0.12)" }}>
+              <div className="rounded-xl px-3 py-2" style={{ background: "var(--cafyz-accent-soft)", border: "1px solid var(--cafyz-accent-border)" }}>
                 <p style={{ color: "var(--cafyz-muted)", fontSize: "0.65rem", textTransform: "uppercase", letterSpacing: "0.06em" }}>Printer</p>
                 <p style={{ color: livePrinter.type === "none" ? "#fbbf24" : "#22c55e", fontSize: "0.78rem", fontWeight: 600 }}>
                   {livePrinter.type === "none"
@@ -648,7 +648,7 @@ export function Analytics() {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <div className="rounded-xl p-4 space-y-3" style={{ background: "var(--cafyz-surface-subtle)", border: "1px solid rgba(30,127,255,0.08)" }}>
+              <div className="rounded-xl p-4 space-y-3" style={{ background: "var(--cafyz-surface-subtle)", border: "1px solid var(--cafyz-border)" }}>
                 <div className="flex items-start gap-3">
                   <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
                     style={{ background: "rgba(30,127,255,0.12)" }}>
@@ -677,7 +677,7 @@ export function Analytics() {
                 </button>
               </div>
 
-              <div className="rounded-xl p-4 space-y-3" style={{ background: "var(--cafyz-surface-subtle)", border: "1px solid rgba(30,127,255,0.08)" }}>
+              <div className="rounded-xl p-4 space-y-3" style={{ background: "var(--cafyz-surface-subtle)", border: "1px solid var(--cafyz-border)" }}>
                 <div className="flex items-start gap-3">
                   <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
                     style={{ background: "rgba(168,85,247,0.12)" }}>

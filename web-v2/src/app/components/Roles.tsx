@@ -40,7 +40,7 @@ const roleColors: Record<Role, string> = {
 const accessCycle: Access[] = ["none", "view", "edit"];
 const accessColors: Record<Access, { color: string; bg: string }> = {
   none: { color: "var(--cafyz-muted)", bg: "rgba(107,130,160,0.08)" },
-  view: { color: "#1e7fff", bg: "var(--cafyz-border)" },
+  view: { color: "#1e7fff", bg: "var(--cafyz-badge-bg)" },
   edit: { color: "#22c55e", bg: "rgba(34,197,94,0.1)" },
 };
 

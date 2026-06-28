@@ -30,7 +30,7 @@ const stockConfig: Record<StockLevel, { color: string; bg: string; label: string
   critical: { color: "#ff3b5c", bg: "rgba(255,59,92,0.1)",    label: "Critical",  icon: AlertTriangle },
   low:      { color: "#f59e0b", bg: "rgba(245,158,11,0.1)",   label: "Low Stock", icon: TrendingDown },
   ok:       { color: "#22c55e", bg: "rgba(34,197,94,0.1)",    label: "OK",        icon: CheckCircle2 },
-  surplus:  { color: "#1e7fff", bg: "var(--cafyz-border)",   label: "Surplus",   icon: Package },
+  surplus:  { color: "#1e7fff", bg: "var(--cafyz-badge-bg)",   label: "Surplus",   icon: Package },
 };
 
 function mapRow(r: ApiInventoryItem): InventoryItem {

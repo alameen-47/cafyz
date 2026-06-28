@@ -445,10 +445,10 @@ function MobileBillFab({
         <ShoppingCart size={18} className="text-white" />
       </span>
       <div className="text-left min-w-0 flex-1">
-        <p className="truncate" style={{ color: "var(--cafyz-text-strong)", fontWeight: 700, fontSize: "0.82rem", lineHeight: 1.2 }}>
+        <p className="truncate" style={{ color: "var(--cafyz-on-gradient)", fontWeight: 700, fontSize: "0.82rem", lineHeight: 1.2 }}>
           {hasItems ? "View bill" : "Open bill"}
         </p>
-        <p className="truncate" style={{ color: "rgba(255,255,255,0.82)", fontSize: "0.68rem", lineHeight: 1.2 }}>
+        <p className="truncate" style={{ color: "rgba(255,255,255,0.88)", fontSize: "0.68rem", lineHeight: 1.2 }}>
           {hasItems ? `${itemCount} item${itemCount !== 1 ? "s" : ""}` : "Table, items & payment"}
         </p>
       </div>

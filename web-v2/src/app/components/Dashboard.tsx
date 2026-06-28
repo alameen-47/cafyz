@@ -92,7 +92,7 @@ function AreaSparkline({ data, color, labels, cur = "₹" }: { data: number[]; c
         const val = min + t * range;
         return (
           <g key={i}>
-            <line x1={padL} y1={y} x2={W - padR} y2={y} stroke="rgba(30,127,255,0.07)" strokeDasharray="4 4" />
+            <line x1={padL} y1={y} x2={W - padR} y2={y} stroke="var(--cafyz-grid-line)" strokeDasharray="4 4" />
             <text x={padL - 5} y={y + 3.5} textAnchor="end" fill="var(--cafyz-muted)" fontSize={9}>{compactMoney(cur, val)}</text>
           </g>
         );
@@ -130,7 +130,7 @@ function BarSparkline({ data, color, cur = "₹" }: { data: { day: string; reven
     <svg viewBox={`0 0 ${W} ${H}`} className="w-full" style={{ height: 155 }}>
       {[0.5, 1].map((t, i) => {
         const y = padT + (1 - t) * innerH;
-        return <line key={i} x1={padL} y1={y} x2={W - padR} y2={y} stroke="rgba(30,127,255,0.06)" strokeDasharray="3 3" />;
+        return <line key={i} x1={padL} y1={y} x2={W - padR} y2={y} stroke="var(--cafyz-grid-line)" strokeDasharray="3 3" />;
       })}
       {data.map((d, i) => {
         const barH = Math.max(4, (d.revenue / max) * innerH);
@@ -139,7 +139,7 @@ function BarSparkline({ data, color, cur = "₹" }: { data: { day: string; reven
         const isMax = d.revenue > 0 && d.revenue === max;
         return (
           <g key={i}>
-            <rect x={x} y={padT} width={barW} height={innerH} rx={4} fill="rgba(30,127,255,0.04)" />
+            <rect x={x} y={padT} width={barW} height={innerH} rx={4} fill="var(--cafyz-accent-soft)" />
             <rect x={x} y={y} width={barW} height={barH} rx={4} fill={isMax ? color : `${color}99`} />
             {isMax && (
               <text x={x + barW / 2} y={y - 4} textAnchor="middle" fill={color} fontSize={8} fontWeight="bold">
@@ -185,7 +185,7 @@ function DonutChart({ data, centerValue, centerLabel = "items" }: { data: CatDat
 
   return (
     <svg viewBox={`0 0 ${size} ${size}`} width={size} height={size}>
-      <circle cx={cx} cy={cy} r={r} fill="none" stroke="rgba(30,127,255,0.07)" strokeWidth={strokeW} />
+      <circle cx={cx} cy={cy} r={r} fill="none" stroke="var(--cafyz-grid-line)" strokeWidth={strokeW} />
       {slices.map((s, i) => (
         <circle key={i} cx={cx} cy={cy} r={r} fill="none" stroke={s.color} strokeWidth={strokeW}
           strokeDasharray={`${s.dashLen.toFixed(2)} ${s.gapLen.toFixed(2)}`} strokeLinecap="round"

@@ -118,7 +118,7 @@ export function License() {
           initial={{ opacity: 0, y: -8 }}
           animate={{ opacity: 1, y: 0 }}
           className="flex items-center gap-3 px-4 py-3 rounded-2xl"
-          style={{ background: status?.trial_expired ? "rgba(255,59,92,0.08)" : "rgba(30,127,255,0.08)", border: `1px solid ${status?.trial_expired ? "rgba(255,59,92,0.2)" : "rgba(30,127,255,0.2)"}` }}
+          style={{ background: status?.trial_expired ? "var(--cafyz-danger-bg)" : "var(--cafyz-accent-bg)", border: `1px solid ${status?.trial_expired ? "rgba(220,38,38,0.22)" : "var(--cafyz-accent-border)"}` }}
         >
           <Clock size={18} style={{ color: status?.trial_expired ? "#ff3b5c" : "#1e7fff", flexShrink: 0 }} />
           <div className="flex-1">

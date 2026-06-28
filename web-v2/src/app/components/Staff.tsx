@@ -183,18 +183,18 @@ export function Staff() {
               </div>
 
               <div className="grid grid-cols-3 gap-2 mb-3">
-                <div className="rounded-lg p-2 text-center" style={{ background: "rgba(30,127,255,0.06)" }}>
+                <div className="rounded-lg p-2 text-center" style={{ background: "var(--cafyz-accent-soft)" }}>
                   <div style={{ color: "#1e7fff", fontFamily: "var(--font-mono)", fontWeight: 700, fontSize: "0.9rem" }}>{member.ordersToday}</div>
                   <div style={{ color: "var(--cafyz-muted)", fontSize: "0.65rem" }}>Today</div>
                 </div>
-                <div className="rounded-lg p-2 text-center" style={{ background: "rgba(30,127,255,0.06)" }}>
+                <div className="rounded-lg p-2 text-center" style={{ background: "var(--cafyz-accent-soft)" }}>
                   <div className="flex items-center justify-center gap-1">
                     <StatusIcon size={10} style={{ color: cfg.color }} />
                     <span style={{ color: cfg.color, fontFamily: "var(--font-mono)", fontWeight: 700, fontSize: "0.75rem" }}>{cfg.label}</span>
                   </div>
                   <div style={{ color: "var(--cafyz-muted)", fontSize: "0.65rem" }}>Status</div>
                 </div>
-                <div className="rounded-lg p-2 text-center" style={{ background: "rgba(30,127,255,0.06)" }}>
+                <div className="rounded-lg p-2 text-center" style={{ background: "var(--cafyz-accent-soft)" }}>
                   <div style={{ color: "var(--cafyz-text-secondary)", fontFamily: "var(--font-mono)", fontWeight: 700, fontSize: "0.9rem" }}>{member.tablesAssigned.length}</div>
                   <div style={{ color: "var(--cafyz-muted)", fontSize: "0.65rem" }}>Tables</div>
                 </div>
