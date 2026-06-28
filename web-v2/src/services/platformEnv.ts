@@ -25,6 +25,18 @@ export function isDesktopShell(): boolean {
   return r === 'electron' || (r === 'web' && getPrinterPlatformFromUA() === 'desktop');
 }
 
+/** True when FCM/APNs native config files exist (google-services.json / GoogleService-Info.plist). */
+export function isNativePushAvailable(): boolean {
+  try {
+    // Injected at build time by vite.config.ts (capacitor mode).
+    if (typeof __CAFYZ_NATIVE_PUSH__ === 'boolean') return __CAFYZ_NATIVE_PUSH__;
+  } catch {
+    /* web bundle — global not defined */
+  }
+  const flag = String((import.meta as any).env?.VITE_NATIVE_PUSH_ENABLED ?? '').toLowerCase();
+  return flag === 'true' || flag === '1';
+}
+
 function getPrinterPlatformFromUA(): string {
   if (typeof navigator === 'undefined') return 'unknown';
   const ua = navigator.userAgent || '';

@@ -1,5 +1,6 @@
 import { defineConfig } from 'vite'
 import path from 'path'
+import fs from 'node:fs'
 import { fileURLToPath } from 'url'
 import tailwindcss from '@tailwindcss/vite'
 import react from '@vitejs/plugin-react'
@@ -20,11 +21,18 @@ function figmaAssetResolver() {
 
 export default defineConfig(({ mode }) => {
   const isCapacitor = mode === 'capacitor';
+  const repoRoot = path.resolve(__dirname, '..');
+  const hasFirebaseNative =
+    fs.existsSync(path.join(repoRoot, 'cap-android/app/google-services.json'))
+    || fs.existsSync(path.join(repoRoot, 'cap-ios/App/GoogleService-Info.plist'));
 
   return {
   root: __dirname,
   // Relative asset paths are required for Capacitor's file:// / https://localhost shell.
   base: isCapacitor ? './' : '/',
+  define: {
+    __CAFYZ_NATIVE_PUSH__: isCapacitor ? hasFirebaseNative : false,
+  },
   plugins: [
     figmaAssetResolver(),
     // The React and Tailwind plugins are both required for Make, even if

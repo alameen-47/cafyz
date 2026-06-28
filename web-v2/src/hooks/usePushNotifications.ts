@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { Capacitor } from '@capacitor/core';
 import { notificationsApi } from '../services/api';
-import { isNativeApp } from '../services/platformEnv';
+import { isNativeApp, isNativePushAvailable } from '../services/platformEnv';
 
 const PUSH_TOKEN_KEY = 'cafyz_push_token';
 
@@ -20,7 +20,7 @@ export function usePushNotifications(enabled: boolean) {
 
     void requestWebNotificationPermission();
 
-    if (!isNativeApp()) return;
+    if (!isNativeApp() || !isNativePushAvailable()) return;
 
     let removeListeners: (() => void) | undefined;
     let alive = true;
