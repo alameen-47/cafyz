@@ -22,6 +22,7 @@
     "native:android:release": "bash scripts/build-native.sh android-release",
     "native:ios": "bash scripts/build-native.sh ios",
     "stage:store-release": "bash scripts/stage-store-release.sh",
+    "capture:android-screenshots": "node scripts/capture-android-screenshots.mjs",
     "lint": "eslint web-v2 capacitor.config.ts scripts",
     "postinstall": "patch-package"
   },
@@ -46,6 +47,7 @@
     "concurrently": "^9.2.1",
     "eslint": "^8.19.0",
     "patch-package": "^8.0.1",
+    "playwright": "^1.52.0",
     "prettier": "2.8.8",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",

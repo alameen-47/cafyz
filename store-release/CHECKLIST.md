@@ -38,7 +38,9 @@ Use this before submitting to **App Store** or **Play Store**.
 - [ ] `cp cap-android/keystore.properties.example cap-android/keystore.properties`
 - [ ] Release keystore generated and backed up securely
 - [ ] `npm run native:android:release` → `releases/Cafyz-android-release.aab`
-- [ ] Phone + tablet screenshots in `android/screenshots/`
+- [x] Phone screenshots in `android/screenshots/phone/` (5 screens)
+- [x] Tablet screenshots in `android/screenshots/tablet-10/` (5 screens)
+- [x] Feature graphic `android/screenshots/feature-graphic.png`
 - [ ] Metadata from `android/metadata.md`
 - [ ] Data Safety form completed
 - [ ] Upload AAB → Internal testing → Production

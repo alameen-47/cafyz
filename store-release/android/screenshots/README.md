@@ -1,39 +1,43 @@
 # Android screenshots
 
-Save captures here before uploading to Google Play Console.
+Play Store assets — **captured and ready to upload.**
 
-## Required assets
+## Phone (`phone/`)
 
-| Asset | Size | File |
-|-------|------|------|
-| Phone screenshots | min 320px short side | `phone/01-*.png` |
-| 7" tablet (optional) | 1200 × 1920 recommended | `tablet-10/01-*.png` |
-| **Feature graphic** | **1024 × 500** | `feature-graphic.png` (create) |
-| Hi-res icon | 512 × 512 | use `../assets/app-icon-1024.png` (resize) |
+| File | Screen |
+|------|--------|
+| `01-dashboard.png` | Home / Dashboard |
+| `02-pos.png` | Point of Sale |
+| `03-orders.png` | Live Orders |
+| `04-tables.png` | Table Map |
+| `05-menu.png` | Menu |
 
-## Suggested screens
+Size: **1082×2426** (Pixel-class phone)
 
-1. POS
-2. KDS
-3. Menu
-4. Dashboard
-5. Tables
+## 10" tablet (`tablet-10/`)
 
-## Capture
+Same five screens at **1920×1200** (sidebar layout).
+
+## Feature graphic
+
+| File | Size |
+|------|------|
+| `feature-graphic.png` | 1024×500 |
+
+## Re-capture
 
 ```bash
-npm run cap:sync
-npm run cap:android:emulator   # or USB device
-
-adb -s <device> exec-out screencap -p > store-release/android/screenshots/phone/01-pos.png
+npm run capture:android-screenshots
 ```
 
-Or use Android Studio → Logcat / Device Manager → Screenshot.
+Uses Playwright against production (`cafyz.ametronyx.com`) with the store reviewer account. Same UI as the Capacitor Android app.
 
-## Current files
+**Emulator capture (optional):**
+```bash
+npm run cap:android:emulator   # in another terminal
+bash scripts/capture-android-screenshots.sh
+```
 
-| Folder | Status |
-|--------|--------|
-| `phone/` | Empty — add 2–8 screenshots |
-| `tablet-10/` | Empty — add if listing tablets |
-| `feature-graphic.png` | Not created yet |
+## Upload
+
+Google Play Console → Store presence → Screenshots → drop files from `phone/` and `tablet-10/`.
