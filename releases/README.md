@@ -1,10 +1,11 @@
 # Native app release artifacts
 
-Build outputs are placed here by `npm run native:build`.
+Build outputs land here. **All store metadata, links, and screenshots** live in **[store-release/](../store-release/)**.
 
-| File / folder | Platform | How to build |
-|---------------|----------|--------------|
-| `Cafyz-android-debug.apk` | Android | `npm run native:android` (requires JDK 21) |
-| iOS `.ipa` | iPhone / iPad | Xcode archive from `cap-ios/` — see [docs/NATIVE_APPS.md](../docs/NATIVE_APPS.md) |
+| File | Platform | Command |
+|------|----------|---------|
+| `Cafyz-android-debug.apk` | Android | `npm run native:android` |
+| `Cafyz-android-release.aab` | Android (Play) | `npm run native:android:release` |
+| iOS `.ipa` | iPhone / iPad | Xcode Archive — see [store-release/ios/launch-guide.md](../store-release/ios/launch-guide.md) |
 
-Full instructions: [docs/NATIVE_APPS.md](../docs/NATIVE_APPS.md)
+Full store hub: [store-release/README.md](../store-release/README.md)

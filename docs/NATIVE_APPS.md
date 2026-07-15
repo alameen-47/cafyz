@@ -47,6 +47,8 @@ npm run cap:ios
 # Xcode → Product → Archive
 ```
 
+**App Store submission:** [store-release/](../store-release/) — metadata, screenshots, links, checklist.
+
 ## Development
 
 ```bash
