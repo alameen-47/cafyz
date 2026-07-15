@@ -51,7 +51,7 @@ Do not scatter store assets elsewhere — add new files under this tree.
 | Platform | File |
 |----------|------|
 | Android debug APK | [builds/android/Cafyz-android-debug.apk](builds/android/Cafyz-android-debug.apk) |
-| Android release AAB | [builds/android-release/](builds/android-release/) (after keystore setup) |
+| Android release AAB | [builds/android-release/Cafyz-android-release.aab](builds/android-release/Cafyz-android-release.aab) |
 | **iOS web hosting** | [builds/ios/web-hosting/](builds/ios/web-hosting/) |
 | **iOS Xcode archive** | [builds/ios/archive/Cafyz.xcarchive](builds/ios/archive/Cafyz.xcarchive) |
 | iOS export template | [ios/xcode/ExportOptions.plist](ios/xcode/ExportOptions.plist) |

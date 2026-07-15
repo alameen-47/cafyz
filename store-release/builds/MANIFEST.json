@@ -1,7 +1,7 @@
 {
-  "staged_at": "2026-07-15T16:03:37Z",
+  "staged_at": "2026-07-15T17:43:29Z",
   "android_debug_apk": "builds/android/Cafyz-android-debug.apk",
-  "android_release_aab": "null",
+  "android_release_aab": "builds/android-release/Cafyz-android-release.aab",
   "ios_web_hosting": "builds/ios/web-hosting",
   "ios_archive": "builds/ios/archive/Cafyz.xcarchive",
   "ios_capacitor_config": "builds/ios/capacitor.config.json",

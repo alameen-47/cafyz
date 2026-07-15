@@ -33,6 +33,8 @@ local.properties
 .cxx/
 *.keystore
 !debug.keystore
+cap-android/keystore.properties
+store-release/android/signing-credentials.txt
 .kotlin/
 
 # node.js

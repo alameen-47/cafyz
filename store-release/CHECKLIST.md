@@ -35,9 +35,8 @@ Use this before submitting to **App Store** or **Play Store**.
 ## Google Play Store
 
 - [ ] Play Console developer account ($25 one-time)
-- [ ] `cp cap-android/keystore.properties.example cap-android/keystore.properties`
-- [ ] Release keystore generated and backed up securely
-- [ ] `npm run native:android:release` → `releases/Cafyz-android-release.aab`
+- [x] Android release AAB in `builds/android-release/Cafyz-android-release.aab`
+- [x] Release keystore generated locally (`cap-android/cafyz-release.keystore` — **back up**, gitignored)
 - [x] Phone screenshots in `android/screenshots/phone/` (5 screens)
 - [x] Tablet screenshots in `android/screenshots/tablet-10/` (5 screens)
 - [x] Feature graphic `android/screenshots/feature-graphic.png`

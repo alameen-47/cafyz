@@ -89,7 +89,7 @@ cp cap-android/keystore.properties.example cap-android/keystore.properties
 cp web-v2/.env.capacitor.example web-v2/.env.capacitor
 npm run cap:sync
 npm run native:android:release
-# Upload: releases/Cafyz-android-release.aab
+# Upload: store-release/builds/android-release/Cafyz-android-release.aab
 ```
 
 ## Versioning
