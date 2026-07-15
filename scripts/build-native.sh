@@ -116,7 +116,17 @@ if [[ "${1:-}" == "android-release" ]]; then
 fi
 
 if [[ "${1:-}" == "ios" || "${1:-}" == "all" ]]; then
-  echo "==> iOS: open Xcode to archive — run: npx cap open ios"
+  if [[ -d cap-ios/App ]]; then
+    echo "==> Archiving iOS (Release)"
+    mkdir -p releases/ios
+    (cd cap-ios/App && xcodebuild -workspace App.xcworkspace -scheme App -configuration Release \
+      -destination 'generic/platform=iOS' \
+      -archivePath "$ROOT/releases/ios/Cafyz.xcarchive" archive)
+    echo "    → releases/ios/Cafyz.xcarchive"
+  fi
+  echo "==> iOS: upload via Xcode Distribute App or export with store-release/ios/xcode/ExportOptions.plist"
 fi
 
 echo "Done."
+
+bash scripts/stage-store-release.sh

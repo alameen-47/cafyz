@@ -20,6 +20,7 @@ Full links: [../LINKS.md](../LINKS.md)
 |-------|-----|
 | **Privacy policy** | https://cafyz.ametronyx.com/privacy |
 | **Website** | https://cafyz.ametronyx.com |
+| **Account deletion** | https://cafyz.ametronyx.com/support#account-deletion |
 
 ## Short description (80 chars max)
 

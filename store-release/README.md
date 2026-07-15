@@ -46,39 +46,47 @@ Do not scatter store assets elsewhere — add new files under this tree.
 | Terms | https://cafyz.ametronyx.com/terms |
 | API | https://cafyz.onrender.com |
 
-## Build outputs
+## Build outputs (in this folder)
 
-| Platform | Command | Output |
-|----------|---------|--------|
-| iOS | Xcode → Archive | Upload to Connect |
-| Android debug | `npm run native:android` | `../releases/Cafyz-android-debug.apk` |
-| Android release | `npm run native:android:release` | `../releases/Cafyz-android-release.aab` |
+| Platform | File |
+|----------|------|
+| Android debug APK | [builds/android/Cafyz-android-debug.apk](builds/android/Cafyz-android-debug.apk) |
+| Android release AAB | [builds/android-release/](builds/android-release/) (after keystore setup) |
+| **iOS web hosting** | [builds/ios/web-hosting/](builds/ios/web-hosting/) |
+| **iOS Xcode archive** | [builds/ios/archive/Cafyz.xcarchive](builds/ios/archive/Cafyz.xcarchive) |
+| iOS export template | [ios/xcode/ExportOptions.plist](ios/xcode/ExportOptions.plist) |
 
-See [builds/README.md](builds/README.md).
+Re-stage after builds: `bash scripts/stage-store-release.sh` (runs automatically at end of `npm run native:*`).
+
+See [builds/README.md](builds/README.md) and [builds/MANIFEST.json](builds/MANIFEST.json).
 
 ## Folder structure
 
 ```
 store-release/
-├── README.md              ← you are here
-├── LINKS.md               ← all URLs, emails, portals
-├── CHECKLIST.md           ← pre-submit checklist
-├── demo-account.md        ← reviewer credentials template
-├── assets/
-│   └── app-icon-1024.png
+├── README.md
+├── LINKS.md
+├── CHECKLIST.md
+├── demo-account.md
+├── assets/app-icon-1024.png
 ├── builds/
-│   └── README.md
+│   ├── MANIFEST.json
+│   ├── env.capacitor.example
+│   ├── android/Cafyz-android-debug.apk
+│   ├── android-release/          ← Play AAB (when built)
+│   └── ios/
+│       ├── web-hosting/          ← Capacitor bundled web UI
+│       ├── capacitor.config.json
+│       └── archive/Cafyz.xcarchive
 ├── ios/
+│   ├── xcode/                    ← Info.plist, Podfile, ExportOptions.plist
 │   ├── metadata.md
 │   ├── launch-guide.md
 │   └── screenshots/
-│       ├── iphone-6.7/
-│       └── ipad-12.9/
 └── android/
+    ├── keystore.properties.example
     ├── metadata.md
     └── screenshots/
-        ├── phone/
-        └── tablet-10/
 ```
 
 ## Contacts

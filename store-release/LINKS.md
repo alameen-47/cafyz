@@ -17,6 +17,7 @@ All URLs, portals, and contacts for App Store and Play Store submission.
 | **Privacy policy** | https://cafyz.ametronyx.com/privacy |
 | **Support** | https://cafyz.ametronyx.com/support |
 | **Terms of service** | https://cafyz.ametronyx.com/terms |
+| **Account deletion** | https://cafyz.ametronyx.com/support#account-deletion |
 
 ## App identity
 

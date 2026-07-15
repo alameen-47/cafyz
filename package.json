@@ -21,6 +21,7 @@
     "native:android": "bash scripts/build-native.sh android",
     "native:android:release": "bash scripts/build-native.sh android-release",
     "native:ios": "bash scripts/build-native.sh ios",
+    "stage:store-release": "bash scripts/stage-store-release.sh",
     "lint": "eslint web-v2 capacitor.config.ts scripts",
     "postinstall": "patch-package"
   },

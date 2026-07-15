@@ -1,0 +1,10 @@
+{
+  "staged_at": "2026-07-15T16:03:37Z",
+  "android_debug_apk": "builds/android/Cafyz-android-debug.apk",
+  "android_release_aab": "null",
+  "ios_web_hosting": "builds/ios/web-hosting",
+  "ios_archive": "builds/ios/archive/Cafyz.xcarchive",
+  "ios_capacitor_config": "builds/ios/capacitor.config.json",
+  "ios_xcode_project": "../cap-ios/App/App.xcworkspace",
+  "ios_export_options": "ios/xcode/ExportOptions.plist"
+}

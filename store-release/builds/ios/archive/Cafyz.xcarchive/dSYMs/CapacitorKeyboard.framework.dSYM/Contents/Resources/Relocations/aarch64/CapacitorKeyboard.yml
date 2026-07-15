@@ -1,0 +1,70 @@
+---
+triple:          'arm64-apple-darwin'
+binary-path:     '/Users/alameen/Library/Developer/Xcode/DerivedData/App-fingsjwpiuppjrgtpsibocknabed/Build/Intermediates.noindex/ArchiveIntermediates/App/IntermediateBuildFilesPath/UninstalledProducts/iphoneos/CapacitorKeyboard.framework/CapacitorKeyboard'
+relocations:
+  - { offset: 0x5E3C, size: 0x8, addend: 0x0, symName: _CapacitorKeyboardVersionString, symObjAddr: 0x0, symBinAddr: 0x75A0, symSize: 0x0 }
+  - { offset: 0x5E70, size: 0x8, addend: 0x0, symName: _CapacitorKeyboardVersionNumber, symObjAddr: 0x30, symBinAddr: 0x75D0, symSize: 0x0 }
+  - { offset: 0x5EAC, size: 0x8, addend: 0x0, symName: '-[KeyboardPlugin currentKeyWindow]', symObjAddr: 0x0, symBinAddr: 0x4000, symSize: 0x1FC }
+  - { offset: 0x5FB3, size: 0x8, addend: 0x0, symName: _hideTimer, symObjAddr: 0xC6A0, symBinAddr: 0x10CA8, symSize: 0x0 }
+  - { offset: 0x5FCD, size: 0x8, addend: 0x0, symName: _UIClassString, symObjAddr: 0xC688, symBinAddr: 0x10C90, symSize: 0x0 }
+  - { offset: 0x5FE7, size: 0x8, addend: 0x0, symName: _WKClassString, symObjAddr: 0xC690, symBinAddr: 0x10C98, symSize: 0x0 }
+  - { offset: 0x5FFC, size: 0x8, addend: 0x0, symName: _UITraitsClassString, symObjAddr: 0xC698, symBinAddr: 0x10CA0, symSize: 0x0 }
+  - { offset: 0x6011, size: 0x8, addend: 0x0, symName: _stageManagerOffset, symObjAddr: 0xC6A8, symBinAddr: 0x10CB0, symSize: 0x0 }
+  - { offset: 0x602E, size: 0x8, addend: 0x0, symName: _UIOriginalImp, symObjAddr: 0xC6B0, symBinAddr: 0x10CB8, symSize: 0x0 }
+  - { offset: 0x604A, size: 0x8, addend: 0x0, symName: _WKOriginalImp, symObjAddr: 0xC6B8, symBinAddr: 0x10CC0, symSize: 0x0 }
+  - { offset: 0x6197, size: 0x8, addend: 0x0, symName: '-[KeyboardPlugin currentKeyWindow]', symObjAddr: 0x0, symBinAddr: 0x4000, symSize: 0x1FC }
+  - { offset: 0x6202, size: 0x8, addend: 0x0, symName: '-[KeyboardPlugin forceBackdropColor:]', symObjAddr: 0x1FC, symBinAddr: 0x41FC, symSize: 0xBC }
+  - { offset: 0x62F6, size: 0x8, addend: 0x0, symName: '___37-[KeyboardPlugin forceBackdropColor:]_block_invoke', symObjAddr: 0x2B8, symBinAddr: 0x42B8, symSize: 0x8 }
+  - { offset: 0x633D, size: 0x8, addend: 0x0, symName: ___copy_helper_block_e8_32s40s, symObjAddr: 0x2C0, symBinAddr: 0x42C0, symSize: 0x28 }
+  - { offset: 0x6363, size: 0x8, addend: 0x0, symName: ___destroy_helper_block_e8_32s40s, symObjAddr: 0x2E8, symBinAddr: 0x42E8, symSize: 0x28 }
+  - { offset: 0x6380, size: 0x8, addend: 0x0, symName: '-[KeyboardPlugin isIPad]', symObjAddr: 0x310, symBinAddr: 0x4310, symSize: 0x48 }
+  - { offset: 0x63B0, size: 0x8, addend: 0x0, symName: '-[KeyboardPlugin shouldIgnoreResizeForHeight:]', symObjAddr: 0x358, symBinAddr: 0x4358, symSize: 0x78 }
+  - { offset: 0x6402, size: 0x8, addend: 0x0, symName: '-[KeyboardPlugin colorFromCssColorString:]', symObjAddr: 0x3D0, symBinAddr: 0x43D0, symSize: 0x33C }
+  - { offset: 0x6534, size: 0x8, addend: 0x0, symName: '-[KeyboardPlugin updateBackdropColor]', symObjAddr: 0x70C, symBinAddr: 0x470C, symSize: 0x140 }
+  - { offset: 0x6573, size: 0x8, addend: 0x0, symName: '-[KeyboardPlugin updateBackdropColorFromDOM]', symObjAddr: 0x84C, symBinAddr: 0x484C, symSize: 0x98 }
+  - { offset: 0x65A3, size: 0x8, addend: 0x0, symName: '___44-[KeyboardPlugin updateBackdropColorFromDOM]_block_invoke', symObjAddr: 0x8E4, symBinAddr: 0x48E4, symSize: 0x98 }
+  - { offset: 0x661A, size: 0x8, addend: 0x0, symName: ___copy_helper_block_e8_32s, symObjAddr: 0x97C, symBinAddr: 0x497C, symSize: 0x8 }
+  - { offset: 0x663E, size: 0x8, addend: 0x0, symName: ___destroy_helper_block_e8_32s, symObjAddr: 0x984, symBinAddr: 0x4984, symSize: 0x8 }
+  - { offset: 0x665B, size: 0x8, addend: 0x0, symName: '-[KeyboardPlugin load]', symObjAddr: 0x98C, symBinAddr: 0x498C, symSize: 0x3BC }
+  - { offset: 0x66F7, size: 0x8, addend: 0x0, symName: '-[KeyboardPlugin resetScrollView]', symObjAddr: 0xD48, symBinAddr: 0x4D48, symSize: 0x5C }
+  - { offset: 0x6736, size: 0x8, addend: 0x0, symName: '-[KeyboardPlugin onKeyboardWillHide:]', symObjAddr: 0xDA4, symBinAddr: 0x4DA4, symSize: 0xD4 }
+  - { offset: 0x6771, size: 0x8, addend: 0x0, symName: '___37-[KeyboardPlugin onKeyboardWillHide:]_block_invoke', symObjAddr: 0xE78, symBinAddr: 0x4E78, symSize: 0x5C }
+  - { offset: 0x67B8, size: 0x8, addend: 0x0, symName: '-[KeyboardPlugin onKeyboardWillShow:]', symObjAddr: 0xED4, symBinAddr: 0x4ED4, symSize: 0x38C }
+  - { offset: 0x687A, size: 0x8, addend: 0x0, symName: '-[KeyboardPlugin onKeyboardDidShow:]', symObjAddr: 0x1260, symBinAddr: 0x5260, symSize: 0x2F4 }
+  - { offset: 0x6932, size: 0x8, addend: 0x0, symName: '-[KeyboardPlugin onKeyboardDidHide:]', symObjAddr: 0x1554, symBinAddr: 0x5554, symSize: 0x6C }
+  - { offset: 0x696F, size: 0x8, addend: 0x0, symName: '-[KeyboardPlugin setKeyboardHeight:delay:]', symObjAddr: 0x15C0, symBinAddr: 0x55C0, symSize: 0x158 }
+  - { offset: 0x69E0, size: 0x8, addend: 0x0, symName: '-[KeyboardPlugin resizeElement:withPaddingBottom:withScreenHeight:]', symObjAddr: 0x1718, symBinAddr: 0x5718, symSize: 0x9C }
+  - { offset: 0x6A51, size: 0x8, addend: 0x0, symName: '-[KeyboardPlugin _updateFrame]', symObjAddr: 0x17B4, symBinAddr: 0x57B4, symSize: 0x164 }
+  - { offset: 0x6AB2, size: 0x8, addend: 0x0, symName: '-[KeyboardPlugin setHideFormAccessoryBar:]', symObjAddr: 0x1918, symBinAddr: 0x5918, symSize: 0xE8 }
+  - { offset: 0x6CA3, size: 0x8, addend: 0x0, symName: '___42-[KeyboardPlugin setHideFormAccessoryBar:]_block_invoke', symObjAddr: 0x1A00, symBinAddr: 0x5A00, symSize: 0x8 }
+  - { offset: 0x6CDA, size: 0x8, addend: 0x0, symName: '-[KeyboardPlugin setDisableScroll:]', symObjAddr: 0x1A08, symBinAddr: 0x5A08, symSize: 0x8C }
+  - { offset: 0x6D2F, size: 0x8, addend: 0x0, symName: '___35-[KeyboardPlugin setDisableScroll:]_block_invoke', symObjAddr: 0x1A94, symBinAddr: 0x5A94, symSize: 0xCC }
+  - { offset: 0x6D7E, size: 0x8, addend: 0x0, symName: '-[KeyboardPlugin scrollViewDidScroll:]', symObjAddr: 0x1B60, symBinAddr: 0x5B60, symSize: 0x14 }
+  - { offset: 0x6DBB, size: 0x8, addend: 0x0, symName: '-[KeyboardPlugin setAccessoryBarVisible:]', symObjAddr: 0x1B74, symBinAddr: 0x5B74, symSize: 0x78 }
+  - { offset: 0x6E19, size: 0x8, addend: 0x0, symName: '-[KeyboardPlugin hide:]', symObjAddr: 0x1BEC, symBinAddr: 0x5BEC, symSize: 0x7C }
+  - { offset: 0x6E6E, size: 0x8, addend: 0x0, symName: '___23-[KeyboardPlugin hide:]_block_invoke', symObjAddr: 0x1C68, symBinAddr: 0x5C68, symSize: 0x38 }
+  - { offset: 0x6EAD, size: 0x8, addend: 0x0, symName: '-[KeyboardPlugin show:]', symObjAddr: 0x1CA0, symBinAddr: 0x5CA0, symSize: 0x8 }
+  - { offset: 0x6EEA, size: 0x8, addend: 0x0, symName: '-[KeyboardPlugin setStyle:]', symObjAddr: 0x1CA8, symBinAddr: 0x5CA8, symSize: 0x9C }
+  - { offset: 0x6F2B, size: 0x8, addend: 0x0, symName: '-[KeyboardPlugin setResizeMode:]', symObjAddr: 0x1D44, symBinAddr: 0x5D44, symSize: 0xB8 }
+  - { offset: 0x6F7C, size: 0x8, addend: 0x0, symName: '-[KeyboardPlugin getResizeMode:]', symObjAddr: 0x1DFC, symBinAddr: 0x5DFC, symSize: 0xB8 }
+  - { offset: 0x6FDD, size: 0x8, addend: 0x0, symName: '-[KeyboardPlugin setScroll:]', symObjAddr: 0x1EB4, symBinAddr: 0x5EB4, symSize: 0x54 }
+  - { offset: 0x701E, size: 0x8, addend: 0x0, symName: '-[KeyboardPlugin changeKeyboardStyle:]', symObjAddr: 0x1F08, symBinAddr: 0x5F08, symSize: 0x1E0 }
+  - { offset: 0x714E, size: 0x8, addend: 0x0, symName: '___38-[KeyboardPlugin changeKeyboardStyle:]_block_invoke', symObjAddr: 0x20E8, symBinAddr: 0x60E8, symSize: 0x8 }
+  - { offset: 0x7185, size: 0x8, addend: 0x0, symName: '___38-[KeyboardPlugin changeKeyboardStyle:]_block_invoke_2', symObjAddr: 0x20F0, symBinAddr: 0x60F0, symSize: 0x8 }
+  - { offset: 0x71BC, size: 0x8, addend: 0x0, symName: '___38-[KeyboardPlugin changeKeyboardStyle:]_block_invoke_3', symObjAddr: 0x20F8, symBinAddr: 0x60F8, symSize: 0x8 }
+  - { offset: 0x71F3, size: 0x8, addend: 0x0, symName: '-[KeyboardPlugin dealloc]', symObjAddr: 0x2100, symBinAddr: 0x6100, symSize: 0x68 }
+  - { offset: 0x7224, size: 0x8, addend: 0x0, symName: '-[KeyboardPlugin disableScroll]', symObjAddr: 0x2168, symBinAddr: 0x6168, symSize: 0x10 }
+  - { offset: 0x7258, size: 0x8, addend: 0x0, symName: '-[KeyboardPlugin hideFormAccessoryBar]', symObjAddr: 0x2178, symBinAddr: 0x6178, symSize: 0x10 }
+  - { offset: 0x728C, size: 0x8, addend: 0x0, symName: '-[KeyboardPlugin keyboardIsVisible]', symObjAddr: 0x2188, symBinAddr: 0x6188, symSize: 0x10 }
+  - { offset: 0x72C0, size: 0x8, addend: 0x0, symName: '-[KeyboardPlugin setKeyboardIsVisible:]', symObjAddr: 0x2198, symBinAddr: 0x6198, symSize: 0x10 }
+  - { offset: 0x72F7, size: 0x8, addend: 0x0, symName: '-[KeyboardPlugin keyboardResizes]', symObjAddr: 0x21A8, symBinAddr: 0x61A8, symSize: 0x10 }
+  - { offset: 0x732B, size: 0x8, addend: 0x0, symName: '-[KeyboardPlugin setKeyboardResizes:]', symObjAddr: 0x21B8, symBinAddr: 0x61B8, symSize: 0x10 }
+  - { offset: 0x7364, size: 0x8, addend: 0x0, symName: '-[KeyboardPlugin keyboardStyle]', symObjAddr: 0x21C8, symBinAddr: 0x61C8, symSize: 0x10 }
+  - { offset: 0x7398, size: 0x8, addend: 0x0, symName: '-[KeyboardPlugin setKeyboardStyle:]', symObjAddr: 0x21D8, symBinAddr: 0x61D8, symSize: 0x10 }
+  - { offset: 0x73D1, size: 0x8, addend: 0x0, symName: '-[KeyboardPlugin paddingBottom]', symObjAddr: 0x21E8, symBinAddr: 0x61E8, symSize: 0x10 }
+  - { offset: 0x7405, size: 0x8, addend: 0x0, symName: '-[KeyboardPlugin setPaddingBottom:]', symObjAddr: 0x21F8, symBinAddr: 0x61F8, symSize: 0x10 }
+  - { offset: 0x7922, size: 0x8, addend: 0x0, symName: '-[KeyboardPlugin(CAPPluginCategory) pluginMethods]', symObjAddr: 0x0, symBinAddr: 0x6208, symSize: 0x190 }
+  - { offset: 0x792F, size: 0x8, addend: 0x0, symName: '-[KeyboardPlugin(CAPPluginCategory) pluginMethods]', symObjAddr: 0x0, symBinAddr: 0x6208, symSize: 0x190 }
+  - { offset: 0x796F, size: 0x8, addend: 0x0, symName: '-[KeyboardPlugin(CAPPluginCategory) identifier]', symObjAddr: 0x190, symBinAddr: 0x6398, symSize: 0xC }
+  - { offset: 0x79A0, size: 0x8, addend: 0x0, symName: '-[KeyboardPlugin(CAPPluginCategory) jsName]', symObjAddr: 0x19C, symBinAddr: 0x63A4, symSize: 0xC }
+...

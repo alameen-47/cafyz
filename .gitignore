@@ -84,8 +84,9 @@ backend/.env
 # Vite web build
 web-v2/dist
 
-# Native release binaries (build locally)
+# Native release binaries (build locally — canonical copies live in store-release/builds/)
 releases/*.apk
+releases/*.aab
 releases/*.dmg
 releases/*.exe
 releases/*.AppImage

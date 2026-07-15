@@ -1,0 +1,54 @@
+
+  <!DOCTYPE html>
+  <html lang="en">
+    <head>
+      
+      <meta charset="UTF-8" />
+      <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+      <meta name="theme-color" content="#06091a" />
+      <meta name="apple-mobile-web-app-status-bar-style" content="black" />
+      <title>Cafyz Restaurant Management App</title>
+      <meta name="description" content="Streamline restaurant management with a user-friendly web and mobile app that offers a responsive design, enhancing efficiency for restaurant owners and staff." />
+      <meta property="og:image" content="./cafyz-logo.png" />
+      <link rel="icon" type="image/png" href="./cafyz-logo.png" />
+      <link rel="apple-touch-icon" href="./cafyz-logo.png" />
+      <link rel="icon" type="image/png" sizes="192x192" href="./icon-192.png" />
+      <link rel="icon" type="image/png" sizes="512x512" href="./icon-512.png" />
+      <script>
+        (function () {
+          var t = localStorage.getItem('cafyz_theme');
+          var light = t === 'light';
+          document.documentElement.classList.add(light ? 'light' : 'dark');
+          document.documentElement.dataset.theme = light ? 'light' : 'dark';
+          var meta = document.querySelector('meta[name="theme-color"]');
+          if (meta) meta.setAttribute('content', light ? '#e8edf4' : '#06091a');
+        })();
+      </script>
+      <style>
+        html, body {
+          height: 100%;
+          margin: 0;
+          background: var(--cafyz-app-bg, #06091a);
+        }
+        #root {
+          height: 100%;
+          min-height: 100%;
+          min-height: 100dvh;
+          background: var(--cafyz-app-bg, #06091a);
+        }
+      </style>
+      
+      <script type="module" crossorigin src="./assets/index-BPQqYw9O.js"></script>
+      <link rel="modulepreload" crossorigin href="./assets/vendor-react-Xmkqgxt2.js">
+      <link rel="modulepreload" crossorigin href="./assets/vendor-icons-pQaY4pQ9.js">
+      <link rel="modulepreload" crossorigin href="./assets/vendor-motion-BX_zpA7H.js">
+      <link rel="stylesheet" crossorigin href="./assets/index-Cmrwbb_-.css">
+    </head>
+
+    <body>
+      
+      <div id="root"></div>
+      
+    </body>
+  </html>
+  

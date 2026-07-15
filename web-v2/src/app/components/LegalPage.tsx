@@ -7,9 +7,9 @@ const SUPPORT_EMAIL = "support@cafyz.com";
 const FOUNDER_EMAIL = "cafyzofficial@gmail.com";
 const SITE_URL = "https://cafyz.ametronyx.com";
 
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
+function Section({ title, id, children }: { title: string; id?: string; children: React.ReactNode }) {
   return (
-    <section className="space-y-2">
+    <section id={id} className="space-y-2 scroll-mt-6">
       <h2 style={{ color: "var(--cafyz-text)", fontFamily: "var(--font-display)", fontWeight: 700, fontSize: "1.05rem" }}>
         {title}
       </h2>
@@ -54,7 +54,7 @@ function privacyContent() {
       <Section title="Data retention">
         <p>We retain restaurant and account data while your subscription is active. When you delete your account (or your restaurant is removed), associated personal data is deleted from our systems, subject to reasonable backup retention periods.</p>
       </Section>
-      <Section title="Account deletion">
+      <Section title="Account deletion" id="account-deletion">
         <p>
           You can delete your personal account from <strong>Account Settings</strong> in the app (Profile menu → Account Settings → Delete account).
           Restaurant owners can delete their entire restaurant and all associated data. Deletion requires password confirmation and cannot be undone.
@@ -110,8 +110,15 @@ function supportContent() {
       <Section title="Account & billing">
         <p>Subscriptions are managed outside the App Store. Owners and managers can view plan details under <strong>License & Plan</strong>. Contact us to renew, upgrade, or cancel.</p>
       </Section>
-      <Section title="Account deletion">
-        <p>Delete your account from <strong>Account Settings → Delete account</strong>, or email {SUPPORT_EMAIL}. See our <a href="/privacy" style={{ color: "#1e7fff" }}>Privacy Policy</a> for details.</p>
+      <Section title="Account deletion" id="account-deletion">
+        <p>
+          <strong>In the app:</strong> Profile menu → Account Settings → Delete account (password required).
+          Owners can delete the entire restaurant and all staff from the same screen.
+        </p>
+        <p>
+          <strong>By email:</strong> contact <a href={`mailto:${SUPPORT_EMAIL}?subject=Account%20deletion%20request`} style={{ color: "#1e7fff" }}>{SUPPORT_EMAIL}</a> from your registered address.
+        </p>
+        <p>See our <a href="/privacy#account-deletion" style={{ color: "#1e7fff" }}>Privacy Policy</a> for data retention details.</p>
       </Section>
       <Section title="Response times">
         <p>We aim to respond within 1–2 business days. Urgent production issues for paying customers are prioritized.</p>

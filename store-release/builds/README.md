@@ -1,27 +1,45 @@
-# Build artifacts
+# Build artifacts (staged into this folder by `scripts/stage-store-release.sh`)
 
-Native binaries are written to `releases/` at the repo root.  
-Store marketing assets stay in `store-release/`.
-
-## Outputs
-
-| Platform | Command | File |
-|----------|---------|------|
-| Android debug | `npm run native:android` | `releases/Cafyz-android-debug.apk` |
-| Android release (Play) | `npm run native:android:release` | `releases/Cafyz-android-release.aab` |
-| iOS | Xcode → Archive → Export | Upload via App Store Connect (no local .ipa in repo) |
-
-## Before building
+Run any native build, then artifacts are copied here automatically:
 
 ```bash
-cp web-v2/.env.capacitor.example web-v2/.env.capacitor
-npm run cap:sync
+npm run native:android          # → builds/android/Cafyz-android-debug.apk
+npm run native:android:release  # → builds/android-release/Cafyz-android-release.aab (needs keystore)
+npm run native:ios              # → builds/ios/archive/Cafyz.xcarchive (Xcode archive)
+bash scripts/stage-store-release.sh  # manual re-stage
 ```
 
-Android release also needs `cap-android/keystore.properties` (see `keystore.properties.example`).
+## Current files
 
-## After building
+| Path | What |
+|------|------|
+| `android/Cafyz-android-debug.apk` | Android debug install (sideload / internal test) |
+| `android-release/Cafyz-android-release.aab` | Play Store upload (after `native:android:release`) |
+| `ios/web-hosting/` | **iOS hosting bundle** — Capacitor web app copied from `cap-ios/App/App/public` |
+| `ios/capacitor.config.json` | Runtime config baked into the iOS shell |
+| `ios/archive/Cafyz.xcarchive` | Xcode archive — open in Xcode → Distribute App |
+| `ios/archive/ExportOptions.plist` | App Store export template (also in `../ios/xcode/`) |
+| `env.capacitor.example` | Production API URLs for native builds |
+| `MANIFEST.json` | Machine-readable list of what was staged |
 
-- Copy screenshot captures to `../ios/screenshots/` or `../android/screenshots/`
-- Note build number in `../CHECKLIST.md`
-- Do not commit `.aab` / `.apk` unless intentionally versioning a release tag
+## iOS hosting bundle
+
+The native iOS app does **not** load from Vercel. It hosts the built web UI locally:
+
+- Source: `web-v2/dist` → synced to `cap-ios/App/App/public`
+- Staged copy: `builds/ios/web-hosting/`
+
+Rebuild after UI changes: `npm run cap:sync` then `bash scripts/stage-store-release.sh`.
+
+## iOS App Store upload
+
+1. Open `cap-ios/App/App.xcworkspace` in Xcode, or use the staged archive:
+   `builds/ios/archive/Cafyz.xcarchive`
+2. **Distribute App** → App Store Connect
+3. Or CLI: `xcodebuild -exportArchive` with `ios/xcode/ExportOptions.plist`
+
+IPA export may require App Store Connect API access; Xcode upload is the fallback.
+
+## Android Play upload
+
+Upload `builds/android-release/Cafyz-android-release.aab` after configuring `android/keystore.properties.example`.

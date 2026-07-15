@@ -24,6 +24,7 @@ Full links: [../LINKS.md](../LINKS.md)
 | **Support** | https://cafyz.ametronyx.com/support |
 | **Marketing** | https://cafyz.ametronyx.com |
 | **Terms** | https://cafyz.ametronyx.com/terms |
+| **Account deletion** | https://cafyz.ametronyx.com/support#account-deletion |
 
 ## Promotional text (170 chars)
 

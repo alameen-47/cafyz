@@ -8,7 +8,9 @@ Use this before submitting to **App Store** or **Play Store**.
 - [x] Account deletion in Account Settings
 - [x] iPad/tablet responsive layout
 - [x] iOS `NSPhotoLibraryUsageDescription` + encryption export flag
-- [x] Android release AAB script (`npm run native:android:release`)
+- [x] Android debug APK in `builds/android/Cafyz-android-debug.apk`
+- [x] iOS web hosting bundle in `builds/ios/web-hosting/`
+- [x] iOS Xcode archive in `builds/ios/archive/Cafyz.xcarchive`
 
 ## Shared (both stores)
 
