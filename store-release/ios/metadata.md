@@ -77,7 +77,9 @@ restaurant,pos,kds,menu,orders,kitchen,inventory,staff,analytics,receipt,thermal
 ```
 Cafyz is a B2B restaurant management app. Login requires a restaurant account (email + password or PIN).
 
-Demo account — see store-release/demo-account.md
+Demo account:
+Email: reviewer@cafyz.com
+Password: CafyzReview2026!
 
 API: https://cafyz.onrender.com
 Bluetooth: optional, ESC/POS thermal printers only.
