@@ -272,7 +272,7 @@ export function Orders() {
   );
 
   return (
-    <div className="p-3 sm:p-4 md:p-6 space-y-4">
+    <div className="p-3 sm:p-4 md:p-6 space-y-4 max-w-7xl mx-auto w-full">
       <div className="flex gap-2 flex-wrap">
         {Object.entries(statusConfig).map(([key, cfg]) => {
           const Icon = cfg.icon;

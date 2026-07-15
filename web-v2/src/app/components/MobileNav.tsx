@@ -19,7 +19,7 @@ export function MobileNav({ active, onNavigate, permittedPages }: MobileNavProps
   const items = mobileNavItems.filter(i => !permittedPages?.length || permittedPages.includes(i.id));
   return (
     <nav
-      className="app-mobile-nav lg:hidden fixed bottom-0 left-0 right-0 z-40 flex items-center justify-around px-1"
+      className="app-mobile-nav md:hidden fixed bottom-0 left-0 right-0 z-40 flex items-center justify-around px-1"
       style={{
         background: "var(--cafyz-mobile-nav-bg)",
         backdropFilter: "blur(20px)",

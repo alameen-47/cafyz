@@ -207,7 +207,7 @@ export function Tables() {
   };
 
   return (
-    <div className="p-3 sm:p-4 md:p-6 space-y-4">
+    <div className="p-3 sm:p-4 md:p-6 space-y-4 max-w-7xl mx-auto w-full">
       {/* Stats row */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {(Object.entries(statusConfig) as [TableStatus, typeof statusConfig[TableStatus]][]).map(([key, cfg]) => (

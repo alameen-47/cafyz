@@ -99,6 +99,22 @@ if [[ "${1:-}" == "android" || "${1:-}" == "all" || -z "${1:-}" ]]; then
   fi
 fi
 
+if [[ "${1:-}" == "android-release" ]]; then
+  if [[ -d cap-android ]]; then
+    if [[ ! -f cap-android/keystore.properties ]]; then
+      echo "Missing cap-android/keystore.properties — copy keystore.properties.example and configure signing." >&2
+      exit 1
+    fi
+    echo "==> Building Android release AAB (Play Store)"
+    (cd cap-android && ./gradlew bundleRelease)
+    AAB="cap-android/app/build/outputs/bundle/release/app-release.aab"
+    if [[ -f "$AAB" ]]; then
+      cp "$AAB" "releases/Cafyz-android-release.aab"
+      echo "    → releases/Cafyz-android-release.aab"
+    fi
+  fi
+fi
+
 if [[ "${1:-}" == "ios" || "${1:-}" == "all" ]]; then
   echo "==> iOS: open Xcode to archive — run: npx cap open ios"
 fi

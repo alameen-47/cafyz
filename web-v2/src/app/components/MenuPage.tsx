@@ -405,7 +405,7 @@ export function MenuPage() {
   );
 
   return (
-    <div className="p-3 sm:p-4 md:p-6 space-y-4">
+    <div className="p-3 sm:p-4 md:p-6 space-y-4 max-w-7xl mx-auto w-full">
       {/* Top controls */}
       <div className="flex flex-col sm:flex-row gap-2.5">
         <div className="flex items-center gap-2 rounded-xl px-3 py-2.5 flex-1"

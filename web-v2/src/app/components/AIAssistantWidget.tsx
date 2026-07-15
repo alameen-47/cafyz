@@ -56,6 +56,7 @@ export function AIAssistantWidget({ screen, onNewBill }: { screen?: string; onNe
   const [typing, setTyping] = useState(false);
   const [minimised, setMinimised] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const hideNewBillFab = screen === "pos" || screen === "kds";
 
   useEffect(() => {
     if (open && !minimised) {
@@ -95,11 +96,12 @@ export function AIAssistantWidget({ screen, onNewBill }: { screen?: string; onNe
   return (
     <>
       {/* Floating button: new POS bill */}
+      {!hideNewBillFab && (
       <motion.button
         whileHover={{ scale: 1.04 }}
         whileTap={{ scale: 0.94 }}
         onClick={onNewBill}
-        className="fixed bottom-24 lg:bottom-6 left-4 z-40 h-12 rounded-2xl px-4 flex items-center justify-center gap-2 shadow-2xl"
+        className="fixed bottom-24 md:bottom-6 left-4 z-40 h-12 rounded-2xl px-4 flex items-center justify-center gap-2 shadow-2xl"
         style={{
           background: "linear-gradient(135deg, #1e7fff, #00c6ff)",
           boxShadow: "0 8px 24px rgba(30,127,255,0.4)",
@@ -108,6 +110,7 @@ export function AIAssistantWidget({ screen, onNewBill }: { screen?: string; onNe
         <ReceiptText size={18} />
         <span style={{ fontSize: "0.78rem", fontWeight: 700, letterSpacing: "0.02em" }}>New Bill</span>
       </motion.button>
+      )}
 
       {/* Chat panel */}
       <AnimatePresence>
@@ -117,7 +120,7 @@ export function AIAssistantWidget({ screen, onNewBill }: { screen?: string; onNe
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.9, y: 16 }}
             transition={{ type: "spring", damping: 26, stiffness: 340 }}
-            className="fixed bottom-24 lg:bottom-6 left-4 z-50 w-80 sm:w-96 rounded-2xl overflow-hidden flex flex-col"
+            className="fixed bottom-24 md:bottom-6 left-4 z-50 w-80 sm:w-96 rounded-2xl overflow-hidden flex flex-col"
             style={{
               background: "var(--cafyz-surface)",
               border: "1px solid rgba(168,85,247,0.25)",

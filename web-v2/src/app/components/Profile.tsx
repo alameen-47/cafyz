@@ -441,7 +441,7 @@ export function Profile() {
   }
 
   return (
-    <div className="p-3 sm:p-4 md:p-6 space-y-4 max-w-3xl w-full">
+    <div className="p-3 sm:p-4 md:p-6 space-y-4 max-w-3xl md:max-w-4xl lg:max-w-5xl w-full mx-auto">
       {/* Scope banner — restaurant + signed-in manager context */}
       <motion.div
         initial={{ opacity: 0, y: 8 }}

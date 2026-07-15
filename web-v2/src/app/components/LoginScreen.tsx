@@ -249,10 +249,10 @@ export function LoginScreen({ onLogin }: { onLogin?: () => void }) {
   };
 
   return (
-    <div className="login-screen app-screen app-native-inset-top flex h-full min-h-[100dvh] w-full flex-col overflow-hidden lg:flex-row" style={{ background: "#06091a" }}>
-      {/* Left hero panel — desktop only */}
+    <div className="login-screen app-screen app-native-inset-top flex h-full min-h-[100dvh] w-full flex-col overflow-hidden md:flex-row" style={{ background: "#06091a" }}>
+      {/* Left hero panel — tablet & desktop */}
       <div
-        className="hidden lg:flex flex-col justify-between w-[480px] flex-shrink-0 p-10"
+        className="hidden md:flex flex-col justify-between flex-shrink-0 p-8 lg:p-10 w-[min(42%,360px)] lg:w-[480px]"
         style={{
           background: "linear-gradient(160deg, #080d1e 0%, #0a1535 60%, #06091a 100%)",
           borderRight: "1px solid rgba(30,127,255,0.1)",
@@ -264,9 +264,9 @@ export function LoginScreen({ onLogin }: { onLogin?: () => void }) {
         </div>
 
         {/* Hero content */}
-        <div className="space-y-8">
+        <div className="space-y-6 lg:space-y-8">
           <div>
-            <h1 style={{ fontFamily: "var(--font-display)", fontWeight: 800, color: "#fff", fontSize: "2.8rem", lineHeight: 1.15 }}>
+            <h1 className="text-[1.75rem] lg:text-[2.8rem]" style={{ fontFamily: "var(--font-display)", fontWeight: 800, color: "#fff", lineHeight: 1.15 }}>
               Run your restaurant<br />
               <span style={{ background: "linear-gradient(90deg, #1e7fff, #00c6ff)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>
                 smarter, faster.
@@ -276,8 +276,8 @@ export function LoginScreen({ onLogin }: { onLogin?: () => void }) {
               One platform for POS, kitchen, staff, inventory, and analytics — designed for modern restaurants.
             </p>
           </div>
-          {/* Stats */}
-          <div className="grid grid-cols-3 gap-4">
+          {/* Stats — desktop-wide hero only */}
+          <div className="hidden lg:grid grid-cols-3 gap-4">
             {stats.map(s => (
               <div key={s.label} className="rounded-2xl p-4" style={{ background: "rgba(30,127,255,0.06)", border: "1px solid rgba(30,127,255,0.1)" }}>
                 <div style={{ fontFamily: "var(--font-display)", fontWeight: 700, color: "#fff", fontSize: "1.4rem" }}>{s.value}</div>
@@ -285,8 +285,8 @@ export function LoginScreen({ onLogin }: { onLogin?: () => void }) {
               </div>
             ))}
           </div>
-          {/* Testimonial */}
-          <div className="rounded-2xl p-4 space-y-3" style={{ background: "rgba(30,127,255,0.06)", border: "1px solid rgba(30,127,255,0.1)" }}>
+          {/* Testimonial — desktop-wide hero only */}
+          <div className="hidden lg:block rounded-2xl p-4 space-y-3" style={{ background: "rgba(30,127,255,0.06)", border: "1px solid rgba(30,127,255,0.1)" }}>
             <div className="flex gap-0.5">{[...Array(5)].map((_,i) => <Star key={i} size={13} fill="#f59e0b" stroke="none" />)}</div>
             <p style={{ color: "#a8bdd4", fontSize: "0.85rem", lineHeight: 1.6 }}>
               "Cafyz transformed our kitchen workflow. Order errors dropped by 80% and our staff loves the clean interface."
@@ -300,11 +300,11 @@ export function LoginScreen({ onLogin }: { onLogin?: () => void }) {
 
       {/* Form panel — 30% logo band + 70% fixed credentials panel (mobile) */}
       <div className="login-screen-form-shell relative flex h-full min-h-0 w-full flex-1 flex-col overflow-hidden">
-        <div className="absolute top-[max(0.5rem,env(safe-area-inset-top))] right-3 z-20 sm:right-4 lg:top-6 lg:right-6">
+        <div className="absolute top-[max(0.5rem,env(safe-area-inset-top))] right-3 z-20 sm:right-4 md:top-6 md:right-6">
           <LanguageSwitcher variant="login" />
         </div>
 
-        <div className="login-screen-logo-band lg:hidden">
+        <div className="login-screen-logo-band md:hidden">
           <CafyzLogo
             size="loginMobile"
             className="login-screen-logo drop-shadow-[0_10px_36px_rgba(30,127,255,0.28)]"
@@ -313,12 +313,12 @@ export function LoginScreen({ onLogin }: { onLogin?: () => void }) {
 
         <div className="login-screen-panel flex-1 min-h-0">
           <div className="login-screen-panel-scroll h-full">
-            <div className="login-screen-panel-inner px-4 sm:px-6 lg:px-6 lg:py-8">
+            <div className="login-screen-panel-inner px-4 sm:px-6 md:px-6 md:py-8">
               <div className="login-screen-credentials">
           <AnimatePresence mode="wait" initial={false}>
             {authState === "login" && (
               <motion.div key="login" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -16 }} className="space-y-4 sm:space-y-6">
-                <div className="text-center lg:text-left">
+                <div className="text-center md:text-left">
                   <h2 className="text-xl sm:text-[1.6rem]" style={{ fontFamily: "var(--font-display)", fontWeight: 700, color: "#e8eef8" }}>{t("Welcome back")}</h2>
                   <p style={{ color: "#6b82a0", fontSize: "0.8rem", marginTop: 4 }}>{t("Sign in to your Cafyz account")}</p>
                 </div>
@@ -617,6 +617,13 @@ export function LoginScreen({ onLogin }: { onLogin?: () => void }) {
               </motion.div>
             )}
           </AnimatePresence>
+              <p className="text-center pt-4" style={{ color: "#6b82a0", fontSize: "0.68rem", lineHeight: 1.6 }}>
+                <a href="/privacy" style={{ color: "#6b82a0" }}>Privacy</a>
+                {" · "}
+                <a href="/terms" style={{ color: "#6b82a0" }}>Terms</a>
+                {" · "}
+                <a href="/support" style={{ color: "#6b82a0" }}>Support</a>
+              </p>
               </div>
             </div>
           </div>

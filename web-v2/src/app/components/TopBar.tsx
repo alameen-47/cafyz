@@ -207,7 +207,7 @@ export function TopBar({ active, onMobileMenuOpen, onNavigate, onLogout, role, p
 
       {/* Mobile hamburger */}
       <button onClick={onMobileMenuOpen}
-        className="lg:hidden flex items-center justify-center w-9 h-9 rounded-xl flex-shrink-0 transition-all active:scale-95"
+        className="md:hidden flex items-center justify-center w-9 h-9 rounded-xl flex-shrink-0 transition-all active:scale-95"
         style={{ background: "var(--cafyz-surface-hover)", color: "var(--cafyz-muted)" }}>
         <Menu size={18} />
       </button>
@@ -223,7 +223,7 @@ export function TopBar({ active, onMobileMenuOpen, onNavigate, onLogout, role, p
       </div>
 
       {/* Live clock — desktop only */}
-      <div className="hidden lg:flex items-center gap-1.5 px-3 py-1.5 rounded-xl flex-shrink-0"
+      <div className="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-xl flex-shrink-0"
         style={{ background: "var(--cafyz-surface)", border: "1px solid var(--cafyz-border)" }}>
         <Clock size={12} style={{ color: "var(--cafyz-muted)" }} />
         <span style={{ color: "var(--cafyz-text-secondary)", fontFamily: "var(--font-mono)", fontSize: "0.78rem", fontWeight: 600 }}>{time}</span>
@@ -231,7 +231,7 @@ export function TopBar({ active, onMobileMenuOpen, onNavigate, onLogout, role, p
 
       {/* Global search — desktop only (restaurant users) */}
       {!founderUser && (
-      <div ref={searchRef} className="hidden md:block relative flex-shrink-0" style={{ width: 220 }}>
+      <div ref={searchRef} className="hidden md:block relative flex-shrink-0 w-[140px] lg:w-[200px] xl:w-[220px]">
         <div
           className="flex items-center gap-2 rounded-xl px-3 py-2 transition-all duration-200"
           style={{

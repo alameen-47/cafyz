@@ -315,7 +315,7 @@ export function Dashboard() {
   ];
 
   return (
-    <div className="p-3 sm:p-4 md:p-6 space-y-4 md:space-y-6">
+    <div className="p-3 sm:p-4 md:p-6 space-y-4 md:space-y-6 max-w-7xl mx-auto w-full">
       {/* Header row */}
       <div className="flex items-center justify-between gap-3">
         <div>
@@ -371,7 +371,7 @@ export function Dashboard() {
       </div>
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {kpis.map((kpi, i) => {
           const Icon = kpi.icon;
           return (
@@ -399,9 +399,9 @@ export function Dashboard() {
       </div>
 
       {/* Charts */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 md:gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4">
         <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}
-          className="lg:col-span-2 rounded-2xl p-3 sm:p-4"
+          className="md:col-span-2 rounded-2xl p-3 sm:p-4"
           style={{ background: "var(--cafyz-surface)", border: "1px solid var(--cafyz-border)" }}>
           <div className="flex items-center justify-between mb-3">
             <div>
@@ -442,7 +442,7 @@ export function Dashboard() {
           style={{ background: "var(--cafyz-surface)", border: "1px solid var(--cafyz-border)" }}>
           <h3 style={{ color: "var(--cafyz-text)", fontFamily: "var(--font-display)", fontWeight: 600, fontSize: "0.92rem", marginBottom: 2 }}>Items by Category</h3>
           <p style={{ color: "var(--cafyz-muted)", fontSize: "0.72rem", marginBottom: 12 }}>This week's sales mix</p>
-          <div className="flex lg:flex-col items-center gap-4 lg:gap-2">
+          <div className="flex md:flex-col items-center gap-4 md:gap-2">
             <div className="flex-shrink-0">
               <DonutChart data={categoryData} centerValue={itemsSold} centerLabel="sold" />
             </div>
@@ -465,9 +465,9 @@ export function Dashboard() {
       </div>
 
       {/* Weekly bar + Recent orders */}
-      <div className="grid grid-cols-1 lg:grid-cols-5 gap-3 md:gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-5 gap-3 md:gap-4">
         <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}
-          className="lg:col-span-2 rounded-2xl p-3 sm:p-4"
+          className="md:col-span-2 rounded-2xl p-3 sm:p-4"
           style={{ background: "var(--cafyz-surface)", border: "1px solid var(--cafyz-border)" }}>
           <h3 style={{ color: "var(--cafyz-text)", fontFamily: "var(--font-display)", fontWeight: 600, fontSize: "0.92rem", marginBottom: 2 }}>Daily Totals</h3>
           <p style={{ color: "var(--cafyz-muted)", fontSize: "0.72rem", marginBottom: 8 }}>Bar view · this week</p>
@@ -475,7 +475,7 @@ export function Dashboard() {
         </motion.div>
 
         <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.45 }}
-          className="lg:col-span-3 rounded-2xl p-3 sm:p-4"
+          className="md:col-span-3 rounded-2xl p-3 sm:p-4"
           style={{ background: "var(--cafyz-surface)", border: "1px solid var(--cafyz-border)" }}>
           <div className="flex items-center justify-between mb-3">
             <h3 style={{ color: "var(--cafyz-text)", fontFamily: "var(--font-display)", fontWeight: 600, fontSize: "0.92rem" }}>Recent Orders</h3>

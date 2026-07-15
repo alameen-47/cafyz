@@ -16,7 +16,11 @@ services:
       - key: JWT_SECRET
         generateValue: true  # Render generates a secure random value automatically
       - key: ALLOWED_ORIGIN
-        value: https://cafyz.vercel.app  # ← change to your real Vercel URL after first deploy
+        value: https://cafyz.ametronyx.com
+      - key: APP_URL
+        value: https://cafyz.ametronyx.com
+      # Set in Render dashboard (see backend/.env.example):
+      # RESEND_API_KEY, CLOUDINARY_*, FOUNDER_EMAIL, FOUNDER_PASSWORD, FIREBASE_SERVER_KEY
 
   # Optional: host web-v2 on Render (canonical web deploy is Vercel).
   - type: web

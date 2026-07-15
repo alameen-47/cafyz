@@ -3,7 +3,7 @@ import bcrypt from 'bcryptjs';
 import { createHash, randomBytes, timingSafeEqual } from 'crypto';
 import { z } from 'zod';
 import { getDb } from '../db.js';
-import { signToken, requireAuth, signTokenForUser, type AuthRequest } from '../middleware/auth.js';
+import { signToken, requireAuth, signTokenForUser, type AuthRequest, invalidateUserAuthCache } from '../middleware/auth.js';
 import { bumpTokenVersion } from '../services/tokenVersion.js';
 import { BCRYPT_ROUNDS } from '../constants/security.js';
 import { secureOtp6 } from '../utils/secureRandom.js';
@@ -90,6 +90,10 @@ const ChangePasswordSchema = z.object({
 const ChangePinSchema = z.object({
   current_pin: z.string().length(4),
   new_pin: z.string().length(4),
+});
+const DeleteAccountSchema = z.object({
+  password: passwordLoginField,
+  delete_restaurant: z.boolean().optional().default(false),
 });
 
 const GENERIC_RESET_MSG = 'If that account exists, a password-reset link has been sent.';
@@ -595,6 +599,55 @@ router.post('/change-pin', requireAuth, async (req: AuthRequest, res, next) => {
     });
     await bumpTokenVersion(req.user!.id);
     res.json({ ok: true, message: 'PIN updated successfully' });
+  } catch (e) { next(e); }
+});
+
+// DELETE /api/auth/account — self-service account deletion (App Store Guideline 5.1.1)
+router.delete('/account', requireAuth, async (req: AuthRequest, res, next) => {
+  try {
+    const data = DeleteAccountSchema.parse(req.body ?? {});
+    const db = getDb();
+    const userId = req.user!.id;
+    const row = await db.execute({
+      sql: 'SELECT id, role, restaurant_id, password_hash FROM users WHERE id=?',
+      args: [userId],
+    });
+    if (!row.rows.length) {
+      res.status(404).json({ error: 'User not found' });
+      return;
+    }
+    const u = row.rows[0] as Record<string, unknown>;
+    const role = String(u.role ?? '');
+    const restaurantId = String(u.restaurant_id ?? '');
+    const passwordHash = String(u.password_hash ?? '');
+
+    if (role === 'founder') {
+      res.status(403).json({ error: 'Founder accounts cannot be deleted from the app. Contact platform support.' });
+      return;
+    }
+
+    const ok = await bcrypt.compare(data.password, passwordHash);
+    if (!ok) {
+      res.status(401).json({ error: 'Password is incorrect' });
+      return;
+    }
+
+    if (role === 'owner') {
+      if (!data.delete_restaurant) {
+        res.status(400).json({
+          error: 'Restaurant owners must confirm restaurant deletion. Set delete_restaurant to true to remove your restaurant and all associated data.',
+        });
+        return;
+      }
+      await db.execute({ sql: 'DELETE FROM restaurants WHERE id=?', args: [restaurantId] });
+      invalidateUserAuthCache(userId);
+      res.json({ ok: true, message: 'Restaurant and all accounts have been permanently deleted.' });
+      return;
+    }
+
+    await db.execute({ sql: 'DELETE FROM users WHERE id=?', args: [userId] });
+    invalidateUserAuthCache(userId);
+    res.json({ ok: true, message: 'Your account has been permanently deleted.' });
   } catch (e) { next(e); }
 });
 

@@ -111,7 +111,7 @@ export function License() {
   };
 
   return (
-    <div className="p-3 sm:p-4 md:p-6 space-y-4 md:space-y-6 max-w-4xl w-full">
+    <div className="p-3 sm:p-4 md:p-6 space-y-4 md:space-y-6 max-w-4xl w-full mx-auto">
       {/* Trial banner — only when on a time-limited trial/license */}
       {trialDaysLeft != null && (
         <motion.div

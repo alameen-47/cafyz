@@ -408,7 +408,7 @@ export function FounderConsole() {
   const revokedKeyCount = keys.filter(k => Number(k.is_active) === 0).length;
 
   return (
-    <div className="p-3 sm:p-4 md:p-6 space-y-4">
+    <div className="p-3 sm:p-4 md:p-6 space-y-4 max-w-7xl mx-auto w-full">
       {/* Founder badge */}
       <div className="flex items-center gap-2 px-3 py-2 rounded-xl w-fit" style={{ background: "rgba(168,85,247,0.12)", border: "1px solid rgba(168,85,247,0.25)" }}>
         <Shield size={14} style={{ color: "#a855f7" }} />

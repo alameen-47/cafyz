@@ -202,6 +202,8 @@ export const authApi = {
     post<{ ok: boolean; message: string }>('/api/auth/change-password', { current_password, new_password }),
   changePin: (current_pin: string, new_pin: string) =>
     post<{ ok: boolean; message: string }>('/api/auth/change-pin', { current_pin, new_pin }),
+  deleteAccount: (password: string, delete_restaurant?: boolean) =>
+    del<{ ok: boolean; message: string }>('/api/auth/account', { password, delete_restaurant: delete_restaurant ?? false }),
   onboarding: (data: {
     restaurant_name: string; owner_name: string;
     email: string; phone: string; password: string; plan?: string; timezone?: string;

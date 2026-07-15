@@ -46,8 +46,8 @@ body.cap-native .app-native-inset-top {
   box-sizing: border-box;
 }
 
-/* Bottom tab bar sits above the OS nav bar; pad scrollable main content on phones */
-@media (max-width: 1023px) {
+/* Bottom tab bar sits above the OS nav bar; pad scrollable main content on phones only */
+@media (max-width: 767px) {
   body.cap-native .app-main-scroll {
     padding-bottom: calc(4.75rem + env(safe-area-inset-bottom, 0px));
   }
@@ -158,10 +158,20 @@ body.cap-native .app-main-spacer {
   flex-shrink: 0;
 }
 
-@media (min-width: 1024px) {
+@media (min-width: 768px) {
   .login-screen-panel-inner {
     min-height: 100%;
     justify-content: center;
+    padding: 2rem 1.5rem;
+  }
+
+  :root {
+    --login-logo-band-height: 0px;
+  }
+}
+
+@media (min-width: 1024px) {
+  .login-screen-panel-inner {
     padding: 2rem 1.5rem;
   }
 }

@@ -423,7 +423,7 @@ function MobileBillFab({
       exit={{ opacity: 0, y: 16 }}
       onClick={onOpen}
       aria-label={hasItems ? "View bill" : "Open bill"}
-      className="lg:hidden fixed right-4 z-30 pos-fab-bottom flex items-center gap-2.5 pl-3.5 pr-4 py-3 rounded-2xl shadow-2xl min-h-[52px] max-w-[calc(100vw-2rem)]"
+      className="md:hidden fixed right-4 z-30 pos-fab-bottom flex items-center gap-2.5 pl-3.5 pr-4 py-3 rounded-2xl shadow-2xl min-h-[52px] max-w-[calc(100vw-2rem)]"
       style={{ background: "linear-gradient(135deg, #1e7fff, #00c6ff)", boxShadow: "0 8px 24px rgba(30,127,255,0.4)" }}
     >
       <span className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
@@ -873,8 +873,8 @@ export function POS() {
         </div>
 
         {/* Menu grid */}
-        <div className="flex-1 overflow-y-auto px-3 pb-24 lg:pb-4 scrollbar-hide">
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 gap-2.5">
+        <div className="flex-1 overflow-y-auto px-3 pb-24 md:pb-4 scrollbar-hide">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 gap-2.5">
             {filtered.map(item => {
               const inCart = cart.find(c => c.id === item.id);
               return (
@@ -913,7 +913,7 @@ export function POS() {
       </div>
 
       {/* ── Desktop: right sidebar cart ── */}
-      <div className="hidden lg:flex w-80 xl:w-96 flex-col flex-shrink-0 border-l"
+      <div className="hidden md:flex w-72 lg:w-80 xl:w-96 flex-col flex-shrink-0 border-l"
         style={{ background: "var(--cafyz-surface-subtle)", borderColor: "var(--cafyz-border)" }}>
         <CartPanel {...cartProps} />
       </div>
@@ -935,12 +935,12 @@ export function POS() {
         {showMobileCart && (
           <>
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-              className="lg:hidden fixed inset-0 z-40 bg-black/50 backdrop-blur-sm"
+              className="md:hidden fixed inset-0 z-40 bg-black/50 backdrop-blur-sm"
               onClick={() => setShowMobileCart(false)} />
             <motion.div
               initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }}
               transition={{ type: "spring", damping: 30, stiffness: 300 }}
-              className="lg:hidden fixed bottom-0 left-0 right-0 z-50 rounded-t-3xl overflow-hidden flex flex-col"
+              className="md:hidden fixed bottom-0 left-0 right-0 z-50 rounded-t-3xl overflow-hidden flex flex-col"
               style={{ background: "var(--cafyz-surface-subtle)", border: "1px solid rgba(30,127,255,0.15)", maxHeight: "92dvh" }}
             >
               {/* Drag handle */}

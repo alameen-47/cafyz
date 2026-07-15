@@ -493,7 +493,7 @@ export function Analytics() {
   }, [load]);
 
   return (
-    <div className="p-3 sm:p-4 md:p-6 space-y-4 md:space-y-6">
+    <div className="p-3 sm:p-4 md:p-6 space-y-4 md:space-y-6 max-w-7xl mx-auto w-full">
       <div className="space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-2 p-1 rounded-xl w-fit flex-wrap" style={{ background: "var(--cafyz-surface)", border: "1px solid var(--cafyz-border)" }}>
@@ -566,7 +566,7 @@ export function Analytics() {
         </div>
       ) : (
         <>
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2.5">
             {kpis.map((kpi, i) => (
               <motion.div key={kpi.label} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}
                 className="rounded-2xl p-4" style={{ background: "var(--cafyz-surface)", border: "1px solid var(--cafyz-border)" }}>
@@ -592,9 +592,9 @@ export function Analytics() {
             <DualAreaChart data={revTrend} cur={cur} />
           </motion.div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 md:gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
             <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.35 }}
-              className="lg:col-span-2 rounded-2xl p-5" style={{ background: "var(--cafyz-surface)", border: "1px solid var(--cafyz-border)" }}>
+              className="md:col-span-2 rounded-2xl p-5" style={{ background: "var(--cafyz-surface)", border: "1px solid var(--cafyz-border)" }}>
               <h3 style={{ color: "var(--cafyz-text)", fontFamily: "var(--font-display)", fontWeight: 600, marginBottom: 4 }}>Top Performing Items</h3>
               <p style={{ color: "var(--cafyz-muted)", fontSize: "0.75rem", marginBottom: 16 }}>By revenue from paid orders</p>
               <HorizontalBarChart data={topItems} cur={cur} />

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "motion/react";
-import { X, User, Lock, KeyRound, Loader2, Mail } from "lucide-react";
+import { X, User, Lock, KeyRound, Loader2, Mail, Trash2 } from "lucide-react";
 import { toast } from "./Toast";
 import { authApi } from "../../services/api";
 import { storageSet } from "../../utils/safeStorage";
@@ -36,7 +36,7 @@ function Field({ label, value, onChange, type = "text", placeholder = "", disabl
 }
 
 export function AccountSettingsModal({ open, onClose, onUpdated }: Props) {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const [tab, setTab] = useState<Tab>("profile");
   const [loading, setLoading] = useState(false);
   const [profile, setProfile] = useState({ name: "", email: "", phone: "", role: "" });
@@ -46,12 +46,17 @@ export function AccountSettingsModal({ open, onClose, onUpdated }: Props) {
   const [savingPw, setSavingPw] = useState(false);
   const [savingPin, setSavingPin] = useState(false);
   const [sendingReset, setSendingReset] = useState(false);
+  const [deletePw, setDeletePw] = useState("");
+  const [deleteRestaurant, setDeleteRestaurant] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     if (!open) return;
     setTab("profile");
     setPw({ current: "", next: "", confirm: "" });
     setPin({ current: "", next: "", confirm: "" });
+    setDeletePw("");
+    setDeleteRestaurant(false);
     setLoading(true);
     authApi.me()
       .then(u => setProfile({
@@ -141,6 +146,31 @@ export function AccountSettingsModal({ open, onClose, onUpdated }: Props) {
       toast.error("Couldn't send reset email", (e as Error).message);
     } finally {
       setSendingReset(false);
+    }
+  };
+
+  const isOwner = profile.role === "owner";
+  const canDeleteAccount = profile.role !== "founder";
+
+  const deleteAccount = async () => {
+    if (!deletePw) {
+      toast.error("Password required", "Enter your password to confirm deletion.");
+      return;
+    }
+    if (isOwner && !deleteRestaurant) {
+      toast.error("Confirmation required", "Owners must check the box to delete the entire restaurant.");
+      return;
+    }
+    setDeleting(true);
+    try {
+      const res = await authApi.deleteAccount(deletePw, isOwner ? true : false);
+      toast.success("Account deleted", res.message);
+      onClose();
+      logout();
+    } catch (e) {
+      toast.error("Couldn't delete account", (e as Error).message);
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -265,6 +295,57 @@ export function AccountSettingsModal({ open, onClose, onUpdated }: Props) {
                 </>
               )}
             </div>
+
+            {canDeleteAccount && (
+              <div className="px-4 pb-4 border-t pt-4 space-y-3" style={{ borderColor: "var(--cafyz-border)" }}>
+                <div className="flex items-center gap-2">
+                  <Trash2 size={15} style={{ color: "#ff3b5c" }} />
+                  <h3 style={{ color: "var(--cafyz-text)", fontWeight: 700, fontSize: "0.85rem" }}>Delete account</h3>
+                </div>
+                <p style={{ color: "var(--cafyz-muted)", fontSize: "0.72rem", lineHeight: 1.5 }}>
+                  {isOwner
+                    ? "Permanently deletes your restaurant, all staff accounts, orders, and menu data. This cannot be undone."
+                    : "Permanently removes your personal login. Your manager can invite you again later if needed."}
+                </p>
+                {isOwner && (
+                  <label className="flex items-start gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={deleteRestaurant}
+                      onChange={e => setDeleteRestaurant(e.target.checked)}
+                      className="mt-0.5"
+                    />
+                    <span style={{ color: "var(--cafyz-text-secondary)", fontSize: "0.72rem", lineHeight: 1.45 }}>
+                      I understand this will delete my entire restaurant and all associated data.
+                    </span>
+                  </label>
+                )}
+                <Field
+                  label="Confirm with password"
+                  value={deletePw}
+                  onChange={setDeletePw}
+                  type="password"
+                  placeholder="Your current password"
+                />
+                <button
+                  type="button"
+                  onClick={() => void deleteAccount()}
+                  disabled={deleting || !deletePw || (isOwner && !deleteRestaurant)}
+                  className="w-full py-2.5 rounded-xl text-sm font-semibold"
+                  style={{
+                    background: "rgba(255,59,92,0.1)",
+                    color: "#ff3b5c",
+                    border: "1px solid rgba(255,59,92,0.25)",
+                    opacity: (deleting || !deletePw || (isOwner && !deleteRestaurant)) ? 0.5 : 1,
+                  }}
+                >
+                  {deleting ? "Deleting…" : isOwner ? "Delete restaurant & account" : "Delete my account"}
+                </button>
+                <p style={{ color: "var(--cafyz-muted)", fontSize: "0.65rem", lineHeight: 1.45 }}>
+                  See our <a href="/privacy" style={{ color: "#1e7fff" }}>Privacy Policy</a> and <a href="/support" style={{ color: "#1e7fff" }}>Support</a> page.
+                </p>
+              </div>
+            )}
           </motion.div>
         </div>
       )}

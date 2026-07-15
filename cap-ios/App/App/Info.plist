@@ -49,5 +49,9 @@
 	<string>Cafyz connects to BLE thermal printers for receipts and kitchen tickets.</string>
 	<key>NSBluetoothPeripheralUsageDescription</key>
 	<string>Cafyz connects to BLE thermal printers for receipts and kitchen tickets.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Cafyz lets you upload restaurant logos and menu photos from your photo library.</string>
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 </dict>
 </plist>

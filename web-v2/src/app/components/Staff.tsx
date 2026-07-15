@@ -99,7 +99,7 @@ export function Staff() {
   const filtered = filterRole === "All" ? staff : staff.filter(s => s.role === filterRole);
 
   return (
-    <div className="p-3 sm:p-4 md:p-6 space-y-4">
+    <div className="p-3 sm:p-4 md:p-6 space-y-4 max-w-7xl mx-auto w-full">
       {/* Stats */}
       <div className="grid grid-cols-3 gap-3">
         {(["on-shift", "on-break", "off-duty"] as StaffStatus[]).map(s => {

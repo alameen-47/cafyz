@@ -16,6 +16,7 @@ import { Roles } from "./components/Roles";
 import { License } from "./components/License";
 import { Reservations } from "./components/Reservations";
 import { PublicMenu } from "./components/PublicMenu";
+import { LegalPage, legalPathToSlug } from "./components/LegalPage";
 import { UpgradeModal } from "./components/UpgradeModal";
 import { TrialExpiredModal } from "./components/TrialExpiredModal";
 import { RenewalBanner } from "./components/RenewalBanner";
@@ -175,6 +176,11 @@ export default function App() {
     return (<><Toaster position="bottom-right" richColors closeButton /><PublicMenu /></>);
   }
 
+  const legalSlug = legalPathToSlug(window.location.pathname);
+  if (legalSlug) {
+    return (<><Toaster position="bottom-right" richColors closeButton /><LegalPage page={legalSlug} /></>);
+  }
+
   if (loading) {
     return (
       <div className="flex app-screen app-native-inset-top w-full flex-col items-center justify-center gap-4" style={{ background: "#06091a" }}>
@@ -300,7 +306,7 @@ export default function App() {
                 <FounderConsole />
               </Suspense>
             ) : <Dashboard />)}
-            {!isFullHeight && !isFounder && <div className="app-main-spacer lg:hidden h-20" />}
+            {!isFullHeight && !isFounder && <div className="app-main-spacer md:hidden h-20" />}
           </main>
         </div>
 

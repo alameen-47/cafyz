@@ -141,7 +141,7 @@ export function Inventory() {
     });
 
   return (
-    <div className="p-3 sm:p-4 md:p-6 space-y-4">
+    <div className="p-3 sm:p-4 md:p-6 space-y-4 max-w-7xl mx-auto w-full">
       {/* Summary cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {(["critical","low","ok","surplus"] as StockLevel[]).map(level => {

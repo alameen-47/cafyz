@@ -19,6 +19,7 @@
     "cap:ios": "npx cap open ios",
     "native:build": "bash scripts/build-native.sh all",
     "native:android": "bash scripts/build-native.sh android",
+    "native:android:release": "bash scripts/build-native.sh android-release",
     "native:ios": "bash scripts/build-native.sh ios",
     "lint": "eslint web-v2 capacitor.config.ts scripts",
     "postinstall": "patch-package"

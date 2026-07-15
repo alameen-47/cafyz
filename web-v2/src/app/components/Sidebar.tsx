@@ -86,7 +86,7 @@ export function Sidebar({
       <AnimatePresence>
         {mobileOpen && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm lg:hidden"
+            className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm md:hidden"
             onClick={onMobileClose} />
         )}
       </AnimatePresence>
@@ -95,14 +95,14 @@ export function Sidebar({
       <motion.aside
         animate={{ width: collapsed ? 72 : 268 }}
         transition={{ duration: 0.3, ease: "easeInOut" }}
-        className={`cafyz-sidebar-shell fixed left-0 top-0 h-full z-50 flex flex-col border-r lg:relative lg:translate-x-0 ${mobileOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"} transition-transform duration-300 lg:transition-none`}
+        className={`cafyz-sidebar-shell fixed left-0 top-0 h-full z-50 flex flex-col border-r md:relative md:translate-x-0 ${mobileOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"} transition-transform duration-300 md:transition-none`}
       >
         {/* Logo — full wordmark when expanded, compact mark when collapsed */}
         <div
           className={`flex items-center border-b cafyz-sidebar-border-t flex-shrink-0 ${
             collapsed
               ? "justify-center px-3 py-4"
-              : "justify-center px-4 py-5 lg:px-5 lg:py-6"
+              : "justify-center px-4 py-5 md:px-5 md:py-6"
           }`}
         >
           <CafyzLogo
@@ -111,7 +111,7 @@ export function Sidebar({
           />
           <button
             onClick={onMobileClose}
-            className={`text-[var(--cafyz-muted)] hover:text-[var(--cafyz-nav-hover)] lg:hidden flex-shrink-0 ${
+            className={`text-[var(--cafyz-muted)] hover:text-[var(--cafyz-nav-hover)] md:hidden flex-shrink-0 ${
               collapsed ? "absolute right-3 top-4" : "absolute right-4 top-5"
             }`}
           >
@@ -273,7 +273,7 @@ export function Sidebar({
 
         {/* Collapse toggle (desktop) */}
         <button onClick={onToggle}
-          className="cafyz-sidebar-collapse-btn hidden lg:flex absolute -right-3 top-20 w-6 h-6 rounded-full items-center justify-center text-[var(--cafyz-muted)] hover:text-[var(--cafyz-nav-hover)] transition-colors z-10"
+          className="cafyz-sidebar-collapse-btn hidden md:flex absolute -right-3 top-20 w-6 h-6 rounded-full items-center justify-center text-[var(--cafyz-muted)] hover:text-[var(--cafyz-nav-hover)] transition-colors z-10"
           style={{ boxShadow: "var(--cafyz-shadow-sm)" }}>
           {collapsed ? <ChevronRight size={12} /> : <ChevronLeft size={12} />}
         </button>
