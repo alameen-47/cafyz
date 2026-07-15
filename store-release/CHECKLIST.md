@@ -12,7 +12,7 @@ Use this before submitting to **App Store** or **Play Store**.
 
 ## Shared (both stores)
 
-- [ ] Demo reviewer account created — fill in `demo-account.md`
+- [x] Demo reviewer account — `reviewer@cafyz.com` / `CafyzReview2026!` (auto-provisioned on API boot)
 - [ ] Privacy URL opens real policy: https://cafyz.ametronyx.com/privacy
 - [ ] Support URL opens real page: https://cafyz.ametronyx.com/support
 - [ ] Render env vars verified (`TURSO_*`, `FOUNDER_*`, `RESEND_*`, `CLOUDINARY_*`)
@@ -43,6 +43,6 @@ Use this before submitting to **App Store** or **Play Store**.
 
 ## After approval
 
-- [ ] Update `demo-account.md` with production test credentials location
+- [x] Production test credentials in `demo-account.md`
 - [ ] Bump `CURRENT_PROJECT_VERSION` / `versionCode` for next release
 - [ ] Archive screenshots used for this version in `store-release/`
