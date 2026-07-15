@@ -1,0 +1,7 @@
+Open for archive/upload:
+  /Users/alameen/cafyz/cap-ios/App/App.xcworkspace
+
+Staged copies in this folder:
+  ios/xcode/          — Info.plist, Podfile, ExportOptions.plist
+  builds/ios/archive/ — Cafyz.xcarchive
+  builds/ios/web-hosting/ — bundled web UI

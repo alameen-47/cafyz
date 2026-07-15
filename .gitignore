@@ -35,6 +35,7 @@ local.properties
 !debug.keystore
 cap-android/keystore.properties
 store-release/android/signing-credentials.txt
+store-release/android/signing/
 .kotlin/
 
 # node.js

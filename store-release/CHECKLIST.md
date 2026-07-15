@@ -26,8 +26,8 @@ Use this before submitting to **App Store** or **Play Store**.
 - [ ] App created in App Store Connect (`com.cafyz.app`)
 - [ ] `cp web-v2/.env.capacitor.example web-v2/.env.capacitor`
 - [ ] `npm run cap:sync` → `cd cap-ios/App && pod install`
-- [ ] 5+ iPhone screenshots in `ios/screenshots/iphone-6.7/`
-- [ ] 3+ iPad screenshots in `ios/screenshots/ipad-12.9/`
+- [x] 7+ iPhone screenshots in `ios/screenshots/iphone-6.7/`
+- [x] 7+ iPad screenshots in `ios/screenshots/ipad-12.9/`
 - [ ] Metadata pasted from `ios/metadata.md`
 - [ ] Xcode Archive → Upload → TestFlight test on real device
 - [ ] Submit for Review

@@ -50,9 +50,22 @@ if [[ -f capacitor.config.ts ]]; then
   cp -f capacitor.config.ts "$IOS_XCODE/capacitor.config.ts"
 fi
 
-# Android signing template
+# Android signing template + release keystore copies
 if [[ -f cap-android/keystore.properties.example ]]; then
   cp -f cap-android/keystore.properties.example "$STAGE/android/keystore.properties.example"
+fi
+SIGN_DIR="$STAGE/android/signing"
+mkdir -p "$SIGN_DIR"
+if [[ -f cap-android/cafyz-release.keystore ]]; then
+  cp -f cap-android/cafyz-release.keystore "$SIGN_DIR/cafyz-release.keystore"
+  echo "    → store-release/android/signing/cafyz-release.keystore"
+fi
+if [[ -f cap-android/keystore.properties ]]; then
+  cp -f cap-android/keystore.properties "$SIGN_DIR/keystore.properties"
+  echo "    → store-release/android/signing/keystore.properties"
+fi
+if [[ -f "$STAGE/android/signing-credentials.txt" ]]; then
+  cp -f "$STAGE/android/signing-credentials.txt" "$SIGN_DIR/credentials.txt"
 fi
 
 # Native env template

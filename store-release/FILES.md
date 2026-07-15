@@ -1,0 +1,115 @@
+# store-release file inventory
+
+Generated: 2026-07-15 17:48 UTC
+
+Everything for App Store + Play Store lives under this folder.
+
+- **android/**
+- **android/screenshots/**
+- **android/screenshots/phone/**
+- `android/screenshots/phone/01-dashboard.png` (286 KB)
+- `android/screenshots/phone/02-pos.png` (298 KB)
+- `android/screenshots/phone/03-orders.png` (268 KB)
+- `android/screenshots/phone/04-tables.png` (275 KB)
+- `android/screenshots/phone/05-menu.png` (1.0 MB)
+- **android/screenshots/tablet-10/**
+- `android/screenshots/tablet-10/01-dashboard.png` (289 KB)
+- `android/screenshots/tablet-10/02-pos.png` (289 KB)
+- `android/screenshots/tablet-10/03-orders.png` (265 KB)
+- `android/screenshots/tablet-10/04-tables.png` (263 KB)
+- `android/screenshots/tablet-10/05-menu.png` (1.2 MB)
+- `android/screenshots/CAPTURED.txt` (115 B)
+- `android/screenshots/feature-graphic.png` (147 KB)
+- `android/screenshots/README.md` (973 B)
+- **android/signing/**
+- `android/signing/cafyz-release.keystore` (3 KB)
+- `android/signing/credentials.txt` (228 B)
+- `android/signing/keystore.properties` (173 B)
+- `android/GRADLE_PROJECT.txt` (292 B)
+- `android/keystore.properties.example` (394 B)
+- `android/metadata.md` (3 KB)
+- `android/README.md` (362 B)
+- `android/signing-credentials.txt` (228 B)
+- `android/SIGNING.md` (708 B)
+- **assets/**
+- `assets/app-icon-1024.png` (1.8 MB)
+- **builds/**
+- **builds/android/**
+- `builds/android/Cafyz-android-debug.apk` (11.3 MB)
+- **builds/android-release/**
+- `builds/android-release/Cafyz-android-release.aab` (9.3 MB)
+- **builds/ios/**
+- **builds/ios/archive/**
+- **builds/ios/archive/Cafyz.xcarchive/**
+- **builds/ios/archive/Cafyz.xcarchive/dSYMs/**
+- **builds/ios/archive/Cafyz.xcarchive/Products/**
+- `builds/ios/archive/Cafyz.xcarchive/Info.plist` (906 B)
+- **builds/ios/archive/export/**
+- `builds/ios/archive/DistributionSummary.plist` (6 KB)
+- `builds/ios/archive/exportOptions.plist` (476 B)
+- `builds/ios/archive/Packaging.log` (74 KB)
+- **builds/ios/web-hosting/**
+- **builds/ios/web-hosting/assets/**
+- `builds/ios/web-hosting/assets/Analytics-DSraVaeM.js` (24 KB)
+- `builds/ios/web-hosting/assets/FounderConsole-Dre0fmTq.js` (34 KB)
+- `builds/ios/web-hosting/assets/index-BPQqYw9O.js` (484 KB)
+- `builds/ios/web-hosting/assets/index-BzFGMVHG.js` (212 B)
+- `builds/ios/web-hosting/assets/index-Cmrwbb_-.css` (122 KB)
+- `builds/ios/web-hosting/assets/POS-Dwk38ZWt.js` (28 KB)
+- `builds/ios/web-hosting/assets/Profile-DquW3kJm.js` (51 KB)
+- `builds/ios/web-hosting/assets/vendor-icons-pQaY4pQ9.js` (40 KB)
+- `builds/ios/web-hosting/assets/vendor-motion-BX_zpA7H.js` (126 KB)
+- `builds/ios/web-hosting/assets/vendor-react-Xmkqgxt2.js` (140 KB)
+- `builds/ios/web-hosting/assets/web-Ck4rYZiR.js` (515 B)
+- `builds/ios/web-hosting/assets/web-fcSPWEeN.js` (9 KB)
+- `builds/ios/web-hosting/assets/web-v1o2R-ID.js` (225 B)
+- `builds/ios/web-hosting/apple-touch-icon.png` (54 KB)
+- `builds/ios/web-hosting/cafyz-logo.png` (930 KB)
+- `builds/ios/web-hosting/cordova.js` (0 B)
+- `builds/ios/web-hosting/cordova_plugins.js` (0 B)
+- `builds/ios/web-hosting/icon-192.png` (61 KB)
+- `builds/ios/web-hosting/icon-512.png` (473 KB)
+- `builds/ios/web-hosting/index.html` (2 KB)
+- `builds/ios/capacitor.config.json` (942 B)
+- `builds/env.capacitor.example` (329 B)
+- `builds/MANIFEST.json` (462 B)
+- `builds/README.md` (2 KB)
+- **config/**
+- `config/capacitor.config.ts` (906 B)
+- `config/env.capacitor` (81 B)
+- `config/env.capacitor.example` (329 B)
+- **ios/**
+- **ios/screenshots/**
+- **ios/screenshots/ipad-12.9/**
+- `ios/screenshots/ipad-12.9/01-dashboard.png` (476 KB)
+- `ios/screenshots/ipad-12.9/02-pos.png` (478 KB)
+- `ios/screenshots/ipad-12.9/03-orders.png` (463 KB)
+- `ios/screenshots/ipad-12.9/04-tables.png` (464 KB)
+- `ios/screenshots/ipad-12.9/05-menu.png` (503 KB)
+- `ios/screenshots/ipad-12.9/06-kds.png` (457 KB)
+- `ios/screenshots/ipad-12.9/07-analytics.png` (472 KB)
+- **ios/screenshots/iphone-6.7/**
+- `ios/screenshots/iphone-6.7/01-dashboard.png` (336 KB)
+- `ios/screenshots/iphone-6.7/02-pos.png` (294 KB)
+- `ios/screenshots/iphone-6.7/03-orders.png` (318 KB)
+- `ios/screenshots/iphone-6.7/04-tables.png` (317 KB)
+- `ios/screenshots/iphone-6.7/05-menu.png` (1.3 MB)
+- `ios/screenshots/iphone-6.7/06-kds.png` (1.3 MB)
+- `ios/screenshots/iphone-6.7/07-analytics.png` (1.3 MB)
+- `ios/screenshots/CAPTURED.txt` (67 B)
+- `ios/screenshots/README.md` (626 B)
+- **ios/xcode/**
+- `ios/xcode/capacitor.config.json` (942 B)
+- `ios/xcode/capacitor.config.ts` (906 B)
+- `ios/xcode/ExportOptions.plist` (464 B)
+- `ios/xcode/Info.plist` (2 KB)
+- `ios/xcode/Podfile` (1 KB)
+- `ios/xcode/Podfile.lock` (2 KB)
+- `ios/launch-guide.md` (2 KB)
+- `ios/metadata.md` (4 KB)
+- `ios/README.md` (1 KB)
+- `ios/XCODE_PROJECT.txt` (261 B)
+- `CHECKLIST.md` (2 KB)
+- `demo-account.md` (2 KB)
+- `LINKS.md` (2 KB)
+- `README.md` (4 KB)

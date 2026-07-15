@@ -1,46 +1,29 @@
 # iOS screenshots
 
-Save captures here before uploading to App Store Connect.
+**7 screens each** — ready for App Store Connect.
 
-## Required sizes
+## iPhone 6.7" (`iphone-6.7/`)
 
-| Slot | Resolution (portrait) | Simulator |
-|------|----------------------|-----------|
-| **iPhone 6.7"** | 1290 × 2796 | iPhone 17 Pro Max |
-| **iPad 12.9"** | 2048 × 2732 | iPad Pro 12.9" / 13" |
+| File | Screen |
+|------|--------|
+| `01-dashboard.png` | Dashboard |
+| `02-pos.png` | Point of Sale |
+| `03-orders.png` | Live Orders |
+| `04-tables.png` | Table Map |
+| `05-menu.png` | Menu |
+| `06-kds.png` | Kitchen Display |
+| `07-analytics.png` | Analytics |
 
-Need **5 iPhone** + **3 iPad** minimum.
+## iPad 12.9" (`ipad-12.9/`)
 
-## Suggested screens
+Same seven screens at tablet layout.
 
-1. Login
-2. POS
-3. Kitchen (KDS)
-4. Menu
-5. Analytics
-
-## Capture commands
+## Re-capture
 
 ```bash
-npm run cap:sync
-npx cap run ios --target <SIMULATOR_UUID> --no-sync
-
-# iPhone
-xcrun simctl io <UUID> screenshot store-release/ios/screenshots/iphone-6.7/02-pos.png
-
-# iPad (UUID: 1C2F9D69-CA24-46CC-AB32-B1118EF936FC)
-xcrun simctl io 1C2F9D69-CA24-46CC-AB32-B1118EF936FC screenshot store-release/ios/screenshots/ipad-12.9/02-dashboard.png
-
-sips -g pixelWidth -g pixelHeight store-release/ios/screenshots/iphone-6.7/02-pos.png
+npm run capture:ios-screenshots
 ```
-
-## Current files
-
-| File | Status |
-|------|--------|
-| `iphone-6.7/01-launch.png` | Placeholder — replace after demo login |
-| `ipad-12.9/01-tablet-shell.png` | Shell layout — add feature screens |
 
 ## Upload
 
-App Store Connect → App → version 1.0 → Previews and Screenshots
+App Store Connect → App → version → **Previews and Screenshots** → drag from `iphone-6.7/` and `ipad-12.9/`.

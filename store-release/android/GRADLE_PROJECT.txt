@@ -1,0 +1,10 @@
+Canonical Android project:
+  /Users/alameen/cafyz/cap-android/
+
+Play upload bundle (in this folder):
+  builds/android-release/Cafyz-android-release.aab
+
+Signing (in this folder):
+  android/signing/cafyz-release.keystore
+  android/signing/keystore.properties
+  android/signing/credentials.txt

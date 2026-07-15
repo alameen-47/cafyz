@@ -22,7 +22,10 @@
     "native:android:release": "bash scripts/build-native.sh android-release",
     "native:ios": "bash scripts/build-native.sh ios",
     "stage:store-release": "bash scripts/stage-store-release.sh",
+    "sync:store-release": "bash scripts/sync-store-release.sh",
     "capture:android-screenshots": "node scripts/capture-android-screenshots.mjs",
+    "capture:ios-screenshots": "node scripts/capture-ios-screenshots.mjs",
+    "store:all": "bash scripts/sync-store-release.sh && node scripts/capture-android-screenshots.mjs && node scripts/capture-ios-screenshots.mjs && bash scripts/sync-store-release.sh",
     "lint": "eslint web-v2 capacitor.config.ts scripts",
     "postinstall": "patch-package"
   },

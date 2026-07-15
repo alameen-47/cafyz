@@ -1,95 +1,99 @@
 # Cafyz — Store release hub
 
-**Single folder for everything needed to ship Cafyz on the App Store and Google Play.**
+**Everything for App Store + Play Store is in this folder.**  
+Copy `store-release/` to a USB drive, cloud folder, or zip it — it is self-contained.
 
-All links, metadata, screenshots, checklists, and build references live here.  
-Do not scatter store assets elsewhere — add new files under this tree.
+## Start here
 
-## Quick links
+| File | What |
+|------|------|
+| [FILES.md](FILES.md) | Auto-generated inventory of every file |
+| [LINKS.md](LINKS.md) | URLs, portals, emails |
+| [CHECKLIST.md](CHECKLIST.md) | Pre-submit checklist |
+| [demo-account.md](demo-account.md) | Reviewer login for Apple/Google |
 
-| Resource | File |
-|----------|------|
-| **All URLs & portals** | [LINKS.md](LINKS.md) |
-| **Master checklist** | [CHECKLIST.md](CHECKLIST.md) |
-| **Demo reviewer account** | [demo-account.md](demo-account.md) |
-| **App icon 1024×1024** | [assets/app-icon-1024.png](assets/app-icon-1024.png) |
-
-## iOS (App Store)
-
-| Resource | Path |
-|----------|------|
-| Copy-paste metadata | [ios/metadata.md](ios/metadata.md) |
-| Step-by-step launch guide | [ios/launch-guide.md](ios/launch-guide.md) |
-| Screenshots | [ios/screenshots/](ios/screenshots/) |
-| Xcode project | `../cap-ios/` |
-
-**Portal:** https://appstoreconnect.apple.com
-
-## Android (Play Store)
-
-| Resource | Path |
-|----------|------|
-| Copy-paste metadata | [android/metadata.md](android/metadata.md) |
-| Screenshots | [android/screenshots/](android/screenshots/) |
-| Signing template | `../cap-android/keystore.properties.example` |
-| Gradle project | `../cap-android/` |
-
-**Portal:** https://play.google.com/console
-
-## Live URLs (paste in both stores)
-
-| Page | URL |
-|------|-----|
-| Web app | https://cafyz.ametronyx.com |
-| Privacy | https://cafyz.ametronyx.com/privacy |
-| Support | https://cafyz.ametronyx.com/support |
-| Terms | https://cafyz.ametronyx.com/terms |
-| API | https://cafyz.onrender.com |
-
-## Build outputs (in this folder)
+## Builds (upload these)
 
 | Platform | File |
 |----------|------|
+| **Play Store AAB** | [builds/android-release/Cafyz-android-release.aab](builds/android-release/Cafyz-android-release.aab) |
 | Android debug APK | [builds/android/Cafyz-android-debug.apk](builds/android/Cafyz-android-debug.apk) |
-| Android release AAB | [builds/android-release/Cafyz-android-release.aab](builds/android-release/Cafyz-android-release.aab) |
-| **iOS web hosting** | [builds/ios/web-hosting/](builds/ios/web-hosting/) |
-| **iOS Xcode archive** | [builds/ios/archive/Cafyz.xcarchive](builds/ios/archive/Cafyz.xcarchive) |
-| iOS export template | [ios/xcode/ExportOptions.plist](ios/xcode/ExportOptions.plist) |
+| **iOS archive** | [builds/ios/archive/Cafyz.xcarchive](builds/ios/archive/Cafyz.xcarchive) |
+| iOS web hosting | [builds/ios/web-hosting/](builds/ios/web-hosting/) |
 
-Re-stage after builds: `bash scripts/stage-store-release.sh` (runs automatically at end of `npm run native:*`).
+## Screenshots
 
-See [builds/README.md](builds/README.md) and [builds/MANIFEST.json](builds/MANIFEST.json).
+| Store | Folder |
+|-------|--------|
+| Google Play phone | [android/screenshots/phone/](android/screenshots/phone/) |
+| Google Play tablet | [android/screenshots/tablet-10/](android/screenshots/tablet-10/) |
+| Google feature graphic | [android/screenshots/feature-graphic.png](android/screenshots/feature-graphic.png) |
+| App Store iPhone | [ios/screenshots/iphone-6.7/](ios/screenshots/iphone-6.7/) |
+| App Store iPad | [ios/screenshots/ipad-12.9/](ios/screenshots/ipad-12.9/) |
 
-## Folder structure
+## Metadata (copy-paste into consoles)
+
+| Store | File |
+|-------|------|
+| App Store Connect | [ios/metadata.md](ios/metadata.md) |
+| Play Console | [android/metadata.md](android/metadata.md) |
+
+## Signing & config
+
+| Item | Path |
+|------|------|
+| Android keystore | `android/signing/cafyz-release.keystore` |
+| Keystore passwords | `android/signing/credentials.txt` |
+| Gradle properties | `android/signing/keystore.properties` |
+| Capacitor config | [config/capacitor.config.ts](config/capacitor.config.ts) |
+| Native env | [config/env.capacitor.example](config/env.capacitor.example) |
+| iOS export plist | [ios/xcode/ExportOptions.plist](ios/xcode/ExportOptions.plist) |
+| App icon 1024² | [assets/app-icon-1024.png](assets/app-icon-1024.png) |
+
+## Guides
+
+- iOS launch: [ios/launch-guide.md](ios/launch-guide.md)
+- Android signing: [android/SIGNING.md](android/SIGNING.md)
+- Builds: [builds/README.md](builds/README.md)
+
+## Refresh everything
+
+```bash
+npm run store:all
+```
+
+Or step by step: `npm run sync:store-release` · `npm run capture:android-screenshots` · `npm run capture:ios-screenshots`
+
+## Live URLs
+
+| Page | URL |
+|------|-----|
+| Web | https://cafyz.ametronyx.com |
+| Privacy | https://cafyz.ametronyx.com/privacy |
+| Support | https://cafyz.ametronyx.com/support |
+| Account deletion | https://cafyz.ametronyx.com/support#account-deletion |
+| API | https://cafyz.onrender.com |
+
+## Folder tree
 
 ```
 store-release/
+├── FILES.md                 ← full file list
 ├── README.md
-├── LINKS.md
-├── CHECKLIST.md
-├── demo-account.md
+├── LINKS.md · CHECKLIST.md · demo-account.md
 ├── assets/app-icon-1024.png
+├── config/                  ← capacitor + env
 ├── builds/
-│   ├── MANIFEST.json
-│   ├── env.capacitor.example
-│   ├── android/Cafyz-android-debug.apk
-│   ├── android-release/          ← Play AAB (when built)
-│   └── ios/
-│       ├── web-hosting/          ← Capacitor bundled web UI
-│       ├── capacitor.config.json
-│       └── archive/Cafyz.xcarchive
-├── ios/
-│   ├── xcode/                    ← Info.plist, Podfile, ExportOptions.plist
-│   ├── metadata.md
-│   ├── launch-guide.md
+│   ├── android/             ← debug APK
+│   ├── android-release/     ← Play AAB
+│   └── ios/                 ← web-hosting, xcarchive
+├── android/
+│   ├── metadata.md · SIGNING.md
+│   ├── signing/             ← keystore + passwords (local)
 │   └── screenshots/
-└── android/
-    ├── keystore.properties.example
-    ├── metadata.md
-    └── screenshots/
+├── ios/
+│   ├── metadata.md · launch-guide.md · xcode/
+│   └── screenshots/
 ```
 
-## Contacts
-
-- Support: support@cafyz.com
-- Billing / review: cafyzofficial@gmail.com
+Canonical native projects (for rebuilding only): `../cap-ios/` · `../cap-android/`
