@@ -309,7 +309,7 @@ export function Orders() {
               </button>
             ))}
           </div>
-          <div className="flex gap-1 p-1 rounded-xl overflow-x-auto scrollbar-hide flex-1"
+          <div className="flex gap-1 p-1 rounded-xl overflow-x-auto scrollbar-hide flex-1 min-w-0"
             style={{ background: "var(--cafyz-surface)", border: "1px solid var(--cafyz-border)" }}>
             {statuses.map(s => (
               <button key={s} onClick={() => setFilter(s)}

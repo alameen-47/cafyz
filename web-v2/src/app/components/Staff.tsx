@@ -121,7 +121,7 @@ export function Staff() {
 
       {/* Filters + Add */}
       <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
-        <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
+        <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide min-w-0 w-full sm:flex-1">
           {roles.map(r => (
             <button
               key={r}

@@ -37,7 +37,7 @@ router.get('/:id', async (req: AuthRequest, res, next) => {
   } catch (e) { next(e); }
 });
 
-router.post('/', requireRole('manager','cashier'), async (req: AuthRequest, res, next) => {
+router.post('/', requireRole('owner','manager','cashier'), async (req: AuthRequest, res, next) => {
   try {
     const rid = req.user!.restaurant_id;
     const data = InvSchema.parse(req.body);
@@ -51,7 +51,7 @@ router.post('/', requireRole('manager','cashier'), async (req: AuthRequest, res,
   } catch (e) { next(e); }
 });
 
-router.put('/:id', requireRole('manager','cashier'), async (req: AuthRequest, res, next) => {
+router.put('/:id', requireRole('owner','manager','cashier'), async (req: AuthRequest, res, next) => {
   try {
     const rid = req.user!.restaurant_id;
     const data = InvSchema.partial().parse(req.body);
@@ -87,7 +87,7 @@ router.put('/:id', requireRole('manager','cashier'), async (req: AuthRequest, re
   } catch (e) { next(e); }
 });
 
-router.delete('/:id', requireRole('manager'), async (req: AuthRequest, res, next) => {
+router.delete('/:id', requireRole('owner','manager'), async (req: AuthRequest, res, next) => {
   try {
     const rid = req.user!.restaurant_id;
     const ex = await getDb().execute({ sql: 'SELECT id FROM inventory WHERE id=? AND restaurant_id=?', args: [(req.params.id as string), rid] });

@@ -1,7 +1,7 @@
 /* Capacitor native shell — layout respects OS status + navigation bars */
 :root {
   --cap-status-bar-height: 0px;
-  --login-logo-band-height: 30dvh;
+  --login-logo-band-height: 25dvh;
 }
 
 /* Keep app shell fixed to viewport in web + native */
@@ -105,15 +105,19 @@ body.cap-native .app-main-spacer {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding-top: max(0.35rem, env(safe-area-inset-top, 0px));
+  padding-top: max(0.75rem, calc(env(safe-area-inset-top, 0px) + 0.5rem));
   padding-left: 1rem;
   padding-right: 1rem;
   box-sizing: border-box;
 }
 
 .login-screen-logo-band .login-screen-logo-img {
-  max-width: min(92vw, 22rem);
-  max-height: calc(var(--login-logo-band-height) - max(0.75rem, env(safe-area-inset-top, 0px)) - 0.5rem);
+  /* Square brand mark — keep it compact and clear of the notch / Dynamic Island. */
+  max-width: min(60vw, 11rem);
+  max-height: min(
+    calc(var(--login-logo-band-height) - env(safe-area-inset-top, 0px) - 2rem),
+    8rem
+  );
   width: auto;
   height: auto;
   object-fit: contain;

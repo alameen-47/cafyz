@@ -476,10 +476,10 @@ export function FounderConsole() {
       {activeTab === "Restaurants" && (
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="rounded-2xl overflow-hidden" style={{ background: "var(--cafyz-surface)", border: "1px solid var(--cafyz-border)" }}>
           <div className="grid grid-cols-12 gap-2 px-4 py-3 border-b text-xs uppercase tracking-wider" style={{ color: "var(--cafyz-muted)", borderColor: "rgba(30,127,255,0.08)", fontFamily: "var(--font-mono)" }}>
-            <div className="col-span-4">Restaurant</div>
+            <div className="col-span-4 md:col-span-3">Restaurant</div>
             <div className="col-span-2 hidden sm:block">Plan</div>
             <div className="col-span-2 hidden md:block">Timezone</div>
-            <div className="col-span-2 hidden md:block">Users</div>
+            <div className="col-span-1 hidden md:block">Users</div>
             <div className="col-span-2">Status</div>
             <div className="col-span-12 sm:col-span-2">Actions</div>
           </div>
@@ -488,8 +488,8 @@ export function FounderConsole() {
             <motion.div key={r.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: i * 0.04 }}
               className="grid grid-cols-12 gap-2 px-4 py-3 items-center border-b hover:bg-[rgba(30,127,255,0.03)] transition-all"
               style={{ borderColor: "rgba(30,127,255,0.06)" }}>
-              <div className="col-span-4">
-                <p style={{ color: "var(--cafyz-text)", fontSize: "0.85rem", fontWeight: 500 }}>{r.name}</p>
+              <div className="col-span-4 md:col-span-3 min-w-0">
+                <p className="truncate" style={{ color: "var(--cafyz-text)", fontSize: "0.85rem", fontWeight: 500 }}>{r.name}</p>
                 <p style={{ color: "var(--cafyz-muted)", fontSize: "0.7rem" }}>{r.slug}</p>
               </div>
               <div className="col-span-2 hidden sm:block">
@@ -498,7 +498,7 @@ export function FounderConsole() {
               <div className="col-span-2 hidden md:flex items-center gap-1" style={{ color: "var(--cafyz-muted)", fontSize: "0.78rem" }}>
                 <Globe size={11} /> {r.timezone}
               </div>
-              <div className="col-span-2 hidden md:block" style={{ color: "var(--cafyz-text-secondary)", fontFamily: "var(--font-mono)", fontSize: "0.82rem", fontWeight: 600 }}>
+              <div className="col-span-1 hidden md:block" style={{ color: "var(--cafyz-text-secondary)", fontFamily: "var(--font-mono)", fontSize: "0.82rem", fontWeight: 600 }}>
                 {r.user_count}
               </div>
               <div className="col-span-2">

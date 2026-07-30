@@ -184,9 +184,9 @@ export function Inventory() {
         <div className="grid grid-cols-12 gap-2 px-3 sm:px-4 py-3 text-xs font-semibold uppercase tracking-wider border-b"
           style={{ color: "var(--cafyz-muted)", borderColor: "rgba(30,127,255,0.08)", fontFamily: "var(--font-mono)" }}>
           <div className="col-span-5 sm:col-span-4">Item</div>
-          <div className="col-span-4 sm:col-span-4">Stock</div>
-          <div className="col-span-3 hidden md:block">Par level</div>
-          <div className="col-span-3 sm:col-span-4 md:col-span-4 text-right sm:text-left">Actions</div>
+          <div className="col-span-4 sm:col-span-4 md:col-span-3">Stock</div>
+          <div className="col-span-2 hidden md:block">Par level</div>
+          <div className="col-span-3 sm:col-span-4 md:col-span-3 text-right sm:text-left">Actions</div>
         </div>
 
         <div className="divide-y divide-[rgba(30,127,255,0.05)]">
@@ -201,7 +201,7 @@ export function Inventory() {
                 <div className="col-span-5 sm:col-span-4 min-w-0">
                   <p style={{ color: "var(--cafyz-text)", fontSize: "0.82rem", fontWeight: 500 }} className="truncate">{item.name}</p>
                 </div>
-                <div className="col-span-4 sm:col-span-4">
+                <div className="col-span-4 sm:col-span-4 md:col-span-3">
                   <div className="flex items-center gap-1.5 mb-1">
                     <Icon size={10} style={{ color: cfg.color }} />
                     <span style={{ color: cfg.color, fontSize: "0.68rem", fontWeight: 600 }}>
@@ -217,12 +217,12 @@ export function Inventory() {
                       }} />
                   </div>
                 </div>
-                <div className="col-span-3 hidden md:block">
+                <div className="col-span-2 hidden md:block">
                   <span style={{ color: "var(--cafyz-text-secondary)", fontFamily: "var(--font-mono)", fontSize: "0.78rem" }}>
                     par {item.minQty}{item.unit}
                   </span>
                 </div>
-                <div className="col-span-3 sm:col-span-4 md:col-span-4 flex justify-end sm:justify-start gap-1 flex-wrap">
+                <div className="col-span-3 sm:col-span-4 md:col-span-3 flex justify-end sm:justify-start gap-1 flex-wrap">
                   {(level === "critical" || level === "low") && (
                     <button className="px-2 py-1 rounded-lg text-xs font-semibold"
                       style={{ background: "rgba(30,127,255,0.12)", color: "#1e7fff" }}
