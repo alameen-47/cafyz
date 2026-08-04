@@ -21,6 +21,7 @@ services:
         value: https://cafyz.ametronyx.com
       # Set in Render dashboard (see backend/.env.example):
       # RESEND_API_KEY, CLOUDINARY_*, FOUNDER_EMAIL, FOUNDER_PASSWORD, FIREBASE_SERVER_KEY
+      # RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET, RAZORPAY_WEBHOOK_SECRET (payments)
 
   # Optional: host web-v2 on Render (canonical web deploy is Vercel).
   - type: web

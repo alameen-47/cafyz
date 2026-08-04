@@ -19,6 +19,7 @@ import inquiryRoutes     from './routes/inquiries.js';
 import supportRoutes     from './routes/support.js';
 import searchRoutes      from './routes/search.js';
 import notificationRoutes from './routes/notifications.js';
+import billingRoutes, { handleBillingWebhook } from './routes/billing.js';
 import { requirePlan }   from './middleware/planGuard.js';
 import { requireAuth }   from './middleware/auth.js';
 import { requireActiveSubscription } from './middleware/subscriptionGuard.js';
@@ -69,6 +70,11 @@ app.use(cors({
 //    limiter so diners on a shared restaurant WiFi aren't blocked by the anon cap.
 app.use('/api/public', publicLimiter, publicRoutes);
 
+// ── Razorpay webhook — needs the raw body for HMAC signature verification, so it
+//    is mounted before express.json() and before the global limiter (so provider
+//    retries are never rate-limited away).
+app.post('/api/billing/webhook', express.raw({ type: '*/*' }), handleBillingWebhook);
+
 app.use(globalLimiter);
 
 // ── Compression ─────────────────────────────────────────────────────────────────
@@ -113,6 +119,9 @@ app.use('/api/restaurants/onboarding', onboardingLimiter);
 app.use('/api/restaurants',      mutationLimiter, restaurantRoutes);
 app.get('/api/licenses/renewal/action', licenseRenewalAction);
 app.use('/api/licenses',         mutationLimiter, requireAuth, requireSectionAccess('license'), licenseRoutes);
+// Billing must stay reachable WITHOUT requireActiveSubscription — an expired
+// tenant has to be able to pay. Auth + role checks live inside the router.
+app.use('/api/billing',          mutationLimiter, billingRoutes);
 app.use('/api/founder',          mutationLimiter, requireAuth, founderRoutes);
 app.use('/api/inquiries',    inquiryLimiter, inquiryRoutes);
 app.use('/api/support',          mutationLimiter, supportRoutes);

@@ -135,6 +135,7 @@ async function request<T = unknown>(
       && !isPrinterAssignmentSync
       && !path.startsWith('/api/kds/print-jobs/claim')
       && !path.startsWith('/api/kds/print-jobs/')
+      && !path.startsWith('/api/billing/')
       && !path.startsWith('/api/notifications/');
     if (shouldToastError) toastBus.error(String(message));
     throw new Error(message);
@@ -148,6 +149,7 @@ async function request<T = unknown>(
     // Never show automatic success toasts for these non-interactive operations.
     && !path.startsWith('/api/kds/print-jobs/claim')
     && !path.startsWith('/api/kds/print-jobs/')
+    && !path.startsWith('/api/billing/')
     && !path.startsWith('/api/notifications/');
   if (shouldToastSuccess) {
     const successMessage = method === 'DELETE'
@@ -463,6 +465,46 @@ export const notificationsApi = {
 export const plansApi = {
   list: () => get<ApiPlanConfig[]>('/api/public/plans'),
 };
+
+// ── Billing (Razorpay Standard Checkout) ────────────────────────────────────────
+export interface BillingOrder {
+  key_id: string;
+  order_id: string;
+  amount: number;
+  currency: string;
+  plan: string;
+  name: string;
+  description: string;
+  prefill: { email?: string; contact?: string };
+}
+export interface BillingVerifyResult {
+  success: boolean;
+  plan: string;
+  expires_at: string;
+  already?: boolean;
+}
+export const billingApi = {
+  createOrder: (plan: string) => post<BillingOrder>('/api/billing/order', { plan }),
+  verify: (p: { razorpay_order_id: string; razorpay_payment_id: string; razorpay_signature: string }) =>
+    post<BillingVerifyResult>('/api/billing/verify', p),
+};
+
+let razorpayLoad: Promise<boolean> | null = null;
+/** Lazily inject Razorpay's checkout.js; resolves true once window.Razorpay exists. */
+export function loadRazorpayCheckout(): Promise<boolean> {
+  if (typeof window === 'undefined') return Promise.resolve(false);
+  if ((window as unknown as { Razorpay?: unknown }).Razorpay) return Promise.resolve(true);
+  if (razorpayLoad) return razorpayLoad;
+  razorpayLoad = new Promise<boolean>((resolve) => {
+    const s = document.createElement('script');
+    s.src = 'https://checkout.razorpay.com/v1/checkout.js';
+    s.async = true;
+    s.onload = () => resolve(true);
+    s.onerror = () => { razorpayLoad = null; resolve(false); };
+    document.body.appendChild(s);
+  });
+  return razorpayLoad;
+}
 
 // ── Licenses ──────────────────────────────────────────────────────────────────
 export const licensesApi = {

@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useMemo } from "react";
 import { motion } from "motion/react";
 import { Shield, Check, X, Key, Zap, Crown, ArrowRight, Clock } from "lucide-react";
 import { toast } from "./Toast";
-import { licensesApi, type ApiSubscriptionStatus, type ApiLicensePurchaseRequest } from "../../services/api";
+import { licensesApi, billingApi, loadRazorpayCheckout, type ApiSubscriptionStatus, type ApiLicensePurchaseRequest } from "../../services/api";
 import { useAuth } from "../auth";
 import { usePlanConfig } from "../PlanConfigProvider";
 import { formatBillingSuffix, formatPlanPrice, panelLabelsFromConfig } from "../../services/planConfigStore";
@@ -37,6 +37,7 @@ export function License() {
   const [activating, setActivating] = useState(false);
   const [activated, setActivated] = useState(false);
   const [requesting, setRequesting] = useState(false);
+  const [paying, setPaying] = useState(false);
 
   const load = useCallback(async () => {
     try { setStatus(await licensesApi.mine()); } catch { /* keep last */ }
@@ -110,6 +111,62 @@ export function License() {
     }
   };
 
+  // Pay with card/UPI via Razorpay; falls back to the email-renewal flow if the
+  // server doesn't have online payments enabled yet.
+  const payWithCard = async (plan: string) => {
+    if (pendingReq) { toast.info("Request already pending", "The Cafyz team will email your key shortly"); return; }
+    setPaying(true);
+    try {
+      const order = await billingApi.createOrder(plan);
+      const ready = await loadRazorpayCheckout();
+      if (!ready) { toast.error("Couldn't load checkout", "Check your connection and try again."); return; }
+
+      type RzpResponse = { razorpay_order_id: string; razorpay_payment_id: string; razorpay_signature: string };
+      type RzpInstance = { open: () => void; on: (event: string, cb: (r: { error?: { description?: string } }) => void) => void };
+      type RzpCtor = new (options: Record<string, unknown>) => RzpInstance;
+      const Razorpay = (window as unknown as { Razorpay: RzpCtor }).Razorpay;
+
+      const rzp = new Razorpay({
+        key: order.key_id,
+        order_id: order.order_id,
+        amount: order.amount,
+        currency: order.currency,
+        name: order.name,
+        description: order.description,
+        prefill: order.prefill,
+        theme: { color: "#1e7fff" },
+        handler: async (resp: RzpResponse) => {
+          try {
+            const res = await billingApi.verify({
+              razorpay_order_id: resp.razorpay_order_id,
+              razorpay_payment_id: resp.razorpay_payment_id,
+              razorpay_signature: resp.razorpay_signature,
+            });
+            toast.success("Payment successful!", `Your ${res.plan.toUpperCase()} plan is now active.`);
+            await load();
+          } catch (e) {
+            toast.error("Payment verification failed", (e as Error).message);
+          }
+        },
+        modal: { ondismiss: () => setPaying(false) },
+      });
+      rzp.on("payment.failed", (r) => {
+        toast.error("Payment failed", r?.error?.description ?? "Please try again.");
+      });
+      rzp.open();
+    } catch (e) {
+      const msg = (e as Error).message || "";
+      if (/not enabled|BILLING_DISABLED|contact support/i.test(msg)) {
+        // Online payments not configured on the server — use the email flow instead.
+        await requestRenewal(plan);
+      } else {
+        toast.error("Couldn't start checkout", msg);
+      }
+    } finally {
+      setPaying(false);
+    }
+  };
+
   return (
     <div className="p-3 sm:p-4 md:p-6 space-y-4 md:space-y-6 max-w-4xl w-full mx-auto">
       {/* Trial banner — only when on a time-limited trial/license */}
@@ -134,10 +191,10 @@ export function License() {
           {pendingReq ? (
             <span className="text-xs px-3 py-2 rounded-xl flex-shrink-0" style={{ background: "rgba(245,158,11,0.12)", color: "#f59e0b", fontWeight: 600 }}>Request pending</span>
           ) : (
-            <button onClick={() => requestRenewal(currentPlan)} disabled={requesting}
+            <button onClick={() => payWithCard(currentPlan === "basic" ? "pro" : currentPlan)} disabled={requesting || paying}
               className="px-4 py-2 rounded-xl text-sm font-semibold flex-shrink-0"
-              style={{ background: "linear-gradient(135deg, #1e7fff, #00c6ff)", color: "#fff", opacity: requesting ? 0.6 : 1 }}>
-              {requesting ? "Requesting…" : "Renew now"}
+              style={{ background: "linear-gradient(135deg, #1e7fff, #00c6ff)", color: "#fff", opacity: (requesting || paying) ? 0.6 : 1 }}>
+              {paying ? "Opening…" : requesting ? "Requesting…" : "Pay & renew"}
             </button>
           )}
         </motion.div>
@@ -216,15 +273,15 @@ export function License() {
                   ))}
                 </ul>
                 <button
-                  onClick={() => { if (!isActive) requestRenewal(plan.id); }}
-                  disabled={isActive || requesting || !!pendingReq}
+                  onClick={() => { if (!isActive && plan.id !== "basic") payWithCard(plan.id); }}
+                  disabled={isActive || plan.id === "basic" || requesting || paying || !!pendingReq}
                   className="mt-4 w-full py-2.5 rounded-xl text-sm font-semibold flex items-center justify-center gap-2 transition-all"
                   style={isActive
                     ? { background: `${plan.color}12`, color: plan.color, border: `1px solid ${plan.color}25` }
-                    : { background: `${plan.color}10`, color: plan.color, border: `1px solid ${plan.color}20`, opacity: (requesting || pendingReq) ? 0.6 : 1 }
+                    : { background: `${plan.color}10`, color: plan.color, border: `1px solid ${plan.color}20`, opacity: (requesting || paying || pendingReq || plan.id === "basic") ? 0.6 : 1 }
                   }
                 >
-                  {isActive ? "Current Plan" : pendingReq ? "Request pending" : <>Request {plan.name} <ArrowRight size={14} /></>}
+                  {isActive ? "Current Plan" : plan.id === "basic" ? "Free plan" : pendingReq ? "Request pending" : paying ? "Opening…" : <>Subscribe to {plan.name} <ArrowRight size={14} /></>}
                 </button>
               </motion.div>
             );

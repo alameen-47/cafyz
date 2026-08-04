@@ -275,6 +275,23 @@ export async function runMigrations() {
     );
     CREATE INDEX IF NOT EXISTS idx_trial_reminder_logs_rest_date
       ON trial_reminder_logs(restaurant_id, reminder_date, reminder_slot);
+
+    -- Razorpay orders — binds a created order to a restaurant/plan/amount so the
+    -- verify + webhook paths can confirm the payment is genuine and untampered.
+    CREATE TABLE IF NOT EXISTS billing_orders (
+      order_id       TEXT PRIMARY KEY,
+      restaurant_id  TEXT NOT NULL REFERENCES restaurants(id) ON DELETE CASCADE,
+      plan           TEXT NOT NULL CHECK(plan IN ('basic','pro','premium')),
+      amount         INTEGER NOT NULL,
+      currency       TEXT NOT NULL,
+      status         TEXT NOT NULL DEFAULT 'created'
+                       CHECK(status IN ('created','paid','failed')),
+      payment_id     TEXT,
+      license_key_id TEXT,
+      created_at     TEXT NOT NULL DEFAULT (datetime('now')),
+      paid_at        TEXT
+    );
+    CREATE INDEX IF NOT EXISTS idx_billing_orders_rest ON billing_orders(restaurant_id, created_at);
   `);
 
   // Backward-compatible restaurant profile columns for live DBs

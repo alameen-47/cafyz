@@ -48,6 +48,45 @@ export async function getPlanConfigSummary(plan: string) {
   return (row.rows[0] ?? null) as Record<string, unknown> | null;
 }
 
+/**
+ * Issue + auto-activate a license for a restaurant and set its plan.
+ * Single source of truth for turning a paid/approved event into an active
+ * `license_keys` row — reused by founder approval and Razorpay payment.
+ */
+export async function activateLicenseForRestaurant(
+  rid: string,
+  plan: string,
+  note: string,
+): Promise<{ licenseId: string; keyCode: string; expiresAt: string }> {
+  const db = getDb();
+  const expiresAt = await licenseExpiresAtForPlan(plan);
+  const licId = uid();
+  const keyCode = generateKeyCode(plan);
+  const now = new Date().toISOString();
+
+  await db.batch([
+    {
+      sql: `UPDATE license_keys SET is_active=0 WHERE restaurant_id=? AND is_active=1`,
+      args: [rid],
+    },
+    {
+      sql: `INSERT INTO license_keys(id,key_code,plan,restaurant_id,activated_at,expires_at,is_active,note)
+            VALUES(?,?,?,?,?,?,1,?)`,
+      args: [licId, keyCode, plan, rid, now, expiresAt, note],
+    },
+    {
+      sql: `UPDATE restaurants SET plan=? WHERE id=?`,
+      args: [plan, rid],
+    },
+  ]);
+
+  const { cacheDel } = await import('../cache.js');
+  cacheDel(`plan:${rid}`);
+  cacheDel(`sub:${rid}`);
+
+  return { licenseId: licId, keyCode, expiresAt };
+}
+
 export type FulfillResult = {
   requestId: string;
   restaurantId: string;
@@ -79,34 +118,17 @@ export async function fulfillLicensePurchaseRequest(requestId: string): Promise<
   const rid = String(purchase.restaurant_id);
   const email = String(purchase.email);
   const restaurantName = String(purchase.restaurant_name ?? 'Restaurant');
-  const expiresAt = await licenseExpiresAtForPlan(plan);
-  const licId = uid();
-  const keyCode = generateKeyCode(plan);
-  const now = new Date().toISOString();
 
-  await db.batch([
-    {
-      sql: `UPDATE license_keys SET is_active=0 WHERE restaurant_id=? AND is_active=1`,
-      args: [rid],
-    },
-    {
-      sql: `INSERT INTO license_keys(id,key_code,plan,restaurant_id,activated_at,expires_at,is_active,note)
-            VALUES(?,?,?,?,?,?,1,?)`,
-      args: [licId, keyCode, plan, rid, now, expiresAt, `Renewal approved · request ${requestId}`],
-    },
-    {
-      sql: `UPDATE restaurants SET plan=? WHERE id=?`,
-      args: [plan, rid],
-    },
-    {
-      sql: `UPDATE license_purchase_requests SET status='fulfilled', license_key_id=?, fulfilled_at=datetime('now') WHERE id=?`,
-      args: [licId, requestId],
-    },
-  ]);
+  const { licenseId: licId, keyCode, expiresAt } = await activateLicenseForRestaurant(
+    rid,
+    plan,
+    `Renewal approved · request ${requestId}`,
+  );
 
-  const { cacheDel } = await import('../cache.js');
-  cacheDel(`plan:${rid}`);
-  cacheDel(`sub:${rid}`);
+  await db.execute({
+    sql: `UPDATE license_purchase_requests SET status='fulfilled', license_key_id=?, fulfilled_at=datetime('now') WHERE id=?`,
+    args: [licId, requestId],
+  });
 
   const cfg = await getPlanConfigSummary(plan);
   const price = cfg ? `${cfg.currency_symbol ?? '$'}${cfg.price_monthly}` : '';
