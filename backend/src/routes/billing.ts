@@ -8,6 +8,7 @@ import { activateLicenseForRestaurant, getPlanConfigSummary } from '../services/
 import {
   createOrder,
   isRazorpayConfigured,
+  planCurrencyCode,
   razorpayKeyId,
   toSubunit,
   verifyPaymentSignature,
@@ -46,11 +47,13 @@ router.post('/order', requireAuth, requireRole('owner', 'manager'), async (req: 
     }
 
     const restRow = await getDb().execute({
-      sql: `SELECT name, currency_code FROM restaurants WHERE id=? LIMIT 1`,
+      sql: `SELECT name FROM restaurants WHERE id=? LIMIT 1`,
       args: [rid],
     });
     const restaurantName = String(restRow.rows[0]?.name ?? 'Cafyz');
-    const currency = String(restRow.rows[0]?.currency_code ?? 'USD').toUpperCase();
+    // Charge in the plan's pricing currency (founder's currency, e.g. INR → Canara),
+    // not the restaurant's diner-facing operating currency.
+    const currency = planCurrencyCode(cfg.currency_symbol as string | undefined);
     const amount = toSubunit(priceMajor, currency);
 
     const order = await createOrder({

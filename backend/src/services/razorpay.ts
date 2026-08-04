@@ -23,6 +23,19 @@ export function isRazorpayWebhookConfigured(): boolean { return !!webhookSecret(
 const ZERO_DECIMAL = new Set(['JPY', 'KRW', 'VND', 'CLP', 'ISK', 'UGX', 'XOF', 'XAF']);
 const THREE_DECIMAL = new Set(['KWD', 'BHD', 'OMR', 'IQD', 'JOD', 'LYD', 'TND']);
 
+/**
+ * Map a plan's display currency symbol to an ISO 4217 code for the Razorpay order.
+ * Subscriptions are billed in the FOUNDER's pricing currency (the plan's currency,
+ * e.g. INR settling to Canara) — NOT the restaurant's own operating currency.
+ */
+const SYMBOL_TO_CODE: Record<string, string> = {
+  '₹': 'INR', '$': 'USD', '€': 'EUR', '£': 'GBP',
+  '﷼': 'SAR', 'ر.س': 'SAR', 'د.إ': 'AED', '¥': 'JPY',
+};
+export function planCurrencyCode(symbol: string | null | undefined): string {
+  return SYMBOL_TO_CODE[String(symbol ?? '').trim()] ?? 'INR';
+}
+
 export function toSubunit(amountMajor: number, currency: string): number {
   const cur = currency.toUpperCase();
   if (ZERO_DECIMAL.has(cur)) return Math.round(amountMajor);
