@@ -875,7 +875,7 @@ export function FounderConsole() {
                       <select
                         defaultValue={cfg?.billing_interval_unit ?? "month"}
                         onChange={e => {
-                          const unit = e.target.value as "month" | "year";
+                          const unit = e.target.value as "month" | "year" | "lifetime";
                           if (cfg && unit !== (cfg.billing_interval_unit ?? "month")) {
                             void savePlanField(plan, { billing_interval_unit: unit });
                           }
@@ -885,12 +885,16 @@ export function FounderConsole() {
                       >
                         <option value="month">Month(s)</option>
                         <option value="year">Year(s)</option>
+                        <option value="lifetime">Lifetime</option>
                       </select>
                     </div>
                     {cfg && (
                       <p style={{ color: "var(--cafyz-muted)", fontSize: "0.68rem", marginTop: 6 }}>
-                        License keys expire after {cfg.billing_interval_count ?? 1} {cfg.billing_interval_unit ?? "month"}
-                        {(cfg.billing_interval_count ?? 1) > 1 ? "s" : ""}. Shown as {formatPlanPrice(cfg)}{formatBillingSuffix(cfg)}.
+                        {cfg.billing_interval_unit === "lifetime"
+                          ? <>License keys never expire.</>
+                          : <>License keys expire after {cfg.billing_interval_count ?? 1} {cfg.billing_interval_unit ?? "month"}
+                             {(cfg.billing_interval_count ?? 1) > 1 ? "s" : ""}.</>}
+                        {" "}Shown as {formatPlanPrice(cfg)}{formatBillingSuffix(cfg)}.
                       </p>
                     )}
                   </div>

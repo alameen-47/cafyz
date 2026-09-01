@@ -603,7 +603,7 @@ export const founderApi = {
   planConfig:     ()                                                                    => get<ApiPlanConfig[]>('/api/founder/plan-config'),
   updatePlanConfig: (plan: string, d: Partial<{
     panels_json: string; label: string; description: string; price_monthly: number; currency_symbol: string;
-    billing_interval_unit: 'month' | 'year'; billing_interval_count: number;
+    billing_interval_unit: 'month' | 'year' | 'lifetime'; billing_interval_count: number;
   }>) =>
     put<ApiPlanConfig>(`/api/founder/plan-config/${plan}`, d),
 };
@@ -898,7 +898,7 @@ export interface ApiPlanConfig {
   plan: string; panels_json: string; label: string; description: string;
   price_monthly: number;
   currency_symbol?: string;
-  billing_interval_unit?: 'month' | 'year';
+  billing_interval_unit?: 'month' | 'year' | 'lifetime';
   billing_interval_count?: number;
   updated_at: string;
 }

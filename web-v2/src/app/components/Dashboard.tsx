@@ -323,7 +323,7 @@ export function Dashboard() {
           <p style={{ color: "var(--cafyz-muted)", fontSize: "0.75rem" }}>
             {stats ? (
               <>
-                <UserCheck size={12} className="inline mr-1" style={{ verticalAlign: "-2px" }} />
+                <UserCheck size={12} className="inline me-1" style={{ verticalAlign: "-2px" }} />
                 {stats.staff_active} on shift
                 {stats.staff_on_break > 0 && ` · ${stats.staff_on_break} on break`}
                 {weekTotal > 0 && ` · ${formatMoney(weekTotal)} this week`}
@@ -377,7 +377,7 @@ export function Dashboard() {
           return (
             <motion.button key={kpi.label} type="button" onClick={() => goToPage(kpi.page)}
               initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.07 }}
-              className="rounded-2xl p-3 sm:p-4 relative overflow-hidden text-left transition-all hover:border-[rgba(30,127,255,0.25)]"
+              className="rounded-2xl p-3 sm:p-4 relative overflow-hidden text-start transition-all hover:border-[rgba(30,127,255,0.25)]"
               style={{ background: "var(--cafyz-surface)", border: "1px solid var(--cafyz-border)" }}>
               <div className="absolute top-0 right-0 w-20 h-20 rounded-full opacity-10 blur-xl"
                 style={{ background: kpi.color, transform: "translate(30%,-30%)" }} />
@@ -500,7 +500,7 @@ export function Dashboard() {
             )}
             {recentOrders.map(order => (
               <button key={order.id} type="button" onClick={() => goToPage("orders")}
-                className="w-full flex items-center gap-2 sm:gap-3 p-2.5 sm:p-3 rounded-xl transition-all text-left hover:border-[rgba(30,127,255,0.2)]"
+                className="w-full flex items-center gap-2 sm:gap-3 p-2.5 sm:p-3 rounded-xl transition-all text-start hover:border-[rgba(30,127,255,0.2)]"
                 style={{ border: "1px solid rgba(30,127,255,0.06)" }}>
                 <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
                   style={{ background: "var(--cafyz-border)" }}>
@@ -515,7 +515,7 @@ export function Dashboard() {
                   </div>
                   <p className="truncate" style={{ color: "var(--cafyz-muted)", fontSize: "0.72rem" }}>{order.items}</p>
                 </div>
-                <div className="text-right flex-shrink-0">
+                <div className="text-end flex-shrink-0">
                   <p style={{ color: "var(--cafyz-text)", fontSize: "0.82rem", fontFamily: "var(--font-mono)", fontWeight: 700 }}>{formatMoney(order.amount)}</p>
                   <span className="text-xs px-1.5 py-0.5 rounded-full capitalize"
                     style={{ background: statusBg[order.status], color: statusColors[order.status] }}>

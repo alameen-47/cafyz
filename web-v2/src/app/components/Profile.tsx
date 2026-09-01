@@ -812,7 +812,7 @@ export function Profile() {
                 </div>
               )}
           </div>
-          <div className="flex-1 space-y-3 text-center sm:text-left">
+          <div className="flex-1 space-y-3 text-center sm:text-start">
             <div>
               <p style={{ color: "var(--cafyz-text)", fontSize: "0.88rem", fontWeight: 600 }}>
                 Scan to view your live menu

@@ -186,7 +186,7 @@ export function Inventory() {
           <div className="col-span-5 sm:col-span-4">Item</div>
           <div className="col-span-4 sm:col-span-4 md:col-span-3">Stock</div>
           <div className="col-span-2 hidden md:block">Par level</div>
-          <div className="col-span-3 sm:col-span-4 md:col-span-3 text-right sm:text-left">Actions</div>
+          <div className="col-span-3 sm:col-span-4 md:col-span-3 text-end sm:text-start">Actions</div>
         </div>
 
         <div className="divide-y divide-[rgba(30,127,255,0.05)]">

@@ -345,15 +345,19 @@ export async function runMigrations() {
   await addCol(`ALTER TABLE plan_config ADD COLUMN billing_interval_unit TEXT NOT NULL DEFAULT 'month'`, 'billing_interval_unit');
   await addCol(`ALTER TABLE plan_config ADD COLUMN billing_interval_count INTEGER NOT NULL DEFAULT 1`, 'billing_interval_count');
 
-  // Ensure founder plan config always exists (production-safe bootstrap)
+  // Ensure founder plan config always exists (production-safe bootstrap).
+  // Every plan carries every module — plans differ only by licence term and
+  // the included maintenance & support window, never by features.
   await db.executeMultiple(`
     INSERT OR IGNORE INTO plan_config(
       plan,panels_json,label,description,price_monthly,currency_symbol,billing_interval_unit,billing_interval_count
     ) VALUES
-    ('basic','["pos","menu","waiter","license"]','Basic','Core POS, menu, and floor management for small venues.',49,'$','month',1),
-    ('pro','["pos","menu","waiter","kds","manager","inventory","staff","reports","roles","license"]','Pro','Everything in Basic plus KDS, full manager dashboard, inventory, staff & reports.',99,'$','month',1),
-    ('premium','["pos","menu","waiter","kds","manager","inventory","staff","reports","roles","license"]','Premium','Everything in Pro plus reservations, multi-branch, and priority support.',199,'$','month',1);
+    ('basic','["pos","menu","waiter","kds","manager","inventory","staff","reports","roles","reservations","license"]','1 Year','All modules included, with free maintenance and software support for 1 year.',5999,'₹','year',1),
+    ('pro','["pos","menu","waiter","kds","manager","inventory","staff","reports","roles","reservations","license"]','2 Years','All modules included, with free maintenance and software support for 2 years.',12999,'₹','year',2),
+    ('premium','["pos","menu","waiter","kds","manager","inventory","staff","reports","roles","reservations","license"]','Lifetime','All modules included, with free lifetime maintenance and software support.',29999,'₹','lifetime',1);
   `);
+
+  await migratePlanPricingAllModules(db);
 
   await migrateMenuItemsFlexibleCategory(db);
   await seedAllMenuCategories(db);
@@ -365,6 +369,47 @@ export async function runMigrations() {
     sql: `INSERT OR IGNORE INTO app_settings(key,value) VALUES('trial_device_guard_enabled','1')`,
     args: [],
   });
+}
+
+/**
+ * Re-price the three plans and give every plan every module (one-time).
+ *
+ * The seed above is INSERT OR IGNORE, so it cannot reach databases that already
+ * hold the old per-feature tiers. This applies the new model once and records a
+ * flag, so a founder's later edits in the console are never clobbered on boot.
+ */
+async function migratePlanPricingAllModules(db: ReturnType<typeof getDb>): Promise<void> {
+  const done = await db.execute({
+    sql: `SELECT value FROM app_settings WHERE key='plan_pricing_all_modules_v1'`,
+    args: [],
+  });
+  if (done.rows.length) return;
+
+  const ALL_PANELS = '["pos","menu","waiter","kds","manager","inventory","staff","reports","roles","reservations","license"]';
+  await db.batch([
+    {
+      sql: `UPDATE plan_config SET panels_json=?, label=?, description=?, price_monthly=?,
+              currency_symbol=?, billing_interval_unit=?, billing_interval_count=?,
+              updated_at=datetime('now') WHERE plan='basic'`,
+      args: [ALL_PANELS, '1 Year', 'All modules included, with free maintenance and software support for 1 year.', 5999, '₹', 'year', 1],
+    },
+    {
+      sql: `UPDATE plan_config SET panels_json=?, label=?, description=?, price_monthly=?,
+              currency_symbol=?, billing_interval_unit=?, billing_interval_count=?,
+              updated_at=datetime('now') WHERE plan='pro'`,
+      args: [ALL_PANELS, '2 Years', 'All modules included, with free maintenance and software support for 2 years.', 12999, '₹', 'year', 2],
+    },
+    {
+      sql: `UPDATE plan_config SET panels_json=?, label=?, description=?, price_monthly=?,
+              currency_symbol=?, billing_interval_unit=?, billing_interval_count=?,
+              updated_at=datetime('now') WHERE plan='premium'`,
+      args: [ALL_PANELS, 'Lifetime', 'All modules included, with free lifetime maintenance and software support.', 29999, '₹', 'lifetime', 1],
+    },
+    {
+      sql: `INSERT OR REPLACE INTO app_settings(key,value) VALUES('plan_pricing_all_modules_v1','1')`,
+      args: [],
+    },
+  ]);
 }
 
 const DEFAULT_MENU_CATEGORIES = [

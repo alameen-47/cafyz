@@ -207,7 +207,7 @@ function PanelBody({
               pairedPrinters.map(device => (
                 <button key={device.address} type="button" disabled={busy}
                   onClick={() => onConnectClassic(device)}
-                  className="w-full px-2.5 py-2.5 rounded-lg text-left min-h-[44px]"
+                  className="w-full px-2.5 py-2.5 rounded-lg text-start min-h-[44px]"
                   style={{ background: 'rgba(30,127,255,0.08)', border: '1px solid rgba(30,127,255,0.12)' }}>
                   <span style={{ color: 'var(--cafyz-text)', fontSize: '0.75rem', fontWeight: 600 }} className="block truncate">
                     {device.name}

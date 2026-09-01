@@ -226,7 +226,7 @@ router.put('/plan-config/:plan', ...onlyFounder, async (req: AuthRequest, res, n
       description:   z.string().optional(),
       price_monthly: z.number().optional(),
       currency_symbol: z.string().min(1).max(4).optional(),
-      billing_interval_unit: z.enum(['month', 'year']).optional(),
+      billing_interval_unit: z.enum(['month', 'year', 'lifetime']).optional(),
       billing_interval_count: z.number().int().min(1).max(60).optional(),
     }).parse(req.body);
 

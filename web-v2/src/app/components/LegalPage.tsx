@@ -32,7 +32,7 @@ function privacyContent() {
         </p>
       </Section>
       <Section title="Information we collect">
-        <ul className="list-disc pl-5 space-y-1">
+        <ul className="list-disc ps-5 space-y-1">
           <li><strong>Account data:</strong> name, email, phone, role, restaurant affiliation, password (stored hashed).</li>
           <li><strong>Restaurant data:</strong> menu items, orders, tables, staff, inventory, reservations, analytics.</li>
           <li><strong>Photos you upload:</strong> restaurant logos and menu images (processed via Cloudinary).</li>
@@ -44,7 +44,7 @@ function privacyContent() {
         <p>We use data to operate the service: authentication, POS/KDS workflows, reporting, printing, and support. We do not sell your personal information.</p>
       </Section>
       <Section title="Third-party services">
-        <ul className="list-disc pl-5 space-y-1">
+        <ul className="list-disc ps-5 space-y-1">
           <li><strong>Hosting & API:</strong> Render (backend API).</li>
           <li><strong>Web hosting:</strong> Vercel.</li>
           <li><strong>Images:</strong> Cloudinary (menu and logo uploads).</li>

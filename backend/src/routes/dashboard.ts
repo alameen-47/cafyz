@@ -3,7 +3,6 @@ import { getDb } from '../db.js';
 import { rowNumber } from '../dbRows.js';
 import { requireAuth, type AuthRequest } from '../middleware/auth.js';
 import { requireRole } from '../middleware/rbac.js';
-import { requirePlan } from '../middleware/planGuard.js';
 import {
   RevenueQuerySchema, resolveRevenueWindow, previousRevenueWindow, periodLabel, sqlCreatedBetween,
 } from '../reportPeriod.js';
@@ -14,7 +13,6 @@ const CREATED_BETWEEN = sqlCreatedBetween('o.created_at');
 const router = Router();
 router.use(requireAuth, requireRole('owner', 'manager', 'cashier'));
 
-const proAnalytics = requirePlan('pro');
 
 const REVENUE_SELECT = `
   SELECT date(o.created_at) as day,
@@ -79,7 +77,7 @@ router.get('/stats', async (req: AuthRequest, res, next) => {
 });
 
 // GET /api/dashboard/revenue?period=day|week|month|range&date=&month=&from=&to=
-router.get('/revenue', proAnalytics, async (req: AuthRequest, res, next) => {
+router.get('/revenue', async (req: AuthRequest, res, next) => {
   try {
     const rid = req.user!.restaurant_id;
     const query = RevenueQuerySchema.parse(req.query);
@@ -113,7 +111,7 @@ router.get('/revenue', proAnalytics, async (req: AuthRequest, res, next) => {
 });
 
 // GET /api/dashboard/sold-items?period=day|week|month|range&date=&month=&from=&to=
-router.get('/sold-items', proAnalytics, async (req: AuthRequest, res, next) => {
+router.get('/sold-items', async (req: AuthRequest, res, next) => {
   try {
     const rid = req.user!.restaurant_id;
     const query = RevenueQuerySchema.parse(req.query);
@@ -233,7 +231,7 @@ async function revenueTotals(rid: string, from: string, to: string) {
 }
 
 // GET /api/dashboard/covers-by-hour?period=...
-router.get('/covers-by-hour', proAnalytics, async (req: AuthRequest, res, next) => {
+router.get('/covers-by-hour', async (req: AuthRequest, res, next) => {
   try {
     const rid = req.user!.restaurant_id;
     const query = RevenueQuerySchema.parse(req.query);
@@ -272,7 +270,7 @@ router.get('/covers-by-hour', proAnalytics, async (req: AuthRequest, res, next) 
 });
 
 // GET /api/dashboard/category-mix?period=...
-router.get('/category-mix', proAnalytics, async (req: AuthRequest, res, next) => {
+router.get('/category-mix', async (req: AuthRequest, res, next) => {
   try {
     const rid = req.user!.restaurant_id;
     const query = RevenueQuerySchema.parse(req.query);
@@ -302,7 +300,7 @@ router.get('/category-mix', proAnalytics, async (req: AuthRequest, res, next) =>
 });
 
 // GET /api/dashboard/top-items?period=...
-router.get('/top-items', proAnalytics, async (req: AuthRequest, res, next) => {
+router.get('/top-items', async (req: AuthRequest, res, next) => {
   try {
     const rid = req.user!.restaurant_id;
     const query = RevenueQuerySchema.parse(req.query);
@@ -331,7 +329,7 @@ router.get('/top-items', proAnalytics, async (req: AuthRequest, res, next) => {
 });
 
 // GET /api/dashboard/analytics?period=... — one call for the Analytics screen
-router.get('/analytics', proAnalytics, async (req: AuthRequest, res, next) => {
+router.get('/analytics', async (req: AuthRequest, res, next) => {
   try {
     const rid = req.user!.restaurant_id;
     const query = RevenueQuerySchema.parse(req.query);

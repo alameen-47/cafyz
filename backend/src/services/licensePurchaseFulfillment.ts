@@ -23,15 +23,24 @@ export function verifyActionToken(storedHash: string, token: string): boolean {
   return timingSafeEqual(expected, actual);
 }
 
-export async function licenseExpiresAtForPlan(plan: string): Promise<string> {
+/**
+ * When a plan's licence should lapse, or null for a lifetime plan.
+ *
+ * A null expiry is the established "never expires" signal across the codebase:
+ * requireActiveSubscription treats a missing expiry as active, /licenses/mine
+ * reports no countdown, and the trial reminder query skips these rows outright
+ * (`WHERE lk.expires_at IS NOT NULL`).
+ */
+export async function licenseExpiresAtForPlan(plan: string): Promise<string | null> {
   const row = await getDb().execute({
     sql: `SELECT billing_interval_unit, billing_interval_count, price_monthly, currency_symbol, label
           FROM plan_config WHERE plan=? LIMIT 1`,
     args: [plan],
   });
   const cfg = row.rows[0] as Record<string, unknown> | undefined;
-  const count = Math.max(1, Number(cfg?.billing_interval_count ?? 1));
   const unit = String(cfg?.billing_interval_unit ?? 'month');
+  if (unit === 'lifetime') return null;
+  const count = Math.max(1, Number(cfg?.billing_interval_count ?? 1));
   const d = new Date();
   if (unit === 'year') d.setUTCFullYear(d.getUTCFullYear() + count);
   else d.setUTCMonth(d.getUTCMonth() + count);
@@ -57,7 +66,7 @@ export async function activateLicenseForRestaurant(
   rid: string,
   plan: string,
   note: string,
-): Promise<{ licenseId: string; keyCode: string; expiresAt: string }> {
+): Promise<{ licenseId: string; keyCode: string; expiresAt: string | null }> {
   const db = getDb();
   const expiresAt = await licenseExpiresAtForPlan(plan);
   const licId = uid();
@@ -94,7 +103,7 @@ export type FulfillResult = {
   ownerEmail: string;
   plan: string;
   keyCode: string;
-  expiresAt: string;
+  expiresAt: string | null;
   licenseId: string;
 };
 
@@ -141,7 +150,7 @@ export async function fulfillLicensePurchaseRequest(requestId: string): Promise<
       subject: `[Cafyz] Renewal approved — ${restaurantName} (${plan.toUpperCase()})`,
       html: `<p>Your renewal for <b>${restaurantName}</b> has been <b style="color:#22c55e">approved</b>.</p>
              <p>Plan: <b>${plan.toUpperCase()}</b>${price ? ` · ${price}` : ''}<br/>
-             Active until: <b>${new Date(expiresAt).toLocaleString()}</b></p>
+             Active until: <b>${expiresAt ? new Date(expiresAt).toLocaleString() : 'Lifetime — no expiry'}</b></p>
              <p>Your license is already active — sign in to continue: <a href="${LOGIN_URL}">${LOGIN_URL}</a></p>
              <p style="font-family:monospace;font-size:14px">Key (for your records): <b>${keyCode}</b></p>`,
     }),

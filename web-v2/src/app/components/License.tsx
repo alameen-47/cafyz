@@ -5,7 +5,7 @@ import { toast } from "./Toast";
 import { licensesApi, billingApi, loadRazorpayCheckout, type ApiSubscriptionStatus, type ApiLicensePurchaseRequest } from "../../services/api";
 import { useAuth } from "../auth";
 import { usePlanConfig } from "../PlanConfigProvider";
-import { formatBillingSuffix, formatPlanPrice, panelLabelsFromConfig } from "../../services/planConfigStore";
+import { formatBillingSuffix, formatPlanPrice, isLifetimePlan, panelLabelsFromConfig } from "../../services/planConfigStore";
 
 const PLAN_STYLE: Record<string, { color: string; icon: typeof Shield; popular?: boolean }> = {
   basic: { color: "var(--cafyz-muted)", icon: Shield },
@@ -13,19 +13,17 @@ const PLAN_STYLE: Record<string, { color: string; icon: typeof Shield; popular?:
   premium: { color: "#a855f7", icon: Crown },
 };
 
+// Only used if the plan config cannot be fetched. Every plan ships every
+// module — the plans differ by licence term and support window, not features.
+const ALL_MODULES = [
+  "Point of Sale", "Menu Management", "Tables & Floor", "Kitchen Display (KDS)",
+  "Manager Dashboard", "Inventory", "Staff Management", "Analytics & Reports",
+  "Roles & Access", "Reservations", "License & Billing",
+];
 const FALLBACK_FEATURES: Record<string, { features: string[]; locked: string[] }> = {
-  basic: {
-    features: ["POS & Tables", "Menu Management", "Staff Management", "Email Support"],
-    locked: ["KDS", "Analytics", "Inventory", "Reservations"],
-  },
-  pro: {
-    features: ["Full POS & KDS", "Menu & Inventory", "Analytics & Reports", "Staff & Roles", "Priority Support"],
-    locked: ["Multi-branch", "Reservations", "Dedicated Manager"],
-  },
-  premium: {
-    features: ["Unlimited Branches", "Full Feature Access", "Reservations", "Dedicated Account Manager", "24/7 Support"],
-    locked: [],
-  },
+  basic:   { features: ALL_MODULES, locked: [] },
+  pro:     { features: ALL_MODULES, locked: [] },
+  premium: { features: ALL_MODULES, locked: [] },
 };
 
 export function License() {
@@ -85,7 +83,8 @@ export function License() {
         id,
         name: cfg?.label ?? id.charAt(0).toUpperCase() + id.slice(1),
         priceLabel: cfg ? formatPlanPrice(cfg) : "—",
-        period: cfg ? formatBillingSuffix(cfg).replace(/^\//, "") : "mo",
+        period: cfg ? formatBillingSuffix(cfg).replace(/^\//, "").trim() : "mo",
+        lifetime: cfg ? isLifetimePlan(cfg) : false,
         description: cfg?.description ?? "",
         color: style.color,
         icon: style.icon,
@@ -227,7 +226,11 @@ export function License() {
 
       {/* Plan comparison */}
       <div>
-        <h3 style={{ color: "var(--cafyz-text)", fontFamily: "var(--font-display)", fontWeight: 600, marginBottom: 16 }}>Compare Plans</h3>
+        <h3 style={{ color: "var(--cafyz-text)", fontFamily: "var(--font-display)", fontWeight: 600, marginBottom: 6 }}>Compare Plans</h3>
+        <p style={{ color: "var(--cafyz-muted)", fontSize: "0.78rem", marginBottom: 16 }}>
+          Every plan includes all modules. Plans differ only by licence length and how long
+          maintenance and support are included.
+        </p>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           {plans.map((plan, i) => {
             const Icon = plan.icon;
@@ -260,7 +263,7 @@ export function License() {
                 </div>
                 <div className="mb-4">
                   <span style={{ color: plan.color, fontFamily: "var(--font-mono)", fontWeight: 800, fontSize: "1.6rem" }}>{plan.priceLabel}</span>
-                  <span style={{ color: "var(--cafyz-muted)", fontSize: "0.75rem" }}>/{plan.period}</span>
+                  <span style={{ color: "var(--cafyz-muted)", fontSize: "0.75rem" }}>{plan.lifetime ? plan.period : `/${plan.period}`}</span>
                 </div>
                 {plan.description && (
                   <p style={{ color: "var(--cafyz-muted)", fontSize: "0.72rem", marginBottom: 10 }}>{plan.description}</p>
@@ -295,6 +298,11 @@ export function License() {
           })}
         </div>
       </div>
+
+      <p style={{ color: "var(--cafyz-muted)", fontSize: "0.72rem", lineHeight: 1.5 }}>
+        Maintenance and support cover the Cafyz software only. Hardware — including
+        Bluetooth and thermal printers, tablets, and other devices — is not covered.
+      </p>
 
       {/* License key activation */}
       <div className="rounded-2xl p-5 space-y-4" style={{ background: "var(--cafyz-surface)", border: "1px solid var(--cafyz-border)" }}>

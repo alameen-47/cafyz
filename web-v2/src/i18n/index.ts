@@ -1,19 +1,63 @@
-import { PHRASES_HI } from './phrases.hi';
-import { PHRASES_KN } from './phrases.kn';
-import { PHRASES_CATALOG_HI, PHRASES_CATALOG_KN } from './phrases.catalog';
+import {
+  SUPPORTED_LANGUAGES,
+  dirFor,
+  isSupportedLang,
+  languageMeta,
+  type AppLang,
+  type LanguageMeta,
+  type TextDir,
+} from './languages';
 
-export type AppLang = 'en' | 'hi' | 'kn';
+export type { AppLang, LanguageMeta, TextDir };
+export { SUPPORTED_LANGUAGES, dirFor, languageMeta };
 
-export const SUPPORTED_LANGUAGES: { code: AppLang; label: string; nativeLabel: string; short: string }[] = [
-  { code: 'en', label: 'English', nativeLabel: 'English', short: 'EN' },
-  { code: 'hi', label: 'Hindi', nativeLabel: 'हिन्दी', short: 'हि' },
-  { code: 'kn', label: 'Kannada', nativeLabel: 'ಕನ್ನಡ', short: 'ಕ' },
-];
-
-const PHRASE_MAP: Record<Exclude<AppLang, 'en'>, Record<string, string>> = {
-  hi: { ...PHRASES_HI, ...PHRASES_CATALOG_HI },
-  kn: { ...PHRASES_KN, ...PHRASES_CATALOG_KN },
+/**
+ * Phrase bundles are code-split and fetched on demand.
+ *
+ * Eleven languages inlined would add roughly a megabyte to the entry chunk for
+ * strings all but one user never sees. Each bundle is a separate dynamic import,
+ * so a visitor downloads English plus at most their own language.
+ */
+const LOADERS: Record<Exclude<AppLang, 'en'>, () => Promise<Record<string, string>>> = {
+  hi: async () => {
+    const [base, cat] = await Promise.all([import('./phrases.hi'), import('./phrases.catalog')]);
+    return { ...base.PHRASES_HI, ...cat.PHRASES_CATALOG_HI };
+  },
+  kn: async () => {
+    const [base, cat] = await Promise.all([import('./phrases.kn'), import('./phrases.catalog')]);
+    return { ...base.PHRASES_KN, ...cat.PHRASES_CATALOG_KN };
+  },
+  ar: async () => (await import('./phrases.ar')).PHRASES_AR,
+  ur: async () => (await import('./phrases.ur')).PHRASES_UR,
+  bn: async () => (await import('./phrases.bn')).PHRASES_BN,
+  te: async () => (await import('./phrases.te')).PHRASES_TE,
+  mr: async () => (await import('./phrases.mr')).PHRASES_MR,
+  ta: async () => (await import('./phrases.ta')).PHRASES_TA,
+  gu: async () => (await import('./phrases.gu')).PHRASES_GU,
+  ml: async () => (await import('./phrases.ml')).PHRASES_ML,
 };
+
+/** Bundles already resolved. Missing entry = fall back to English. */
+const loadedPhrases: Partial<Record<AppLang, Record<string, string>>> = {};
+const inflight: Partial<Record<AppLang, Promise<void>>> = {};
+
+/** Fetch a language's phrases. Safe to call repeatedly; resolves immediately once cached. */
+export function loadLanguage(lang: AppLang): Promise<void> {
+  if (lang === 'en' || loadedPhrases[lang]) return Promise.resolve();
+  const existing = inflight[lang];
+  if (existing) return existing;
+  const task = LOADERS[lang]()
+    .then((map) => { loadedPhrases[lang] = map; })
+    .catch(() => { /* leave unloaded — translatePhrase falls back to English */ })
+    .finally(() => { delete inflight[lang]; });
+  inflight[lang] = task;
+  return task;
+}
+
+/** True once a language's phrases are in memory (English is always ready). */
+export function isLanguageReady(lang: AppLang): boolean {
+  return lang === 'en' || !!loadedPhrases[lang];
+}
 
 const STORAGE_KEY = 'cafyz_language_code';
 
@@ -21,9 +65,9 @@ const SKIP_TAGS = new Set(['SCRIPT', 'STYLE', 'SVG', 'PATH', 'CODE', 'PRE']);
 const NUMERIC_ONLY = /^[\d\s%$₹€£.,:;+\-()/'"⭐]+$/;
 
 export function normalizeLangCode(code?: string | null): AppLang {
-  const raw = String(code ?? '').trim().toLowerCase();
-  if (raw === 'hi' || raw === 'kn') return raw;
-  return 'en';
+  // Accept BCP-47 tags too ("ar-AE", "hi_IN") so device/browser locales resolve.
+  const raw = String(code ?? '').trim().toLowerCase().replace('_', '-').split('-')[0];
+  return isSupportedLang(raw) ? raw : 'en';
 }
 
 export function getActiveLanguageCode(fallback: AppLang = 'en'): AppLang {
@@ -39,23 +83,50 @@ export function setActiveLanguageCode(code?: string | null): void {
 /** Translate a phrase or key; returns English when no translation exists. */
 export function translatePhrase(text: string, language: AppLang): string {
   if (!text || language === 'en') return text;
-  const map = PHRASE_MAP[language];
+  const map = loadedPhrases[language];
+  // Bundle not fetched yet (or failed) — English is the fallback, never a blank.
+  if (!map) return text;
   const trimmed = text.trim();
   if (map[trimmed]) return map[trimmed];
   if (map[text]) return map[text];
 
+  // Fall back to replacing known phrases inside a longer string, longest first.
+  // Matches must sit on word boundaries: without that, "Total" hits inside
+  // "Daily Totals" and yields half-translated text like "Daily الإجماليs".
   let out = text;
   const keys = Object.keys(map).sort((a, b) => b.length - a.length);
   for (const key of keys) {
     const translated = map[key];
-    if (!translated || !out.includes(key)) continue;
-    out = out.split(key).join(translated);
+    // Very short keys ("All", "Add") collide constantly inside longer words.
+    if (!translated || key.length < 4 || !out.includes(key)) continue;
+    out = replaceOnWordBoundary(out, key, translated);
+  }
+  return out;
+}
+
+const WORD_CHAR = /[\p{L}\p{N}]/u;
+
+/** Replace every occurrence of `key` not glued to a letter or digit either side. */
+function replaceOnWordBoundary(haystack: string, key: string, replacement: string): string {
+  let out = '';
+  let i = 0;
+  while (i < haystack.length) {
+    const at = haystack.indexOf(key, i);
+    if (at === -1) { out += haystack.slice(i); break; }
+    const before = at === 0 ? '' : haystack[at - 1];
+    const after = haystack[at + key.length] ?? '';
+    const bounded = !WORD_CHAR.test(before) && !WORD_CHAR.test(after);
+    out += haystack.slice(i, at) + (bounded ? replacement : key);
+    i = at + key.length;
   }
   return out;
 }
 
 function shouldSkipElement(el: HTMLElement): boolean {
   if (el.closest('[data-i18n-ignore]')) return true;
+  // Third-party islands (e.g. Google's rendered sign-in button) own their own
+  // localisation; rewriting their markup corrupts it.
+  if (el.closest('[data-i18n-skip], [translate="no"]')) return true;
   if (SKIP_TAGS.has(el.tagName)) return true;
   return false;
 }
@@ -65,12 +136,12 @@ function storeAndTranslate(el: HTMLElement, language: AppLang): void {
   if (!raw || raw.length > 180 || NUMERIC_ONLY.test(raw)) return;
 
   let src = el.getAttribute('data-i18n-src');
-  if (!src || (language === 'en' && raw !== translatePhrase(src, 'hi') && raw !== translatePhrase(src, 'kn'))) {
-    // Refresh source when React re-renders new English copy.
-    if (!src || language === 'en' || raw === src || !translatePhrase(raw, 'hi').includes(raw.slice(0, 3))) {
-      src = raw;
-      el.setAttribute('data-i18n-src', src);
-    }
+  // Refresh the stored source when React renders new English copy. `raw` is a
+  // translation (not new source) only if it differs from what we'd render for
+  // the active language, so compare against that rather than a fixed language.
+  if (!src || (language === 'en' && raw !== translatePhrase(src, language))) {
+    src = raw;
+    el.setAttribute('data-i18n-src', src);
   }
 
   const translated = translatePhrase(src, language);
@@ -79,14 +150,34 @@ function storeAndTranslate(el: HTMLElement, language: AppLang): void {
   } else if (el.textContent !== translated) {
     el.textContent = translated;
   }
+
+  // In an RTL document, a still-English string is reordered by the bidi
+  // algorithm when it starts with a digit or symbol — "7-Day Revenue" renders
+  // as "Day Revenue-7", and a clock as "PM 05:03". Marking untranslated leaves
+  // dir="auto" lets the browser infer LTR from their first strong character.
+  // Only touch elements we own, so an author-set dir is never overwritten.
+  if (dirFor(language) === 'rtl' && translated === src) {
+    if (el.getAttribute('dir') !== 'auto' && !el.hasAttribute('data-i18n-dir')) {
+      el.setAttribute('dir', 'auto');
+      el.setAttribute('data-i18n-dir', 'auto');
+    }
+  } else if (el.getAttribute('data-i18n-dir') === 'auto') {
+    el.removeAttribute('dir');
+    el.removeAttribute('data-i18n-dir');
+  }
 }
 
 export function applyLanguageToDocument(language: AppLang, root?: HTMLElement | null): void {
   const target = root ?? document.body;
   if (!target || typeof document === 'undefined') return;
 
+  const dir = dirFor(language);
   document.documentElement.lang = language;
-  document.documentElement.classList.remove('lang-en', 'lang-hi', 'lang-kn');
+  document.documentElement.dataset.i18nDir = dir;
+  document.documentElement.dir = dir;
+  // Some layout is easier to fix with a hook than with logical properties alone.
+  document.documentElement.classList.toggle('rtl', dir === 'rtl');
+  SUPPORTED_LANGUAGES.forEach((l) => document.documentElement.classList.remove(`lang-${l.code}`));
   document.documentElement.classList.add(`lang-${language}`);
 
   // Leaf elements (buttons, labels, headings, table cells, options).

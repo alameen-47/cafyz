@@ -73,7 +73,7 @@ function TableCard({ table, onClick }: { table: TableData; onClick: () => void }
       whileHover={{ scale: 1.02 }}
       whileTap={{ scale: 0.97 }}
       onClick={onClick}
-      className="rounded-2xl p-4 text-left w-full transition-all"
+      className="rounded-2xl p-4 text-start w-full transition-all"
       style={{
         background: cfg.bg,
         border: `1px solid ${cfg.border}`,

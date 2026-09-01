@@ -96,8 +96,10 @@ export function formatPlanPrice(cfg: ApiPlanConfig): string {
 export function formatBillingSuffix(cfg: ApiPlanConfig): string {
   const count = cfg.billing_interval_count ?? 1;
   const unit = cfg.billing_interval_unit ?? 'month';
+  // A lifetime plan is a one-off purchase, so it has no "per period" suffix.
+  if (unit === 'lifetime') return ' one-time';
   if (count === 1) return unit === 'year' ? '/yr' : '/mo';
-  if (unit === 'year') return count === 1 ? '/yr' : `/${count} yrs`;
+  if (unit === 'year') return `/${count} yrs`;
   return `/${count} mo`;
 }
 
@@ -105,8 +107,14 @@ export function formatBillingSuffix(cfg: ApiPlanConfig): string {
 export function formatBillingPeriod(cfg: ApiPlanConfig): string {
   const count = cfg.billing_interval_count ?? 1;
   const unit = cfg.billing_interval_unit ?? 'month';
+  if (unit === 'lifetime') return 'lifetime';
   const label = unit === 'year' ? 'year' : 'month';
   return count === 1 ? label : `${count} ${label}s`;
+}
+
+/** True when the plan never expires. */
+export function isLifetimePlan(cfg: ApiPlanConfig): boolean {
+  return (cfg.billing_interval_unit ?? 'month') === 'lifetime';
 }
 
 export function panelLabelsFromConfig(cfg: ApiPlanConfig): string[] {

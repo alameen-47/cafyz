@@ -107,7 +107,7 @@ function CartPanel({
           <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: status.color }} />
           <span style={{ color: status.color, fontSize: "0.72rem", fontWeight: 600 }}>{status.label}</span>
           {isParcel && (
-            <span className="ml-1 px-1.5 py-0.5 rounded text-xs flex-shrink-0"
+            <span className="ms-1 px-1.5 py-0.5 rounded text-xs flex-shrink-0"
               style={{ background: "rgba(0,198,255,0.15)", color: "#00c6ff" }}>Parcel</span>
           )}
         </div>
@@ -153,7 +153,7 @@ function CartPanel({
               style={{ borderColor: "rgba(30,127,255,0.08)", color: "var(--cafyz-muted)", fontSize: "0.65rem", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.04em" }}>
               <span>Qty</span>
               <span>Item</span>
-              <span className="text-right">Amount</span>
+              <span className="text-end">Amount</span>
             </div>
             <AnimatePresence initial={false}>
               {cart.map(item => (
@@ -185,13 +185,13 @@ function CartPanel({
                   </div>
                   <div className="min-w-0">
                     <p style={{ color: "var(--cafyz-text)", fontSize: "0.82rem", fontWeight: 500, lineHeight: 1.3 }} className="truncate">
-                      <span className="mr-1.5" aria-hidden>{item.emoji}</span>{item.name}
+                      <span className="me-1.5" aria-hidden>{item.emoji}</span>{item.name}
                     </p>
                     <p style={{ color: "var(--cafyz-muted)", fontSize: "0.68rem", marginTop: 2 }}>
                       {formatMoney(cur, item.price)} each
                     </p>
                   </div>
-                  <div className="text-right flex flex-col items-end gap-1">
+                  <div className="text-end flex flex-col items-end gap-1">
                     <span style={{ color: "var(--cafyz-text)", fontFamily: "var(--font-mono)", fontWeight: 700, fontSize: "0.82rem" }}>
                       {formatMoney(cur, item.price * item.qty)}
                     </span>
@@ -236,7 +236,7 @@ function CartPanel({
               <AnimatePresence initial={false}>
                 {breakdownOpen && (
                   <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }}
-                    className="overflow-hidden space-y-1 pl-1">
+                    className="overflow-hidden space-y-1 ps-1">
                     {serviceRate > 0 && (
                       <div className="flex justify-between">
                         <span style={{ color: "var(--cafyz-muted)", fontSize: "0.72rem" }}>Service ({serviceRate}%)</span>
@@ -389,7 +389,7 @@ function OpenBillsStrip({
                   border: `1px solid ${isActive ? "rgba(30,127,255,0.4)" : "var(--cafyz-border)"}`,
                   minWidth: 132,
                 }}>
-                <div className="text-left min-w-0 flex-1">
+                <div className="text-start min-w-0 flex-1">
                   <p className="truncate" style={{ color: "var(--cafyz-text)", fontSize: "0.8rem", fontWeight: 700 }}>{b.table_name}</p>
                   <p style={{ color: "var(--cafyz-muted)", fontSize: "0.68rem" }}>
                     {b.items} item{b.items !== 1 ? "s" : ""} · {b.since}
@@ -423,14 +423,14 @@ function MobileBillFab({
       exit={{ opacity: 0, y: 16 }}
       onClick={onOpen}
       aria-label={hasItems ? "View bill" : "Open bill"}
-      className="md:hidden fixed right-4 z-30 pos-fab-bottom flex items-center gap-2.5 pl-3.5 pr-4 py-3 rounded-2xl shadow-2xl min-h-[52px] max-w-[calc(100vw-2rem)]"
+      className="md:hidden fixed right-4 z-30 pos-fab-bottom flex items-center gap-2.5 ps-3.5 pe-4 py-3 rounded-2xl shadow-2xl min-h-[52px] max-w-[calc(100vw-2rem)]"
       style={{ background: "linear-gradient(135deg, #1e7fff, #00c6ff)", boxShadow: "0 8px 24px rgba(30,127,255,0.4)" }}
     >
       <span className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
         style={{ background: "rgba(255,255,255,0.18)" }}>
         <ShoppingCart size={18} className="text-white" />
       </span>
-      <div className="text-left min-w-0 flex-1">
+      <div className="text-start min-w-0 flex-1">
         <p className="truncate" style={{ color: "var(--cafyz-on-gradient)", fontWeight: 700, fontSize: "0.82rem", lineHeight: 1.2 }}>
           {hasItems ? "View bill" : "Open bill"}
         </p>
@@ -879,7 +879,7 @@ export function POS() {
               const inCart = cart.find(c => c.id === item.id);
               return (
                 <motion.button key={item.id} whileTap={{ scale: 0.94 }} onClick={() => addToCart(item)}
-                  className="rounded-2xl p-3 text-left relative transition-all"
+                  className="rounded-2xl p-3 text-start relative transition-all"
                   style={{
                     background: inCart ? "rgba(30,127,255,0.08)" : "var(--cafyz-surface)",
                     border: `1px solid ${inCart ? "rgba(30,127,255,0.25)" : "rgba(30,127,255,0.08)"}`,

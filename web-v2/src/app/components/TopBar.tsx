@@ -290,7 +290,7 @@ export function TopBar({ active, onMobileMenuOpen, onNavigate, onLogout, role, p
                       <button
                         key={`${result.type}-${result.id}`}
                         onMouseDown={e => { e.preventDefault(); handleResultClick(result); }}
-                        className="w-full flex items-center gap-3 px-4 py-2.5 text-left transition-all hover:bg-[var(--cafyz-surface-hover)]"
+                        className="w-full flex items-center gap-3 px-4 py-2.5 text-start transition-all hover:bg-[var(--cafyz-surface-hover)]"
                       >
                         <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
                           style={{ background: `${color}18` }}>
@@ -383,7 +383,7 @@ export function TopBar({ active, onMobileMenuOpen, onNavigate, onLogout, role, p
             style={{ background: "linear-gradient(135deg, #1e7fff, #00c6ff)", boxShadow: "0 0 10px rgba(30,127,255,0.35)" }}>
             <span style={{ color: "var(--cafyz-text-strong)", fontSize: "0.65rem", fontWeight: 800 }}>{initials}</span>
           </div>
-          <div className="hidden md:block text-left">
+          <div className="hidden md:block text-start">
             <p style={{ color: "var(--cafyz-text)", fontSize: "0.78rem", fontWeight: 600, lineHeight: 1.2 }}>{userName}</p>
             <p style={{ color: "var(--cafyz-muted)", fontSize: "0.62rem", textTransform: "capitalize" }}>{founderUser ? "Super Admin" : role}</p>
           </div>

@@ -66,7 +66,7 @@ export async function licenseRenewalAction(req: AuthRequest, res: import('expres
           'Renewal approved',
           `<p>Renewal for <strong>${escHtml(result.restaurantName)}</strong> is approved.</p>
            <p>Plan: <strong>${escHtml(result.plan.toUpperCase())}</strong><br/>
-           Active until: <strong>${escHtml(new Date(result.expiresAt).toLocaleString())}</strong></p>
+           Active until: <strong>${escHtml(result.expiresAt ? new Date(result.expiresAt).toLocaleString() : 'Lifetime — no expiry')}</strong></p>
            <p>The owner (${escHtml(result.ownerEmail)}) has been emailed. License is active immediately.</p>`,
         ));
       } catch (err) {

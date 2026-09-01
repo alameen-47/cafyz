@@ -211,7 +211,7 @@ function HorizontalBarChart({ data, cur = "₹" }: { data: ItemPoint[]; cur?: st
         const pct = (item.revenue / max) * 100;
         return (
           <div key={item.name + i} className="flex items-center gap-3">
-            <span className="text-right flex-shrink-0" style={{ color: "var(--cafyz-text-secondary)", fontSize: "0.72rem", width: 140, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            <span className="text-end flex-shrink-0" style={{ color: "var(--cafyz-text-secondary)", fontSize: "0.72rem", width: 140, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
               {item.name}
             </span>
             <div className="flex-1 h-3 rounded-full overflow-hidden" style={{ background: "var(--cafyz-accent-bg)" }}>

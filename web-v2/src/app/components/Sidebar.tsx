@@ -164,7 +164,7 @@ export function Sidebar({
                         <AnimatePresence>
                           {!collapsed && (
                             <motion.span initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                              className="flex-1 text-left truncate text-sm font-medium"
+                              className="flex-1 text-start truncate text-sm font-medium"
                               style={{ fontFamily: "var(--font-display)", color: isActive ? "var(--cafyz-text)" : "var(--cafyz-muted)" }}>
                               {item.label}
                             </motion.span>

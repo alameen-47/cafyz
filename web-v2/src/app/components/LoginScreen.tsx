@@ -383,7 +383,7 @@ export function LoginScreen({ onLogin }: { onLogin?: () => void }) {
           <AnimatePresence mode="wait" initial={false}>
             {authState === "login" && (
               <motion.div key="login" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -16 }} className="space-y-4 sm:space-y-6">
-                <div className="text-center md:text-left">
+                <div className="text-center md:text-start">
                   <h2 className="text-xl sm:text-[1.6rem]" style={{ fontFamily: "var(--font-display)", fontWeight: 700, color: "#e8eef8" }}>{t("Welcome back")}</h2>
                   <p style={{ color: "#6b82a0", fontSize: "0.8rem", marginTop: 4 }}>{t("Sign in to your Cafyz account")}</p>
                 </div>
@@ -680,7 +680,7 @@ export function LoginScreen({ onLogin }: { onLogin?: () => void }) {
                       key={a.restaurant_id}
                       onClick={() => chooseGoogleAccount(a.restaurant_id)}
                       disabled={googleBusy}
-                      className="w-full px-4 py-3 rounded-xl flex items-center justify-between gap-3 text-left transition-all hover:opacity-90"
+                      className="w-full px-4 py-3 rounded-xl flex items-center justify-between gap-3 text-start transition-all hover:opacity-90"
                       style={{ background: "var(--cafyz-surface, rgba(255,255,255,0.04))", border: "1px solid var(--cafyz-border, rgba(255,255,255,0.12))", opacity: googleBusy ? 0.6 : 1 }}
                     >
                       <span>

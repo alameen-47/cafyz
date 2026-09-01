@@ -63,17 +63,24 @@ export async function setupTestDb() {
 
   // Plan config (required for license key tests)
   const plans = [
-    { plan: 'basic',   label: 'Basic',   price: 49,  panels: JSON.stringify(['pos','menu','waiter','license']) },
-    { plan: 'pro',     label: 'Pro',     price: 99,  panels: JSON.stringify(['pos','menu','waiter','kds','manager','inventory','staff','reports','roles','license']) },
-    { plan: 'premium', label: 'Premium', price: 199, panels: JSON.stringify(['pos','menu','waiter','kds','manager','inventory','staff','reports','roles','license']) },
+    { plan: 'basic',   label: '1 Year',   price: 5999,  unit: 'year',     count: 1 },
+    { plan: 'pro',     label: '2 Years',  price: 12999, unit: 'year',     count: 2 },
+    { plan: 'premium', label: 'Lifetime', price: 29999, unit: 'lifetime', count: 1 },
   ];
+  // Every plan carries every module — plans differ by licence term only.
+  const ALL_PANELS = JSON.stringify([
+    'pos','menu','waiter','kds','manager','inventory','staff','reports','roles','reservations','license',
+  ]);
   for (const p of plans) {
     // runMigrations() already seeds plan_config (INSERT OR IGNORE), so use
-    // OR REPLACE here to set the exact panel config these tests expect without
+    // OR REPLACE here to set the exact config these tests expect without
     // colliding on the plan primary key.
     await db.execute({
-      sql: `INSERT OR REPLACE INTO plan_config(plan,panels_json,label,description,price_monthly) VALUES(?,?,?,?,?)`,
-      args: [p.plan, p.panels, p.label, '', p.price],
+      sql: `INSERT OR REPLACE INTO plan_config(
+              plan,panels_json,label,description,price_monthly,
+              currency_symbol,billing_interval_unit,billing_interval_count)
+            VALUES(?,?,?,?,?,?,?,?)`,
+      args: [p.plan, ALL_PANELS, p.label, '', p.price, '₹', p.unit, p.count],
     });
   }
 

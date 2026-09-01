@@ -1,0 +1,74 @@
+/* ──────────────────────────────────────────────────────────────────────────────
+   RTL support (Arabic, Urdu)
+
+   Layout mirroring is handled by CSS logical properties — the codebase uses
+   ms-/me-/ps-/pe-/text-start/text-end, which flip automatically with `dir`.
+   This file covers only what logical properties cannot reach: physical
+   transforms, glyph-bearing icons, and scripts that need more line height.
+   ────────────────────────────────────────────────────────────────────────── */
+
+/* Arabic and Urdu ascenders/descenders clip at Latin line heights. */
+:root.lang-ar,
+:root.lang-ur {
+  --cafyz-line-height-tight: 1.55;
+}
+:root.lang-ar body,
+:root.lang-ur body {
+  line-height: 1.7;
+}
+
+/* Nastaʿlīq-style rendering for Urdu where the platform offers it. */
+:root.lang-ur body {
+  font-family: 'Noto Nastaliq Urdu', 'Jameel Noori Nastaleeq', system-ui, sans-serif;
+}
+:root.lang-ar body {
+  font-family: 'Noto Sans Arabic', 'Segoe UI', system-ui, sans-serif;
+}
+
+/* Directional glyphs must point the other way; symmetric icons must not flip. */
+:root.rtl .rtl-flip,
+:root.rtl [data-rtl-flip] {
+  transform: scaleX(-1);
+}
+
+/* Chevrons/arrows inside nav, accordions, breadcrumbs and back buttons. */
+:root.rtl [data-slot='accordion-trigger'] > svg,
+:root.rtl [data-slot='select-trigger'] > svg,
+:root.rtl [data-slot='breadcrumb-separator'] > svg,
+:root.rtl [data-slot='pagination-previous'] > svg,
+:root.rtl [data-slot='pagination-next'] > svg {
+  transform: scaleX(-1);
+}
+
+/* Numbers, prices, times and codes stay LTR even inside RTL copy, otherwise
+   "12:30" and "₹5,999" render with their parts reordered. */
+:root.rtl .num,
+:root.rtl [data-numeric],
+:root.rtl time,
+:root.rtl code,
+:root.rtl kbd {
+  direction: ltr;
+  unicode-bidi: isolate;
+}
+
+/* Inputs that hold non-linguistic values keep LTR entry. */
+:root.rtl input[type='email'],
+:root.rtl input[type='tel'],
+:root.rtl input[type='url'],
+:root.rtl input[type='number'],
+:root.rtl input[type='password'] {
+  direction: ltr;
+  text-align: start;
+}
+
+/* Recharts renders absolutely-positioned tooltips that ignore logical props. */
+:root.rtl .recharts-wrapper,
+:root.rtl .recharts-surface {
+  direction: ltr;
+}
+
+/* Thermal receipts are printed by the printer's own codepage; never mirror. */
+:root.rtl .receipt-preview {
+  direction: ltr;
+  text-align: start;
+}

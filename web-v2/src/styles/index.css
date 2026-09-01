@@ -3,3 +3,4 @@
 @import './theme.css';
 @import './theme-modes.css';
 @import './native-shell.css';
+@import "./rtl.css";
