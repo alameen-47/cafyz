@@ -1,6 +1,9 @@
 ext {
     minSdkVersion = 23
-    compileSdkVersion = 35
+    // 36 is required by androidx.browser:1.9.0, pulled in by the Google
+    // sign-in plugin. targetSdk stays 35 — compileSdk only allows newer APIs,
+    // it does not opt the app into new runtime behaviour.
+    compileSdkVersion = 36
     targetSdkVersion = 35
     androidxActivityVersion = '1.9.2'
     androidxAppCompatVersion = '1.7.0'

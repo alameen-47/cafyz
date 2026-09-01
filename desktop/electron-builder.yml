@@ -1,0 +1,38 @@
+# Paths here are resolved from the project root (--project .), not from this file.
+appId: com.ametronyx.cafyz
+productName: Cafyz
+copyright: Born from Innovation. Built by Ametronyx.
+directories:
+  output: releases/desktop
+  buildResources: desktop/build
+# Ship only the shell entry and the manifest — the renderer rides in extraResources.
+files:
+  - package.json
+  - desktop/main.cjs
+  - '!**/*.map'
+extraResources:
+  - from: web-v2/dist
+    to: web-v2/dist
+mac:
+  category: public.app-category.business
+  icon: desktop/build/icon.icns
+  target:
+    - target: dmg
+      arch: [arm64, x64]
+  # Unsigned builds must keep hardened runtime off or macOS kills them on launch.
+  hardenedRuntime: false
+  gatekeeperAssess: false
+win:
+  icon: desktop/build/icon.png
+  target:
+    - target: nsis
+      arch: [x64]
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  shortcutName: Cafyz
+linux:
+  target: [AppImage]
+  category: Office

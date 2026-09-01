@@ -2,7 +2,7 @@
   "name": "cafyz",
   "version": "1.0.0",
   "private": true,
-  "description": "Cafyz restaurant OS — web-v2 UI for web and mobile (Capacitor)",
+  "description": "Cafyz restaurant OS \u2014 web-v2 UI for web and mobile (Capacitor)",
   "author": "Cafyz",
   "scripts": {
     "dev": "concurrently --names \"API,WEB\" --prefix-colors \"cyan,magenta\" \"npm run api\" \"npm run web-v2\"",
@@ -27,7 +27,11 @@
     "capture:ios-screenshots": "node scripts/capture-ios-screenshots.mjs",
     "store:all": "bash scripts/sync-store-release.sh && node scripts/capture-android-screenshots.mjs && node scripts/capture-ios-screenshots.mjs && bash scripts/sync-store-release.sh",
     "lint": "eslint web-v2 capacitor.config.ts scripts",
-    "postinstall": "patch-package"
+    "postinstall": "patch-package",
+    "desktop:dev": "npm run build:desktop && electron .",
+    "build:desktop": "vite build --config web-v2/vite.config.ts --mode desktop",
+    "desktop:mac": "npm run build:desktop && electron-builder --mac --config desktop/electron-builder.yml --project .",
+    "desktop:win": "npm run build:desktop && electron-builder --win --config desktop/electron-builder.yml --project ."
   },
   "dependencies": {
     "@capacitor-community/bluetooth-le": "^8.2.0",
@@ -49,6 +53,8 @@
     "@types/react-dom": "^19.2.0",
     "@vitejs/plugin-react": "^4.3.4",
     "concurrently": "^9.2.1",
+    "electron": "^41.7.1",
+    "electron-builder": "^26.15.3",
     "eslint": "^8.19.0",
     "patch-package": "^8.0.1",
     "playwright": "^1.52.0",
@@ -60,5 +66,6 @@
   },
   "engines": {
     "node": ">= 20.0.0"
-  }
+  },
+  "main": "desktop/main.cjs"
 }

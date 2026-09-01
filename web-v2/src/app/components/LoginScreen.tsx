@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from "motion/react";
 import { Eye, EyeOff, ArrowRight, Phone, Lock, Mail, Delete, ChevronRight, Star, Store, User, CheckCircle2 } from "lucide-react";
 import { toast } from "./Toast";
 import { useAuth, type GoogleChoice } from "../auth";
+import { AmetronyxCredit } from "./AmetronyxCredit";
 import { getNativeGoogleIdToken, googleSignInConfig, isNativeShell, mountGoogleTrigger, type GoogleConfig } from "../../services/googleSignIn";
 import { authApi, inquiryApi, type ApiPlanConfig } from "../../services/api";
 import { usePlanConfig } from "../PlanConfigProvider";
@@ -776,6 +777,8 @@ export function LoginScreen({ onLogin }: { onLogin?: () => void }) {
                 {" · "}
                 <a href="/support" style={{ color: "#6b82a0" }}>Support</a>
               </p>
+
+              <AmetronyxCredit className="pt-3 pb-1" />
               </div>
             </div>
           </div>

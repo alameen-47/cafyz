@@ -1,0 +1,57 @@
+# Builds the desktop installers.
+#
+# Windows cannot be built on macOS (electron-builder needs a Windows toolchain,
+# or wine, which is unreliable for NSIS). This runs the Windows build on a real
+# Windows runner and the macOS build on a real Mac, then uploads both.
+#
+# Run it from the Actions tab ("Run workflow"), or push a v* tag.
+name: Desktop installers
+
+on:
+  workflow_dispatch:
+  push:
+    tags: ['v*']
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            platform: win
+            artifact: Cafyz-windows
+            pattern: 'releases/desktop/*.exe'
+          - os: macos-latest
+            platform: mac
+            artifact: Cafyz-macos
+            pattern: 'releases/desktop/*.dmg'
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      # The bluetooth-printer plugin pins an older @capacitor/core peer.
+      - name: Install dependencies
+        run: npm ci --legacy-peer-deps
+
+      - name: Build renderer
+        run: npm run build:desktop
+
+      - name: Build installer
+        run: npx electron-builder --${{ matrix.platform }} --config desktop/electron-builder.yml --project .
+        env:
+          # Unsigned builds: skip signing rather than failing the job.
+          CSC_IDENTITY_AUTO_DISCOVERY: false
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: ${{ matrix.pattern }}
+          if-no-files-found: error
+          retention-days: 30

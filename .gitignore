@@ -112,3 +112,12 @@ backend/local/
 # App icon source archives (generated assets live in cap-ios / cap-android / web-v2/public)
 AppIcons*.zip
 
+
+# Desktop build output (installers are large; ship them via Releases/CI artifacts)
+releases/desktop/
+releases/ios/
+
+# Desktop icon build resources are inputs, not output — CI needs them to build.
+!desktop/build/
+!desktop/build/icon.icns
+!desktop/build/icon.png

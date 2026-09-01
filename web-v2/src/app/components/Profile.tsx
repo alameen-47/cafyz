@@ -7,6 +7,7 @@ import {
   Printer, ReceiptText, ChefHat, RefreshCw, CheckCircle2, AlertCircle,
 } from "lucide-react";
 import { toast } from "./Toast";
+import { AmetronyxCredit } from "./AmetronyxCredit";
 import { restaurantApi, publicApi, RESTAURANT_SETTINGS_CHANGED_EVENT, type ApiRestaurant } from "../../services/api";
 import {
   uploadRestaurantLogo,
@@ -891,6 +892,8 @@ export function Profile() {
       >
         <Save size={16} /> {saved ? "Saved!" : busy ? "Saving…" : "Save Changes"}
       </motion.button>
+
+      <AmetronyxCredit variant="full" className="pt-6 pb-2 opacity-90" />
     </div>
   );
 }

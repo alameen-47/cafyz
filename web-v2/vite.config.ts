@@ -20,6 +20,8 @@ function figmaAssetResolver() {
 }
 
 export default defineConfig(({ mode }) => {
+  // The Electron desktop shell serves dist over loopback HTTP, so the default
+  // absolute base is correct there — only Capacitor needs relative assets.
   const isCapacitor = mode === 'capacitor';
   const repoRoot = path.resolve(__dirname, '..');
   const hasFirebaseNative =
