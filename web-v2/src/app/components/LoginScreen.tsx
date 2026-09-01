@@ -1,8 +1,9 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Eye, EyeOff, ArrowRight, Phone, Lock, Mail, Delete, ChevronRight, Star, Store, User, CheckCircle2 } from "lucide-react";
 import { toast } from "./Toast";
-import { useAuth } from "../auth";
+import { useAuth, type GoogleChoice } from "../auth";
+import { getNativeGoogleIdToken, googleSignInConfig, isNativeShell, mountGoogleTrigger, type GoogleConfig } from "../../services/googleSignIn";
 import { authApi, inquiryApi, type ApiPlanConfig } from "../../services/api";
 import { usePlanConfig } from "../PlanConfigProvider";
 import { formatPlanPrice, formatBillingSuffix } from "../../services/planConfigStore";
@@ -11,7 +12,7 @@ import { useLanguage } from "../../i18n/LanguageProvider";
 import { CafyzLogo } from "./CafyzLogo";
 
 type AuthMethod = "password" | "pin" | "otp";
-type AuthState = "login" | "forgot" | "reset" | "otp-verify" | "inquiry" | "inquiry-sent";
+type AuthState = "login" | "forgot" | "reset" | "otp-verify" | "inquiry" | "inquiry-sent" | "google-choose";
 
 const stats = [
   { label: "Restaurants", value: "2,400+" },
@@ -89,9 +90,9 @@ function ActivityLoader({ label, sublabel }: { label: string; sublabel?: string 
 }
 
 export function LoginScreen({ onLogin }: { onLogin?: () => void }) {
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
   const { plans: planConfigs } = usePlanConfig();
-  const { loginEmail, loginPin, requestOtp, verifyOtp } = useAuth();
+  const { loginEmail, loginPin, requestOtp, verifyOtp, loginGoogle, loginGoogleSelect } = useAuth();
   const [method, setMethod] = useState<AuthMethod>("password");
   // If arriving from the reset email link (/login?mode=reset&token=…), mount
   // straight into the reset form — initialise here (not in an effect) so the
@@ -101,6 +102,14 @@ export function LoginScreen({ onLogin }: { onLogin?: () => void }) {
     return p.get("mode") === "reset" && p.get("token") ? "reset" : "login";
   });
   const [showPass, setShowPass] = useState(false);
+  // Google sign-in is advertised by the API, so it can be enabled or disabled
+  // without shipping a new web or native build.
+  const [googleCfg, setGoogleCfg] = useState<GoogleConfig | null>(null);
+  const googleEnabled = googleCfg?.enabled === true;
+  const [googleBusy, setGoogleBusy] = useState(false);
+  const [googleChoice, setGoogleChoice] = useState<GoogleChoice | null>(null);
+  const googleBtnRef = useRef<HTMLDivElement | null>(null);
+  const native = isNativeShell();
   const [email, setEmail] = useState("");
   const [pinLogin, setPinLogin] = useState("");
   const [password, setPassword] = useState("");
@@ -169,6 +178,62 @@ export function LoginScreen({ onLogin }: { onLogin?: () => void }) {
   };
 
   // Real backend login (email + password)
+  useEffect(() => {
+    let alive = true;
+    void googleSignInConfig().then((cfg) => {
+      if (!alive) return;
+      setGoogleCfg(cfg);
+    });
+    return () => { alive = false; };
+  }, []);
+
+  const completeGoogle = async (idToken: string) => {
+    setGoogleBusy(true);
+    try {
+      const res = await loginGoogle(idToken);
+      if (res) {                       // email maps to several restaurants
+        setGoogleChoice(res.choose);
+        setAuthState("google-choose");
+        return;
+      }
+      onLogin?.();
+    } catch { /* the API layer already surfaced the message */ }
+    finally { setGoogleBusy(false); }
+  };
+
+  // Native uses our own button + the system picker; web must use Google's
+  // rendered button (One Tap cannot be triggered reliably on click).
+  const submitGoogleNative = async () => {
+    if (!googleCfg) return;
+    setGoogleBusy(true);
+    try {
+      const idToken = await getNativeGoogleIdToken(googleCfg);
+      if (!idToken) return;            // user dismissed the picker
+      await completeGoogle(idToken);
+    } catch { /* the API layer already surfaced the message */ }
+    finally { setGoogleBusy(false); }
+  };
+
+  useEffect(() => {
+    if (native || !googleCfg?.enabled || authState !== "login") return;
+    const el = googleBtnRef.current;
+    if (!el) return;
+    void mountGoogleTrigger(el, googleCfg, (idToken) => { void completeGoogle(idToken); });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [native, googleCfg, authState]);
+
+  const chooseGoogleAccount = async (restaurantId: string) => {
+    if (!googleChoice) return;
+    setGoogleBusy(true);
+    try {
+      await loginGoogleSelect(googleChoice.selectionToken, restaurantId);
+      onLogin?.();
+    } catch {
+      setAuthState("login");
+      setGoogleChoice(null);
+    } finally { setGoogleBusy(false); }
+  };
+
   const submitPassword = async () => {
     if (!email.trim() || !password) { toast.error("Enter your email or mobile number and password"); return; }
     setLoading(true);
@@ -408,6 +473,62 @@ export function LoginScreen({ onLogin }: { onLogin?: () => void }) {
                   </motion.button>
                 )}
 
+                {googleEnabled && (
+                  <>
+                    <div className="flex items-center gap-3" aria-hidden="true">
+                      <span style={{ flex: 1, height: 1, background: "var(--cafyz-border, rgba(255,255,255,0.12))" }} />
+                      <span style={{ color: "#6b82a0", fontSize: "0.72rem" }}>{t("or")}</span>
+                      <span style={{ flex: 1, height: 1, background: "var(--cafyz-border, rgba(255,255,255,0.12))" }} />
+                    </div>
+
+                    {/* One visible design for both platforms. On web an invisible
+                        Google button is pinned on top (see mountGoogleTrigger);
+                        on native this button drives the system picker itself. */}
+                    <div className="relative w-full">
+                      <motion.button
+                        whileTap={{ scale: 0.98 }}
+                        onClick={native ? submitGoogleNative : undefined}
+                        disabled={googleBusy || loading}
+                        aria-label={t("Continue with Google")}
+                        className="w-full py-3 rounded-xl text-sm font-semibold flex items-center justify-center gap-2.5 transition-all"
+                        style={{
+                          background: "var(--cafyz-surface, rgba(255,255,255,0.05))",
+                          border: "1px solid var(--cafyz-border, rgba(255,255,255,0.14))",
+                          color: "var(--cafyz-text)",
+                          opacity: (googleBusy || loading) ? 0.6 : 1,
+                        }}
+                      >
+                        {googleBusy ? (
+                          <div className="w-4 h-4 border-2 rounded-full animate-spin"
+                               style={{ borderColor: "var(--cafyz-border)", borderTopColor: "#1e7fff" }} />
+                        ) : (
+                          <>
+                            <span className="flex items-center justify-center rounded-full"
+                                  style={{ width: 20, height: 20, background: "#fff", flexShrink: 0 }}>
+                              <svg width="13" height="13" viewBox="0 0 18 18" aria-hidden="true">
+                                <path fill="#4285F4" d="M17.64 9.2c0-.64-.06-1.25-.16-1.84H9v3.48h4.84a4.14 4.14 0 0 1-1.8 2.72v2.26h2.91c1.7-1.57 2.69-3.88 2.69-6.62z"/>
+                                <path fill="#34A853" d="M9 18c2.43 0 4.47-.8 5.96-2.18l-2.91-2.26c-.81.54-1.84.86-3.05.86-2.34 0-4.33-1.58-5.04-3.71H.96v2.33A9 9 0 0 0 9 18z"/>
+                                <path fill="#FBBC05" d="M3.96 10.71a5.41 5.41 0 0 1 0-3.42V4.96H.96a9 9 0 0 0 0 8.08l3-2.33z"/>
+                                <path fill="#EA4335" d="M9 3.58c1.32 0 2.5.45 3.44 1.35l2.58-2.58C13.46.89 11.43 0 9 0A9 9 0 0 0 .96 4.96l3 2.33C4.67 5.16 6.66 3.58 9 3.58z"/>
+                              </svg>
+                            </span>
+                            {t("Continue with Google")}
+                          </>
+                        )}
+                      </motion.button>
+
+                      {/* Google's real button, transparent, on top (web only). */}
+                      {!native && (
+                        <div
+                          ref={googleBtnRef}
+                          className="absolute inset-0"
+                          style={{ opacity: 0, cursor: "pointer" }}
+                        />
+                      )}
+                    </div>
+                  </>
+                )}
+
                 <p style={{ color: "#6b82a0", fontSize: "0.8rem", textAlign: "center" }}>
                   {t("New to Cafyz?")}{" "}
                   <button onClick={() => setAuthState("inquiry")} style={{ color: "#1e7fff", fontWeight: 600 }}>{t("Start free trial →")}</button>
@@ -539,6 +660,37 @@ export function LoginScreen({ onLogin }: { onLogin?: () => void }) {
                 <p style={{ color: "#6b82a0", fontSize: "0.72rem", textAlign: "center", lineHeight: 1.5 }}>
                   Already approved? Use the credentials from your approval email to sign in above.
                 </p>
+              </motion.div>
+            )}
+
+            {authState === "google-choose" && googleChoice && (
+              <motion.div key="google-choose" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -12 }} className="space-y-3 sm:space-y-4">
+                <div className="flex items-center justify-between">
+                  <button onClick={() => { setAuthState("login"); setGoogleChoice(null); }} style={{ color: "#6b82a0", fontSize: "0.8rem" }}>← {t("Back")}</button>
+                </div>
+                <div>
+                  <h2 style={{ color: "var(--cafyz-text)", fontSize: "1.15rem", fontWeight: 700 }}>{t("Choose an account")}</h2>
+                  <p style={{ color: "#6b82a0", fontSize: "0.8rem" }}>
+                    {t("That Google address is used by more than one restaurant.")}
+                  </p>
+                </div>
+                <div className="space-y-2">
+                  {googleChoice.accounts.map((a) => (
+                    <button
+                      key={a.restaurant_id}
+                      onClick={() => chooseGoogleAccount(a.restaurant_id)}
+                      disabled={googleBusy}
+                      className="w-full px-4 py-3 rounded-xl flex items-center justify-between gap-3 text-left transition-all hover:opacity-90"
+                      style={{ background: "var(--cafyz-surface, rgba(255,255,255,0.04))", border: "1px solid var(--cafyz-border, rgba(255,255,255,0.12))", opacity: googleBusy ? 0.6 : 1 }}
+                    >
+                      <span>
+                        <span style={{ color: "var(--cafyz-text)", fontSize: "0.9rem", fontWeight: 600, display: "block" }}>{a.restaurant_name}</span>
+                        <span style={{ color: "#6b82a0", fontSize: "0.75rem" }}>{a.name} · {a.role}</span>
+                      </span>
+                      <ArrowRight size={16} style={{ color: "#1e7fff", flexShrink: 0 }} />
+                    </button>
+                  ))}
+                </div>
               </motion.div>
             )}
 

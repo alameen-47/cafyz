@@ -7,7 +7,7 @@ import { requireRole } from '../middleware/rbac.js';
 import { activateLicenseForRestaurant, getPlanConfigSummary } from '../services/licensePurchaseFulfillment.js';
 import {
   createOrder,
-  isRazorpayConfigured,
+  isOnlinePaymentsEnabled,
   planCurrencyCode,
   razorpayKeyId,
   toSubunit,
@@ -27,7 +27,7 @@ const orderSchema = z.object({
 // POST /api/billing/order — owner/manager creates a Razorpay order for a paid plan.
 router.post('/order', requireAuth, requireRole('owner', 'manager'), async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
-    if (!isRazorpayConfigured()) {
+    if (!isOnlinePaymentsEnabled()) {
       res.status(503).json({ error: 'Online payments are not enabled yet. Please contact support to renew.', code: 'BILLING_DISABLED' });
       return;
     }

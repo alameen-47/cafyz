@@ -51,6 +51,10 @@ export default defineConfig(({ mode }) => {
               __dirname,
               'src/stubs/capacitor-bluetooth-printer.ts',
             ),
+            '@capgo/capacitor-social-login': path.resolve(
+              __dirname,
+              'src/stubs/capacitor-social-login.ts',
+            ),
           }
         : {}),
     },

@@ -16,6 +16,8 @@ import {
 import { resetPasswordUrl } from '../config/site.js';
 import { isEmailConfigured, sendMailReliable, smtpFrom } from '../services/email.js';
 import { isValidPhoneE164, normalizePhone, sendOtpSms } from '../services/sms.js';
+import { googleIosClientId, googleWebClientId, isGoogleAuthConfigured, verifyGoogleIdToken } from '../services/googleAuth.js';
+import jwt from 'jsonwebtoken';
 
 const router = Router();
 
@@ -648,6 +650,144 @@ router.delete('/account', requireAuth, async (req: AuthRequest, res, next) => {
     await db.execute({ sql: 'DELETE FROM users WHERE id=?', args: [userId] });
     invalidateUserAuthCache(userId);
     res.json({ ok: true, message: 'Your account has been permanently deleted.' });
+  } catch (e) { next(e); }
+});
+
+
+// ── Google Sign-In ─────────────────────────────────────────────────────────────
+// The client proves an email with a Google ID token; we map it to an existing
+// Cafyz account. Google sign-in never CREATES an account: a user only exists
+// inside a restaurant, and new restaurants come through the trial/inquiry flow.
+
+const GOOGLE_SELECT_TTL_SEC = 300;
+
+interface GoogleSelectClaims { email: string; purpose: 'google_select' }
+
+function signGoogleSelectToken(email: string): string {
+  return jwt.sign(
+    { email, purpose: 'google_select' } satisfies GoogleSelectClaims,
+    process.env.JWT_SECRET as string,
+    { expiresIn: GOOGLE_SELECT_TTL_SEC },
+  );
+}
+
+function sessionResponse(user: Record<string, unknown>) {
+  return {
+    status: 'ok' as const,
+    token: signTokenForUser(user),
+    restaurant_id: user.restaurant_id,
+    restaurant_name: user.restaurant_name,
+    restaurant_plan: user.restaurant_plan,
+    user: {
+      id: user.id, name: user.name, initials: user.initials, email: user.email,
+      phone: user.phone, role: user.role, access_json: user.access_json,
+      status: user.status, restaurant_id: user.restaurant_id,
+    },
+  };
+}
+
+// GET /api/auth/google/config — lets clients discover the mode without a rebuild.
+router.get('/google/config', (_req, res) => {
+  res.json({
+    enabled: isGoogleAuthConfigured(),
+    client_id: googleWebClientId(),
+    ios_client_id: googleIosClientId(),
+  });
+});
+
+// POST /api/auth/google — exchange a verified Google ID token for a session.
+router.post('/google', async (req, res, next) => {
+  try {
+    if (!isGoogleAuthConfigured()) {
+      res.status(503).json({ error: 'Google sign-in is not enabled.', code: 'GOOGLE_DISABLED' });
+      return;
+    }
+    const { id_token } = z.object({ id_token: z.string().min(16).max(8192) }).parse(req.body);
+
+    let identity;
+    try {
+      identity = await verifyGoogleIdToken(id_token);
+    } catch {
+      // Never echo the verifier's reason — it distinguishes "bad signature" from
+      // "wrong audience" and helps an attacker probe the configuration.
+      res.status(401).json({ error: 'Google sign-in failed. Please try again.' });
+      return;
+    }
+
+    const rows = await findUsersForLogin({ kind: 'email', value: identity.email });
+    const active = rows.rows.filter((r) => String((r as Record<string, unknown>).status) !== 'off');
+
+    if (!active.length) {
+      res.status(404).json({
+        error: 'No Cafyz account uses that Google address. Ask your owner to add you, or start a free trial.',
+        code: 'GOOGLE_NO_ACCOUNT',
+      });
+      return;
+    }
+
+    if (active.length > 1) {
+      // The same email can belong to accounts in several restaurants, and Google
+      // proves only the address — so the user picks which one to enter. This is
+      // a normal outcome, not an error, so it is a 200 with a discriminator.
+      res.json({
+        status: 'choose_account' as const,
+        selection_token: signGoogleSelectToken(identity.email),
+        accounts: active.map((r) => {
+          const u = r as Record<string, unknown>;
+          return {
+            restaurant_id: u.restaurant_id,
+            restaurant_name: u.restaurant_name,
+            role: u.role,
+            name: u.name,
+          };
+        }),
+      });
+      return;
+    }
+
+    const user = await issueLoginSession(getDb(), String((active[0] as Record<string, unknown>).id));
+    res.json(sessionResponse(user));
+  } catch (e) { next(e); }
+});
+
+// POST /api/auth/google/select — finish sign-in after the user picks a restaurant.
+router.post('/google/select', async (req, res, next) => {
+  try {
+    const { selection_token, restaurant_id } = z.object({
+      selection_token: z.string().min(16).max(4096),
+      restaurant_id: z.string().min(1).max(64),
+    }).parse(req.body);
+
+    let claims: GoogleSelectClaims;
+    try {
+      claims = jwt.verify(selection_token, process.env.JWT_SECRET as string) as GoogleSelectClaims;
+    } catch {
+      res.status(401).json({ error: 'That sign-in attempt expired. Please try again.' });
+      return;
+    }
+    if (claims.purpose !== 'google_select' || !claims.email) {
+      res.status(401).json({ error: 'That sign-in attempt expired. Please try again.' });
+      return;
+    }
+
+    // Re-resolve from the signed email — never trust a client-supplied identity.
+    const rows = await getDb().execute({
+      sql: `SELECT u.id, u.status FROM users u
+            WHERE LOWER(u.email)=? AND u.restaurant_id=? LIMIT 1`,
+      args: [claims.email, restaurant_id],
+    });
+    const row = rows.rows[0] as Record<string, unknown> | undefined;
+    if (!row) {
+      res.status(404).json({ error: 'That account is no longer available.' });
+      return;
+    }
+    if (String(row.status) === 'off') {
+      res.status(403).json({ error: 'This user is currently inactive. Contact your manager.' });
+      return;
+    }
+
+    const user = await issueLoginSession(getDb(), String(row.id));
+    res.json(sessionResponse(user));
   } catch (e) { next(e); }
 });
 

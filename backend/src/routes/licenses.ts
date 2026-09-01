@@ -17,6 +17,7 @@ import {
   verifyActionToken,
 } from '../services/licensePurchaseFulfillment.js';
 import { escHtml, requestActionHtml } from '../utils/requestActionHtml.js';
+import { isOnlinePaymentsEnabled } from '../services/razorpay.js';
 
 const router = Router();
 const LOGIN_URL = appPath('/login');
@@ -163,6 +164,8 @@ router.get('/mine', requireAuth, async (req: AuthRequest, res, next) => {
       trial_days_left: daysLeft,
       purchase_url: appPath('/license'),
       founder_email: ADMIN_EMAIL,
+      // false → the client asks the founder by email instead of opening checkout
+      online_payments: isOnlinePaymentsEnabled(),
     });
   } catch (e) { next(e); }
 });

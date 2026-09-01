@@ -2,19 +2,24 @@
   "version": "0.0.1",
   "configurations": [
     {
-      "name": "cafyz-web",
+      "name": "cafyz",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "web-v2"],
-      "cwd": "/Users/alameen/cafyz",
-      "port": 5173,
-      "autoPort": true
+      "runtimeArgs": [
+        "run",
+        "dev"
+      ],
+      "cwd": "/Users/alameen/Downloads/cafyz",
+      "port": 5173
     },
     {
-      "name": "cafyz-v2",
+      "name": "cafyz-web",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev", "--", "--port", "5174"],
-      "cwd": "/Users/alameen/cafyz/web-v2",
-      "port": 5174
+      "runtimeArgs": [
+        "run",
+        "web-v2"
+      ],
+      "cwd": "/Users/alameen/Downloads/cafyz",
+      "port": 5173
     }
   ]
 }

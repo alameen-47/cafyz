@@ -64,6 +64,13 @@ export function License() {
     }
   };
 
+  // Online payments are off until Razorpay KYC clears (server decides, via
+  // /api/licenses/mine). While off, purchasing emails the founder, who fulfils
+  // from the founder panel — the same path a paid Razorpay order ends up in.
+  const onlinePayments = status?.online_payments === true;
+  const startPurchase = (plan: string) => (onlinePayments ? payWithCard(plan) : requestRenewal(plan));
+  const busy = requesting || paying;
+
   const currentPlan = status?.plan ?? user?.plan ?? "basic";
   const trialDaysLeft = status?.trial_days_left ?? null;
 
@@ -191,10 +198,10 @@ export function License() {
           {pendingReq ? (
             <span className="text-xs px-3 py-2 rounded-xl flex-shrink-0" style={{ background: "rgba(245,158,11,0.12)", color: "#f59e0b", fontWeight: 600 }}>Request pending</span>
           ) : (
-            <button onClick={() => payWithCard(currentPlan === "basic" ? "pro" : currentPlan)} disabled={requesting || paying}
+            <button onClick={() => startPurchase(currentPlan === "basic" ? "pro" : currentPlan)} disabled={busy}
               className="px-4 py-2 rounded-xl text-sm font-semibold flex-shrink-0"
-              style={{ background: "linear-gradient(135deg, #1e7fff, #00c6ff)", color: "#fff", opacity: (requesting || paying) ? 0.6 : 1 }}>
-              {paying ? "Opening…" : requesting ? "Requesting…" : "Pay & renew"}
+              style={{ background: "linear-gradient(135deg, #1e7fff, #00c6ff)", color: "#fff", opacity: busy ? 0.6 : 1 }}>
+              {paying ? "Opening…" : requesting ? "Requesting…" : onlinePayments ? "Pay & renew" : "Request renewal"}
             </button>
           )}
         </motion.div>
@@ -273,15 +280,15 @@ export function License() {
                   ))}
                 </ul>
                 <button
-                  onClick={() => { if (!isActive && plan.id !== "basic") payWithCard(plan.id); }}
-                  disabled={isActive || plan.id === "basic" || requesting || paying || !!pendingReq}
+                  onClick={() => { if (!isActive && plan.id !== "basic") startPurchase(plan.id); }}
+                  disabled={isActive || plan.id === "basic" || busy || !!pendingReq}
                   className="mt-4 w-full py-2.5 rounded-xl text-sm font-semibold flex items-center justify-center gap-2 transition-all"
                   style={isActive
                     ? { background: `${plan.color}12`, color: plan.color, border: `1px solid ${plan.color}25` }
                     : { background: `${plan.color}10`, color: plan.color, border: `1px solid ${plan.color}20`, opacity: (requesting || paying || pendingReq || plan.id === "basic") ? 0.6 : 1 }
                   }
                 >
-                  {isActive ? "Current Plan" : plan.id === "basic" ? "Free plan" : pendingReq ? "Request pending" : paying ? "Opening…" : <>Subscribe to {plan.name} <ArrowRight size={14} /></>}
+                  {isActive ? "Current Plan" : plan.id === "basic" ? "Free plan" : pendingReq ? "Request pending" : paying ? "Opening…" : requesting ? "Requesting…" : <>{onlinePayments ? "Subscribe to" : "Request"} {plan.name} <ArrowRight size={14} /></>}
                 </button>
               </motion.div>
             );

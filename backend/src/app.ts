@@ -106,6 +106,7 @@ app.use('/api/auth/login',      authIpLimiter, authIdentityLimiter);
 app.use('/api/auth/pin',        authIpLimiter, authIdentityLimiter);
 app.use('/api/auth/request-otp', authIpLimiter, authIdentityLimiter, otpLimiter);
 app.use('/api/auth/verify-otp',  authIpLimiter, authIdentityLimiter, otpLimiter);
+app.use('/api/auth/google',      authIpLimiter, authIdentityLimiter);
 app.use('/api/auth',             authRoutes);
 app.use('/api/users',            mutationLimiter, requireAuth, requireActiveSubscription, requireSectionAccess('roles'), userRoutes);
 app.use('/api/menu',             mutationLimiter, requireAuth, requireActiveSubscription, requireSectionAccess('menu'), menuRoutes);

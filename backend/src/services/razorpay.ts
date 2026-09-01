@@ -13,6 +13,23 @@ function webhookSecret(): string { return process.env.RAZORPAY_WEBHOOK_SECRET?.t
 
 export function razorpayKeyId(): string { return keyId(); }
 export function isRazorpayConfigured(): boolean { return !!keyId() && !!keySecret(); }
+
+/**
+ * Master switch for self-serve online payments.
+ *
+ * Off by default: until Razorpay KYC is approved and LIVE keys are in place,
+ * the Purchase/Renew buttons email the founder instead (license_purchase_requests
+ * → founder approval → activateLicenseForRestaurant), which is the same
+ * fulfilment path a paid order uses.
+ *
+ * Requires BOTH an explicit opt-in and working credentials, so a stray test key
+ * can never re-enable checkout on its own. Flip by setting
+ * ONLINE_PAYMENTS_ENABLED=true on the API — no client rebuild, so the already
+ * published Android/iOS apps pick it up too.
+ */
+export function isOnlinePaymentsEnabled(): boolean {
+  return process.env.ONLINE_PAYMENTS_ENABLED === 'true' && isRazorpayConfigured();
+}
 export function isRazorpayWebhookConfigured(): boolean { return !!webhookSecret(); }
 
 /**

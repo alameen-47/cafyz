@@ -197,6 +197,12 @@ export const authApi = {
     post<{ ok: boolean; message: string; dev_reset_url?: string }>('/api/auth/forgot-password', { email }),
   resetPassword: (token: string, password: string) =>
     post<{ ok: boolean; message: string }>('/api/auth/reset-password', { token, password }),
+  googleConfig: () =>
+    get<{ enabled: boolean; client_id: string; ios_client_id: string }>('/api/auth/google/config'),
+  google: (id_token: string) =>
+    post<GoogleLoginResult>('/api/auth/google', { id_token }),
+  googleSelect: (selection_token: string, restaurant_id: string) =>
+    post<LoginResponse>('/api/auth/google/select', { selection_token, restaurant_id }),
   me: () => get<ApiUser>('/api/auth/me'),
   updateProfile: (d: { name?: string; phone?: string; email?: string }) =>
     put<ApiUser>('/api/auth/profile', d),
@@ -491,6 +497,36 @@ export const billingApi = {
 
 let razorpayLoad: Promise<boolean> | null = null;
 /** Lazily inject Razorpay's checkout.js; resolves true once window.Razorpay exists. */
+let gisLoad: Promise<boolean> | null = null;
+/** Load Google Identity Services (web only — native uses the Capacitor plugin). */
+export function loadGoogleIdentity(): Promise<boolean> {
+  if (typeof window === 'undefined') return Promise.resolve(false);
+  if ((window as unknown as { google?: { accounts?: unknown } }).google?.accounts) return Promise.resolve(true);
+  if (gisLoad) return gisLoad;
+  gisLoad = new Promise<boolean>((resolve) => {
+    const s = document.createElement('script');
+    s.src = 'https://accounts.google.com/gsi/client';
+    s.async = true;
+    s.onload = () => resolve(true);
+    s.onerror = () => { gisLoad = null; resolve(false); };
+    document.body.appendChild(s);
+  });
+  return gisLoad;
+}
+
+/** Google sign-in either completes, or asks which restaurant to enter. */
+export type GoogleLoginResult =
+  | ({ status: 'ok' } & LoginResponse)
+  | { status: 'choose_account'; selection_token: string; accounts: GoogleAccountChoice[] };
+
+/** One account a Google email maps to, when it matches more than one restaurant. */
+export interface GoogleAccountChoice {
+  restaurant_id: string;
+  restaurant_name: string;
+  role: string;
+  name: string;
+}
+
 export function loadRazorpayCheckout(): Promise<boolean> {
   if (typeof window === 'undefined') return Promise.resolve(false);
   if ((window as unknown as { Razorpay?: unknown }).Razorpay) return Promise.resolve(true);
@@ -806,6 +842,8 @@ export interface ApiSubscriptionStatus {
   trial_days_left?: number | null;
   purchase_url?: string;
   founder_email?: string;
+  /** Server-side switch: false → purchase buttons email the founder instead of opening Razorpay. */
+  online_payments?: boolean;
 }
 
 export interface ApiFounderRestaurant {

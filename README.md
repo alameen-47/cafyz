@@ -37,6 +37,12 @@ See [docs/NATIVE_APPS.md](docs/NATIVE_APPS.md) for full native build details.
 - **Capacitor builds:** `web-v2/.env.capacitor` — API URL baked into APK/IPA
 - **Backend:** `backend/.env` — Turso, Resend, founder credentials
 
+## Google Sign-In
+
+Configured entirely from the API environment (`GOOGLE_CLIENT_ID`, plus
+`_ANDROID` / `_IOS`). Unset = disabled and the button is hidden, with no client
+rebuild needed. See [docs/GOOGLE_SIGNIN.md](docs/GOOGLE_SIGNIN.md).
+
 ## Production
 
 - **Web:** Vercel builds `web-v2/` (see `vercel.json`)

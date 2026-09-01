@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState, useCallback, type ReactNode } from 'react';
-import { authApi, restaurantApi, licensesApi, SESSION_EXPIRED_EVENT, type LoginResponse } from '../services/api';
+import { authApi, restaurantApi, licensesApi, SESSION_EXPIRED_EVENT, type LoginResponse, type GoogleAccountChoice } from '../services/api';
 import { applyRestaurantCurrency } from '../utils/currency';
 import { syncRestaurantLogoCacheAsync } from '../services/restaurantLogoStorage';
 import { storageGet, storageRemove, storageSet } from '../utils/safeStorage';
@@ -28,6 +28,11 @@ export interface SignupData {
   timezone?: string;
 }
 
+export interface GoogleChoice {
+  selectionToken: string;
+  accounts: GoogleAccountChoice[];
+}
+
 interface AuthCtx {
   user: AuthUser | null;
   loading: boolean;
@@ -35,6 +40,10 @@ interface AuthCtx {
   loginPin: (login: string, pin: string) => Promise<void>;
   requestOtp: (phone: string) => Promise<{ dev_otp?: string; message: string }>;
   verifyOtp: (phone: string, otp: string) => Promise<void>;
+  /** Resolves with a chooser payload when the Google email matches several restaurants. */
+  loginGoogle: (idToken: string) => Promise<{ choose: GoogleChoice } | null>;
+
+  loginGoogleSelect: (selectionToken: string, restaurantId: string) => Promise<void>;
   signup: (data: SignupData) => Promise<void>;
   logout: () => void;
   /** Sync plan (and restaurant name) from API after founder approves renewal. */
@@ -184,6 +193,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await complete(d);
   };
 
+  // Google sign-in. A 409 is not an error: the address matches accounts in more
+  // than one restaurant, so the caller shows a picker and finishes via select().
+  const loginGoogle = async (idToken: string) => {
+    const d = await authApi.google(idToken);
+    if (d.status === 'choose_account') {
+      return { choose: { selectionToken: d.selection_token, accounts: d.accounts } };
+    }
+    await complete(d);
+    return null;
+  };
+  const loginGoogleSelect = async (selectionToken: string, restaurantId: string) => {
+    const d = await authApi.googleSelect(selectionToken, restaurantId);
+    await complete(d);
+  };
+
   // Free-trial / new-account signup: create the restaurant + owner, then sign in.
   const signup = async (data: SignupData) => {
     const email = data.email.trim().toLowerCase();
@@ -244,7 +268,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   return (
-    <Ctx.Provider value={{ user, loading, loginEmail, loginPin, requestOtp, verifyOtp, signup, logout, refreshPlan }}>
+    <Ctx.Provider value={{ user, loading, loginEmail, loginPin, requestOtp, verifyOtp, loginGoogle, loginGoogleSelect, signup, logout, refreshPlan }}>
       {children}
     </Ctx.Provider>
   );
