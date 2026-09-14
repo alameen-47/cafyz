@@ -84,11 +84,13 @@ describe('POST /api/auth/google', () => {
     expect(res.body.error).not.toMatch(/audience/i);
   });
 
-  it('never creates an account for an unknown address', async () => {
+  it('asks a new Google user for restaurant details before creating anything', async () => {
     verifyIdToken.mockResolvedValueOnce(googleUser('stranger@nowhere.io'));
     const res = await request(app).post('/api/auth/google').send({ id_token: 'x'.repeat(32) });
-    expect(res.status).toBe(404);
-    expect(res.body.code).toBe('GOOGLE_NO_ACCOUNT');
+    expect(res.status).toBe(200);
+    expect(res.body.status).toBe('signup_required');
+    expect(res.body.signup_token).toBeTruthy();
+    expect(res.body.token).toBeUndefined();
     const rows = await getDb().execute({
       sql: 'SELECT COUNT(*) AS n FROM users WHERE LOWER(email)=?',
       args: ['stranger@nowhere.io'],
@@ -157,5 +159,72 @@ describe('multi-restaurant chooser', () => {
       .send({ selection_token: first.body.selection_token, restaurant_id: 'CAFYZ_SYSTEM' });
     expect(res.status).toBe(404);
     expect(res.body.token).toBeUndefined();
+  });
+});
+
+describe('POST /api/auth/google/signup', () => {
+  async function signupToken(email: string): Promise<string> {
+    verifyIdToken.mockResolvedValueOnce(googleUser(email));
+    const res = await request(app).post('/api/auth/google').send({ id_token: 'x'.repeat(32) });
+    expect(res.body.status).toBe('signup_required');
+    return res.body.signup_token as string;
+  }
+
+  it('creates a restaurant on the top plan with a 3-day trial and signs the owner in', async () => {
+    const token = await signupToken('newowner@gmail.test');
+    const res = await request(app).post('/api/auth/google/signup')
+      .send({ signup_token: token, restaurant_name: 'Masala House', phone: '+919876500001' });
+    expect(res.status).toBe(201);
+    expect(res.body.token).toBeTruthy();
+    expect(res.body.restaurant_plan).toBe('premium');
+    expect(res.body.user.role).toBe('owner');
+
+    const sub = await request(app).get('/api/licenses/mine').set('Authorization', `Bearer ${res.body.token}`);
+    expect(sub.body.on_trial).toBe(true);
+    expect(sub.body.trial_expired).toBe(false);
+    expect(sub.body.trial_days_left).toBe(3);
+
+    const me = await request(app).get('/api/auth/me').set('Authorization', `Bearer ${res.body.token}`);
+    expect(me.body.password_login).toBe(0);
+  });
+
+  it('signs the same Google user straight in next time', async () => {
+    verifyIdToken.mockResolvedValueOnce(googleUser('newowner@gmail.test'));
+    const res = await request(app).post('/api/auth/google').send({ id_token: 'x'.repeat(32) });
+    expect(res.status).toBe(200);
+    expect(res.body.status).toBe('ok');
+    expect(res.body.restaurant_name).toBe('Masala House');
+  });
+
+  it('lets a Google-only owner schedule deletion without a password', async () => {
+    verifyIdToken.mockResolvedValueOnce(googleUser('newowner@gmail.test'));
+    const login = await request(app).post('/api/auth/google').send({ id_token: 'x'.repeat(32) });
+    const res = await request(app).delete('/api/auth/account')
+      .set('Authorization', `Bearer ${login.body.token}`).send({ confirm: 'DELETE' });
+    expect(res.status).toBe(200);
+    expect(res.body.scheduled_for).toBeTruthy();
+  });
+
+  it('refuses a mobile number that is already registered', async () => {
+    const token = await signupToken('second@gmail.test');
+    const res = await request(app).post('/api/auth/google/signup')
+      .send({ signup_token: token, restaurant_name: 'Second Place', phone: '+919876500001' });
+    expect(res.status).toBe(409);
+    expect(res.body.code).toBe('PHONE_EXISTS');
+  });
+
+  it('rejects a forged signup token', async () => {
+    const forged = jwt.sign({ email: 'evil@gmail.test', purpose: 'google_signup' }, 'not-the-real-secret');
+    const res = await request(app).post('/api/auth/google/signup')
+      .send({ signup_token: forged, restaurant_name: 'Evil Eats', phone: '+919876500009' });
+    expect(res.status).toBe(401);
+    expect(res.body.token).toBeUndefined();
+  });
+
+  it('will not reuse a select token as a signup token', async () => {
+    const wrongPurpose = jwt.sign({ email: 'sneaky@gmail.test', purpose: 'google_select' }, process.env.JWT_SECRET as string);
+    const res = await request(app).post('/api/auth/google/signup')
+      .send({ signup_token: wrongPurpose, restaurant_name: 'Sneaky Snacks', phone: '+919876500010' });
+    expect(res.status).toBe(401);
   });
 });

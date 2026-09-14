@@ -26,6 +26,12 @@ const FALLBACK_FEATURES: Record<string, { features: string[]; locked: string[] }
   premium: { features: ALL_MODULES, locked: [] },
 };
 
+const KEY_STEPS = [
+  { title: "Request a key", body: "Tap “Request license key” or choose a plan below" },
+  { title: "Get it by email", body: "Cafyz sends the key to the owner's email" },
+  { title: "Activate it here", body: "Paste the key below — your plan starts right away" },
+];
+
 export function License() {
   const { user } = useAuth();
   const { plans: planConfigs } = usePlanConfig();
@@ -46,14 +52,14 @@ export function License() {
   }, []);
   useEffect(() => { void load(); }, [load]);
 
-  // Ask the founder to issue/renew a license — they get an email, then fulfill it
-  // (a key is emailed back to you, which you activate below). Your data is kept.
+  // Ask the founder to issue a license key — they get an email, then fulfill it
+  // from the founder panel (the key is emailed back and activated below). Data is kept.
   const requestRenewal = async (plan: string) => {
-    if (pendingReq) { toast.info("Request already pending", "The Cafyz team will email your key shortly"); return; }
+    if (pendingReq) { toast.info("Key already requested", "Cafyz will email your license key shortly"); return; }
     setRequesting(true);
     try {
       await licensesApi.requestPurchase({ plan });
-      toast.success("Renewal requested", "We've emailed the Cafyz team — your license key will arrive by email");
+      toast.success("License key requested", "Cafyz will email your key. Enter it below when it arrives.");
       await load();
     } catch (e) {
       toast.error("Couldn't send request", (e as Error).message);
@@ -71,6 +77,8 @@ export function License() {
 
   const currentPlan = status?.plan ?? user?.plan ?? "basic";
   const trialDaysLeft = status?.trial_days_left ?? null;
+  const onTrial = status?.on_trial === true;
+  const expired = status?.trial_expired === true;
 
   const plans = useMemo(() => {
     const ids = ["basic", "pro", "premium"];
@@ -97,9 +105,21 @@ export function License() {
 
   const planDef = plans.find(p => p.id === currentPlan) ?? plans[0];
   const PlanIcon = planDef.icon;
-  const renewLabel = status?.license?.expires_at
-    ? `Renews ${new Date(status.license.expires_at).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" })}`
-    : "Active · no expiry";
+  const expiresAt = status?.license?.expires_at ?? null;
+  const expiryDate = expiresAt
+    ? new Date(expiresAt).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" })
+    : null;
+  const renewLabel = onTrial
+    ? (expired ? `Free trial ended ${expiryDate}` : `Free trial · ends ${expiryDate}`)
+    : expiresAt
+      ? (expired ? `License ended ${expiryDate}` : `License valid until ${expiryDate}`)
+      : "Lifetime license · never expires";
+  const statusChip = expired
+    ? { label: "Ended", color: "#ff3b5c" }
+    : onTrial
+      ? { label: "Free trial", color: "#f59e0b" }
+      : { label: "Active", color: "#22c55e" };
+  const showStatusBanner = trialDaysLeft != null && (expired || onTrial || trialDaysLeft <= 14);
 
   const activate = async () => {
     if (!licenseKey) return;
@@ -107,7 +127,8 @@ export function License() {
     try {
       const res = await licensesApi.activate(licenseKey.trim());
       setActivated(true);
-      toast.success("License activated!", `Your plan is now ${res.plan}`);
+      setLicenseKey("");
+      toast.success("License activated!", `Your ${String(res.plan).toUpperCase()} plan is now active`);
       await load();
       setTimeout(() => setActivated(false), 2500);
     } catch (e) {
@@ -120,7 +141,7 @@ export function License() {
   // Pay with card/UPI via Razorpay; falls back to the email-renewal flow if the
   // server doesn't have online payments enabled yet.
   const payWithCard = async (plan: string) => {
-    if (pendingReq) { toast.info("Request already pending", "The Cafyz team will email your key shortly"); return; }
+    if (pendingReq) { toast.info("Key already requested", "Cafyz will email your license key shortly"); return; }
     setPaying(true);
     try {
       const order = await billingApi.createOrder(plan);
@@ -175,49 +196,107 @@ export function License() {
 
   return (
     <div className="p-3 sm:p-4 md:p-6 space-y-4 md:space-y-6 max-w-4xl w-full mx-auto">
-      {/* Trial banner — only when on a time-limited trial/license */}
-      {trialDaysLeft != null && (
+      {/* Trial / licence status — free trial countdown, a licence nearing its end, or one that ended */}
+      {showStatusBanner && (
         <motion.div
           initial={{ opacity: 0, y: -8 }}
           animate={{ opacity: 1, y: 0 }}
-          className="flex items-center gap-3 px-4 py-3 rounded-2xl"
-          style={{ background: status?.trial_expired ? "var(--cafyz-danger-bg)" : "var(--cafyz-accent-bg)", border: `1px solid ${status?.trial_expired ? "rgba(220,38,38,0.22)" : "var(--cafyz-accent-border)"}` }}
+          className="flex flex-wrap items-center gap-3 px-4 py-3 rounded-2xl"
+          style={{ background: expired ? "var(--cafyz-danger-bg)" : "var(--cafyz-accent-bg)", border: `1px solid ${expired ? "rgba(220,38,38,0.22)" : "var(--cafyz-accent-border)"}` }}
         >
-          <Clock size={18} style={{ color: status?.trial_expired ? "#ff3b5c" : "#1e7fff", flexShrink: 0 }} />
-          <div className="flex-1">
+          <Clock size={18} style={{ color: expired ? "#ff3b5c" : "#1e7fff", flexShrink: 0 }} />
+          <div className="flex-1 min-w-[200px]">
             <p style={{ color: "var(--cafyz-text)", fontSize: "0.85rem", fontWeight: 600 }}>
-              {status?.trial_expired
-                ? <>Your trial has <span style={{ color: "#ff3b5c", fontWeight: 800 }}>expired</span></>
-                : <>Trial expires in <span style={{ color: "#1e7fff", fontFamily: "var(--font-mono)", fontWeight: 800 }}>{trialDaysLeft} day{trialDaysLeft === 1 ? "" : "s"}</span></>}
+              {expired
+                ? <>Your {onTrial ? "free trial" : "license"} has <span style={{ color: "#ff3b5c", fontWeight: 800 }}>ended</span></>
+                : onTrial
+                  ? (trialDaysLeft === 0
+                    ? <>Your free trial ends <span style={{ color: "#1e7fff", fontWeight: 800 }}>today</span></>
+                    : <>Free trial · <span style={{ color: "#1e7fff", fontFamily: "var(--font-mono)", fontWeight: 800 }}>{trialDaysLeft}</span> day{trialDaysLeft === 1 ? "" : "s"} left</>)
+                  : <>License renews in <span style={{ color: "#1e7fff", fontFamily: "var(--font-mono)", fontWeight: 800 }}>{trialDaysLeft}</span> day{trialDaysLeft === 1 ? "" : "s"}</>}
             </p>
             <p style={{ color: "var(--cafyz-muted)", fontSize: "0.75rem" }}>
-              {pendingReq ? "Renewal requested — your license key will arrive by email." : "Request a renewal, then activate the key we email you. Your data is kept."}
+              {pendingReq
+                ? "Key requested — Cafyz will email it to you. Enter it below when it arrives."
+                : expired
+                  ? "Your data is safe. Request a license key, then activate it below to continue."
+                  : "Request a license key from Cafyz before it ends, then activate it below."}
             </p>
           </div>
           {pendingReq ? (
-            <span className="text-xs px-3 py-2 rounded-xl flex-shrink-0" style={{ background: "rgba(245,158,11,0.12)", color: "#f59e0b", fontWeight: 600 }}>Request pending</span>
+            <span className="text-xs px-3 py-2 rounded-xl flex-shrink-0" style={{ background: "rgba(245,158,11,0.12)", color: "#f59e0b", fontWeight: 600 }}>Key requested</span>
           ) : (
-            <button onClick={() => startPurchase(currentPlan === "basic" ? "pro" : currentPlan)} disabled={busy}
+            <button onClick={() => startPurchase(currentPlan)} disabled={busy}
               className="px-4 py-2 rounded-xl text-sm font-semibold flex-shrink-0"
               style={{ background: "linear-gradient(135deg, #1e7fff, #00c6ff)", color: "#fff", opacity: busy ? 0.6 : 1 }}>
-              {paying ? "Opening…" : requesting ? "Requesting…" : onlinePayments ? "Pay & renew" : "Request renewal"}
+              {paying ? "Opening…" : requesting ? "Requesting…" : onlinePayments ? "Pay & renew" : "Request license key"}
             </button>
           )}
         </motion.div>
       )}
 
+      {/* License key activation — the one step that turns a trial into a subscription */}
+      <div id="license-key" className="rounded-2xl p-5 space-y-4" style={{ background: "var(--cafyz-surface)", border: "1px solid var(--cafyz-accent-border)" }}>
+        <div className="flex items-center gap-2">
+          <Key size={16} style={{ color: "#1e7fff" }} />
+          <h3 style={{ color: "var(--cafyz-text)", fontFamily: "var(--font-display)", fontWeight: 600 }}>Activate your license key</h3>
+        </div>
+        <p style={{ color: "var(--cafyz-muted)", fontSize: "0.8rem", lineHeight: 1.5 }}>
+          License keys are issued by Cafyz. Your plan starts the moment you activate it and replaces the free trial.
+        </p>
+        <ol className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+          {KEY_STEPS.map((step, i) => (
+            <li key={step.title} className="flex items-start gap-2.5 rounded-xl p-3" style={{ background: "var(--cafyz-surface-2)", border: "1px solid var(--cafyz-border)" }}>
+              <span className="w-6 h-6 rounded-full flex items-center justify-center text-[0.7rem] font-bold flex-shrink-0"
+                style={{ background: "linear-gradient(135deg, #1e7fff, #00c6ff)", color: "#fff" }}>{i + 1}</span>
+              <span>
+                <span style={{ color: "var(--cafyz-text)", fontWeight: 600, fontSize: "0.8rem", display: "block" }}>{step.title}</span>
+                <span style={{ color: "var(--cafyz-muted)", fontSize: "0.72rem", lineHeight: 1.4 }}>
+                  {i === 0 && pendingReq ? "Requested — your key is on its way" : step.body}
+                </span>
+              </span>
+            </li>
+          ))}
+        </ol>
+        <div className="flex gap-2">
+          <input
+            type="text"
+            placeholder="CAFYZ-XXX-XXXXXXXX"
+            value={licenseKey}
+            onChange={e => setLicenseKey(e.target.value.toUpperCase())}
+            onKeyDown={e => { if (e.key === "Enter") void activate(); }}
+            className="flex-1 min-w-0 rounded-xl px-3 py-2.5 text-sm outline-none placeholder:text-[var(--cafyz-muted)]"
+            style={{ background: "var(--cafyz-surface-2)", color: "var(--cafyz-text)", border: "1px solid rgba(30,127,255,0.15)", fontFamily: "var(--font-mono)", letterSpacing: "0.05em" }}
+          />
+          <motion.button
+            whileTap={{ scale: 0.95 }}
+            onClick={activate}
+            disabled={!licenseKey || activating}
+            className="px-4 py-2.5 rounded-xl text-sm font-semibold flex items-center gap-2 flex-shrink-0"
+            style={activated
+              ? { background: "rgba(34,197,94,0.12)", color: "#22c55e", border: "1px solid rgba(34,197,94,0.2)" }
+              : { background: "linear-gradient(135deg, #1e7fff, #00c6ff)", color: "#fff", opacity: !licenseKey ? 0.5 : 1 }
+            }
+          >
+            {activating ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : activated ? <><Check size={15} /> Activated!</> : "Activate"}
+          </motion.button>
+        </div>
+      </div>
+
       {/* Current plan */}
       <div className="rounded-2xl p-5" style={{ background: "var(--cafyz-surface)", border: "1px solid rgba(30,127,255,0.15)" }}>
         <div className="flex items-center justify-between mb-4">
           <h3 style={{ color: "var(--cafyz-text)", fontFamily: "var(--font-display)", fontWeight: 600 }}>Current Plan</h3>
-          <span className="text-xs px-2.5 py-1 rounded-full" style={{ background: "rgba(30,127,255,0.12)", color: "#1e7fff" }}>Active</span>
+          <span className="text-xs px-2.5 py-1 rounded-full font-semibold" style={{ background: `${statusChip.color}1f`, color: statusChip.color }}>{statusChip.label}</span>
         </div>
         <div className="flex items-center gap-4">
           <div className="w-12 h-12 rounded-xl flex items-center justify-center" style={{ background: `${planDef.color}1f` }}>
             <PlanIcon size={22} style={{ color: planDef.color }} />
           </div>
           <div>
-            <p style={{ color: "var(--cafyz-text)", fontFamily: "var(--font-display)", fontWeight: 700, fontSize: "1.1rem" }}>{planDef.name} Plan</p>
+            <p style={{ color: "var(--cafyz-text)", fontFamily: "var(--font-display)", fontWeight: 700, fontSize: "1.1rem" }}>
+              {planDef.name} Plan{onTrial ? " (trial)" : ""}
+            </p>
             {planDef.description && <p style={{ color: "var(--cafyz-muted)", fontSize: "0.75rem" }}>{planDef.description}</p>}
             <p style={{ color: "var(--cafyz-muted)", fontSize: "0.8rem" }}>{renewLabel}</p>
           </div>
@@ -226,7 +305,7 @@ export function License() {
 
       {/* Plan comparison */}
       <div>
-        <h3 style={{ color: "var(--cafyz-text)", fontFamily: "var(--font-display)", fontWeight: 600, marginBottom: 6 }}>Compare Plans</h3>
+        <h3 style={{ color: "var(--cafyz-text)", fontFamily: "var(--font-display)", fontWeight: 600, marginBottom: 6 }}>Choose a plan</h3>
         <p style={{ color: "var(--cafyz-muted)", fontSize: "0.78rem", marginBottom: 16 }}>
           Every plan includes all modules. Plans differ only by licence length and how long
           maintenance and support are included.
@@ -234,7 +313,8 @@ export function License() {
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           {plans.map((plan, i) => {
             const Icon = plan.icon;
-            const isActive = plan.id === currentPlan;
+            // While on a trial or after a licence ends, every plan can be requested — including the trial's.
+            const isActive = plan.id === currentPlan && !onTrial && !expired;
             return (
               <motion.div
                 key={plan.id}
@@ -283,15 +363,15 @@ export function License() {
                   ))}
                 </ul>
                 <button
-                  onClick={() => { if (!isActive && plan.id !== "basic") startPurchase(plan.id); }}
-                  disabled={isActive || plan.id === "basic" || busy || !!pendingReq}
+                  onClick={() => { if (!isActive) startPurchase(plan.id); }}
+                  disabled={isActive || busy || !!pendingReq}
                   className="mt-4 w-full py-2.5 rounded-xl text-sm font-semibold flex items-center justify-center gap-2 transition-all"
                   style={isActive
                     ? { background: `${plan.color}12`, color: plan.color, border: `1px solid ${plan.color}25` }
-                    : { background: `${plan.color}10`, color: plan.color, border: `1px solid ${plan.color}20`, opacity: (requesting || paying || pendingReq || plan.id === "basic") ? 0.6 : 1 }
+                    : { background: `${plan.color}10`, color: plan.color, border: `1px solid ${plan.color}20`, opacity: (requesting || paying || pendingReq) ? 0.6 : 1 }
                   }
                 >
-                  {isActive ? "Current Plan" : plan.id === "basic" ? "Free plan" : pendingReq ? "Request pending" : paying ? "Opening…" : requesting ? "Requesting…" : <>{onlinePayments ? "Subscribe to" : "Request"} {plan.name} <ArrowRight size={14} /></>}
+                  {isActive ? "Current plan" : pendingReq ? "Key requested" : paying ? "Opening…" : requesting ? "Requesting…" : <>{onlinePayments ? "Subscribe to" : "Get"} {plan.name} <ArrowRight size={14} /></>}
                 </button>
               </motion.div>
             );
@@ -303,37 +383,6 @@ export function License() {
         Maintenance and support cover the Cafyz software only. Hardware — including
         Bluetooth and thermal printers, tablets, and other devices — is not covered.
       </p>
-
-      {/* License key activation */}
-      <div className="rounded-2xl p-5 space-y-4" style={{ background: "var(--cafyz-surface)", border: "1px solid var(--cafyz-border)" }}>
-        <div className="flex items-center gap-2">
-          <Key size={16} style={{ color: "#1e7fff" }} />
-          <h3 style={{ color: "var(--cafyz-text)", fontFamily: "var(--font-display)", fontWeight: 600 }}>License Key Activation</h3>
-        </div>
-        <p style={{ color: "var(--cafyz-muted)", fontSize: "0.8rem" }}>Have a license key? Enter it below to activate your plan.</p>
-        <div className="flex gap-2">
-          <input
-            type="text"
-            placeholder="CAFYZ-XXXX-XXXX-XXXX-XXXX"
-            value={licenseKey}
-            onChange={e => setLicenseKey(e.target.value.toUpperCase())}
-            className="flex-1 rounded-xl px-3 py-2.5 text-sm outline-none placeholder:text-[var(--cafyz-muted)]"
-            style={{ background: "var(--cafyz-surface-2)", color: "var(--cafyz-text)", border: "1px solid rgba(30,127,255,0.15)", fontFamily: "var(--font-mono)", letterSpacing: "0.05em" }}
-          />
-          <motion.button
-            whileTap={{ scale: 0.95 }}
-            onClick={activate}
-            disabled={!licenseKey || activating}
-            className="px-4 py-2.5 rounded-xl text-sm font-semibold flex items-center gap-2 flex-shrink-0"
-            style={activated
-              ? { background: "rgba(34,197,94,0.12)", color: "#22c55e", border: "1px solid rgba(34,197,94,0.2)" }
-              : { background: "linear-gradient(135deg, #1e7fff, #00c6ff)", color: "#fff", opacity: !licenseKey ? 0.5 : 1 }
-            }
-          >
-            {activating ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : activated ? <><Check size={15} /> Activated!</> : "Activate"}
-          </motion.button>
-        </div>
-      </div>
     </div>
   );
 }

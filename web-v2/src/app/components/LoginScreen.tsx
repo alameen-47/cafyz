@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Eye, EyeOff, ArrowRight, Phone, Lock, Mail, Delete, ChevronRight, Star, Store, User, CheckCircle2 } from "lucide-react";
 import { toast } from "./Toast";
-import { useAuth, type GoogleChoice } from "../auth";
+import { useAuth, type GoogleChoice, type GoogleSignup } from "../auth";
 import { AmetronyxCredit } from "./AmetronyxCredit";
 import { getNativeGoogleIdToken, googleSignInConfig, isNativeShell, mountGoogleTrigger, type GoogleConfig } from "../../services/googleSignIn";
 import { authApi, inquiryApi, type ApiPlanConfig } from "../../services/api";
@@ -13,7 +13,7 @@ import { useLanguage } from "../../i18n/LanguageProvider";
 import { CafyzLogo } from "./CafyzLogo";
 
 type AuthMethod = "password" | "pin" | "otp";
-type AuthState = "login" | "forgot" | "reset" | "otp-verify" | "inquiry" | "inquiry-sent" | "google-choose";
+type AuthState = "login" | "forgot" | "reset" | "otp-verify" | "inquiry" | "inquiry-sent" | "google-choose" | "google-signup";
 
 const stats = [
   { label: "Restaurants", value: "2,400+" },
@@ -93,7 +93,7 @@ function ActivityLoader({ label, sublabel }: { label: string; sublabel?: string 
 export function LoginScreen({ onLogin }: { onLogin?: () => void }) {
   const { t, lang } = useLanguage();
   const { plans: planConfigs } = usePlanConfig();
-  const { loginEmail, loginPin, requestOtp, verifyOtp, loginGoogle, loginGoogleSelect } = useAuth();
+  const { loginEmail, loginPin, requestOtp, verifyOtp, loginGoogle, loginGoogleSelect, signupGoogle } = useAuth();
   const [method, setMethod] = useState<AuthMethod>("password");
   // If arriving from the reset email link (/login?mode=reset&token=…), mount
   // straight into the reset form — initialise here (not in an effect) so the
@@ -109,6 +109,8 @@ export function LoginScreen({ onLogin }: { onLogin?: () => void }) {
   const googleEnabled = googleCfg?.enabled === true;
   const [googleBusy, setGoogleBusy] = useState(false);
   const [googleChoice, setGoogleChoice] = useState<GoogleChoice | null>(null);
+  const [googleSignup, setGoogleSignup] = useState<GoogleSignup | null>(null);
+  const [signupForm, setSignupForm] = useState({ restaurant: "", name: "", phone: "" });
   const googleBtnRef = useRef<HTMLDivElement | null>(null);
   const native = isNativeShell();
   const [email, setEmail] = useState("");
@@ -192,9 +194,15 @@ export function LoginScreen({ onLogin }: { onLogin?: () => void }) {
     setGoogleBusy(true);
     try {
       const res = await loginGoogle(idToken);
-      if (res) {                       // email maps to several restaurants
+      if (res && "choose" in res) {    // email maps to several restaurants
         setGoogleChoice(res.choose);
         setAuthState("google-choose");
+        return;
+      }
+      if (res && "signup" in res) {    // new to Cafyz: ask for the restaurant, then start the trial
+        setGoogleSignup(res.signup);
+        setSignupForm({ restaurant: "", name: res.signup.name, phone: "" });
+        setAuthState("google-signup");
         return;
       }
       onLogin?.();
@@ -232,6 +240,28 @@ export function LoginScreen({ onLogin }: { onLogin?: () => void }) {
     } catch {
       setAuthState("login");
       setGoogleChoice(null);
+    } finally { setGoogleBusy(false); }
+  };
+
+  const submitGoogleSignup = async () => {
+    if (!googleSignup) return;
+    const restaurant = signupForm.restaurant.trim();
+    const digits = signupForm.phone.replace(/\D/g, "");
+    if (restaurant.length < 2) { toast.error("Enter your restaurant name"); return; }
+    if (digits.length < 8) { toast.error("Enter your mobile number"); return; }
+    // A 10-digit number without a country code is taken as an Indian mobile.
+    const phone = signupForm.phone.trim().startsWith("+") ? signupForm.phone.trim() : digits.length === 10 ? "+91" + digits : "+" + digits;
+    setGoogleBusy(true);
+    try {
+      await signupGoogle(googleSignup.signupToken, {
+        restaurant_name: restaurant,
+        phone,
+        owner_name: signupForm.name.trim() || undefined,
+      });
+      onLogin?.();
+    } catch (e) {
+      // The signup token expired: start again from the Google button.
+      if (/took too long/i.test((e as Error).message)) { setGoogleSignup(null); setAuthState("login"); }
     } finally { setGoogleBusy(false); }
   };
 
@@ -326,7 +356,7 @@ export function LoginScreen({ onLogin }: { onLogin?: () => void }) {
       >
         {/* Logo — repo root logo.png */}
         <div className="mb-4 flex justify-start">
-          <CafyzLogo size="login" className="drop-shadow-[0_10px_36px_rgba(30,127,255,0.28)]" />
+          <CafyzLogo size="login" tone="onDark" />
         </div>
 
         {/* Hero content */}
@@ -373,7 +403,7 @@ export function LoginScreen({ onLogin }: { onLogin?: () => void }) {
         <div className="login-screen-logo-band md:hidden">
           <CafyzLogo
             size="loginMobile"
-            className="login-screen-logo drop-shadow-[0_10px_36px_rgba(30,127,255,0.28)]"
+            className="login-screen-logo"
           />
         </div>
 
@@ -692,6 +722,49 @@ export function LoginScreen({ onLogin }: { onLogin?: () => void }) {
                     </button>
                   ))}
                 </div>
+              </motion.div>
+            )}
+
+            {authState === "google-signup" && googleSignup && (
+              <motion.div key="google-signup" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -12 }} className="space-y-3 sm:space-y-4">
+                <button onClick={() => { setAuthState("login"); setGoogleSignup(null); }} style={{ color: "var(--cafyz-muted)", fontSize: "0.8rem" }}>← {t("Back")}</button>
+                <div>
+                  <h2 className="text-xl sm:text-[1.6rem]" style={{ fontFamily: "var(--font-display)", fontWeight: 700, color: "var(--cafyz-text)" }}>{t("Set up your restaurant")}</h2>
+                  <p style={{ color: "var(--cafyz-muted)", fontSize: "0.8rem", marginTop: 4, lineHeight: 1.5 }}>
+                    {t("Signed in with Google as")} <b style={{ color: "var(--cafyz-text-secondary)" }}>{googleSignup.email}</b>
+                  </p>
+                </div>
+                <div className="flex items-start gap-2.5 rounded-xl px-3 py-2.5" style={{ background: "rgba(34,197,94,0.08)", border: "1px solid rgba(34,197,94,0.25)" }}>
+                  <CheckCircle2 size={16} style={{ color: "#22c55e", flexShrink: 0, marginTop: 1 }} />
+                  <p style={{ color: "var(--cafyz-text-secondary)", fontSize: "0.78rem", lineHeight: 1.5 }}>
+                    <b style={{ color: "var(--cafyz-text)" }}>{googleSignup.trialDays}-day free trial of Premium</b> — every feature unlocked, no payment needed to start.
+                  </p>
+                </div>
+                {([
+                  ["restaurant", "Restaurant name", Store, "e.g. Spice Garden", "text", "organization"],
+                  ["name", "Your name", User, "Your full name", "text", "name"],
+                  ["phone", "Mobile number", Phone, "+91 98765 43210", "tel", "tel"],
+                ] as const).map(([key, label, Icon, placeholder, type, autoComplete]) => (
+                  <div key={key}>
+                    <label style={{ color: "var(--cafyz-text-secondary)", fontSize: "0.8rem", display: "block", marginBottom: 6 }}>{t(label)}</label>
+                    <div className="flex items-center gap-2 rounded-xl px-3 py-3" style={{ background: "var(--cafyz-surface-2)", border: "1px solid rgba(30,127,255,0.15)" }}>
+                      <Icon size={15} style={{ color: "var(--cafyz-muted)" }} />
+                      <input type={type} autoComplete={autoComplete} placeholder={placeholder} value={signupForm[key]}
+                        onChange={e => setSignupForm(f => ({ ...f, [key]: e.target.value }))}
+                        className="flex-1 bg-transparent outline-none text-sm placeholder:text-[var(--cafyz-muted)]" style={{ color: "var(--cafyz-text)" }} />
+                    </div>
+                  </div>
+                ))}
+                <motion.button whileTap={{ scale: 0.97 }} onClick={submitGoogleSignup} disabled={googleBusy}
+                  className="w-full py-3 rounded-xl text-sm font-semibold flex items-center justify-center gap-2"
+                  style={{ background: "linear-gradient(135deg, #1e7fff, #00c6ff)", color: "#fff", opacity: googleBusy ? 0.7 : 1 }}>
+                  {googleBusy
+                    ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    : <>{t("Start my free trial")} <ArrowRight size={16} /></>}
+                </motion.button>
+                <p style={{ color: "var(--cafyz-muted)", fontSize: "0.72rem", textAlign: "center", lineHeight: 1.5 }}>
+                  {t("When the trial ends, activate a license key from Cafyz to keep going. Your data stays safe.")}
+                </p>
               </motion.div>
             )}
 

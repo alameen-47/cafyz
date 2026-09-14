@@ -3,7 +3,7 @@ import bcrypt from 'bcryptjs';
 import { createHash, randomBytes, timingSafeEqual } from 'crypto';
 import { z } from 'zod';
 import { getDb } from '../db.js';
-import { signToken, requireAuth, signTokenForUser, type AuthRequest, invalidateUserAuthCache } from '../middleware/auth.js';
+import { signToken, requireAuth, signTokenForUser, type AuthRequest, JWT_SECRET } from '../middleware/auth.js';
 import { bumpTokenVersion } from '../services/tokenVersion.js';
 import { BCRYPT_ROUNDS } from '../constants/security.js';
 import { secureOtp6 } from '../utils/secureRandom.js';
@@ -13,10 +13,12 @@ import {
   passwordField,
   passwordLoginField,
 } from '../utils/security.js';
-import { resetPasswordUrl } from '../config/site.js';
+import { resetPasswordUrl, TRIAL_DAYS } from '../config/site.js';
 import { isEmailConfigured, sendMailReliable, smtpFrom } from '../services/email.js';
 import { isValidPhoneE164, normalizePhone, sendOtpSms } from '../services/sms.js';
 import { googleIosClientId, googleWebClientId, isGoogleAuthConfigured, verifyGoogleIdToken } from '../services/googleAuth.js';
+import { createTrialRestaurant, TOP_PLAN } from '../services/trialSignup.js';
+import { accountDeletionDate, formatDeletionDate } from '../services/accountDeletion.js';
 import jwt from 'jsonwebtoken';
 
 const router = Router();
@@ -94,8 +96,9 @@ const ChangePinSchema = z.object({
   new_pin: z.string().length(4),
 });
 const DeleteAccountSchema = z.object({
-  password: passwordLoginField,
-  delete_restaurant: z.boolean().optional().default(false),
+  /** Required when the account signs in with a password; Google-only owners confirm by typing only. */
+  password: passwordLoginField.optional(),
+  confirm: z.literal('DELETE'),
 });
 
 const GENERIC_RESET_MSG = 'If that account exists, a password-reset link has been sent.';
@@ -120,6 +123,11 @@ function otpHashMatches(rawOtp: string, storedHash: string): boolean {
 
 async function issueLoginSession(db: ReturnType<typeof getDb>, userId: string) {
   await bumpTokenVersion(userId);
+  // Signing in again during the grace period cancels a pending account deletion.
+  await db.execute({
+    sql: 'UPDATE users SET deletion_scheduled_at=NULL WHERE id=? AND deletion_scheduled_at IS NOT NULL',
+    args: [userId],
+  });
   const row = await db.execute({
     sql: `SELECT u.*, r.name as restaurant_name, r.plan as restaurant_plan
           FROM users u
@@ -451,7 +459,7 @@ router.post('/reset-password', async (req, res, next) => {
     const userId = String(tokenRow.user_id);
     const passwordHash = await bcrypt.hash(password, BCRYPT_ROUNDS);
 
-    await db.execute({ sql: 'UPDATE users SET password_hash=? WHERE id=?', args: [passwordHash, userId] });
+    await db.execute({ sql: 'UPDATE users SET password_hash=?, password_login=1 WHERE id=?', args: [passwordHash, userId] });
     await db.execute({ sql: "UPDATE password_reset_tokens SET used_at=datetime('now') WHERE id=?", args: [tokenId] });
     await db.execute({ sql: "DELETE FROM password_reset_tokens WHERE user_id=? AND id!=?", args: [userId, tokenId] });
     await bumpTokenVersion(userId);
@@ -463,7 +471,7 @@ router.post('/reset-password', async (req, res, next) => {
 // GET /api/auth/me
 router.get('/me', requireAuth, async (req: AuthRequest, res, next) => {
   try {
-    const row = await getDb().execute({ sql: 'SELECT id,restaurant_id,name,initials,email,phone,role,access_json,status FROM users WHERE id=?', args: [req.user!.id] });
+    const row = await getDb().execute({ sql: 'SELECT id,restaurant_id,name,initials,email,phone,role,access_json,status,deletion_scheduled_at,password_login FROM users WHERE id=?', args: [req.user!.id] });
     if (!row.rows.length) { res.status(404).json({ error: 'User not found' }); return; }
     res.json(row.rows[0]);
   } catch (e) { next(e); }
@@ -535,7 +543,7 @@ router.put('/profile', requireAuth, async (req: AuthRequest, res, next) => {
       args,
     });
     const out = await db.execute({
-      sql: 'SELECT id,restaurant_id,name,initials,email,phone,role,access_json,status FROM users WHERE id=?',
+      sql: 'SELECT id,restaurant_id,name,initials,email,phone,role,access_json,status,deletion_scheduled_at,password_login FROM users WHERE id=?',
       args: [req.user!.id],
     });
     res.json(out.rows[0]);
@@ -604,14 +612,16 @@ router.post('/change-pin', requireAuth, async (req: AuthRequest, res, next) => {
   } catch (e) { next(e); }
 });
 
-// DELETE /api/auth/account — self-service account deletion (App Store Guideline 5.1.1)
+// DELETE /api/auth/account — request account deletion (App Store Guideline 5.1.1).
+// Nothing is removed straight away: the account is scheduled for deletion after a grace period
+// (services/accountDeletion.ts) and signing in again before then cancels it.
 router.delete('/account', requireAuth, async (req: AuthRequest, res, next) => {
   try {
     const data = DeleteAccountSchema.parse(req.body ?? {});
     const db = getDb();
     const userId = req.user!.id;
     const row = await db.execute({
-      sql: 'SELECT id, role, restaurant_id, password_hash FROM users WHERE id=?',
+      sql: 'SELECT id, role, password_hash, password_login FROM users WHERE id=?',
       args: [userId],
     });
     if (!row.rows.length) {
@@ -620,44 +630,46 @@ router.delete('/account', requireAuth, async (req: AuthRequest, res, next) => {
     }
     const u = row.rows[0] as Record<string, unknown>;
     const role = String(u.role ?? '');
-    const restaurantId = String(u.restaurant_id ?? '');
-    const passwordHash = String(u.password_hash ?? '');
 
     if (role === 'founder') {
       res.status(403).json({ error: 'Founder accounts cannot be deleted from the app. Contact platform support.' });
       return;
     }
 
-    const ok = await bcrypt.compare(data.password, passwordHash);
-    if (!ok) {
-      res.status(401).json({ error: 'Password is incorrect' });
-      return;
-    }
-
-    if (role === 'owner') {
-      if (!data.delete_restaurant) {
-        res.status(400).json({
-          error: 'Restaurant owners must confirm restaurant deletion. Set delete_restaurant to true to remove your restaurant and all associated data.',
-        });
+    if (Number(u.password_login ?? 1) === 1) {
+      const ok = data.password ? await bcrypt.compare(data.password, String(u.password_hash ?? '')) : false;
+      if (!ok) {
+        res.status(401).json({ error: 'Password is incorrect' });
         return;
       }
-      await db.execute({ sql: 'DELETE FROM restaurants WHERE id=?', args: [restaurantId] });
-      invalidateUserAuthCache(userId);
-      res.json({ ok: true, message: 'Restaurant and all accounts have been permanently deleted.' });
-      return;
     }
 
-    await db.execute({ sql: 'DELETE FROM users WHERE id=?', args: [userId] });
-    invalidateUserAuthCache(userId);
-    res.json({ ok: true, message: 'Your account has been permanently deleted.' });
+    const scheduledFor = accountDeletionDate();
+    await db.execute({ sql: 'UPDATE users SET deletion_scheduled_at=? WHERE id=?', args: [scheduledFor, userId] });
+    const when = formatDeletionDate(scheduledFor);
+    res.json({
+      ok: true,
+      scheduled_for: scheduledFor,
+      message: role === 'owner'
+        ? `Your restaurant and all its data will be deleted on ${when}. Sign in again before then to cancel.`
+        : `Your account will be deleted on ${when}. Sign in again before then to cancel.`,
+    });
+  } catch (e) { next(e); }
+});
+
+// POST /api/auth/account/cancel-deletion — keep the account after all
+router.post('/account/cancel-deletion', requireAuth, async (req: AuthRequest, res, next) => {
+  try {
+    await getDb().execute({ sql: 'UPDATE users SET deletion_scheduled_at=NULL WHERE id=?', args: [req.user!.id] });
+    res.json({ ok: true, message: 'Account deletion cancelled. Your account stays active.' });
   } catch (e) { next(e); }
 });
 
 
 // ── Google Sign-In ─────────────────────────────────────────────────────────────
 // The client proves an email with a Google ID token; we map it to an existing
-// Cafyz account. Google sign-in never CREATES an account: a user only exists
-// inside a restaurant, and new restaurants come through the trial/inquiry flow.
+// Cafyz account. A new Google user gets a short-lived signup token instead and
+// finishes with /google/signup, which starts a trial restaurant on the top plan.
 
 const GOOGLE_SELECT_TTL_SEC = 300;
 
@@ -666,8 +678,20 @@ interface GoogleSelectClaims { email: string; purpose: 'google_select' }
 function signGoogleSelectToken(email: string): string {
   return jwt.sign(
     { email, purpose: 'google_select' } satisfies GoogleSelectClaims,
-    process.env.JWT_SECRET as string,
+    JWT_SECRET,
     { expiresIn: GOOGLE_SELECT_TTL_SEC },
+  );
+}
+
+const GOOGLE_SIGNUP_TTL_SEC = 15 * 60;
+
+interface GoogleSignupClaims { email: string; name?: string; purpose: 'google_signup' }
+
+function signGoogleSignupToken(email: string, name?: string): string {
+  return jwt.sign(
+    { email, name, purpose: 'google_signup' } satisfies GoogleSignupClaims,
+    JWT_SECRET,
+    { expiresIn: GOOGLE_SIGNUP_TTL_SEC },
   );
 }
 
@@ -692,6 +716,7 @@ router.get('/google/config', (_req, res) => {
     enabled: isGoogleAuthConfigured(),
     client_id: googleWebClientId(),
     ios_client_id: googleIosClientId(),
+    trial_days: TRIAL_DAYS,
   });
 });
 
@@ -718,9 +743,19 @@ router.post('/google', async (req, res, next) => {
     const active = rows.rows.filter((r) => String((r as Record<string, unknown>).status) !== 'off');
 
     if (!active.length) {
-      res.status(404).json({
-        error: 'No Cafyz account uses that Google address. Ask your owner to add you, or start a free trial.',
-        code: 'GOOGLE_NO_ACCOUNT',
+      if (rows.rows.length) {
+        res.status(403).json({ error: 'This user is currently inactive. Contact your manager.' });
+        return;
+      }
+      // A new Google user can start a trial right away. Google proved the address, but the
+      // restaurant details are unknown, so hand back a short-lived signup token and let the
+      // client ask for them (POST /google/signup). Nothing is created yet.
+      res.json({
+        status: 'signup_required' as const,
+        signup_token: signGoogleSignupToken(identity.email, identity.name),
+        email: identity.email,
+        name: identity.name ?? '',
+        trial_days: TRIAL_DAYS,
       });
       return;
     }
@@ -750,6 +785,64 @@ router.post('/google', async (req, res, next) => {
   } catch (e) { next(e); }
 });
 
+const GoogleSignupSchema = z.object({
+  signup_token: z.string().min(16).max(4096),
+  restaurant_name: z.string().trim().min(2).max(80),
+  owner_name: z.string().trim().min(2).max(80).optional(),
+  phone: z.string().min(8).max(40),
+  timezone: z.string().max(80).optional(),
+});
+
+// POST /api/auth/google/signup — a new Google user starts a trial restaurant on the top plan.
+router.post('/google/signup', async (req, res, next) => {
+  try {
+    const data = GoogleSignupSchema.parse(req.body);
+
+    let claims: GoogleSignupClaims;
+    try {
+      claims = jwt.verify(data.signup_token, JWT_SECRET) as GoogleSignupClaims;
+    } catch {
+      res.status(401).json({ error: 'That sign-up took too long. Please continue with Google again.' });
+      return;
+    }
+    if (claims.purpose !== 'google_signup' || !claims.email) {
+      res.status(401).json({ error: 'That sign-up took too long. Please continue with Google again.' });
+      return;
+    }
+
+    const phone = normalizePhone(data.phone);
+    if (!isValidPhoneE164(phone)) {
+      res.status(400).json({ error: 'Enter your mobile number with the country code, e.g. +91 98765 43210' });
+      return;
+    }
+
+    const db = getDb();
+    const [emailTaken, phoneTaken] = await Promise.all([
+      db.execute({ sql: 'SELECT id FROM users WHERE LOWER(email)=? LIMIT 1', args: [claims.email] }),
+      db.execute({ sql: 'SELECT id FROM users WHERE phone=? LIMIT 1', args: [phone] }),
+    ]);
+    if (emailTaken.rows.length) {
+      res.status(409).json({ error: 'Your restaurant is already set up. Continue with Google to sign in.', code: 'ACCOUNT_EXISTS' });
+      return;
+    }
+    if (phoneTaken.rows.length) {
+      res.status(409).json({ error: 'This mobile number is already registered. Sign in with it, or use a different number.', code: 'PHONE_EXISTS' });
+      return;
+    }
+
+    const { ownerId } = await createTrialRestaurant({
+      restaurantName: data.restaurant_name,
+      ownerName: data.owner_name || claims.name || claims.email.split('@')[0]!,
+      email: claims.email,
+      phone,
+      plan: TOP_PLAN,
+      timezone: data.timezone,
+    });
+    const user = await issueLoginSession(db, ownerId);
+    res.status(201).json(sessionResponse(user));
+  } catch (e) { next(e); }
+});
+
 // POST /api/auth/google/select — finish sign-in after the user picks a restaurant.
 router.post('/google/select', async (req, res, next) => {
   try {
@@ -760,7 +853,7 @@ router.post('/google/select', async (req, res, next) => {
 
     let claims: GoogleSelectClaims;
     try {
-      claims = jwt.verify(selection_token, process.env.JWT_SECRET as string) as GoogleSelectClaims;
+      claims = jwt.verify(selection_token, JWT_SECRET) as GoogleSelectClaims;
     } catch {
       res.status(401).json({ error: 'That sign-in attempt expired. Please try again.' });
       return;

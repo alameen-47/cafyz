@@ -6,7 +6,7 @@ export function resetPasswordUrl(token: string): string {
   return `${APP_URL}/?mode=reset&token=${encodeURIComponent(token)}`;
 }
 
-export const TRIAL_DAYS = Number(process.env.TRIAL_DAYS ?? 7);
+export const TRIAL_DAYS = Number(process.env.TRIAL_DAYS ?? 3);
 
 // Anti-abuse: how long before the same device/IP can request again
 export const TRIAL_REQUEST_COOLDOWN_DAYS = Number(process.env.TRIAL_REQUEST_COOLDOWN_DAYS ?? 30);

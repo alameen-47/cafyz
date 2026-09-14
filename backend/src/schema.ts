@@ -395,6 +395,11 @@ export async function runMigrations() {
     await db.execute({ sql: `INSERT OR REPLACE INTO app_settings(key,value) VALUES('demo_menu_copy_v1','1')`, args: [] });
   }
 
+  // Account deletion is scheduled after a grace period instead of running immediately.
+  // Google-created owners have no password until they set one, so deletion confirms without it.
+  await addCol(`ALTER TABLE users ADD COLUMN deletion_scheduled_at TEXT`, 'users.deletion_scheduled_at');
+  await addCol(`ALTER TABLE users ADD COLUMN password_login INTEGER NOT NULL DEFAULT 1`, 'users.password_login');
+
   await db.execute({
     sql: `INSERT OR IGNORE INTO app_settings(key,value) VALUES('trial_device_guard_enabled','1')`,
     args: [],

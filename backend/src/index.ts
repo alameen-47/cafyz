@@ -8,6 +8,7 @@ import { runMigrations } from './schema.js';
 import { ensureFounderAccount } from './services/ensureFounder.js';
 import { ensureStoreDemoAccount } from './services/ensureStoreDemo.js';
 import { startTrialReminderScheduler } from './services/trialReminderScheduler.js';
+import { startAccountDeletionScheduler } from './services/accountDeletion.js';
 
 const PORT = Number(process.env.PORT ?? 4000);
 
@@ -17,6 +18,7 @@ async function start() {
   await ensureFounderAccount();
   await ensureStoreDemoAccount();
   startTrialReminderScheduler();
+  startAccountDeletionScheduler();
 
   const server = app.listen(PORT, () => {
     console.log(`🍽  Cafyz API running on http://localhost:${PORT}`);

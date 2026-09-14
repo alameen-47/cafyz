@@ -56,8 +56,8 @@ function privacyContent() {
       </Section>
       <Section title="Account deletion" id="account-deletion">
         <p>
-          You can delete your personal account from <strong>Account Settings</strong> in the app (Profile menu → Account Settings → Delete account).
-          Restaurant owners can delete their entire restaurant and all associated data. Deletion requires password confirmation and cannot be undone.
+          You can request deletion in the app: Profile menu → Account Settings → Privacy & data → Delete account.
+          We wait 7 days before deleting anything, and signing in again during that time cancels the request. After that, an owner&apos;s restaurant and all associated data, or a staff member&apos;s own login, is permanently deleted.
         </p>
         <p>
           You may also email <a href={`mailto:${SUPPORT_EMAIL}`} style={{ color: "#1e7fff" }}>{SUPPORT_EMAIL}</a> to request deletion.
@@ -112,8 +112,8 @@ function supportContent() {
       </Section>
       <Section title="Account deletion" id="account-deletion">
         <p>
-          <strong>In the app:</strong> Profile menu → Account Settings → Delete account (password required).
-          Owners can delete the entire restaurant and all staff from the same screen.
+          <strong>In the app:</strong> Profile menu → Account Settings → Privacy & data → Delete account.
+          Deletion happens 7 days after the request (sign in again to cancel). Owners remove the entire restaurant and all staff logins.
         </p>
         <p>
           <strong>By email:</strong> contact <a href={`mailto:${SUPPORT_EMAIL}?subject=Account%20deletion%20request`} style={{ color: "#1e7fff" }}>{SUPPORT_EMAIL}</a> from your registered address.
@@ -144,7 +144,7 @@ function termsContent() {
         <p>Plans are billed outside the mobile app stores unless otherwise agreed in writing. Trial and renewal terms are shown in the License section of the app.</p>
       </Section>
       <Section title="Termination">
-        <p>You may delete your account at any time from Account Settings. We may suspend access for non-payment or abuse. Upon termination, your right to use the service ends.</p>
+        <p>You may request deletion of your account at any time from Account Settings (Privacy & data); it is deleted after a 7-day grace period. We may suspend access for non-payment or abuse. Upon termination, your right to use the service ends.</p>
       </Section>
       <Section title="Disclaimer">
         <p>The service is provided “as is” to the extent permitted by law. Cafyz is not liable for indirect damages arising from use of the software.</p>

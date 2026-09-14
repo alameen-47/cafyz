@@ -201,11 +201,14 @@ export const authApi = {
   resetPassword: (token: string, password: string) =>
     post<{ ok: boolean; message: string }>('/api/auth/reset-password', { token, password }),
   googleConfig: () =>
-    get<{ enabled: boolean; client_id: string; ios_client_id: string }>('/api/auth/google/config'),
+    get<{ enabled: boolean; client_id: string; ios_client_id: string; trial_days?: number }>('/api/auth/google/config'),
   google: (id_token: string) =>
     post<GoogleLoginResult>('/api/auth/google', { id_token }),
   googleSelect: (selection_token: string, restaurant_id: string) =>
     post<LoginResponse>('/api/auth/google/select', { selection_token, restaurant_id }),
+  /** A new Google user finishes sign-up: creates their restaurant on a free trial and signs in. */
+  googleSignup: (d: { signup_token: string; restaurant_name: string; phone: string; owner_name?: string; timezone?: string }) =>
+    post<LoginResponse>('/api/auth/google/signup', d),
   me: () => get<ApiUser>('/api/auth/me'),
   updateProfile: (d: { name?: string; phone?: string; email?: string }) =>
     put<ApiUser>('/api/auth/profile', d),
@@ -213,8 +216,11 @@ export const authApi = {
     post<{ ok: boolean; message: string }>('/api/auth/change-password', { current_password, new_password }),
   changePin: (current_pin: string, new_pin: string) =>
     post<{ ok: boolean; message: string }>('/api/auth/change-pin', { current_pin, new_pin }),
-  deleteAccount: (password: string, delete_restaurant?: boolean) =>
-    del<{ ok: boolean; message: string }>('/api/auth/account', { password, delete_restaurant: delete_restaurant ?? false }),
+  /** Schedules deletion after a grace period; signing in again before then cancels it. */
+  deleteAccount: (d: { confirm: 'DELETE'; password?: string }) =>
+    del<{ ok: boolean; message: string; scheduled_for: string }>('/api/auth/account', d),
+  cancelAccountDeletion: () =>
+    post<{ ok: boolean; message: string }>('/api/auth/account/cancel-deletion', {}),
   onboarding: (data: {
     restaurant_name: string; owner_name: string;
     email: string; phone: string; password: string; plan?: string; timezone?: string;
@@ -535,7 +541,8 @@ export function loadGoogleIdentity(): Promise<boolean> {
 /** Google sign-in either completes, or asks which restaurant to enter. */
 export type GoogleLoginResult =
   | ({ status: 'ok' } & LoginResponse)
-  | { status: 'choose_account'; selection_token: string; accounts: GoogleAccountChoice[] };
+  | { status: 'choose_account'; selection_token: string; accounts: GoogleAccountChoice[] }
+  | { status: 'signup_required'; signup_token: string; email: string; name: string; trial_days: number };
 
 /** One account a Google email maps to, when it matches more than one restaurant. */
 export interface GoogleAccountChoice {
@@ -650,6 +657,10 @@ export interface ApiUser {
   role: 'owner' | 'manager' | 'cashier' | 'waiter' | 'kitchen' | 'founder';
   access_json?: string;
   status: 'active' | 'break' | 'off'; start_time: string; created_at?: string;
+  /** Set while the account is scheduled for deletion (ISO date it will be removed). */
+  deletion_scheduled_at?: string | null;
+  /** 0 for Google-created owners who have not set a password yet. */
+  password_login?: number;
 }
 
 export interface ApiRestaurant {
@@ -860,6 +871,8 @@ export interface ApiSubscriptionStatus {
   trial_expires_at?: string | null;
   trial_expired?: boolean;
   trial_days_left?: number | null;
+  /** True while on the free trial rather than a founder-issued license key. */
+  on_trial?: boolean;
   purchase_url?: string;
   founder_email?: string;
   /** Server-side switch: false → purchase buttons email the founder instead of opening Razorpay. */

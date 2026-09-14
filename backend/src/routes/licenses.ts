@@ -13,6 +13,7 @@ import {
   fulfillLicensePurchaseRequest,
   generateKeyCode,
   getPlanConfigSummary,
+  licenseExpiresAtForPlan,
   sha256Token,
   verifyActionToken,
 } from '../services/licensePurchaseFulfillment.js';
@@ -156,12 +157,15 @@ router.get('/mine', requireAuth, async (req: AuthRequest, res, next) => {
     const expiryTs = expiresAt ? new Date(expiresAt).getTime() : Number.NaN;
     const trialExpired = Number.isFinite(expiryTs) ? expiryTs <= Date.now() : false;
     const daysLeft = Number.isFinite(expiryTs) ? Math.max(0, Math.ceil((expiryTs - Date.now()) / 86_400_000)) : null;
+    // Trial licences come from sign-up or trial approval; anything else is a founder-issued key.
+    const onTrial = Boolean(license) && (/trial/i.test(String(license?.note ?? '')) || String(license?.key_code ?? '').toUpperCase().startsWith('TRIAL-'));
     res.json({
       plan:    restRow.rows[0]?.plan ?? 'basic',
       license,
       trial_expires_at: expiresAt || null,
       trial_expired: trialExpired,
       trial_days_left: daysLeft,
+      on_trial: onTrial,
       purchase_url: appPath('/license'),
       founder_email: ADMIN_EMAIL,
       // false → the client asks the founder by email instead of opening checkout
@@ -198,15 +202,15 @@ router.post('/activate', requireAuth, async (req: AuthRequest, res, next) => {
       return;
     }
 
+    // The key's term (1 year, 2 years or lifetime, per plan config) starts when it is activated,
+    // unless the founder gave the key its own expiry. It replaces the trial or any earlier licence.
     const now = new Date().toISOString();
-    await db.execute({
-      sql: `UPDATE license_keys SET restaurant_id=?, activated_at=? WHERE id=?`,
-      args: [rid, now, String(key.id)],
-    });
-    await db.execute({
-      sql: `UPDATE restaurants SET plan=? WHERE id=?`,
-      args: [String(key.plan), rid],
-    });
+    const expiresAt = key.expires_at ? String(key.expires_at) : await licenseExpiresAtForPlan(String(key.plan));
+    await db.batch([
+      { sql: `UPDATE license_keys SET is_active=0 WHERE restaurant_id=? AND is_active=1`, args: [rid] },
+      { sql: `UPDATE license_keys SET restaurant_id=?, activated_at=?, expires_at=?, is_active=1 WHERE id=?`, args: [rid, now, expiresAt, String(key.id)] },
+      { sql: `UPDATE restaurants SET plan=? WHERE id=?`, args: [String(key.plan), rid] },
+    ], 'write');
 
     // Invalidate middleware caches so the new plan and subscription status
     // take effect immediately without waiting for TTL expiry.
@@ -215,7 +219,7 @@ router.post('/activate', requireAuth, async (req: AuthRequest, res, next) => {
     cacheDel(`sub:${rid}`);
 
     const updated = await db.execute({ sql: 'SELECT plan FROM restaurants WHERE id=?', args: [rid] });
-    res.json({ success: true, plan: updated.rows[0]?.plan, activated_at: now });
+    res.json({ success: true, plan: updated.rows[0]?.plan, activated_at: now, expires_at: expiresAt });
   } catch (e) { next(e); }
 });
 

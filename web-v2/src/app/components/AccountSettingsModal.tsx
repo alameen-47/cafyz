@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "motion/react";
-import { X, User, Lock, KeyRound, Loader2, Mail, Trash2 } from "lucide-react";
+import {
+  X, User, Lock, KeyRound, Loader2, Mail, ShieldCheck, ChevronRight, ChevronLeft, Trash2, CalendarClock, LogOut,
+} from "lucide-react";
 import { toast } from "./Toast";
 import { authApi } from "../../services/api";
 import { storageSet } from "../../utils/safeStorage";
@@ -13,7 +15,12 @@ interface Props {
   onUpdated?: () => void;
 }
 
-type Tab = "profile" | "password" | "pin";
+/** "privacy" is reached from a quiet link on the Profile tab, not a tab of its own. */
+type Tab = "profile" | "password" | "pin" | "privacy";
+type PrivacyStep = "overview" | "confirm";
+
+/** Mirrors ACCOUNT_DELETION_GRACE_DAYS on the server. */
+const DELETION_GRACE_DAYS = 7;
 
 function Field({ label, value, onChange, type = "text", placeholder = "", disabled = false }: {
   label: string; value: string; onChange: (v: string) => void;
@@ -35,6 +42,10 @@ function Field({ label, value, onChange, type = "text", placeholder = "", disabl
   );
 }
 
+function formatDay(iso: string): string {
+  return new Date(iso).toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short", year: "numeric" });
+}
+
 export function AccountSettingsModal({ open, onClose, onUpdated }: Props) {
   const { user, logout } = useAuth();
   const [tab, setTab] = useState<Tab>("profile");
@@ -46,25 +57,30 @@ export function AccountSettingsModal({ open, onClose, onUpdated }: Props) {
   const [savingPw, setSavingPw] = useState(false);
   const [savingPin, setSavingPin] = useState(false);
   const [sendingReset, setSendingReset] = useState(false);
+
+  const [privacyStep, setPrivacyStep] = useState<PrivacyStep>("overview");
+  const [deletionScheduledAt, setDeletionScheduledAt] = useState<string | null>(null);
+  const [passwordLogin, setPasswordLogin] = useState(true);
+  const [deleteConfirm, setDeleteConfirm] = useState("");
   const [deletePw, setDeletePw] = useState("");
-  const [deleteRestaurant, setDeleteRestaurant] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
 
   useEffect(() => {
     if (!open) return;
     setTab("profile");
+    setPrivacyStep("overview");
     setPw({ current: "", next: "", confirm: "" });
     setPin({ current: "", next: "", confirm: "" });
+    setDeleteConfirm("");
     setDeletePw("");
-    setDeleteRestaurant(false);
     setLoading(true);
     authApi.me()
-      .then(u => setProfile({
-        name: u.name ?? "",
-        email: u.email ?? "",
-        phone: u.phone ?? "",
-        role: u.role ?? "",
-      }))
+      .then(u => {
+        setProfile({ name: u.name ?? "", email: u.email ?? "", phone: u.phone ?? "", role: u.role ?? "" });
+        setDeletionScheduledAt(u.deletion_scheduled_at ?? null);
+        setPasswordLogin(u.password_login !== 0);
+      })
       .catch(e => toast.error("Couldn't load account", (e as Error).message))
       .finally(() => setLoading(false));
   }, [open]);
@@ -90,12 +106,7 @@ export function AccountSettingsModal({ open, onClose, onUpdated }: Props) {
         email: profile.email.trim().toLowerCase(),
         phone: profile.phone.trim(),
       });
-      setProfile({
-        name: updated.name,
-        email: updated.email,
-        phone: updated.phone ?? "",
-        role: updated.role,
-      });
+      setProfile({ name: updated.name, email: updated.email, phone: updated.phone ?? "", role: updated.role });
       syncSession(updated.name, updated.email, updated.initials);
       toast.success("Profile saved", "Your details have been updated.");
     } catch (e) {
@@ -151,36 +162,50 @@ export function AccountSettingsModal({ open, onClose, onUpdated }: Props) {
 
   const isOwner = profile.role === "owner";
   const canDeleteAccount = profile.role !== "founder";
+  const deleteReady = deleteConfirm.trim().toUpperCase() === "DELETE" && (!passwordLogin || deletePw.length > 0);
 
-  const deleteAccount = async () => {
-    if (!deletePw) {
-      toast.error("Password required", "Enter your password to confirm deletion.");
-      return;
-    }
-    if (isOwner && !deleteRestaurant) {
-      toast.error("Confirmation required", "Owners must check the box to delete the entire restaurant.");
-      return;
-    }
+  const scheduleDeletion = async () => {
+    if (!deleteReady) return;
     setDeleting(true);
     try {
-      const res = await authApi.deleteAccount(deletePw, isOwner ? true : false);
-      toast.success("Account deleted", res.message);
+      const res = await authApi.deleteAccount({ confirm: "DELETE", ...(passwordLogin ? { password: deletePw } : {}) });
+      toast.success("Account deletion scheduled", res.message);
+      // Signed out so that signing in again is a deliberate "keep my account".
       onClose();
       logout();
-    } catch (e) {
-      toast.error("Couldn't delete account", (e as Error).message);
+    } catch {
+      // The API client already shows the error.
     } finally {
       setDeleting(false);
     }
   };
 
+  const cancelDeletion = async () => {
+    setCancelling(true);
+    try {
+      const res = await authApi.cancelAccountDeletion();
+      setDeletionScheduledAt(null);
+      toast.success("Your account is staying", res.message);
+    } catch {
+      // The API client already shows the error.
+    } finally {
+      setCancelling(false);
+    }
+  };
+
   if (typeof document === "undefined") return null;
 
-  const tabs: { id: Tab; label: string; icon: typeof User }[] = [
+  const tabs: { id: Exclude<Tab, "privacy">; label: string; icon: typeof User }[] = [
     { id: "profile", label: "Profile", icon: User },
     { id: "password", label: "Password", icon: Lock },
     { id: "pin", label: "PIN", icon: KeyRound },
   ];
+
+  const inPrivacy = tab === "privacy";
+  const backFromPrivacy = () => {
+    if (privacyStep === "confirm") setPrivacyStep("overview");
+    else setTab("profile");
+  };
 
   return createPortal(
     <AnimatePresence>
@@ -194,36 +219,49 @@ export function AccountSettingsModal({ open, onClose, onUpdated }: Props) {
             style={{ background: "var(--cafyz-surface)", border: "1px solid var(--cafyz-border-strong)", boxShadow: "var(--cafyz-shadow-lg)" }}
           >
             <div className="flex items-center justify-between px-4 py-3 border-b" style={{ borderColor: "var(--cafyz-border)" }}>
-              <div>
-                <h2 style={{ color: "var(--cafyz-text)", fontFamily: "var(--font-display)", fontWeight: 700, fontSize: "1rem" }}>Account Settings</h2>
-                <p style={{ color: "var(--cafyz-muted)", fontSize: "0.72rem" }}>Your personal login & security</p>
+              <div className="flex items-center gap-2 min-w-0">
+                {inPrivacy && (
+                  <button type="button" onClick={backFromPrivacy} className="p-1.5 -ml-1.5 rounded-lg hover:bg-[var(--cafyz-surface-hover)]" aria-label="Back">
+                    <ChevronLeft size={18} style={{ color: "var(--cafyz-muted)" }} />
+                  </button>
+                )}
+                <div className="min-w-0">
+                  <h2 style={{ color: "var(--cafyz-text)", fontFamily: "var(--font-display)", fontWeight: 700, fontSize: "1rem" }}>
+                    {inPrivacy ? "Privacy & data" : "Account Settings"}
+                  </h2>
+                  <p style={{ color: "var(--cafyz-muted)", fontSize: "0.72rem" }}>
+                    {inPrivacy ? "Your data and account" : "Your personal login & security"}
+                  </p>
+                </div>
               </div>
               <button type="button" onClick={onClose} className="p-2 rounded-lg hover:bg-[var(--cafyz-surface-hover)]" aria-label="Close">
                 <X size={18} style={{ color: "var(--cafyz-muted)" }} />
               </button>
             </div>
 
-            <div className="flex gap-1 px-3 pt-3">
-              {tabs.map(t => {
-                const Icon = t.icon;
-                const active = tab === t.id;
-                return (
-                  <button
-                    key={t.id}
-                    type="button"
-                    onClick={() => setTab(t.id)}
-                    className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-semibold transition-all"
-                    style={{
-                      background: active ? "rgba(30,127,255,0.12)" : "transparent",
-                      color: active ? "#1e7fff" : "var(--cafyz-muted)",
-                      border: active ? "1px solid rgba(30,127,255,0.2)" : "1px solid transparent",
-                    }}
-                  >
-                    <Icon size={13} /> {t.label}
-                  </button>
-                );
-              })}
-            </div>
+            {!inPrivacy && (
+              <div className="flex gap-1 px-3 pt-3">
+                {tabs.map(t => {
+                  const Icon = t.icon;
+                  const active = tab === t.id;
+                  return (
+                    <button
+                      key={t.id}
+                      type="button"
+                      onClick={() => setTab(t.id)}
+                      className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-semibold transition-all"
+                      style={{
+                        background: active ? "rgba(30,127,255,0.12)" : "transparent",
+                        color: active ? "#1e7fff" : "var(--cafyz-muted)",
+                        border: active ? "1px solid rgba(30,127,255,0.2)" : "1px solid transparent",
+                      }}
+                    >
+                      <Icon size={13} /> {t.label}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
 
             <div className="flex-1 overflow-y-auto p-4 space-y-3">
               {loading ? (
@@ -232,7 +270,7 @@ export function AccountSettingsModal({ open, onClose, onUpdated }: Props) {
                 <>
                   <Field label="Full name" value={profile.name} onChange={v => setProfile(p => ({ ...p, name: v }))} placeholder="Your name" />
                   <Field label="Login email" value={profile.email} onChange={v => setProfile(p => ({ ...p, email: v }))} type="email" placeholder="you@restaurant.com" />
-                  <Field label="Mobile" value={profile.phone} onChange={v => setProfile(p => ({ ...p, phone: v }))} placeholder="+971500000000" />
+                  <Field label="Mobile" value={profile.phone} onChange={v => setProfile(p => ({ ...p, phone: v }))} placeholder="+91 98765 43210" />
                   <Field label="Role" value={profile.role} onChange={() => {}} disabled />
                   <p style={{ color: "var(--cafyz-muted)", fontSize: "0.7rem", lineHeight: 1.45 }}>
                     Role changes are managed by your restaurant owner or manager from Roles & Access.
@@ -246,6 +284,17 @@ export function AccountSettingsModal({ open, onClose, onUpdated }: Props) {
                   >
                     {savingProfile ? "Saving…" : "Save profile"}
                   </button>
+                  {canDeleteAccount && (
+                    <button
+                      type="button"
+                      onClick={() => { setTab("privacy"); setPrivacyStep("overview"); }}
+                      className="w-full flex items-center justify-between pt-3 mt-1 text-xs"
+                      style={{ color: "var(--cafyz-muted)", borderTop: "1px solid var(--cafyz-border)" }}
+                    >
+                      <span className="flex items-center gap-1.5"><ShieldCheck size={13} /> Privacy & data</span>
+                      <ChevronRight size={14} />
+                    </button>
+                  )}
                 </>
               ) : tab === "password" ? (
                 <>
@@ -262,7 +311,9 @@ export function AccountSettingsModal({ open, onClose, onUpdated }: Props) {
                     {savingPw ? "Updating…" : "Update password"}
                   </button>
                   <div className="rounded-xl p-3 mt-2" style={{ background: "var(--cafyz-surface-2)", border: "1px solid var(--cafyz-border)" }}>
-                    <p style={{ color: "var(--cafyz-text-secondary)", fontSize: "0.78rem", marginBottom: 8 }}>Forgot your password?</p>
+                    <p style={{ color: "var(--cafyz-text-secondary)", fontSize: "0.78rem", marginBottom: 8 }}>
+                      {passwordLogin ? "Forgot your password?" : "You sign in with Google. Want a password too?"}
+                    </p>
                     <button
                       type="button"
                       onClick={() => void sendForgotPassword()}
@@ -271,11 +322,11 @@ export function AccountSettingsModal({ open, onClose, onUpdated }: Props) {
                       style={{ background: "var(--cafyz-subtle-bg)", color: "var(--cafyz-brand)", border: "1px solid var(--cafyz-accent-border)" }}
                     >
                       {sendingReset ? <Loader2 size={14} className="animate-spin" /> : <Mail size={14} />}
-                      {sendingReset ? "Sending…" : "Email me a reset link"}
+                      {sendingReset ? "Sending…" : passwordLogin ? "Email me a reset link" : "Email me a link to set one"}
                     </button>
                   </div>
                 </>
-              ) : (
+              ) : tab === "pin" ? (
                 <>
                   <Field label="Current PIN" value={pin.current} onChange={v => setPin(p => ({ ...p, current: v.replace(/\D/g, "").slice(0, 4) }))} type="password" placeholder="4 digits" />
                   <Field label="New PIN" value={pin.next} onChange={v => setPin(p => ({ ...p, next: v.replace(/\D/g, "").slice(0, 4) }))} type="password" placeholder="4 digits" />
@@ -293,59 +344,134 @@ export function AccountSettingsModal({ open, onClose, onUpdated }: Props) {
                     {savingPin ? "Updating…" : "Update PIN"}
                   </button>
                 </>
+              ) : privacyStep === "overview" ? (
+                <>
+                  <div className="rounded-xl p-3.5 flex gap-3" style={{ background: "var(--cafyz-surface-2)", border: "1px solid var(--cafyz-border)" }}>
+                    <ShieldCheck size={18} color="#22c55e" className="flex-shrink-0 mt-0.5" />
+                    <div>
+                      <p style={{ color: "var(--cafyz-text)", fontWeight: 600, fontSize: "0.83rem" }}>Your data stays private to your restaurant</p>
+                      <p style={{ color: "var(--cafyz-muted)", fontSize: "0.74rem", lineHeight: 1.5, marginTop: 3 }}>
+                        Only people your restaurant adds can see it. Read our{" "}
+                        <a href="/privacy" style={{ color: "#1e7fff" }}>Privacy Policy</a> or <a href="/support" style={{ color: "#1e7fff" }}>contact support</a>.
+                      </p>
+                    </div>
+                  </div>
+
+                  {deletionScheduledAt ? (
+                    <div className="rounded-xl p-3.5 space-y-3" style={{ background: "rgba(245,158,11,0.08)", border: "1px solid rgba(245,158,11,0.3)" }}>
+                      <div className="flex gap-3">
+                        <CalendarClock size={18} color="#f59e0b" className="flex-shrink-0 mt-0.5" />
+                        <div>
+                          <p style={{ color: "var(--cafyz-text)", fontWeight: 600, fontSize: "0.83rem" }}>Deletion scheduled for {formatDay(deletionScheduledAt)}</p>
+                          <p style={{ color: "var(--cafyz-muted)", fontSize: "0.74rem", lineHeight: 1.5, marginTop: 3 }}>
+                            {isOwner ? "Your restaurant and all its data" : "Your login"} will be permanently deleted on that day.
+                          </p>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => void cancelDeletion()}
+                        disabled={cancelling}
+                        className="w-full py-2.5 rounded-xl text-sm font-semibold"
+                        style={{ background: "linear-gradient(135deg, #1e7fff, #00c6ff)", color: "#fff", opacity: cancelling ? 0.7 : 1 }}
+                      >
+                        {cancelling ? "Keeping your account…" : "Keep my account"}
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => setPrivacyStep("confirm")}
+                      className="w-full flex items-center justify-between gap-3 rounded-xl px-3.5 py-3 text-start transition-all hover:bg-[var(--cafyz-surface-hover)]"
+                      style={{ border: "1px solid var(--cafyz-border)" }}
+                    >
+                      <span className="flex items-center gap-2.5">
+                        <Trash2 size={15} color="#ff3b5c" />
+                        <span>
+                          <span style={{ color: "var(--cafyz-text)", fontSize: "0.83rem", fontWeight: 600, display: "block" }}>Delete account</span>
+                          <span style={{ color: "var(--cafyz-muted)", fontSize: "0.72rem" }}>
+                            {isOwner ? "Remove your restaurant and all its data" : "Remove your personal login"}
+                          </span>
+                        </span>
+                      </span>
+                      <ChevronRight size={16} style={{ color: "var(--cafyz-muted)" }} />
+                    </button>
+                  )}
+                </>
+              ) : (
+                <>
+                  <div>
+                    <h3 style={{ color: "var(--cafyz-text)", fontWeight: 700, fontSize: "0.95rem" }}>Delete your account?</h3>
+                    <p style={{ color: "var(--cafyz-muted)", fontSize: "0.75rem", lineHeight: 1.5, marginTop: 2 }}>
+                      Please read this first — once the {DELETION_GRACE_DAYS} days are up it can&apos;t be undone.
+                    </p>
+                  </div>
+
+                  <ul className="rounded-xl p-3.5 space-y-1.5" style={{ background: "rgba(255,59,92,0.06)", border: "1px solid rgba(255,59,92,0.2)" }}>
+                    {(isOwner
+                      ? ["Your restaurant, menu, tables, orders and reports are deleted", "Every staff login for this restaurant stops working", "Sales history and reports can't be recovered"]
+                      : ["Your personal login is removed", "Your restaurant's data stays with your owner or manager"]
+                    ).map(line => (
+                      <li key={line} className="flex gap-2" style={{ color: "var(--cafyz-text-secondary)", fontSize: "0.76rem", lineHeight: 1.45 }}>
+                        <span style={{ color: "#ff3b5c" }}>•</span>{line}
+                      </li>
+                    ))}
+                  </ul>
+
+                  <div className="rounded-xl p-3 flex gap-2.5" style={{ background: "var(--cafyz-surface-2)", border: "1px solid var(--cafyz-border)" }}>
+                    <CalendarClock size={16} color="#1e7fff" className="flex-shrink-0 mt-0.5" />
+                    <p style={{ color: "var(--cafyz-text-secondary)", fontSize: "0.76rem", lineHeight: 1.5 }}>
+                      <b style={{ color: "var(--cafyz-text)" }}>Nothing is deleted for {DELETION_GRACE_DAYS} days.</b> Change your mind? Just sign in again before then and your account stays.
+                    </p>
+                  </div>
+
+                  <div className="rounded-xl p-3 flex items-center gap-2.5" style={{ background: "var(--cafyz-surface-2)", border: "1px solid var(--cafyz-border)" }}>
+                    <LogOut size={16} style={{ color: "var(--cafyz-muted)", flexShrink: 0 }} />
+                    <p className="flex-1" style={{ color: "var(--cafyz-text-secondary)", fontSize: "0.76rem", lineHeight: 1.45 }}>
+                      Just need a break? Sign out instead — nothing is deleted.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => { onClose(); logout(); }}
+                      className="px-2.5 py-1.5 rounded-lg text-xs font-semibold flex-shrink-0"
+                      style={{ color: "#1e7fff", border: "1px solid var(--cafyz-accent-border)" }}
+                    >
+                      Sign out
+                    </button>
+                  </div>
+
+                  <Field label='Type "DELETE" to confirm' value={deleteConfirm} onChange={setDeleteConfirm} placeholder="DELETE" />
+                  {passwordLogin && (
+                    <Field label="Your password" value={deletePw} onChange={setDeletePw} type="password" placeholder="Current password" />
+                  )}
+
+                  <div className="flex flex-col-reverse sm:flex-row gap-2 pt-1">
+                    <button
+                      type="button"
+                      onClick={() => setPrivacyStep("overview")}
+                      className="flex-1 py-2.5 rounded-xl text-sm font-semibold"
+                      style={{ background: "linear-gradient(135deg, #1e7fff, #00c6ff)", color: "#fff" }}
+                    >
+                      Keep my account
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => void scheduleDeletion()}
+                      disabled={!deleteReady || deleting}
+                      className="flex-1 py-2.5 rounded-xl text-sm font-semibold"
+                      style={{
+                        background: "rgba(255,59,92,0.08)",
+                        color: "#ff3b5c",
+                        border: "1px solid rgba(255,59,92,0.25)",
+                        opacity: (!deleteReady || deleting) ? 0.5 : 1,
+                      }}
+                    >
+                      {deleting ? "Scheduling…" : `Delete in ${DELETION_GRACE_DAYS} days`}
+                    </button>
+                  </div>
+                </>
               )}
             </div>
-
-            {canDeleteAccount && (
-              <div className="px-4 pb-4 border-t pt-4 space-y-3" style={{ borderColor: "var(--cafyz-border)" }}>
-                <div className="flex items-center gap-2">
-                  <Trash2 size={15} style={{ color: "#ff3b5c" }} />
-                  <h3 style={{ color: "var(--cafyz-text)", fontWeight: 700, fontSize: "0.85rem" }}>Delete account</h3>
-                </div>
-                <p style={{ color: "var(--cafyz-muted)", fontSize: "0.72rem", lineHeight: 1.5 }}>
-                  {isOwner
-                    ? "Permanently deletes your restaurant, all staff accounts, orders, and menu data. This cannot be undone."
-                    : "Permanently removes your personal login. Your manager can invite you again later if needed."}
-                </p>
-                {isOwner && (
-                  <label className="flex items-start gap-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={deleteRestaurant}
-                      onChange={e => setDeleteRestaurant(e.target.checked)}
-                      className="mt-0.5"
-                    />
-                    <span style={{ color: "var(--cafyz-text-secondary)", fontSize: "0.72rem", lineHeight: 1.45 }}>
-                      I understand this will delete my entire restaurant and all associated data.
-                    </span>
-                  </label>
-                )}
-                <Field
-                  label="Confirm with password"
-                  value={deletePw}
-                  onChange={setDeletePw}
-                  type="password"
-                  placeholder="Your current password"
-                />
-                <button
-                  type="button"
-                  onClick={() => void deleteAccount()}
-                  disabled={deleting || !deletePw || (isOwner && !deleteRestaurant)}
-                  className="w-full py-2.5 rounded-xl text-sm font-semibold"
-                  style={{
-                    background: "rgba(255,59,92,0.1)",
-                    color: "#ff3b5c",
-                    border: "1px solid rgba(255,59,92,0.25)",
-                    opacity: (deleting || !deletePw || (isOwner && !deleteRestaurant)) ? 0.5 : 1,
-                  }}
-                >
-                  {deleting ? "Deleting…" : isOwner ? "Delete restaurant & account" : "Delete my account"}
-                </button>
-                <p style={{ color: "var(--cafyz-muted)", fontSize: "0.65rem", lineHeight: 1.45 }}>
-                  See our <a href="/privacy" style={{ color: "#1e7fff" }}>Privacy Policy</a> and <a href="/support" style={{ color: "#1e7fff" }}>Support</a> page.
-                </p>
-              </div>
-            )}
           </motion.div>
         </div>
       )}

@@ -18,6 +18,7 @@ let ownerToken  = '';
 let founderToken = '';
 let generatedKey = '';
 let generatedId  = '';
+let premiumKey   = '';
 
 beforeAll(async () => {
   await setupTestDb();
@@ -61,6 +62,7 @@ describe('POST /api/licenses — founder generates keys', () => {
     expect(res.status).toBe(201);
     expect(Array.isArray(res.body)).toBe(true);
     expect(res.body).toHaveLength(3);
+    premiumKey = res.body[0].key_code;
     res.body.forEach((k: any) => {
       expect(k.key_code).toMatch(/^CAFYZ-PRE-/);
     });
@@ -95,6 +97,8 @@ describe('POST /api/licenses/activate', () => {
     expect(res.status).toBe(200);
     expect(res.body.success).toBe(true);
     expect(res.body.plan).toBe('pro');
+    // A key's term starts on activation: pro is a 2-year licence in plan config.
+    expect(new Date(res.body.expires_at).getUTCFullYear()).toBe(new Date().getUTCFullYear() + 2);
   });
 
   it('rejects an already-used key', async () => {
@@ -111,6 +115,21 @@ describe('POST /api/licenses/activate', () => {
       .set('Authorization', `Bearer ${ownerToken}`)
       .send({ key_code: 'CAFYZ-XXX-00000000' });
     expect(res.status).toBe(400);
+  });
+
+  it('a lifetime key replaces the current licence and never expires', async () => {
+    const res = await request(app)
+      .post('/api/licenses/activate')
+      .set('Authorization', `Bearer ${ownerToken}`)
+      .send({ key_code: premiumKey });
+    expect(res.status).toBe(200);
+    expect(res.body.plan).toBe('premium');
+    expect(res.body.expires_at).toBeNull();
+
+    const mine = await request(app).get('/api/licenses/mine').set('Authorization', `Bearer ${ownerToken}`);
+    expect(mine.body.license.key_code).toBe(premiumKey);
+    expect(mine.body.on_trial).toBe(false);
+    expect(mine.body.trial_days_left).toBeNull();
   });
 });
 

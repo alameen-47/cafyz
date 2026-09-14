@@ -33,6 +33,14 @@ export interface GoogleChoice {
   accounts: GoogleAccountChoice[];
 }
 
+/** A Google user new to Cafyz: they add their restaurant details, then the trial starts. */
+export interface GoogleSignup {
+  signupToken: string;
+  email: string;
+  name: string;
+  trialDays: number;
+}
+
 interface AuthCtx {
   user: AuthUser | null;
   loading: boolean;
@@ -40,8 +48,9 @@ interface AuthCtx {
   loginPin: (login: string, pin: string) => Promise<void>;
   requestOtp: (phone: string) => Promise<{ dev_otp?: string; message: string }>;
   verifyOtp: (phone: string, otp: string) => Promise<void>;
-  /** Resolves with a chooser payload when the Google email matches several restaurants. */
-  loginGoogle: (idToken: string) => Promise<{ choose: GoogleChoice } | null>;
+  /** Resolves with a chooser (email in several restaurants) or signup payload (new to Cafyz). */
+  loginGoogle: (idToken: string) => Promise<{ choose: GoogleChoice } | { signup: GoogleSignup } | null>;
+  signupGoogle: (signupToken: string, details: { restaurant_name: string; phone: string; owner_name?: string }) => Promise<void>;
 
   loginGoogleSelect: (selectionToken: string, restaurantId: string) => Promise<void>;
   signup: (data: SignupData) => Promise<void>;
@@ -200,8 +209,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (d.status === 'choose_account') {
       return { choose: { selectionToken: d.selection_token, accounts: d.accounts } };
     }
+    if (d.status === 'signup_required') {
+      return { signup: { signupToken: d.signup_token, email: d.email, name: d.name, trialDays: d.trial_days } };
+    }
     await complete(d);
     return null;
+  };
+  const signupGoogle = async (signupToken: string, details: { restaurant_name: string; phone: string; owner_name?: string }) => {
+    let timezone: string | undefined;
+    try { timezone = Intl.DateTimeFormat().resolvedOptions().timeZone; } catch { /* server defaults to UTC */ }
+    const d = await authApi.googleSignup({ signup_token: signupToken, ...details, timezone });
+    await complete(d);
   };
   const loginGoogleSelect = async (selectionToken: string, restaurantId: string) => {
     const d = await authApi.googleSelect(selectionToken, restaurantId);
@@ -268,7 +286,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   return (
-    <Ctx.Provider value={{ user, loading, loginEmail, loginPin, requestOtp, verifyOtp, loginGoogle, loginGoogleSelect, signup, logout, refreshPlan }}>
+    <Ctx.Provider value={{ user, loading, loginEmail, loginPin, requestOtp, verifyOtp, loginGoogle, loginGoogleSelect, signupGoogle, signup, logout, refreshPlan }}>
       {children}
     </Ctx.Provider>
   );

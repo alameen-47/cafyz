@@ -1,5 +1,5 @@
 import { motion, AnimatePresence } from "motion/react";
-import { AlertTriangle, Mail, X, Loader2 } from "lucide-react";
+import { AlertTriangle, Key, Mail, X, Loader2 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "./Toast";
 import { licensesApi } from "../../services/api";
@@ -14,6 +14,7 @@ interface RenewalBannerProps {
   onRenewalSubmitted?: () => void;
 }
 
+/** Owner-only reminder: free-trial countdown, a licence nearing its end, or one that has ended. */
 export function RenewalBanner({
   subscription,
   currentPlan,
@@ -26,23 +27,32 @@ export function RenewalBanner({
 
   const daysLeft = subscription?.trial_days_left;
   const expired = Boolean(subscription?.trial_expired);
-  const show = !dismissed && role !== "founder" && role === "owner" && (expired || (daysLeft != null && daysLeft <= 3));
+  const onTrial = Boolean(subscription?.on_trial);
+  const show = !dismissed && role === "owner" && (expired || onTrial || (daysLeft != null && daysLeft <= 7));
 
   if (!show) return null;
 
-  const founderEmail = subscription?.founder_email ?? "cafyzofficial@gmail.com";
+  const days = daysLeft ?? 0;
+  const dayWord = `${days} day${days === 1 ? "" : "s"}`;
+  const title = expired
+    ? (onTrial ? "Your free trial has ended" : "Your license has ended")
+    : onTrial
+      ? (days === 0 ? "Your free trial ends today" : `Free trial · ${dayWord} left`)
+      : `Your license renews in ${dayWord}`;
+  const detail = expired
+    ? "Your data is safe. Activate a license key from Cafyz to continue."
+    : "Request a license key from Cafyz, then enter it on the License page.";
 
-  const contactRenewal = async () => {
+  const requestKey = async () => {
     if (requesting) return;
     setRequesting(true);
     try {
       await licensesApi.requestPurchase({ plan: currentPlan });
-      toast.success("Renewal request sent", `Cafyz (${founderEmail}) will review your request by email.`);
+      toast.success("License key requested", "Cafyz will email your key. Enter it on the License page when it arrives.");
       onRenewalSubmitted?.();
     } catch (e) {
       const msg = (e as Error).message;
-      if (msg.includes("pending")) toast.info("Request already pending", "Check your email for updates from Cafyz.");
-      else toast.error("Couldn't send request", msg);
+      if (/pending/i.test(msg)) toast.info("Already requested", "Your key is on its way — check your email.");
     } finally {
       setRequesting(false);
     }
@@ -66,35 +76,27 @@ export function RenewalBanner({
         >
           <AlertTriangle size={20} style={{ color: expired ? "#ff3b5c" : "#f59e0b", flexShrink: 0 }} />
           <div className="flex-1 min-w-[200px]">
-            <p style={{ color: "var(--cafyz-text)", fontWeight: 700, fontSize: "0.88rem" }}>
-              {expired ? "Subscription expired — renew to restore access" : `Renewal due in ${daysLeft} day${daysLeft === 1 ? "" : "s"}`}
-            </p>
-            <p style={{ color: "var(--cafyz-text-secondary)", fontSize: "0.75rem", marginTop: 2 }}>
-              Contact Cafyz at{" "}
-              <a href={`mailto:${founderEmail}`} style={{ color: "#1e7fff", textDecoration: "underline" }}>
-                {founderEmail}
-              </a>
-              {" "}— we'll email you when approved.
-            </p>
+            <p style={{ color: "var(--cafyz-text)", fontWeight: 700, fontSize: "0.88rem" }}>{title}</p>
+            <p style={{ color: "var(--cafyz-text-secondary)", fontSize: "0.75rem", marginTop: 2 }}>{detail}</p>
           </div>
           <div className="flex items-center gap-2 flex-shrink-0">
             <button
               type="button"
-              onClick={() => void contactRenewal()}
-              disabled={requesting}
+              onClick={onGoLicense}
               className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold"
-              style={{ background: "linear-gradient(135deg, #1e7fff, #00c6ff)", color: "#fff", opacity: requesting ? 0.7 : 1 }}
+              style={{ background: "linear-gradient(135deg, #1e7fff, #00c6ff)", color: "#fff" }}
             >
-              {requesting ? <Loader2 size={14} className="animate-spin" /> : <Mail size={14} />}
-              {requesting ? "Sending…" : "Contact to renew"}
+              <Key size={14} /> Enter key
             </button>
             <button
               type="button"
-              onClick={onGoLicense}
-              className="px-3 py-2 rounded-xl text-xs font-semibold"
-              style={{ background: "rgba(30,127,255,0.12)", color: "#1e7fff", border: "1px solid rgba(30,127,255,0.25)" }}
+              onClick={() => void requestKey()}
+              disabled={requesting}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold"
+              style={{ background: "rgba(30,127,255,0.12)", color: "#1e7fff", border: "1px solid rgba(30,127,255,0.25)", opacity: requesting ? 0.7 : 1 }}
             >
-              License
+              {requesting ? <Loader2 size={14} className="animate-spin" /> : <Mail size={14} />}
+              {requesting ? "Requesting…" : "Request key"}
             </button>
             {!expired && (
               <button type="button" onClick={() => setDismissed(true)} className="p-1.5 rounded-lg" style={{ color: "var(--cafyz-muted)" }} aria-label="Dismiss">

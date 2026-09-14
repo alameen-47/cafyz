@@ -188,7 +188,7 @@ export default function App() {
   if (loading) {
     return (
       <div className="flex app-screen app-native-inset-top w-full flex-col items-center justify-center gap-4" style={{ background: "var(--cafyz-app-bg)" }}>
-        <CafyzLogo size="lg" className="animate-pulse drop-shadow-[0_8px_24px_rgba(30,127,255,0.2)]" />
+        <CafyzLogo size="lg" className="animate-pulse" />
         <div className="w-8 h-8 border-2 border-[rgba(30,127,255,0.2)] border-t-[#1e7fff] rounded-full animate-spin" />
       </div>
     );
@@ -202,7 +202,11 @@ export default function App() {
   const canRenew = canManagePlan(user.role);
   const effectivePlan = (subscription?.plan ?? plan) as Plan;
   const showRenewalBanner = canRenew && subscription
-    && (subscription.trial_expired || (subscription.trial_days_left != null && subscription.trial_days_left <= 3));
+    // The License page already shows this status, and a trial only needs the banner on its last day,
+    // so the fixed banner doesn't cover the top bar for the whole trial.
+    && activePage !== "license"
+    && (subscription.trial_expired
+      || (subscription.trial_days_left != null && subscription.trial_days_left <= (subscription.on_trial ? 1 : 7)));
 
   if (trialExpired) {
     return (
@@ -210,6 +214,7 @@ export default function App() {
         <Toaster position="bottom-right" richColors closeButton />
         <TrialExpiredModal
           staffMode={!canRenew}
+          onTrial={Boolean(subscription?.on_trial)}
           expiresAt={subscription?.trial_expires_at}
           founderEmail={subscription?.founder_email}
           currentPlan={effectivePlan}

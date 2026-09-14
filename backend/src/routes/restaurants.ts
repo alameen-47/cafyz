@@ -1,16 +1,13 @@
 import { Router } from 'express';
-import bcrypt from 'bcryptjs';
 import { z } from 'zod';
 import { getDb } from '../db.js';
 import { requireAuth, signTokenForUser, type AuthRequest } from '../middleware/auth.js';
 import { requireRole } from '../middleware/rbac.js';
-import { uid } from '../utils.js';
 import { isValidPhoneE164, normalizePhone } from '../services/sms.js';
 import { passwordField } from '../utils/security.js';
-import { trialEndsAt, TRIAL_DAYS } from '../config/site.js';
-import { BCRYPT_ROUNDS } from '../constants/security.js';
+import { createTrialRestaurant, TOP_PLAN, type TrialPlan } from '../services/trialSignup.js';
 import {
-  enableDemoDataForNewRestaurant, getDemoStatus, markDemoIntroSeen, setDemoDataEnabled,
+  getDemoStatus, markDemoIntroSeen, setDemoDataEnabled,
 } from '../services/demoData.js';
 
 const router = Router();
@@ -170,32 +167,16 @@ router.post('/onboarding', async (req, res, next) => {
       return;
     }
 
-    const restId = uid();
-    const slug = data.restaurant_name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
-    // New sign-ups start on a full-featured trial plan (default premium).
-    const trialPlan = (data.plan as 'basic' | 'pro' | 'premium') || 'premium';
-    await db.execute({
-      sql: `INSERT INTO restaurants(id,name,slug,plan,timezone,currency_code) VALUES(?,?,?,?,?,'INR')`,
-      args: [restId, data.restaurant_name, `${slug}-${restId.slice(0,6)}`, trialPlan, data.timezone??'UTC'],
+    // Creates the restaurant, owner, trial licence and demo data (shared with Google sign-up).
+    const { restaurantId: restId, ownerId } = await createTrialRestaurant({
+      restaurantName: data.restaurant_name,
+      ownerName: data.owner_name,
+      email: emailNorm,
+      phone: phoneNorm,
+      password: data.password,
+      plan: (data.plan as TrialPlan | undefined) ?? TOP_PLAN,
+      timezone: data.timezone,
     });
-
-    const ownerId = uid();
-    const pwHash = await bcrypt.hash(data.password, BCRYPT_ROUNDS);
-    const initials = data.owner_name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0,2);
-    await db.execute({
-      sql: `INSERT INTO users(id,restaurant_id,name,initials,email,phone,password_hash,role,status,start_time) VALUES(?,?,?,?,?,?,?,?,?,?)`,
-      args: [ownerId, restId, data.owner_name, initials, emailNorm, phoneNorm, pwHash, 'owner', 'active', '—'],
-    });
-
-    // Start a TRIAL_DAYS free trial: an activated, time-limited license. Once it
-    // expires, requireActiveSubscription blocks gated routes until renewal.
-    await db.execute({
-      sql: `INSERT INTO license_keys(id,key_code,plan,restaurant_id,activated_at,expires_at,note) VALUES(?,?,?,?,?,?,?)`,
-      args: [uid(), `TRIAL-${uid().replace(/-/g, '').slice(0, 12).toUpperCase()}`, trialPlan, restId, new Date().toISOString(), trialEndsAt(), `Auto ${TRIAL_DAYS}-day trial`],
-    });
-
-    // Load sample data so the first login shows how every screen works.
-    await enableDemoDataForNewRestaurant(restId);
 
     const restaurant = await db.execute({ sql: 'SELECT * FROM restaurants WHERE id=?', args: [restId] });
     const user = await db.execute({ sql: 'SELECT id,name,initials,email,role,status,restaurant_id,token_version FROM users WHERE id=?', args: [ownerId] });
