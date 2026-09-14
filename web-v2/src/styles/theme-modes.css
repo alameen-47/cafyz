@@ -86,10 +86,12 @@ html:not(.light) {
   --cafyz-hero-shadow: 0 8px 32px rgba(0, 0, 0, 0.22);
   --cafyz-hero-inset-bg: rgba(8, 12, 30, 0.45);
   --cafyz-logo-plate-bg: #0a1024;
-  /* Brand logo glow (see .cafyz-logo): soft blue halo on dark surfaces. */
-  --cafyz-logo-glow-core: rgba(30, 127, 255, 0.34);
-  --cafyz-logo-glow-mid: rgba(0, 198, 255, 0.12);
-  --cafyz-logo-shadow: drop-shadow(0 6px 20px rgba(30, 127, 255, 0.32));
+  /* Brand logo amoeba glow (see .cafyz-logo-glow): luminous blues that bloom on dark surfaces. */
+  --cafyz-logo-blob-a: linear-gradient(135deg, rgba(30, 127, 255, 0.62) 0%, rgba(0, 198, 255, 0.38) 100%);
+  --cafyz-logo-blob-b: linear-gradient(215deg, rgba(99, 102, 241, 0.42) 0%, rgba(0, 198, 255, 0.18) 100%);
+  --cafyz-logo-blob-blur: 12px;
+  --cafyz-logo-halo-blur: 22px;
+  --cafyz-logo-shadow: drop-shadow(0 4px 14px rgba(30, 127, 255, 0.38));
   --cafyz-media-scrim: linear-gradient(to top, rgba(13, 19, 38, 0.65) 0%, transparent 55%);
   --cafyz-banner-warn-bg: linear-gradient(135deg, #0d2040 0%, #0d1326 100%);
   --cafyz-banner-expired-bg: linear-gradient(135deg, #2a1020 0%, #1a0d26 100%);
@@ -182,10 +184,12 @@ html.light {
   --cafyz-hero-shadow: 0 8px 28px rgba(15, 23, 42, 0.08), 0 1px 3px rgba(15, 23, 42, 0.04);
   --cafyz-hero-inset-bg: rgba(255, 255, 255, 0.92);
   --cafyz-logo-plate-bg: #f1f5f9;
-  /* Brand logo glow: a deep navy-to-blue halo so the silver lettering reads on light surfaces. */
-  --cafyz-logo-glow-core: rgba(8, 20, 52, 0.94);
-  --cafyz-logo-glow-mid: rgba(21, 101, 224, 0.42);
-  --cafyz-logo-shadow: drop-shadow(0 8px 22px rgba(21, 101, 224, 0.28));
+  /* Brand logo amoeba glow: richer, tighter blues so the silver lettering reads on light surfaces. */
+  --cafyz-logo-blob-a: linear-gradient(140deg, rgba(14, 58, 158, 0.92) 0%, rgba(21, 101, 224, 0.85) 50%, rgba(34, 168, 255, 0.72) 100%);
+  --cafyz-logo-blob-b: linear-gradient(215deg, rgba(99, 102, 241, 0.32) 0%, rgba(0, 170, 255, 0.24) 100%);
+  --cafyz-logo-blob-blur: 11px;
+  --cafyz-logo-halo-blur: 20px;
+  --cafyz-logo-shadow: drop-shadow(0 2px 6px rgba(8, 20, 52, 0.38));
   --cafyz-media-scrim: linear-gradient(to top, rgba(15, 23, 42, 0.52) 0%, transparent 55%);
   --cafyz-banner-warn-bg: linear-gradient(135deg, #eff6ff 0%, #ffffff 100%);
   --cafyz-banner-expired-bg: linear-gradient(135deg, #fef2f2 0%, #fff7ed 100%);
@@ -296,24 +300,77 @@ html.light .cafyz-accent-surface {
   border: 1px solid var(--cafyz-accent-border);
 }
 
-/* Brand logo — a radial glow painted behind the transparent PNG, centred on the mark.
-   `circle closest-side` keeps the halo round even when the <img> box is wider than the
-   drawn logo (object-contain); ending at 100% keeps it a clean circle inside the box. */
-.cafyz-logo {
-  background-image: radial-gradient(
-    circle closest-side at 50% 51%,
-    var(--cafyz-logo-glow-core) 0%,
-    var(--cafyz-logo-glow-core) 54%,
-    var(--cafyz-logo-glow-mid) 82%,
-    transparent 100%
-  );
-  background-repeat: no-repeat;
+/* Brand logo — an animated amoeba glow behind the transparent PNG. Two blurred gradient
+   blobs morph their border-radius and drift at different speeds, so the outline never settles
+   into a circle. Sized from the box's height so it hugs the mark even in wide boxes. */
+.cafyz-logo > img {
+  position: relative;
+  z-index: 1;
   filter: var(--cafyz-logo-shadow);
+}
+
+.cafyz-logo-glow {
+  position: absolute;
+  z-index: 0; /* own stacking context: the core/halo order below never escapes above the logo */
+  inset: 0;
+  margin: auto;
+  height: 84%;
+  max-width: 84%;
+  aspect-ratio: 1 / 1;
+  pointer-events: none;
+}
+
+.cafyz-logo-glow::before,
+.cafyz-logo-glow::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  filter: blur(var(--cafyz-logo-blob-blur));
+  will-change: border-radius, transform;
+}
+
+.cafyz-logo-glow::before {
+  z-index: 1;
+  background: var(--cafyz-logo-blob-a);
+  border-radius: 62% 38% 55% 45% / 48% 60% 40% 52%;
+  animation: cafyz-amoeba-a 11s ease-in-out infinite alternate;
+}
+
+.cafyz-logo-glow::after {
+  inset: -14% -10% -12% -16%;
+  background: var(--cafyz-logo-blob-b);
+  border-radius: 40% 60% 42% 58% / 58% 38% 62% 42%;
+  filter: blur(var(--cafyz-logo-halo-blur));
+  animation: cafyz-amoeba-b 15s ease-in-out infinite alternate;
+}
+
+@keyframes cafyz-amoeba-a {
+  0%   { border-radius: 62% 38% 55% 45% / 48% 60% 40% 52%; transform: rotate(0deg) scale(1); }
+  25%  { border-radius: 44% 56% 36% 64% / 60% 44% 56% 40%; transform: rotate(35deg) scale(1.05) translate(2%, -2%); }
+  50%  { border-radius: 58% 42% 68% 32% / 36% 58% 42% 64%; transform: rotate(70deg) scale(0.96) translate(-3%, 2%); }
+  75%  { border-radius: 36% 64% 46% 54% / 54% 34% 66% 46%; transform: rotate(105deg) scale(1.04) translate(2%, 3%); }
+  100% { border-radius: 52% 48% 38% 62% / 42% 62% 38% 58%; transform: rotate(140deg) scale(1) translate(-2%, -1%); }
+}
+
+@keyframes cafyz-amoeba-b {
+  0%   { border-radius: 40% 60% 42% 58% / 58% 38% 62% 42%; transform: rotate(0deg) translate(0, 0); }
+  30%  { border-radius: 63% 37% 57% 43% / 41% 63% 37% 59%; transform: rotate(-45deg) translate(-4%, 3%); }
+  60%  { border-radius: 35% 65% 60% 40% / 62% 45% 55% 38%; transform: rotate(-90deg) translate(3%, -4%); }
+  100% { border-radius: 57% 43% 35% 65% / 45% 58% 42% 55%; transform: rotate(-150deg) translate(-2%, 2%); }
 }
 
 /* Surfaces that are dark in both themes (login hero panel) keep the dark-mode glow. */
 .cafyz-logo.cafyz-logo--on-dark {
-  --cafyz-logo-glow-core: rgba(30, 127, 255, 0.34);
-  --cafyz-logo-glow-mid: rgba(0, 198, 255, 0.12);
-  --cafyz-logo-shadow: drop-shadow(0 6px 20px rgba(30, 127, 255, 0.32));
+  --cafyz-logo-blob-a: linear-gradient(135deg, rgba(30, 127, 255, 0.62) 0%, rgba(0, 198, 255, 0.38) 100%);
+  --cafyz-logo-blob-b: linear-gradient(215deg, rgba(99, 102, 241, 0.42) 0%, rgba(0, 198, 255, 0.18) 100%);
+  --cafyz-logo-blob-blur: 12px;
+  --cafyz-logo-halo-blur: 22px;
+  --cafyz-logo-shadow: drop-shadow(0 4px 14px rgba(30, 127, 255, 0.38));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cafyz-logo-glow::before,
+  .cafyz-logo-glow::after {
+    animation: none;
+  }
 }
