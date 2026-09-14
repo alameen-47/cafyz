@@ -5,6 +5,7 @@ import { useAuth, type Plan } from '../auth';
 import { PAGE_LABELS, PLAN_ORDER, canManagePlan, type PageId } from '../../config/access';
 import { usePlanConfig } from '../PlanConfigProvider';
 import { formatPlanPrice, formatBillingSuffix, getPlanConfig } from '../../services/planConfigStore';
+import { SHOW_PLAN_PRICING } from '../../config/features';
 
 const PLAN_META: Record<Plan, { label: string; color: string; icon: typeof Shield }> = {
   basic: { label: 'Basic', color: 'var(--cafyz-muted)', icon: Shield },
@@ -63,7 +64,7 @@ export function UpgradeModal({ requiredPlan, featurePage, onClose, onGoLicense }
             const Meta = PLAN_META[plan];
             const Icon = Meta.icon;
             const cfg = getPlanConfig(plan) ?? plans.find(p => p.plan === plan);
-            const priceLine = cfg ? `${formatPlanPrice(cfg)}${formatBillingSuffix(cfg)}` : null;
+            const priceLine = SHOW_PLAN_PRICING && cfg ? `${formatPlanPrice(cfg)}${formatBillingSuffix(cfg)}` : null;
             return (
               <div key={plan} className="flex items-center gap-3 px-3 py-2.5 rounded-xl"
                 style={{ background: plan === requiredPlan ? 'var(--cafyz-accent-bg)' : 'var(--cafyz-subtle-bg)', border: `1px solid ${plan === requiredPlan ? 'var(--cafyz-accent-border)' : 'var(--cafyz-border)'}` }}>

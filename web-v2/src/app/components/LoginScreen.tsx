@@ -8,6 +8,7 @@ import { getNativeGoogleIdToken, googleSignInConfig, isNativeShell, mountGoogleT
 import { authApi, inquiryApi, type ApiPlanConfig } from "../../services/api";
 import { usePlanConfig } from "../PlanConfigProvider";
 import { formatPlanPrice, formatBillingSuffix } from "../../services/planConfigStore";
+import { SHOW_PLAN_PRICING } from "../../config/features";
 import { LanguageSwitcher } from "../../i18n/LanguageSwitcher";
 import { useLanguage } from "../../i18n/LanguageProvider";
 import { CafyzLogo } from "./CafyzLogo";
@@ -612,7 +613,7 @@ export function LoginScreen({ onLogin }: { onLogin?: () => void }) {
                       { plan: "premium", label: "Premium", price_monthly: 0, currency_symbol: "₹", billing_interval_unit: "month" as const, billing_interval_count: 1 },
                     ] as ApiPlanConfig[]).map(p => (
                       <option key={p.plan} value={p.plan}>
-                        {p.label ?? p.plan}{p.price_monthly ? ` — ${formatPlanPrice(p)}${formatBillingSuffix(p)}` : ""}
+                        {p.label ?? p.plan}{SHOW_PLAN_PRICING && p.price_monthly ? ` — ${formatPlanPrice(p)}${formatBillingSuffix(p)}` : ""}
                       </option>
                     ))}
                   </select>

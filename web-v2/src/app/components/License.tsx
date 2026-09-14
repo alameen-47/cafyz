@@ -6,6 +6,7 @@ import { licensesApi, billingApi, loadRazorpayCheckout, type ApiSubscriptionStat
 import { useAuth } from "../auth";
 import { usePlanConfig } from "../PlanConfigProvider";
 import { formatBillingSuffix, formatPlanPrice, isLifetimePlan, panelLabelsFromConfig } from "../../services/planConfigStore";
+import { SHOW_PLAN_PRICING } from "../../config/features";
 
 const PLAN_STYLE: Record<string, { color: string; icon: typeof Shield; popular?: boolean }> = {
   basic: { color: "var(--cafyz-muted)", icon: Shield },
@@ -341,10 +342,12 @@ export function License() {
                   </div>
                   <span style={{ color: "var(--cafyz-text)", fontFamily: "var(--font-display)", fontWeight: 700, fontSize: "0.95rem" }}>{plan.name}</span>
                 </div>
-                <div className="mb-4">
-                  <span style={{ color: plan.color, fontFamily: "var(--font-mono)", fontWeight: 800, fontSize: "1.6rem" }}>{plan.priceLabel}</span>
-                  <span style={{ color: "var(--cafyz-muted)", fontSize: "0.75rem" }}>{plan.lifetime ? plan.period : `/${plan.period}`}</span>
-                </div>
+                {SHOW_PLAN_PRICING && (
+                  <div className="mb-4">
+                    <span style={{ color: plan.color, fontFamily: "var(--font-mono)", fontWeight: 800, fontSize: "1.6rem" }}>{plan.priceLabel}</span>
+                    <span style={{ color: "var(--cafyz-muted)", fontSize: "0.75rem" }}>{plan.lifetime ? plan.period : `/${plan.period}`}</span>
+                  </div>
+                )}
                 {plan.description && (
                   <p style={{ color: "var(--cafyz-muted)", fontSize: "0.72rem", marginBottom: 10 }}>{plan.description}</p>
                 )}
