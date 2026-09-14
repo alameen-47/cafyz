@@ -80,7 +80,7 @@ body.cap-native .app-main-spacer {
 
 /* Login screen — 30% logo band + 70% fixed credentials panel (mobile) */
 .login-screen {
-  background: #06091a;
+  background: var(--cafyz-app-bg);
   width: 100%;
   height: 100%;
   min-height: 100dvh;

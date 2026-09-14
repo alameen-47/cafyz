@@ -58,7 +58,7 @@ async function planInterestLine(plan: string): Promise<string> {
   });
   const cfg = row.rows[0] as Record<string, unknown> | undefined;
   if (!cfg) return `${plan} after ${TRIAL_DAYS}-day free trial`;
-  const sym = String(cfg.currency_symbol ?? '$');
+  const sym = String(cfg.currency_symbol ?? '₹');
   const price = Number(cfg.price_monthly ?? 0);
   const count = Math.max(1, Number(cfg.billing_interval_count ?? 1));
   const unit = String(cfg.billing_interval_unit ?? 'month');

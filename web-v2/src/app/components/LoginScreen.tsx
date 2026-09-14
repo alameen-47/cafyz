@@ -56,7 +56,7 @@ function PinPad({ onSubmit }: { onSubmit: (pin: string) => void }) {
             className="h-10 sm:h-12 rounded-xl text-base sm:text-lg font-semibold transition-all flex items-center justify-center"
             style={k === "" ? { pointerEvents: "none" } : {
               background: k === "⌫" ? "rgba(255,59,92,0.08)" : "rgba(30,127,255,0.06)",
-              color: k === "⌫" ? "#ff3b5c" : "#e8eef8",
+              color: k === "⌫" ? "#ff3b5c" : "var(--cafyz-text)",
               border: "1px solid rgba(30,127,255,0.1)",
             }}
           >
@@ -81,9 +81,9 @@ function ActivityLoader({ label, sublabel }: { label: string; sublabel?: string 
         <div className="absolute inset-[18px] rounded-full" style={{ background: "rgba(30,127,255,0.2)" }} />
       </div>
       <div>
-        <p style={{ color: "#e8eef8", fontSize: "0.95rem", fontWeight: 600 }}>{label}</p>
+        <p style={{ color: "var(--cafyz-text)", fontSize: "0.95rem", fontWeight: 600 }}>{label}</p>
         {sublabel ? (
-          <p style={{ color: "#6b82a0", fontSize: "0.8rem", marginTop: 6, lineHeight: 1.5, maxWidth: 280 }}>{sublabel}</p>
+          <p style={{ color: "var(--cafyz-muted)", fontSize: "0.8rem", marginTop: 6, lineHeight: 1.5, maxWidth: 280 }}>{sublabel}</p>
         ) : null}
       </div>
     </div>
@@ -315,7 +315,7 @@ export function LoginScreen({ onLogin }: { onLogin?: () => void }) {
   };
 
   return (
-    <div className="login-screen app-screen app-native-inset-top flex h-full min-h-[100dvh] w-full flex-col overflow-hidden md:flex-row" style={{ background: "#06091a" }}>
+    <div className="login-screen app-screen app-native-inset-top flex h-full min-h-[100dvh] w-full flex-col overflow-hidden md:flex-row" style={{ background: "var(--cafyz-app-bg)" }}>
       {/* Left hero panel — tablet & desktop */}
       <div
         className="hidden md:flex flex-col justify-between flex-shrink-0 p-8 lg:p-10 w-[min(42%,360px)] lg:w-[480px]"
@@ -385,16 +385,16 @@ export function LoginScreen({ onLogin }: { onLogin?: () => void }) {
             {authState === "login" && (
               <motion.div key="login" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -16 }} className="space-y-4 sm:space-y-6">
                 <div className="text-center md:text-start">
-                  <h2 className="text-xl sm:text-[1.6rem]" style={{ fontFamily: "var(--font-display)", fontWeight: 700, color: "#e8eef8" }}>{t("Welcome back")}</h2>
-                  <p style={{ color: "#6b82a0", fontSize: "0.8rem", marginTop: 4 }}>{t("Sign in to your Cafyz account")}</p>
+                  <h2 className="text-xl sm:text-[1.6rem]" style={{ fontFamily: "var(--font-display)", fontWeight: 700, color: "var(--cafyz-text)" }}>{t("Welcome back")}</h2>
+                  <p style={{ color: "var(--cafyz-muted)", fontSize: "0.8rem", marginTop: 4 }}>{t("Sign in to your Cafyz account")}</p>
                 </div>
 
                 {/* Auth method tabs */}
-                <div className="flex gap-1 p-1 rounded-xl" style={{ background: "#0d1326", border: "1px solid rgba(30,127,255,0.1)" }}>
+                <div className="flex gap-1 p-1 rounded-xl" style={{ background: "var(--cafyz-surface-2)", border: "1px solid rgba(30,127,255,0.1)" }}>
                   {(["password","pin","otp"] as AuthMethod[]).map(m => (
                     <button key={m} onClick={() => setMethod(m)}
                       className="flex-1 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm capitalize transition-all font-medium"
-                      style={method === m ? { background: "linear-gradient(135deg, #1e7fff, #00c6ff)", color: "#fff" } : { color: "#6b82a0" }}
+                      style={method === m ? { background: "linear-gradient(135deg, #1e7fff, #00c6ff)", color: "#fff" } : { color: "var(--cafyz-muted)" }}
                     >
                       {m === "password" ? t("Email / Mobile") : m === "pin" ? "PIN" : "OTP"}
                     </button>
@@ -404,22 +404,22 @@ export function LoginScreen({ onLogin }: { onLogin?: () => void }) {
                 {method === "password" && (
                   <div className="space-y-3">
                     <div>
-                      <label style={{ color: "#a8bdd4", fontSize: "0.8rem", display: "block", marginBottom: 6 }}>{t("Email or mobile")}</label>
-                      <div className="flex items-center gap-2 rounded-xl px-3 py-3" style={{ background: "#0d1326", border: "1px solid rgba(30,127,255,0.15)" }}>
-                        <Mail size={15} style={{ color: "#6b82a0", flexShrink: 0 }} />
+                      <label style={{ color: "var(--cafyz-text-secondary)", fontSize: "0.8rem", display: "block", marginBottom: 6 }}>{t("Email or mobile")}</label>
+                      <div className="flex items-center gap-2 rounded-xl px-3 py-3" style={{ background: "var(--cafyz-surface-2)", border: "1px solid rgba(30,127,255,0.15)" }}>
+                        <Mail size={15} style={{ color: "var(--cafyz-muted)", flexShrink: 0 }} />
                         <input type="text" placeholder="alex@restaurant.com or +971500000000" value={email} onChange={e => setEmail(e.target.value)}
-                          className="flex-1 bg-transparent outline-none text-sm placeholder:text-[#6b82a0]"
-                          style={{ color: "#e8eef8" }} />
+                          className="flex-1 bg-transparent outline-none text-sm placeholder:text-[var(--cafyz-muted)]"
+                          style={{ color: "var(--cafyz-text)" }} />
                       </div>
                     </div>
                     <div>
-                      <label style={{ color: "#a8bdd4", fontSize: "0.8rem", display: "block", marginBottom: 6 }}>{t("Password")}</label>
-                      <div className="flex items-center gap-2 rounded-xl px-3 py-3" style={{ background: "#0d1326", border: "1px solid rgba(30,127,255,0.15)" }}>
-                        <Lock size={15} style={{ color: "#6b82a0", flexShrink: 0 }} />
+                      <label style={{ color: "var(--cafyz-text-secondary)", fontSize: "0.8rem", display: "block", marginBottom: 6 }}>{t("Password")}</label>
+                      <div className="flex items-center gap-2 rounded-xl px-3 py-3" style={{ background: "var(--cafyz-surface-2)", border: "1px solid rgba(30,127,255,0.15)" }}>
+                        <Lock size={15} style={{ color: "var(--cafyz-muted)", flexShrink: 0 }} />
                         <input type={showPass ? "text" : "password"} placeholder="••••••••" value={password} onChange={e => setPassword(e.target.value)}
-                          className="flex-1 bg-transparent outline-none text-sm placeholder:text-[#6b82a0]"
-                          style={{ color: "#e8eef8" }} />
-                        <button onClick={() => setShowPass(s => !s)} style={{ color: "#6b82a0" }}>
+                          className="flex-1 bg-transparent outline-none text-sm placeholder:text-[var(--cafyz-muted)]"
+                          style={{ color: "var(--cafyz-text)" }} />
+                        <button onClick={() => setShowPass(s => !s)} style={{ color: "var(--cafyz-muted)" }}>
                           {showPass ? <EyeOff size={15} /> : <Eye size={15} />}
                         </button>
                       </div>
@@ -433,10 +433,10 @@ export function LoginScreen({ onLogin }: { onLogin?: () => void }) {
                 {method === "pin" && (
                   <div className="space-y-4">
                     <div>
-                      <label style={{ color: "#a8bdd4", fontSize: "0.8rem", display: "block", marginBottom: 6 }}>{t("Email or mobile")}</label>
-                      <div className="flex items-center gap-2 rounded-xl px-3 py-3" style={{ background: "#0d1326", border: "1px solid rgba(30,127,255,0.15)" }}>
-                        <Phone size={15} style={{ color: "#6b82a0" }} />
-                        <input type="text" placeholder="staff@restaurant.com or +971500000000" value={pinLogin} onChange={e => setPinLogin(e.target.value)} className="flex-1 bg-transparent outline-none text-sm placeholder:text-[#6b82a0]" style={{ color: "#e8eef8" }} />
+                      <label style={{ color: "var(--cafyz-text-secondary)", fontSize: "0.8rem", display: "block", marginBottom: 6 }}>{t("Email or mobile")}</label>
+                      <div className="flex items-center gap-2 rounded-xl px-3 py-3" style={{ background: "var(--cafyz-surface-2)", border: "1px solid rgba(30,127,255,0.15)" }}>
+                        <Phone size={15} style={{ color: "var(--cafyz-muted)" }} />
+                        <input type="text" placeholder="staff@restaurant.com or +971500000000" value={pinLogin} onChange={e => setPinLogin(e.target.value)} className="flex-1 bg-transparent outline-none text-sm placeholder:text-[var(--cafyz-muted)]" style={{ color: "var(--cafyz-text)" }} />
                       </div>
                     </div>
                     <PinPad onSubmit={(pin) => submitPin(pin)} />
@@ -446,12 +446,12 @@ export function LoginScreen({ onLogin }: { onLogin?: () => void }) {
                 {method === "otp" && (
                   <div className="space-y-4">
                     <div>
-                      <label style={{ color: "#a8bdd4", fontSize: "0.8rem", display: "block", marginBottom: 6 }}>{t("Phone number")}</label>
-                      <div className="flex items-center gap-2 rounded-xl px-3 py-3" style={{ background: "#0d1326", border: "1px solid rgba(30,127,255,0.15)" }}>
-                        <Phone size={15} style={{ color: "#6b82a0" }} />
+                      <label style={{ color: "var(--cafyz-text-secondary)", fontSize: "0.8rem", display: "block", marginBottom: 6 }}>{t("Phone number")}</label>
+                      <div className="flex items-center gap-2 rounded-xl px-3 py-3" style={{ background: "var(--cafyz-surface-2)", border: "1px solid rgba(30,127,255,0.15)" }}>
+                        <Phone size={15} style={{ color: "var(--cafyz-muted)" }} />
                         <input type="tel" placeholder="+91 98765 43210" value={phone} onChange={e => setPhone(e.target.value)}
-                          className="flex-1 bg-transparent outline-none text-sm placeholder:text-[#6b82a0]"
-                          style={{ color: "#e8eef8" }} />
+                          className="flex-1 bg-transparent outline-none text-sm placeholder:text-[var(--cafyz-muted)]"
+                          style={{ color: "var(--cafyz-text)" }} />
                       </div>
                     </div>
                     <button onClick={sendOtp} disabled={loading}
@@ -478,7 +478,7 @@ export function LoginScreen({ onLogin }: { onLogin?: () => void }) {
                   <>
                     <div className="flex items-center gap-3" aria-hidden="true">
                       <span style={{ flex: 1, height: 1, background: "var(--cafyz-border, rgba(255,255,255,0.12))" }} />
-                      <span style={{ color: "#6b82a0", fontSize: "0.72rem" }}>{t("or")}</span>
+                      <span style={{ color: "var(--cafyz-muted)", fontSize: "0.72rem" }}>{t("or")}</span>
                       <span style={{ flex: 1, height: 1, background: "var(--cafyz-border, rgba(255,255,255,0.12))" }} />
                     </div>
 
@@ -530,7 +530,7 @@ export function LoginScreen({ onLogin }: { onLogin?: () => void }) {
                   </>
                 )}
 
-                <p style={{ color: "#6b82a0", fontSize: "0.8rem", textAlign: "center" }}>
+                <p style={{ color: "var(--cafyz-muted)", fontSize: "0.8rem", textAlign: "center" }}>
                   {t("New to Cafyz?")}{" "}
                   <button onClick={() => setAuthState("inquiry")} style={{ color: "#1e7fff", fontWeight: 600 }}>{t("Start free trial →")}</button>
                 </p>
@@ -547,9 +547,9 @@ export function LoginScreen({ onLogin }: { onLogin?: () => void }) {
                 ) : (
                   <>
                 <div>
-                  <button type="button" onClick={() => goToSignIn()} style={{ color: "#6b82a0", fontSize: "0.8rem" }}>← Back to sign in</button>
-                  <h2 className="text-xl sm:text-[1.6rem]" style={{ fontFamily: "var(--font-display)", fontWeight: 700, color: "#e8eef8", marginTop: 10 }}>Start your free trial</h2>
-                  <p style={{ color: "#6b82a0", fontSize: "0.8rem", marginTop: 4, lineHeight: 1.5 }}>
+                  <button type="button" onClick={() => goToSignIn()} style={{ color: "var(--cafyz-muted)", fontSize: "0.8rem" }}>← Back to sign in</button>
+                  <h2 className="text-xl sm:text-[1.6rem]" style={{ fontFamily: "var(--font-display)", fontWeight: 700, color: "var(--cafyz-text)", marginTop: 10 }}>Start your free trial</h2>
+                  <p style={{ color: "var(--cafyz-muted)", fontSize: "0.8rem", marginTop: 4, lineHeight: 1.5 }}>
                     Request access — no password needed now. Our founder will review your request and email you login credentials once approved. You can sign in later with your email or mobile number.
                   </p>
                 </div>
@@ -562,24 +562,24 @@ export function LoginScreen({ onLogin }: { onLogin?: () => void }) {
                   const Icon = f.icon;
                   return (
                     <div key={f.k}>
-                      <label style={{ color: "#a8bdd4", fontSize: "0.8rem", display: "block", marginBottom: 6 }}>{f.label}</label>
-                      <div className="flex items-center gap-2 rounded-xl px-3 py-3" style={{ background: "#0d1326", border: "1px solid rgba(30,127,255,0.15)" }}>
-                        <Icon size={15} style={{ color: "#6b82a0", flexShrink: 0 }} />
+                      <label style={{ color: "var(--cafyz-text-secondary)", fontSize: "0.8rem", display: "block", marginBottom: 6 }}>{f.label}</label>
+                      <div className="flex items-center gap-2 rounded-xl px-3 py-3" style={{ background: "var(--cafyz-surface-2)", border: "1px solid rgba(30,127,255,0.15)" }}>
+                        <Icon size={15} style={{ color: "var(--cafyz-muted)", flexShrink: 0 }} />
                         <input type={f.type} placeholder={f.ph} value={inq[f.k]} onChange={e => setInqField(f.k, e.target.value)}
-                          className="flex-1 bg-transparent outline-none text-sm placeholder:text-[#6b82a0]" style={{ color: "#e8eef8" }} />
+                          className="flex-1 bg-transparent outline-none text-sm placeholder:text-[var(--cafyz-muted)]" style={{ color: "var(--cafyz-text)" }} />
                       </div>
                     </div>
                   );
                 })}
                 <div>
-                  <label style={{ color: "#a8bdd4", fontSize: "0.8rem", display: "block", marginBottom: 6 }}>Preferred plan</label>
+                  <label style={{ color: "var(--cafyz-text-secondary)", fontSize: "0.8rem", display: "block", marginBottom: 6 }}>Preferred plan</label>
                   <select value={inq.plan} onChange={e => setInqField("plan", e.target.value)}
                     className="w-full rounded-xl px-3 py-3 text-sm outline-none"
-                    style={{ background: "#0d1326", color: "#e8eef8", border: "1px solid rgba(30,127,255,0.15)" }}>
+                    style={{ background: "var(--cafyz-surface-2)", color: "var(--cafyz-text)", border: "1px solid rgba(30,127,255,0.15)" }}>
                     {(planConfigs.length ? planConfigs : [
-                      { plan: "basic", label: "Basic", price_monthly: 0, currency_symbol: "$", billing_interval_unit: "month" as const, billing_interval_count: 1 },
-                      { plan: "pro", label: "Pro", price_monthly: 0, currency_symbol: "$", billing_interval_unit: "month" as const, billing_interval_count: 1 },
-                      { plan: "premium", label: "Premium", price_monthly: 0, currency_symbol: "$", billing_interval_unit: "month" as const, billing_interval_count: 1 },
+                      { plan: "basic", label: "Basic", price_monthly: 0, currency_symbol: "₹", billing_interval_unit: "month" as const, billing_interval_count: 1 },
+                      { plan: "pro", label: "Pro", price_monthly: 0, currency_symbol: "₹", billing_interval_unit: "month" as const, billing_interval_count: 1 },
+                      { plan: "premium", label: "Premium", price_monthly: 0, currency_symbol: "₹", billing_interval_unit: "month" as const, billing_interval_count: 1 },
                     ] as ApiPlanConfig[]).map(p => (
                       <option key={p.plan} value={p.plan}>
                         {p.label ?? p.plan}{p.price_monthly ? ` — ${formatPlanPrice(p)}${formatBillingSuffix(p)}` : ""}
@@ -588,18 +588,18 @@ export function LoginScreen({ onLogin }: { onLogin?: () => void }) {
                   </select>
                 </div>
                 <div>
-                  <label style={{ color: "#a8bdd4", fontSize: "0.8rem", display: "block", marginBottom: 6 }}>Notes (optional)</label>
+                  <label style={{ color: "var(--cafyz-text-secondary)", fontSize: "0.8rem", display: "block", marginBottom: 6 }}>Notes (optional)</label>
                   <textarea value={inq.message} onChange={e => setInqField("message", e.target.value)} rows={3}
                     placeholder="Number of locations, go-live date, etc."
-                    className="w-full rounded-xl px-3 py-3 text-sm outline-none placeholder:text-[#6b82a0] resize-none"
-                    style={{ background: "#0d1326", color: "#e8eef8", border: "1px solid rgba(30,127,255,0.15)" }} />
+                    className="w-full rounded-xl px-3 py-3 text-sm outline-none placeholder:text-[var(--cafyz-muted)] resize-none"
+                    style={{ background: "var(--cafyz-surface-2)", color: "var(--cafyz-text)", border: "1px solid rgba(30,127,255,0.15)" }} />
                 </div>
                 <motion.button whileTap={{ scale: 0.97 }} onClick={submitInquiry} disabled={inquirySubmitting}
                   className="w-full py-3 rounded-xl text-sm font-semibold flex items-center justify-center gap-2 transition-all hover:opacity-90"
                   style={{ background: "linear-gradient(135deg, #1e7fff, #00c6ff)", color: "#fff", opacity: inquirySubmitting ? 0.7 : 1 }}>
                   <>Request free trial <ArrowRight size={16} /></>
                 </motion.button>
-                <p style={{ color: "#6b82a0", fontSize: "0.72rem", textAlign: "center", lineHeight: 1.5 }}>
+                <p style={{ color: "var(--cafyz-muted)", fontSize: "0.72rem", textAlign: "center", lineHeight: 1.5 }}>
                   You'll receive a confirmation email now. Login credentials are sent after founder approval — use email or mobile with your password to sign in.
                 </p>
                   </>
@@ -621,17 +621,17 @@ export function LoginScreen({ onLogin }: { onLogin?: () => void }) {
                     <CheckCircle2 size={44} style={{ color: "#22c55e" }} strokeWidth={1.75} />
                   </div>
                   <div>
-                    <h2 className="text-lg sm:text-[1.35rem]" style={{ fontFamily: "var(--font-display)", fontWeight: 700, color: "#e8eef8" }}>
+                    <h2 className="text-lg sm:text-[1.35rem]" style={{ fontFamily: "var(--font-display)", fontWeight: 700, color: "var(--cafyz-text)" }}>
                       Trial request received
                     </h2>
-                    <p style={{ color: "#a8bdd4", fontSize: "0.85rem", marginTop: 10, lineHeight: 1.6 }}>
+                    <p style={{ color: "var(--cafyz-text-secondary)", fontSize: "0.85rem", marginTop: 10, lineHeight: 1.6 }}>
                       {inquirySentMessage}
                     </p>
                   </div>
                 </div>
 
-                <div className="rounded-xl p-4 space-y-3" style={{ background: "#0d1326", border: "1px solid rgba(30,127,255,0.1)" }}>
-                  <p style={{ color: "#6b82a0", fontSize: "0.72rem", fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase" }}>What happens next</p>
+                <div className="rounded-xl p-4 space-y-3" style={{ background: "var(--cafyz-surface-2)", border: "1px solid rgba(30,127,255,0.1)" }}>
+                  <p style={{ color: "var(--cafyz-muted)", fontSize: "0.72rem", fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase" }}>What happens next</p>
                   {[
                     "Check your inbox for a confirmation email.",
                     "Our founder reviews your request (usually within 24 hours).",
@@ -643,7 +643,7 @@ export function LoginScreen({ onLogin }: { onLogin?: () => void }) {
                         style={{ background: "rgba(30,127,255,0.12)", color: "#1e7fff" }}>
                         {i + 1}
                       </span>
-                      <p style={{ color: "#a8bdd4", fontSize: "0.82rem", lineHeight: 1.5 }}>{step}</p>
+                      <p style={{ color: "var(--cafyz-text-secondary)", fontSize: "0.82rem", lineHeight: 1.5 }}>{step}</p>
                     </div>
                   ))}
                 </div>
@@ -658,7 +658,7 @@ export function LoginScreen({ onLogin }: { onLogin?: () => void }) {
                   Back to sign in <ArrowRight size={16} />
                 </motion.button>
 
-                <p style={{ color: "#6b82a0", fontSize: "0.72rem", textAlign: "center", lineHeight: 1.5 }}>
+                <p style={{ color: "var(--cafyz-muted)", fontSize: "0.72rem", textAlign: "center", lineHeight: 1.5 }}>
                   Already approved? Use the credentials from your approval email to sign in above.
                 </p>
               </motion.div>
@@ -667,11 +667,11 @@ export function LoginScreen({ onLogin }: { onLogin?: () => void }) {
             {authState === "google-choose" && googleChoice && (
               <motion.div key="google-choose" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -12 }} className="space-y-3 sm:space-y-4">
                 <div className="flex items-center justify-between">
-                  <button onClick={() => { setAuthState("login"); setGoogleChoice(null); }} style={{ color: "#6b82a0", fontSize: "0.8rem" }}>← {t("Back")}</button>
+                  <button onClick={() => { setAuthState("login"); setGoogleChoice(null); }} style={{ color: "var(--cafyz-muted)", fontSize: "0.8rem" }}>← {t("Back")}</button>
                 </div>
                 <div>
                   <h2 style={{ color: "var(--cafyz-text)", fontSize: "1.15rem", fontWeight: 700 }}>{t("Choose an account")}</h2>
-                  <p style={{ color: "#6b82a0", fontSize: "0.8rem" }}>
+                  <p style={{ color: "var(--cafyz-muted)", fontSize: "0.8rem" }}>
                     {t("That Google address is used by more than one restaurant.")}
                   </p>
                 </div>
@@ -686,7 +686,7 @@ export function LoginScreen({ onLogin }: { onLogin?: () => void }) {
                     >
                       <span>
                         <span style={{ color: "var(--cafyz-text)", fontSize: "0.9rem", fontWeight: 600, display: "block" }}>{a.restaurant_name}</span>
-                        <span style={{ color: "#6b82a0", fontSize: "0.75rem" }}>{a.name} · {a.role}</span>
+                        <span style={{ color: "var(--cafyz-muted)", fontSize: "0.75rem" }}>{a.name} · {a.role}</span>
                       </span>
                       <ArrowRight size={16} style={{ color: "#1e7fff", flexShrink: 0 }} />
                     </button>
@@ -698,16 +698,16 @@ export function LoginScreen({ onLogin }: { onLogin?: () => void }) {
             {authState === "otp-verify" && (
               <motion.div key="otp" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-4 sm:space-y-6">
                 <div>
-                  <button onClick={() => setAuthState("login")} style={{ color: "#6b82a0", fontSize: "0.8rem" }}>← Back</button>
-                  <h2 className="text-xl sm:text-[1.6rem] mt-2" style={{ fontFamily: "var(--font-display)", fontWeight: 700, color: "#e8eef8" }}>Verify OTP</h2>
-                  <p style={{ color: "#6b82a0", fontSize: "0.85rem", marginTop: 4 }}>Sent to {phone || "+91 98765 43210"}</p>
+                  <button onClick={() => setAuthState("login")} style={{ color: "var(--cafyz-muted)", fontSize: "0.8rem" }}>← Back</button>
+                  <h2 className="text-xl sm:text-[1.6rem] mt-2" style={{ fontFamily: "var(--font-display)", fontWeight: 700, color: "var(--cafyz-text)" }}>Verify OTP</h2>
+                  <p style={{ color: "var(--cafyz-muted)", fontSize: "0.85rem", marginTop: 4 }}>Sent to {phone || "+91 98765 43210"}</p>
                 </div>
                 <div className="flex gap-1.5 sm:gap-2 justify-center">
                   {otp.map((v, i) => (
                     <input key={i} id={`otp-${i}`} type="text" maxLength={1} value={v}
                       onChange={e => handleOtpChange(i, e.target.value)}
                       className="w-10 h-11 sm:w-11 sm:h-12 rounded-xl text-center text-base sm:text-lg font-bold outline-none"
-                      style={{ background: "#0d1326", border: `1px solid ${v ? "#1e7fff" : "rgba(30,127,255,0.15)"}`, color: "#e8eef8" }} />
+                      style={{ background: "var(--cafyz-surface-2)", border: `1px solid ${v ? "#1e7fff" : "rgba(30,127,255,0.15)"}`, color: "var(--cafyz-text)" }} />
                   ))}
                 </div>
                 <motion.button whileTap={{ scale: 0.97 }} onClick={submitOtp} disabled={loading}
@@ -715,7 +715,7 @@ export function LoginScreen({ onLogin }: { onLogin?: () => void }) {
                   style={{ background: "linear-gradient(135deg, #1e7fff, #00c6ff)", color: "#fff", opacity: loading ? 0.7 : 1 }}>
                   {loading ? "Verifying…" : <>Verify &amp; Sign In <ArrowRight size={16} /></>}
                 </motion.button>
-                <p style={{ color: "#6b82a0", fontSize: "0.8rem", textAlign: "center" }}>
+                <p style={{ color: "var(--cafyz-muted)", fontSize: "0.8rem", textAlign: "center" }}>
                   Didn't receive? <button onClick={sendOtp} style={{ color: "#1e7fff" }}>Resend OTP</button>
                 </p>
               </motion.div>
@@ -724,16 +724,16 @@ export function LoginScreen({ onLogin }: { onLogin?: () => void }) {
             {authState === "forgot" && (
               <motion.div key="forgot" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-4 sm:space-y-6">
                 <div>
-                  <button onClick={() => setAuthState("login")} style={{ color: "#6b82a0", fontSize: "0.8rem" }}>← Back to sign in</button>
-                  <h2 className="text-xl sm:text-[1.6rem] mt-2" style={{ fontFamily: "var(--font-display)", fontWeight: 700, color: "#e8eef8" }}>Reset Password</h2>
-                  <p style={{ color: "#6b82a0", fontSize: "0.85rem", marginTop: 4 }}>We'll send a reset link to your email.</p>
+                  <button onClick={() => setAuthState("login")} style={{ color: "var(--cafyz-muted)", fontSize: "0.8rem" }}>← Back to sign in</button>
+                  <h2 className="text-xl sm:text-[1.6rem] mt-2" style={{ fontFamily: "var(--font-display)", fontWeight: 700, color: "var(--cafyz-text)" }}>Reset Password</h2>
+                  <p style={{ color: "var(--cafyz-muted)", fontSize: "0.85rem", marginTop: 4 }}>We'll send a reset link to your email.</p>
                 </div>
                 <div>
-                  <label style={{ color: "#a8bdd4", fontSize: "0.8rem", display: "block", marginBottom: 6 }}>Email address</label>
-                  <div className="flex items-center gap-2 rounded-xl px-3 py-3" style={{ background: "#0d1326", border: "1px solid rgba(30,127,255,0.15)" }}>
-                    <Mail size={15} style={{ color: "#6b82a0" }} />
+                  <label style={{ color: "var(--cafyz-text-secondary)", fontSize: "0.8rem", display: "block", marginBottom: 6 }}>Email address</label>
+                  <div className="flex items-center gap-2 rounded-xl px-3 py-3" style={{ background: "var(--cafyz-surface-2)", border: "1px solid rgba(30,127,255,0.15)" }}>
+                    <Mail size={15} style={{ color: "var(--cafyz-muted)" }} />
                     <input type="email" placeholder="alex@restaurant.com" value={forgotEmail} onChange={e => setForgotEmail(e.target.value)}
-                      className="flex-1 bg-transparent outline-none text-sm placeholder:text-[#6b82a0]" style={{ color: "#e8eef8" }} />
+                      className="flex-1 bg-transparent outline-none text-sm placeholder:text-[var(--cafyz-muted)]" style={{ color: "var(--cafyz-text)" }} />
                   </div>
                 </div>
                 <button onClick={submitForgot} disabled={loading}
@@ -747,17 +747,17 @@ export function LoginScreen({ onLogin }: { onLogin?: () => void }) {
             {authState === "reset" && (
               <motion.div key="reset" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-4 sm:space-y-6">
                 <div>
-                  <button onClick={() => setAuthState("login")} style={{ color: "#6b82a0", fontSize: "0.8rem" }}>← Back to sign in</button>
-                  <h2 className="text-xl sm:text-[1.6rem] mt-2" style={{ fontFamily: "var(--font-display)", fontWeight: 700, color: "#e8eef8" }}>Set a new password</h2>
-                  <p style={{ color: "#6b82a0", fontSize: "0.85rem", marginTop: 4 }}>Choose a new password for your account.</p>
+                  <button onClick={() => setAuthState("login")} style={{ color: "var(--cafyz-muted)", fontSize: "0.8rem" }}>← Back to sign in</button>
+                  <h2 className="text-xl sm:text-[1.6rem] mt-2" style={{ fontFamily: "var(--font-display)", fontWeight: 700, color: "var(--cafyz-text)" }}>Set a new password</h2>
+                  <p style={{ color: "var(--cafyz-muted)", fontSize: "0.85rem", marginTop: 4 }}>Choose a new password for your account.</p>
                 </div>
                 <div>
-                  <label style={{ color: "#a8bdd4", fontSize: "0.8rem", display: "block", marginBottom: 6 }}>New password</label>
-                  <div className="flex items-center gap-2 rounded-xl px-3 py-3" style={{ background: "#0d1326", border: "1px solid rgba(30,127,255,0.15)" }}>
-                    <Lock size={15} style={{ color: "#6b82a0" }} />
+                  <label style={{ color: "var(--cafyz-text-secondary)", fontSize: "0.8rem", display: "block", marginBottom: 6 }}>New password</label>
+                  <div className="flex items-center gap-2 rounded-xl px-3 py-3" style={{ background: "var(--cafyz-surface-2)", border: "1px solid rgba(30,127,255,0.15)" }}>
+                    <Lock size={15} style={{ color: "var(--cafyz-muted)" }} />
                     <input type={showPass ? "text" : "password"} placeholder="At least 8 characters" value={newPw} onChange={e => setNewPw(e.target.value)}
-                      className="flex-1 bg-transparent outline-none text-sm placeholder:text-[#6b82a0]" style={{ color: "#e8eef8" }} />
-                    <button onClick={() => setShowPass(s => !s)} style={{ color: "#6b82a0" }}>
+                      className="flex-1 bg-transparent outline-none text-sm placeholder:text-[var(--cafyz-muted)]" style={{ color: "var(--cafyz-text)" }} />
+                    <button onClick={() => setShowPass(s => !s)} style={{ color: "var(--cafyz-muted)" }}>
                       {showPass ? <EyeOff size={15} /> : <Eye size={15} />}
                     </button>
                   </div>
@@ -770,12 +770,12 @@ export function LoginScreen({ onLogin }: { onLogin?: () => void }) {
               </motion.div>
             )}
           </AnimatePresence>
-              <p className="text-center pt-4" style={{ color: "#6b82a0", fontSize: "0.68rem", lineHeight: 1.6 }}>
-                <a href="/privacy" style={{ color: "#6b82a0" }}>Privacy</a>
+              <p className="text-center pt-4" style={{ color: "var(--cafyz-muted)", fontSize: "0.68rem", lineHeight: 1.6 }}>
+                <a href="/privacy" style={{ color: "var(--cafyz-muted)" }}>Privacy</a>
                 {" · "}
-                <a href="/terms" style={{ color: "#6b82a0" }}>Terms</a>
+                <a href="/terms" style={{ color: "var(--cafyz-muted)" }}>Terms</a>
                 {" · "}
-                <a href="/support" style={{ color: "#6b82a0" }}>Support</a>
+                <a href="/support" style={{ color: "var(--cafyz-muted)" }}>Support</a>
               </p>
 
               <AmetronyxCredit className="pt-3 pb-1" />

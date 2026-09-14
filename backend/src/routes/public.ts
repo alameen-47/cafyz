@@ -50,7 +50,7 @@ router.get('/menu/:restaurantId', async (req, res, next) => {
         id: rid,
         name: String(r.name ?? 'Menu'),
         logo_url: r.logo_url ?? null,
-        currency_code: String(r.currency_code ?? 'USD'),
+        currency_code: String(r.currency_code ?? 'INR'),
         currency_symbol: r.currency_symbol != null && String(r.currency_symbol).trim()
           ? String(r.currency_symbol).trim()
           : null,

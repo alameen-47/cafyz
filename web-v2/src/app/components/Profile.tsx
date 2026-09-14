@@ -31,13 +31,13 @@ import { subscribeMenuChanged } from "../../utils/menuEvents";
 import { nameInitials } from "../../utils/initials";
 import { useThemeMode } from "../ThemeProvider";
 
-const CURRENCIES = ["USD", "EUR", "GBP", "AED", "SAR", "INR", "PKR", "BDT", "NGN", "ZAR"];
+const CURRENCIES = ["INR", "USD", "EUR", "GBP", "AED", "SAR", "PKR", "BDT", "NGN", "ZAR"];
 const LANGUAGES: [string, string][] = [["en", "English"], ["ar", "Arabic"], ["fr", "French"], ["es", "Spanish"], ["de", "German"], ["hi", "Hindi"], ["ur", "Urdu"]];
 const MAX_LOGO_BYTES = 2 * 1024 * 1024; // 2 MB — matches restaurantLogoStorage
 
 const EMPTY = {
   name: "", tagline: "", email: "", phone: "", website: "", address: "", city: "", state: "", pincode: "",
-  country: "", currency: "USD", currencySymbol: "$", language: "en", dateFormat: "DD/MM/YYYY", taxName: "Tax",
+  country: "", currency: "INR", currencySymbol: "₹", language: "en", dateFormat: "DD/MM/YYYY", taxName: "Tax",
   taxRate: "", serviceCharge: "", taxIncluded: false, receiptFooter: "", vatNumber: "",
 };
 
@@ -225,7 +225,7 @@ export function Profile() {
         state: r.address_line2 ?? "",
         pincode: r.postal_code ?? "",
         country: r.country ?? "",
-        currency: r.currency_code ?? "USD",
+        currency: r.currency_code ?? "INR",
         currencySymbol: resolveCurrencySymbol(r.currency_code, r.currency_symbol),
         language: r.language_code ?? "en",
         dateFormat: r.date_format ?? "DD/MM/YYYY",

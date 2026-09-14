@@ -175,7 +175,7 @@ router.post('/onboarding', async (req, res, next) => {
     // New sign-ups start on a full-featured trial plan (default premium).
     const trialPlan = (data.plan as 'basic' | 'pro' | 'premium') || 'premium';
     await db.execute({
-      sql: `INSERT INTO restaurants(id,name,slug,plan,timezone) VALUES(?,?,?,?,?)`,
+      sql: `INSERT INTO restaurants(id,name,slug,plan,timezone,currency_code) VALUES(?,?,?,?,?,'INR')`,
       args: [restId, data.restaurant_name, `${slug}-${restId.slice(0,6)}`, trialPlan, data.timezone??'UTC'],
     });
 

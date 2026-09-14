@@ -44,13 +44,13 @@ const UNICODE_TO_PRINT: Record<string, string> = {
 
 export function symbolForCode(code?: string | null): string {
   const safe = String(code ?? '').trim().toUpperCase();
-  if (!safe) return CURRENCY_SYMBOLS.USD;
+  if (!safe) return CURRENCY_SYMBOLS.INR;
   return CURRENCY_SYMBOLS[safe] ?? safe;
 }
 
 export function symbolForCodePrint(code?: string | null): string {
   const safe = String(code ?? '').trim().toUpperCase();
-  if (!safe) return CURRENCY_PRINT_SYMBOLS.USD;
+  if (!safe) return CURRENCY_PRINT_SYMBOLS.INR;
   return CURRENCY_PRINT_SYMBOLS[safe] ?? safe;
 }
 
@@ -93,7 +93,7 @@ export function setActiveCurrency(code?: string | null, symbol?: string | null):
   if (sym) storageSet(SYMBOL_KEY, sym);
 }
 
-export function getActiveCurrencyCode(fallback = 'USD'): string {
+export function getActiveCurrencyCode(fallback = 'INR'): string {
   const raw = storageGet(CODE_KEY);
   if (!raw) return fallback;
   return String(raw).trim().toUpperCase() || fallback;
@@ -144,7 +144,7 @@ export function currencySymbolForPrint(symbol?: string | null, code?: string | n
   if (sym && /^[\x20-\x7E]+$/.test(sym) && sym !== '$') return sym;
 
   if (safeCode) return safeCode;
-  return CURRENCY_PRINT_SYMBOLS.USD;
+  return CURRENCY_PRINT_SYMBOLS.INR;
 }
 
 export function formatMoneyForPrint(

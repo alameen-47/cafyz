@@ -15,9 +15,10 @@ interface ThemeCtx {
 
 const Ctx = createContext<ThemeCtx | null>(null);
 
+/** Light is the default; dark only when the user has picked it. */
 function readStoredTheme(): ThemeMode {
-  if (typeof window === "undefined") return "dark";
-  return storageGet(STORAGE_KEY) === "light" ? "light" : "dark";
+  if (typeof window === "undefined") return "light";
+  return storageGet(STORAGE_KEY) === "dark" ? "dark" : "light";
 }
 
 function applyThemeToDocument(mode: ThemeMode) {

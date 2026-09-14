@@ -140,7 +140,7 @@ export async function fulfillLicensePurchaseRequest(requestId: string): Promise<
   });
 
   const cfg = await getPlanConfigSummary(plan);
-  const price = cfg ? `${cfg.currency_symbol ?? '$'}${cfg.price_monthly}` : '';
+  const price = cfg ? `${cfg.currency_symbol ?? '₹'}${cfg.price_monthly}` : '';
 
   await Promise.all([
     sendMailReliable({

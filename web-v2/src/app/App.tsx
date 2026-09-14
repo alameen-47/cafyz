@@ -187,9 +187,9 @@ export default function App() {
 
   if (loading) {
     return (
-      <div className="flex app-screen app-native-inset-top w-full flex-col items-center justify-center gap-4" style={{ background: "#06091a" }}>
+      <div className="flex app-screen app-native-inset-top w-full flex-col items-center justify-center gap-4" style={{ background: "var(--cafyz-app-bg)" }}>
         <CafyzLogo size="lg" className="animate-pulse drop-shadow-[0_8px_24px_rgba(30,127,255,0.2)]" />
-        <div className="w-8 h-8 border-2 border-white/20 border-t-[#1e7fff] rounded-full animate-spin" />
+        <div className="w-8 h-8 border-2 border-[rgba(30,127,255,0.2)] border-t-[#1e7fff] rounded-full animate-spin" />
       </div>
     );
   }

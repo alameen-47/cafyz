@@ -3,5 +3,6 @@
     <color name="colorPrimary">#06091a</color>
     <color name="colorPrimaryDark">#06091a</color>
     <color name="colorAccent">#1e7fff</color>
-    <color name="cafyzBackground">#06091a</color>
+    <!-- Launch/window background matches the default light theme. -->
+    <color name="cafyzBackground">#e8edf4</color>
 </resources>

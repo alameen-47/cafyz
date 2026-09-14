@@ -114,7 +114,7 @@ export async function provisionTrialFromInquiry(
   const now = new Date().toISOString();
 
   await db.execute({
-    sql: `INSERT INTO restaurants(id,name,slug,plan,timezone) VALUES(?,?,?,?,?)`,
+    sql: `INSERT INTO restaurants(id,name,slug,plan,timezone,currency_code) VALUES(?,?,?,?,?,'INR')`,
     args: [restId, inquiry.restaurant_name, slug, plan, 'UTC'],
   });
 

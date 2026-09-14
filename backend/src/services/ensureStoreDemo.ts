@@ -168,7 +168,7 @@ export async function ensureStoreDemoAccount(): Promise<void> {
   } else {
     restaurantId = uid();
     await db.execute({
-      sql: `INSERT INTO restaurants(id,name,slug,plan,timezone) VALUES(?,?,?,?,?)`,
+      sql: `INSERT INTO restaurants(id,name,slug,plan,timezone,currency_code) VALUES(?,?,?,?,?,'INR')`,
       args: [restaurantId, DEMO_RESTAURANT, DEMO_REST_SLUG, 'pro', 'UTC'],
     });
   }

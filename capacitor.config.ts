@@ -11,14 +11,15 @@ const config: CapacitorConfig = {
     iosScheme: 'https',
   },
   plugins: {
+    // Light theme is the default; ThemeProvider switches the status bar at runtime for dark.
     SplashScreen: {
       launchAutoHide: true,
-      backgroundColor: '#06091a',
+      backgroundColor: '#e8edf4',
       showSpinner: false,
     },
     StatusBar: {
-      style: 'DARK',
-      backgroundColor: '#06091a',
+      style: 'LIGHT',
+      backgroundColor: '#e8edf4',
       overlaysWebView: false,
     },
     PushNotifications: {

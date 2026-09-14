@@ -18,7 +18,7 @@ const PANEL_LABELS: Record<string, string> = {
   pos: "POS", menu: "Menu", waiter: "Tables / Waiter", kds: "KDS", manager: "Dashboard",
   inventory: "Inventory", staff: "Staff", reports: "Reports", roles: "Roles", reservations: "Reservations", license: "License",
 };
-const CURRENCY_OPTIONS = ["$", "€", "£", "₹", "AED", "SAR"];
+const CURRENCY_OPTIONS = ["₹", "$", "€", "£", "AED", "SAR"];
 const shortDate = (iso?: string) => iso ? new Date(iso).toLocaleDateString(undefined, { day: "numeric", month: "short" }) : "—";
 
 type KeyFilter = "all" | "unused" | "used" | "revoked";
@@ -838,7 +838,7 @@ export function FounderConsole() {
                   </div>
                   <div>
                     <label style={{ color: "var(--cafyz-muted)", fontSize: "0.72rem", display: "block", marginBottom: 4 }}>Currency</label>
-                    <select defaultValue={cfg?.currency_symbol ?? "$"}
+                    <select defaultValue={cfg?.currency_symbol ?? "₹"}
                       onChange={e => { if (cfg) void savePlanField(plan, { currency_symbol: e.target.value }); }}
                       className="w-full rounded-xl px-3 py-2 text-sm outline-none"
                       style={{ background: "var(--cafyz-surface-2)", color: "var(--cafyz-text)", border: "1px solid var(--cafyz-border)" }}>
@@ -846,7 +846,7 @@ export function FounderConsole() {
                     </select>
                   </div>
                   <div>
-                    <label style={{ color: "var(--cafyz-muted)", fontSize: "0.72rem", display: "block", marginBottom: 4 }}>Price per period ({cfg?.currency_symbol ?? "$"})</label>
+                    <label style={{ color: "var(--cafyz-muted)", fontSize: "0.72rem", display: "block", marginBottom: 4 }}>Price per period ({cfg?.currency_symbol ?? "₹"})</label>
                     <input type="number" min={0} step={1} defaultValue={cfg?.price_monthly ?? FALLBACK_PRICE[plan]}
                       onBlur={e => {
                         const price = Number(e.target.value);

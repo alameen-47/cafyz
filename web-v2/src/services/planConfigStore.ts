@@ -87,7 +87,7 @@ export function requiredPlanForPageDynamic(page: PageId): Plan | null {
 }
 
 export function formatPlanPrice(cfg: ApiPlanConfig): string {
-  const sym = cfg.currency_symbol ?? '$';
+  const sym = cfg.currency_symbol ?? '₹';
   const amount = Number(cfg.price_monthly ?? 0);
   const formatted = Number.isInteger(amount) ? amount.toLocaleString() : amount.toFixed(2);
   return `${sym}${formatted}`;

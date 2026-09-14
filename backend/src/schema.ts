@@ -373,6 +373,20 @@ export async function runMigrations() {
     await addCol(`ALTER TABLE ${table} ADD COLUMN is_demo INTEGER NOT NULL DEFAULT 0`, `${table}.is_demo`);
   }
 
+  // INR is the default currency (one-time). Restaurants still on the old USD column default
+  // with no saved symbol never chose a currency, so they move to INR; an explicit choice is kept.
+  const inrDefault = await db.execute({ sql: `SELECT value FROM app_settings WHERE key='default_currency_inr_v1'`, args: [] });
+  if (!inrDefault.rows.length) {
+    await db.execute({
+      sql: `UPDATE restaurants SET currency_code='INR'
+            WHERE currency_code='USD' AND (currency_symbol IS NULL OR TRIM(currency_symbol)='') AND id != 'CAFYZ_SYSTEM'`,
+      args: [],
+    });
+    const { repriceDemoMenuForInr } = await import('./services/demoData.js');
+    await repriceDemoMenuForInr();
+    await db.execute({ sql: `INSERT OR REPLACE INTO app_settings(key,value) VALUES('default_currency_inr_v1','1')`, args: [] });
+  }
+
   await db.execute({
     sql: `INSERT OR IGNORE INTO app_settings(key,value) VALUES('trial_device_guard_enabled','1')`,
     args: [],
