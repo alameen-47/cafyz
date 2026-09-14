@@ -8,8 +8,8 @@ import { uploadMenuItemImage } from "../../services/menuImageUpload";
 import { MENU_IMAGE_ACCEPT } from "../../utils/menuImage";
 import { getCurrencySymbol } from "../../utils/currency";
 import { notifyMenuChanged } from "../../utils/menuEvents";
+import { demoMenuImage } from "../../utils/demoMenuImages";
 
-const FALLBACK_IMG = "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=300&h=200&fit=crop";
 const VEG_SYMBOL = "🟢";
 const NON_VEG_SYMBOL = "🔴";
 
@@ -25,6 +25,8 @@ interface MenuItem {
   id: string; name: string; category: string; price: number; description: string;
   rating?: number; orders: number; available: boolean; isPopular?: boolean;
   image: string; veg?: boolean;
+  /** Bundled photo for a demo dish with no uploaded image — display only, never saved. */
+  demoImage?: string;
 }
 
 // Module scope so a stable identity survives re-renders (otherwise each keystroke
@@ -273,6 +275,7 @@ export function MenuPage() {
     available: m.is_available === 1,
     isPopular: m.is_popular === 1,
     image: m.image_url ?? "",
+    demoImage: demoMenuImage(m),
     veg: vegFromSymbol(m.symbol),
     orders: soldQty.get(m.id) ?? 0,
   }), []);
@@ -499,7 +502,16 @@ export function MenuPage() {
                 }}>
                 {/* Image */}
                 <div className="relative h-36 overflow-hidden" style={{ background: "var(--cafyz-surface-2)" }}>
-                  <img src={item.image || FALLBACK_IMG} alt={item.name} className="w-full h-full object-cover" />
+                  {item.image || item.demoImage ? (
+                    <img src={item.image || item.demoImage} alt={item.name} className="w-full h-full object-cover" />
+                  ) : (
+                    // No uploaded photo: show a neutral placeholder rather than an unrelated food picture.
+                    <div className="w-full h-full flex flex-col items-center justify-center gap-1.5"
+                      style={{ background: "linear-gradient(135deg, rgba(30,127,255,0.10), rgba(0,198,255,0.05))", color: "var(--cafyz-muted)" }}>
+                      <ImageIcon size={26} />
+                      <span style={{ fontSize: "0.72rem" }}>No photo yet</span>
+                    </div>
+                  )}
                   <div className="absolute inset-0" style={{ background: "var(--cafyz-media-scrim)" }} />
                   <div className="absolute top-2 left-2 flex items-center gap-1.5">
                     {item.isPopular && (

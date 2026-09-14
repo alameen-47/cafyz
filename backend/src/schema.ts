@@ -387,6 +387,14 @@ export async function runMigrations() {
     await db.execute({ sql: `INSERT OR REPLACE INTO app_settings(key,value) VALUES('default_currency_inr_v1','1')`, args: [] });
   }
 
+  // Demo dish names and descriptions now match their bundled photos (one-time, demo rows only).
+  const demoCopy = await db.execute({ sql: `SELECT value FROM app_settings WHERE key='demo_menu_copy_v1'`, args: [] });
+  if (!demoCopy.rows.length) {
+    const { syncDemoMenuCopy } = await import('./services/demoData.js');
+    await syncDemoMenuCopy();
+    await db.execute({ sql: `INSERT OR REPLACE INTO app_settings(key,value) VALUES('demo_menu_copy_v1','1')`, args: [] });
+  }
+
   await db.execute({
     sql: `INSERT OR IGNORE INTO app_settings(key,value) VALUES('trial_device_guard_enabled','1')`,
     args: [],

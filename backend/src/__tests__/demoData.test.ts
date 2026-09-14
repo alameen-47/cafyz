@@ -138,4 +138,20 @@ describe('demo data', () => {
     expect(status.body.enabled).toBe(false);
     expect(Object.values(status.body.counts).every(n => n === 0)).toBe(true);
   });
+
+  it('renames older demo dishes so the name and description match the photo', async () => {
+    const { syncDemoMenuCopy } = await import('../services/demoData.js');
+    const db = getDb();
+    const id = uid();
+    await db.execute({
+      sql: `INSERT INTO menu_items(id,restaurant_id,name,category,price,description,is_demo) VALUES(?,?,?,?,?,?,1)`,
+      args: [id, restaurantId, 'Fresh Lime Soda', 'drinks', 99, 'Sweet or salted'],
+    });
+
+    await syncDemoMenuCopy();
+
+    const row = await db.execute({ sql: 'SELECT name, description FROM menu_items WHERE id=?', args: [id] });
+    expect(row.rows[0]?.name).toBe('Lemon-Lime Slush');
+    expect(row.rows[0]?.description).toBe('Frozen, sweet and tangy');
+  });
 });

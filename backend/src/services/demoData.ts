@@ -57,25 +57,26 @@ const MENU: {
   popular?: boolean; available?: boolean;
 }[] = [
   // Prices are in rupees — INR is the default currency for new restaurants.
-  { key: 'garlic_bread', name: 'Garlic Bread',           category: 'starters', price: 149, description: 'Toasted sourdough, herb butter' },
-  { key: 'wings',        name: 'Crispy Chicken Wings',   category: 'starters', price: 299, description: 'Six wings, smoky BBQ glaze', popular: true },
-  { key: 'caesar',       name: 'Caesar Salad',           category: 'starters', price: 249, description: 'Romaine, parmesan, croutons' },
-  { key: 'soup',         name: 'Tomato Basil Soup',      category: 'starters', price: 179, description: 'Slow-roasted tomatoes, fresh basil' },
-  { key: 'burger',       name: 'Classic Cheeseburger',   category: 'mains',    price: 349, description: 'Beef patty, cheddar, fries', popular: true },
-  { key: 'chicken',      name: 'Grilled Chicken',        category: 'mains',    price: 399, description: 'Lemon herb chicken, mash, greens' },
-  { key: 'pizza',        name: 'Margherita Pizza',       category: 'mains',    price: 329, description: 'Mozzarella, tomato, basil', popular: true },
-  { key: 'pasta',        name: 'Penne Arrabbiata',       category: 'mains',    price: 299, description: 'Spicy tomato sauce, parsley' },
-  { key: 'salmon',       name: 'Grilled Salmon',         category: 'mains',    price: 649, description: 'Lemon butter, seasonal vegetables' },
-  { key: 'bowl',         name: 'Veggie Buddha Bowl',     category: 'mains',    price: 329, description: 'Quinoa, chickpeas, avocado, tahini' },
-  { key: 'lamb',         name: 'Slow-cooked Lamb Shank', category: 'mains',    price: 599, description: 'Weekend special — currently sold out', available: false },
-  { key: 'lava',         name: 'Chocolate Lava Cake',    category: 'desserts', price: 199, description: 'Warm centre, vanilla ice cream', popular: true },
-  { key: 'cheesecake',   name: 'New York Cheesecake',    category: 'desserts', price: 229, description: 'Berry compote' },
-  { key: 'icecream',     name: 'Ice Cream Trio',         category: 'desserts', price: 149, description: 'Vanilla, chocolate, strawberry' },
-  { key: 'house_red',    name: 'House Red (Glass)',      category: 'wine',     price: 450, description: 'Smooth Merlot' },
-  { key: 'lime_soda',    name: 'Fresh Lime Soda',        category: 'drinks',   price: 99,  description: 'Sweet or salted' },
-  { key: 'latte',        name: 'Iced Latte',             category: 'drinks',   price: 179, description: 'Double shot, cold milk', popular: true },
-  { key: 'smoothie',     name: 'Mango Smoothie',         category: 'drinks',   price: 159, description: 'Alphonso mango, yoghurt' },
-  { key: 'water',        name: 'Sparkling Water',        category: 'drinks',   price: 99,  description: '500ml bottle' },
+  // Names and descriptions match the bundled photos (web-v2/src/utils/demoMenuImages.ts).
+  { key: 'garlic_bread', name: 'Garlic Bread',               category: 'starters', price: 149, description: 'Toasted baguette, garlic butter' },
+  { key: 'wings',        name: 'Crispy Chicken Wings',       category: 'starters', price: 299, description: 'Tossed in spicy buffalo sauce', popular: true },
+  { key: 'caesar',       name: 'Caesar Salad',               category: 'starters', price: 249, description: 'Romaine, parmesan, croutons' },
+  { key: 'soup',         name: 'Tomato Basil Soup',          category: 'starters', price: 179, description: 'Creamy roasted tomato, herbs' },
+  { key: 'burger',       name: 'Classic Cheeseburger',       category: 'mains',    price: 349, description: 'Beef patty, cheddar, lettuce', popular: true },
+  { key: 'chicken',      name: 'Grilled Chicken & Zucchini', category: 'mains',    price: 399, description: 'Pesto chicken breast, char-grilled zucchini' },
+  { key: 'pizza',        name: 'Margherita Pizza',           category: 'mains',    price: 329, description: 'Mozzarella, tomato, basil', popular: true },
+  { key: 'pasta',        name: 'Penne Arrabbiata',           category: 'mains',    price: 299, description: 'Spicy tomato sauce, basil' },
+  { key: 'salmon',       name: 'Grilled Salmon',             category: 'mains',    price: 649, description: 'Char-grilled, green salad, cherry tomatoes' },
+  { key: 'bowl',         name: 'Veggie Buddha Bowl',         category: 'mains',    price: 329, description: 'Tofu, avocado, edamame, rice' },
+  { key: 'lamb',         name: 'Slow-cooked Lamb Shank',     category: 'mains',    price: 599, description: 'Weekend special — currently sold out', available: false },
+  { key: 'lava',         name: 'Chocolate Lava Cake',        category: 'desserts', price: 199, description: 'Molten chocolate centre', popular: true },
+  { key: 'cheesecake',   name: 'New York Cheesecake',        category: 'desserts', price: 229, description: 'Classic baked, creamy vanilla' },
+  { key: 'icecream',     name: 'Ice Cream Trio',             category: 'desserts', price: 149, description: 'Three scoops, vanilla and chocolate' },
+  { key: 'house_red',    name: 'House Red (Glass)',          category: 'wine',     price: 450, description: 'Smooth Merlot' },
+  { key: 'lime_soda',    name: 'Lemon-Lime Slush',           category: 'drinks',   price: 99,  description: 'Frozen, sweet and tangy' },
+  { key: 'latte',        name: 'Iced Latte',                 category: 'drinks',   price: 179, description: 'Double shot, cold milk', popular: true },
+  { key: 'smoothie',     name: 'Mango Smoothie',             category: 'drinks',   price: 159, description: 'Alphonso mango, yoghurt' },
+  { key: 'water',        name: 'Sparkling Water',            category: 'drinks',   price: 99,  description: 'Chilled, with fresh mint' },
 ];
 const MENU_BY_KEY = new Map(MENU.map(m => [m.key, m]));
 
@@ -90,6 +91,25 @@ export async function repriceDemoMenuForInr(): Promise<void> {
             AND restaurant_id IN (SELECT id FROM restaurants WHERE currency_code='INR')`,
     args: [m.price, m.name],
   })));
+}
+
+/** Demo dishes renamed so each name matches its bundled photo, keyed by the old name. */
+const LEGACY_DEMO_NAMES: Record<string, string> = {
+  'Fresh Lime Soda': 'lime_soda',
+  'Grilled Chicken': 'chicken',
+};
+
+/** Brings demo dishes loaded earlier onto the current names and photo-accurate descriptions. */
+export async function syncDemoMenuCopy(): Promise<void> {
+  const renames = Object.entries(LEGACY_DEMO_NAMES).map(([oldName, key]) => ({
+    sql: `UPDATE menu_items SET name=? WHERE is_demo=1 AND name=?`,
+    args: [MENU_BY_KEY.get(key)!.name, oldName],
+  }));
+  const descriptions = MENU.map(m => ({
+    sql: `UPDATE menu_items SET description=? WHERE is_demo=1 AND name=?`,
+    args: [m.description, m.name],
+  }));
+  await runInChunks([...renames, ...descriptions]);
 }
 
 const STAFF: { key: StaffKey; name: string; role: string; status: 'active' | 'break' | 'off'; start: string }[] = [

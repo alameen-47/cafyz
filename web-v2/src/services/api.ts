@@ -670,6 +670,8 @@ export interface ApiMenuItem {
   id: string; restaurant_id: string; name: string; category: string; price: number;
   description: string; symbol: string; image_url?: string | null;
   is_popular: number; is_available: number; created_at?: string;
+  /** 1 for rows from the built-in demo data. */
+  is_demo?: number;
 }
 
 export interface ApiMenuCategory {
