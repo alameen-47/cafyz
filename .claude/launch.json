@@ -6,6 +6,7 @@
       "runtimeExecutable": "env",
       "runtimeArgs": [
         "PORT=4000",
+        "TURSO_URL=:memory:",
         "npm",
         "run",
         "dev"

@@ -9,14 +9,27 @@ import { config } from 'dotenv';
 
 const backendRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
+// TURSO_URL=:memory: set before startup (dev preview, tests) asks for a throwaway database.
+// The .env files load with override: true and may point at the live database, so keep it.
+const forceMemoryDb = process.env.TURSO_URL === ':memory:';
+
 const candidates = [
   resolve(process.cwd(), '.env'),
   resolve(process.cwd(), 'backend/.env'),
   resolve(backendRoot, '.env'),
 ];
 
-for (const envPath of candidates) {
-  if (existsSync(envPath)) {
-    config({ path: envPath, override: true });
+// Tests configure their own env (vitest.config.ts) and must never pick up live
+// secrets — the database, email, payment and SMS keys in a developer's .env.
+if (process.env.NODE_ENV !== 'test') {
+  for (const envPath of candidates) {
+    if (existsSync(envPath)) {
+      config({ path: envPath, override: true });
+    }
   }
+}
+
+if (forceMemoryDb) {
+  process.env.TURSO_URL = ':memory:';
+  delete process.env.TURSO_AUTH_TOKEN;
 }
