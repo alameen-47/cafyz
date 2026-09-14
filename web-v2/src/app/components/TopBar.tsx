@@ -86,17 +86,19 @@ interface TopBarProps {
   userInitials?: string;
 }
 
-function useClock() {
-  const [time, setTime] = useState(() =>
-    new Date().toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", second: "2-digit" })
-  );
+const formatClock = () =>
+  new Date().toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+
+/** Ticks on its own, so the rest of the top bar doesn't re-render every second. */
+function LiveClock() {
+  const [time, setTime] = useState(formatClock);
   useEffect(() => {
-    const id = setInterval(() => setTime(
-      new Date().toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", second: "2-digit" })
-    ), 1000);
+    const id = setInterval(() => setTime(formatClock()), 1000);
     return () => clearInterval(id);
   }, []);
-  return time;
+  return (
+    <span style={{ color: "var(--cafyz-text-secondary)", fontFamily: "var(--font-mono)", fontSize: "0.78rem", fontWeight: 600 }}>{time}</span>
+  );
 }
 
 function useDebounce<T>(value: T, delay: number): T {
@@ -136,7 +138,6 @@ export function TopBar({ active, onMobileMenuOpen, onNavigate, onLogout, role, p
     dismissLocal,
   } = useNotifications(notificationsEnabled);
   usePushNotifications(notificationsEnabled);
-  const time = useClock();
   const initials = userInitials || nameInitials(userName);
   const debouncedQuery = useDebounce(searchQuery, 280);
 
@@ -226,7 +227,7 @@ export function TopBar({ active, onMobileMenuOpen, onNavigate, onLogout, role, p
       <div className="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-xl flex-shrink-0"
         style={{ background: "var(--cafyz-surface)", border: "1px solid var(--cafyz-border)" }}>
         <Clock size={12} style={{ color: "var(--cafyz-muted)" }} />
-        <span style={{ color: "var(--cafyz-text-secondary)", fontFamily: "var(--font-mono)", fontSize: "0.78rem", fontWeight: 600 }}>{time}</span>
+        <LiveClock />
       </div>
 
       {/* Global search — desktop only (restaurant users) */}

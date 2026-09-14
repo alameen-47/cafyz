@@ -88,6 +88,10 @@ export interface ReceiptData {
   phone?:         string;
   taxId?:         string;
   tableName:      string;
+  /** Running bill number from the server, printed as "Bill No". */
+  billNo?:        number | string | null;
+  /** e.g. "Counter · Takeaway" when the bill has no table. */
+  orderLabel?:    string;
   serverName?:    string;
   covers?:        number;
   items:          { name: string; qty: number; price: number }[];
@@ -144,6 +148,8 @@ export function buildReceipt(data: ReceiptData, width = 32, logoBytes?: Uint8Arr
   if (data.phone) b.text(`Tel: ${data.phone}`).nl();
   if (data.taxId) b.text(`Tax ID: ${data.taxId}`).nl();
 
+  if (data.billNo != null) b.boldOn().text(`Bill No: ${data.billNo}`).boldOff().nl();
+  if (data.orderLabel) b.text(data.orderLabel).nl();
   if (data.tableName) b.text(`Table: ${data.tableName}`).nl();
   if (data.serverName) b.text(`Server: ${data.serverName}`).nl();
   if (data.covers) b.text(`Covers: ${data.covers}`).nl();
@@ -167,13 +173,16 @@ export function buildReceipt(data: ReceiptData, width = 32, logoBytes?: Uint8Arr
   // Totals
   b.divider(W);
   b.row('Subtotal', fmt(data.subtotal), W);
-  b.row(`Service ${Number(data.serviceRate ?? 18).toFixed(2)}%`, fmt(data.service), W);
-  if (data.taxIncluded) {
-    b.row(`Amount before ${data.taxLabel ?? 'Tax'}`, fmt((data.subtotal + data.service) - data.tax), W);
+  // Restaurants without a service charge or tax get a clean two-line bill.
+  if (data.service > 0) b.row(`Service ${Number(data.serviceRate ?? 18).toFixed(2)}%`, fmt(data.service), W);
+  if (data.tax > 0) {
+    if (data.taxIncluded) {
+      b.row(`Amount before ${data.taxLabel ?? 'Tax'}`, fmt((data.subtotal + data.service) - data.tax), W);
+    }
+    b.row(`${data.taxLabel ?? 'Tax'} ${Number(data.taxRate ?? 8.75).toFixed(2)}%${data.taxIncluded ? ' (incl.)' : ''}`, fmt(data.tax), W);
   }
-  b.row(`${data.taxLabel ?? 'Tax'} ${Number(data.taxRate ?? 8.75).toFixed(2)}%${data.taxIncluded ? ' (incl.)' : ''}`, fmt(data.tax), W);
   b.divider(W);
-  b.boldOn().row('TOTAL DUE', fmt(data.total), W).boldOff();
+  b.boldOn().row(data.payMethod ? 'TOTAL PAID' : 'TOTAL DUE', fmt(data.total), W).boldOff();
 
   if (data.payMethod) {
     b.divider(W);
@@ -229,6 +238,8 @@ export function buildReceiptHTML(data: ReceiptData): string {
   ${data.addressLine ? `<p>${e(data.addressLine)}</p>` : ''}
   ${data.phone ? `<p>Tel: ${e(data.phone)}</p>` : ''}
   ${data.taxId ? `<p>Tax ID: ${e(data.taxId)}</p>` : ''}
+  ${data.billNo != null ? `<p><b>Bill No: ${e(String(data.billNo))}</b></p>` : ''}
+  ${data.orderLabel ? `<p>${e(data.orderLabel)}</p>` : ''}
   ${data.tableName ? `<p>Table: ${e(data.tableName)}</p>` : ''}
   ${data.serverName ? `<p>Server: ${e(data.serverName)}</p>` : ''}
   ${data.covers ? `<p>Covers: ${e(data.covers)}</p>` : ''}
@@ -242,19 +253,19 @@ ${data.note ? `<p style="font-size:11px;margin:4px 0">Note: ${e(data.note)}</p>`
 <hr>
 <table>
   <tr><td>Subtotal</td><td class="right">${fmt(data.subtotal)}</td></tr>
-  <tr><td>Service ${Number(data.serviceRate ?? 18).toFixed(2)}%</td><td class="right">${fmt(data.service)}</td></tr>
-  ${data.taxIncluded ? `<tr><td>Amount before ${e(data.taxLabel ?? 'Tax')}</td><td class="right">${fmt((data.subtotal + data.service) - data.tax)}</td></tr>` : ''}
-  <tr><td>${e(data.taxLabel ?? 'Tax')} ${Number(data.taxRate ?? 8.75).toFixed(2)}%${data.taxIncluded ? ' (included)' : ''}</td><td class="right">${fmt(data.tax)}</td></tr>
+  ${data.service > 0 ? `<tr><td>Service ${Number(data.serviceRate ?? 18).toFixed(2)}%</td><td class="right">${fmt(data.service)}</td></tr>` : ''}
+  ${data.tax > 0 && data.taxIncluded ? `<tr><td>Amount before ${e(data.taxLabel ?? 'Tax')}</td><td class="right">${fmt((data.subtotal + data.service) - data.tax)}</td></tr>` : ''}
+  ${data.tax > 0 ? `<tr><td>${e(data.taxLabel ?? 'Tax')} ${Number(data.taxRate ?? 8.75).toFixed(2)}%${data.taxIncluded ? ' (included)' : ''}</td><td class="right">${fmt(data.tax)}</td></tr>` : ''}
 </table>
 <hr>
 <table>
-  <tr class="total-row"><td>TOTAL DUE</td><td class="right">${fmt(data.total)}</td></tr>
+  <tr class="total-row"><td>${data.payMethod ? 'TOTAL PAID' : 'TOTAL DUE'}</td><td class="right">${fmt(data.total)}</td></tr>
 </table>
 ${data.payMethod ? `<hr><p class="center">Paid by ${e(data.payMethod)}</p>` : ''}
 <hr>
 <div class="center">
   <p>${e(data.footer || 'Thank you for your visit!')}</p>
-  <p>cafyz.com</p>
+  <p>cafyz.ametronyx.com</p>
 </div>
 </body>
 </html>`;
@@ -720,42 +731,70 @@ function waitForWindowImages(win: Window, onReady: () => void, onLogoError?: () 
   setTimeout(waitForImagesThenPrint, 450);
 }
 
-function printDialog(receiptData: ReceiptData): Promise<void> {
+/**
+ * Opens the browser print dialog for an HTML document through an off-screen iframe. Unlike a
+ * pop-up window it can't be blocked, even when printing starts after a network request.
+ */
+function printHtmlInFrame(html: string, prepare?: (doc: Document) => void): Promise<void> {
   return new Promise((resolve, reject) => {
-    if (Capacitor.isNativePlatform()) {
-      reject(new Error('Configure a Bluetooth cashier printer in Profile → Printer setup.'));
+    const frame = document.createElement('iframe');
+    frame.setAttribute('aria-hidden', 'true');
+    frame.tabIndex = -1;
+    frame.style.cssText = 'position:fixed;left:-10000px;top:0;width:80mm;height:600px;border:0';
+    document.body.appendChild(frame);
+    const win = frame.contentWindow;
+    const doc = frame.contentDocument;
+    if (!win || !doc) {
+      frame.remove();
+      reject(new Error('Printing is not available in this browser.'));
       return;
     }
-    const win = window.open('', '_blank', 'width=340,height=600');
-    if (!win) {
-      reject(new Error('Pop-up blocked — please allow pop-ups for this site.'));
-      return;
-    }
-
-    const doc = win.document;
     doc.open();
-    doc.write(buildReceiptHTML({ ...receiptData, logoUrl: undefined }));
+    doc.write(html);
     doc.close();
+    prepare?.(doc);
 
-    if (receiptData.logoUrl) {
-      const header = doc.querySelector('.receipt-header');
-      if (!header) {
-        reject(new Error('Receipt layout error — could not place logo.'));
-        return;
+    let printed = false;
+    const go = () => {
+      if (printed) return;
+      printed = true;
+      try {
+        win.focus();
+        win.print();
+        resolve();
+      } catch (e) {
+        reject(e instanceof Error ? e : new Error('Print failed'));
+      } finally {
+        // print() returns once the dialog closes; give the browser a moment before removing the frame.
+        window.setTimeout(() => frame.remove(), 1500);
       }
-      const img = doc.createElement('img');
-      img.alt = 'Restaurant logo';
-      img.src = receiptData.logoUrl;
-      img.style.cssText = 'max-width:150px;max-height:72px;object-fit:contain;margin:0 auto 6px;display:block';
-      header.insertBefore(img, header.firstChild);
-    }
+    };
+    // Wait briefly for the logo so it makes it onto the page, but never hold up the bill for it.
+    const waiting = Array.from(doc.images).filter(img => !img.complete);
+    if (waiting.length === 0) { window.setTimeout(go, 60); return; }
+    let left = waiting.length;
+    const done = () => { left -= 1; if (left <= 0) go(); };
+    waiting.forEach(img => {
+      img.addEventListener('load', done, { once: true });
+      img.addEventListener('error', done, { once: true });
+    });
+    window.setTimeout(go, 2500);
+  });
+}
 
-    win.focus();
-    waitForWindowImages(
-      win,
-      () => { win.print(); resolve(); },
-      () => reject(new Error('Logo failed to load for print preview. Re-upload in Restaurant Profile.')),
-    );
+function printDialog(receiptData: ReceiptData): Promise<void> {
+  if (Capacitor.isNativePlatform()) {
+    return Promise.reject(new Error('Configure a Bluetooth cashier printer in Profile → Printer setup.'));
+  }
+  return printHtmlInFrame(buildReceiptHTML({ ...receiptData, logoUrl: undefined }), doc => {
+    if (!receiptData.logoUrl) return;
+    const header = doc.querySelector('.receipt-header');
+    if (!header) return;
+    const img = doc.createElement('img');
+    img.alt = 'Restaurant logo';
+    img.src = receiptData.logoUrl;
+    img.style.cssText = 'max-width:150px;max-height:72px;object-fit:contain;margin:0 auto 6px;display:block';
+    header.insertBefore(img, header.firstChild);
   });
 }
 
@@ -763,33 +802,7 @@ function printDialogHtml(html: string): void {
   if (Capacitor.isNativePlatform()) {
     throw new Error('Browser print preview is not available in the mobile app. Use a configured printer.');
   }
-  const win  = window.open('', '_blank', 'width=340,height=600');
-  if (!win) throw new Error('Pop-up blocked — please allow pop-ups for this site.');
-  win.document.write(html);
-  win.document.close();
-  win.focus();
-  const triggerPrint = () => {
-    if (win.closed) return;
-    win.print();
-    setTimeout(() => win.close(), 900);
-  };
-  const waitForImagesThenPrint = () => {
-    try {
-      const images = Array.from(win.document.images);
-      if (!images.length) { triggerPrint(); return; }
-      let pending = images.filter(img => !img.complete).length;
-      if (pending === 0) { triggerPrint(); return; }
-      const done = () => { pending -= 1; if (pending <= 0) triggerPrint(); };
-      images.forEach(img => {
-        if (img.complete) return;
-        img.addEventListener('load', done, { once: true });
-        img.addEventListener('error', done, { once: true });
-      });
-      setTimeout(() => { if (!win.closed) triggerPrint(); }, 5000);
-    } catch { triggerPrint(); }
-  };
-  win.onload = waitForImagesThenPrint;
-  setTimeout(waitForImagesThenPrint, 450);
+  void printHtmlInFrame(html).catch(err => console.error('[cafyz] print failed', err));
 }
 
 /**

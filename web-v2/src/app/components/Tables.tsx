@@ -156,7 +156,7 @@ export function Tables() {
     void load();
     const onResChange = () => void load();
     window.addEventListener("CAFYZ_RESERVATION_CHANGED", onResChange);
-    const id = window.setInterval(() => void load(), 8000);
+    const id = window.setInterval(() => { if (document.visibilityState === "visible") void load(); }, 8000);
     return () => {
       window.clearInterval(id);
       window.removeEventListener("CAFYZ_RESERVATION_CHANGED", onResChange);

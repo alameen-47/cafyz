@@ -38,7 +38,10 @@ export async function createTrialRestaurant(input: TrialRestaurantInput): Promis
 
   await getDb().batch([
     {
-      sql: `INSERT INTO restaurants(id,name,slug,plan,timezone,currency_code) VALUES(?,?,?,?,?,'INR')`,
+      // No service charge and 0% GST until the owner sets their own rates in Profile, so the very
+      // first bill never carries a charge the restaurant didn't choose.
+      sql: `INSERT INTO restaurants(id,name,slug,plan,timezone,currency_code,service_charge_pct,tax_rate_pct,tax_type)
+            VALUES(?,?,?,?,?,'INR',0,0,'GST')`,
       args: [restaurantId, input.restaurantName, `${slugBase}-${restaurantId.slice(0, 6)}`, plan, input.timezone ?? 'UTC'],
     },
     {

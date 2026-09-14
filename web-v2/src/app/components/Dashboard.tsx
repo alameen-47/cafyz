@@ -282,7 +282,7 @@ export function Dashboard() {
         const itemText = items.map(it => `${it.name}${it.qty > 1 ? ` ×${it.qty}` : ""}`).join(", ") || "—";
         return {
           id: "#" + o.id.slice(0, 4).toUpperCase(),
-          table: o.table_name || "—",
+          table: o.order_type === "parcel" ? "Parcel" : (o.table_name || "Counter"),
           items: itemText,
           amount,
           status: mapStatus(o.status),
@@ -299,7 +299,7 @@ export function Dashboard() {
 
   useEffect(() => {
     void load();
-    const id = window.setInterval(() => void load(true), 45_000);
+    const id = window.setInterval(() => { if (document.visibilityState === "visible") void load(true); }, 45_000);
     return () => window.clearInterval(id);
   }, [load]);
 

@@ -364,6 +364,10 @@ export async function runMigrations() {
   await addCol(`ALTER TABLE menu_items ADD COLUMN image_url TEXT`, 'image_url');
   // Dine-in vs parcel/takeaway. Used to flag PARCEL on kitchen tickets.
   await addCol(`ALTER TABLE orders ADD COLUMN order_type TEXT NOT NULL DEFAULT 'dine_in'`, 'order_type');
+  // POS billing: how a bill was paid, and a running bill number per restaurant printed on receipts.
+  await addCol(`ALTER TABLE orders ADD COLUMN payment_method TEXT`, 'orders.payment_method');
+  await addCol(`ALTER TABLE orders ADD COLUMN bill_no INTEGER`, 'orders.bill_no');
+  await db.execute(`CREATE INDEX IF NOT EXISTS idx_orders_restaurant_bill_no ON orders(restaurant_id, bill_no)`);
 
   // Demo data: sample rows carry is_demo=1 so Settings can remove them all at once
   // without touching anything the restaurant created itself.

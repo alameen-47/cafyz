@@ -148,6 +148,8 @@ async function request<T = unknown>(
     && !isPrinterAssignmentSync
     && !path.startsWith('/api/auth/')
     && !path.includes('/status')
+    // POS billing taps show their own specific toasts; a generic "Saved" on every item would be noise.
+    && !path.startsWith('/api/orders')
     // Background KDS print queue calls are polled frequently.
     // Never show automatic success toasts for these non-interactive operations.
     && !path.startsWith('/api/kds/print-jobs/claim')
@@ -378,7 +380,11 @@ export const ordersApi = {
   // Cloud-print fallback if a local same-device print fails.
   enqueuePrint: (orderId: string) => post<{ ok: boolean }>(`/api/orders/${orderId}/enqueue-print`, {}),
   // Atomically settle ALL active orders on a table + clear it (prevents leftover bills).
-  settleTable:  (tableId: string) => post<{ ok: boolean; settled: number }>('/api/orders/settle-table', { table_id: tableId }),
+  settleTable:  (tableId: string, paymentMethod?: PaymentMethod) =>
+    post<{ ok: boolean; settled: number; bill_no: number | null }>('/api/orders/settle-table', { table_id: tableId, payment_method: paymentMethod }),
+  // Counter billing: selected items → a paid bill in one request, table optional.
+  instantBill:  (d: { table_id?: string | null; parcel?: boolean; payment_method: PaymentMethod; note?: string; send_to_kitchen?: boolean; items: { menu_item_id: string; qty: number; mods?: string[] }[] }) =>
+    post<ApiInstantBill>('/api/orders/instant-bill', d),
   updateStatus: (id: string, status: string)                                  => patch<{ id: string; status: string }>(`/api/orders/${id}/status`, { status }),
   advanceKitchen: (id: string, action: 'fire' | 'ready' | 'delivered')         =>
     patch<{ order_id: string; ticket_id: string; status: string }>(`/api/orders/${id}/kitchen-progress`, { action }),
@@ -700,10 +706,19 @@ export interface ApiTable {
   course?: string; covers: number; elapsed_min: number; server_id?: string;
 }
 
+export type PaymentMethod = 'cash' | 'upi' | 'card';
+
+export interface ApiInstantBill {
+  id: string; bill_no: number | null; status: 'paid'; payment_method: PaymentMethod;
+  order_type: 'dine_in' | 'parcel'; table_id: string | null; table_name: string | null;
+  subtotal: number; ticket_id: string | null; created_at: string | null;
+}
+
 export interface ApiOrder {
   id: string; restaurant_id: string; table_id?: string; server_id?: string;
   status: 'open' | 'sent' | 'paid' | 'voided' | 'comped'; covers: number; note?: string;
   order_type?: 'dine_in' | 'parcel';
+  payment_method?: PaymentMethod | null; bill_no?: number | null;
   table_name?: string; created_at: string; updated_at: string; items?: ApiOrderItem[];
 }
 

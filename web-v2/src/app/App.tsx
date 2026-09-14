@@ -1,21 +1,11 @@
-import { useState, useEffect, useCallback, Suspense } from "react";
+import { useState, useEffect, useCallback, Suspense, startTransition } from "react";
 import { Toaster } from "sonner";
 import { Sidebar } from "./components/Sidebar";
 import { TopBar } from "./components/TopBar";
 import { MobileNav } from "./components/MobileNav";
 import { AIAssistantWidget } from "./components/AIAssistantWidget";
 import { Dashboard } from "./components/Dashboard";
-import { Orders } from "./components/Orders";
-import { Tables } from "./components/Tables";
-import { MenuPage } from "./components/MenuPage";
-import { Staff } from "./components/Staff";
-import { Inventory } from "./components/Inventory";
 import { LoginScreen } from "./components/LoginScreen";
-import { KDS } from "./components/KDS";
-import { Roles } from "./components/Roles";
-import { License } from "./components/License";
-import { Reservations } from "./components/Reservations";
-import { PublicMenu } from "./components/PublicMenu";
 import { LegalPage, legalPathToSlug } from "./components/LegalPage";
 import { UpgradeModal } from "./components/UpgradeModal";
 import { TrialExpiredModal } from "./components/TrialExpiredModal";
@@ -34,7 +24,23 @@ import { applyLanguageToDocument, getActiveLanguageCode } from "../i18n";
 import { lazyPage, PageLoadingFallback } from "./lazyPage";
 import "../styles/fonts.css";
 
-const POS = lazyPage(() => import("./components/POS").then(m => ({ default: m.POS })), "POS");
+const loadPOS = () => import("./components/POS");
+const loadOrders = () => import("./components/Orders");
+const loadTables = () => import("./components/Tables");
+const loadMenuPage = () => import("./components/MenuPage");
+const loadKDS = () => import("./components/KDS");
+
+const POS = lazyPage(() => loadPOS().then(m => ({ default: m.POS })), "POS");
+const Orders = lazyPage(() => loadOrders().then(m => ({ default: m.Orders })), "Orders");
+const Tables = lazyPage(() => loadTables().then(m => ({ default: m.Tables })), "Tables");
+const MenuPage = lazyPage(() => loadMenuPage().then(m => ({ default: m.MenuPage })), "Menu");
+const KDS = lazyPage(() => loadKDS().then(m => ({ default: m.KDS })), "Kitchen display");
+const Staff = lazyPage(() => import("./components/Staff").then(m => ({ default: m.Staff })), "Staff");
+const Inventory = lazyPage(() => import("./components/Inventory").then(m => ({ default: m.Inventory })), "Inventory");
+const Roles = lazyPage(() => import("./components/Roles").then(m => ({ default: m.Roles })), "Roles");
+const License = lazyPage(() => import("./components/License").then(m => ({ default: m.License })), "License");
+const Reservations = lazyPage(() => import("./components/Reservations").then(m => ({ default: m.Reservations })), "Reservations");
+const PublicMenu = lazyPage(() => import("./components/PublicMenu").then(m => ({ default: m.PublicMenu })), "Menu");
 const Analytics = lazyPage(() => import("./components/Analytics").then(m => ({ default: m.Analytics })), "Analytics");
 const Profile = lazyPage(() => import("./components/Profile").then(m => ({ default: m.Profile })), "Profile");
 const FounderConsole = lazyPage(() => import("./components/FounderConsole").then(m => ({ default: m.FounderConsole })), "Founder Console");
@@ -58,6 +64,11 @@ const pages: Record<string, React.ComponentType> = {
 
 const fullHeightPages = new Set(["pos", "kds"]);
 
+/** The screens staff open all day, fetched quietly after sign-in so switching to them is instant. */
+function preloadBusyPages() {
+  for (const load of [loadPOS, loadOrders, loadTables, loadMenuPage, loadKDS]) void load().catch(() => {});
+}
+
 export default function App() {
   const { user, loading, logout, refreshPlan } = useAuth();
   usePlanConfig(); // refresh nav gates when founder updates plan structure
@@ -74,6 +85,12 @@ export default function App() {
   const [demoBannerHidden, setDemoBannerHidden] = useState(false);
 
   useKitchenPrintWorker(Boolean(user && user.role !== "founder"));
+
+  useEffect(() => {
+    if (!user || isFounderRole(user.role)) return;
+    const id = window.setTimeout(preloadBusyPages, 900);
+    return () => window.clearTimeout(id);
+  }, [user?.id, user?.role]);
 
   useEffect(() => {
     const id = requestAnimationFrame(() => applyLanguageToDocument(getActiveLanguageCode()));
@@ -169,7 +186,8 @@ export default function App() {
       }
       return;
     }
-    setActivePage(p);
+    // Keep the current page on screen while the next one's chunk loads, instead of flashing a spinner.
+    startTransition(() => setActivePage(p));
   }, [user, role, plan, accessPages, accessJson]);
 
   const goToTableOrder = (tableId: string) => { setPosTableId(tableId); navigate("pos"); };
@@ -177,7 +195,7 @@ export default function App() {
 
   const isPublicMenuRoute = /^\/m\/[^/]+/.test(window.location.pathname);
   if (isPublicMenuRoute) {
-    return (<><Toaster position="bottom-right" richColors closeButton /><PublicMenu /></>);
+    return (<><Toaster position="bottom-right" richColors closeButton /><Suspense fallback={<PageLoadingFallback />}><PublicMenu /></Suspense></>);
   }
 
   const legalSlug = legalPathToSlug(window.location.pathname);
@@ -223,7 +241,9 @@ export default function App() {
         />
         {canRenew ? (
           <div className="flex app-screen app-native-inset-top w-full overflow-hidden cafyz-app-shell">
-            <License />
+            <Suspense fallback={<PageLoadingFallback />}>
+              <License />
+            </Suspense>
           </div>
         ) : (
           <div className="flex app-screen app-native-inset-top w-full flex-col items-center justify-center p-6 text-center cafyz-app-shell">

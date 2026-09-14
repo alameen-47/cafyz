@@ -258,7 +258,7 @@ export function KDS() {
     void load();
     const onSent = () => void load(true);
     window.addEventListener("CAFYZ_ORDER_SENT", onSent);
-    const id = window.setInterval(() => void load(true), 5000);
+    const id = window.setInterval(() => { if (document.visibilityState === "visible") void load(true); }, 5000);
     return () => {
       window.clearInterval(id);
       window.removeEventListener("CAFYZ_ORDER_SENT", onSent);

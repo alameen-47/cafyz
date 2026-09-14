@@ -182,12 +182,12 @@ export function Orders() {
     try {
       const rows = await ordersApi.live({ active: viewMode === "active" });
       setOrders(rows.map(o => ({
-        id: "#" + o.id.slice(0, 4).toUpperCase(),
+        id: o.bill_no ? `Bill ${o.bill_no}` : "#" + o.id.slice(0, 4).toUpperCase(),
         oid: o.id,
         tid: o.ticket_id ?? undefined,
         tableId: o.table_id ?? undefined,
         orderStatus: o.status,
-        table: o.order_type === "parcel" ? "PARCEL" : (o.table_name || "—"),
+        table: o.order_type === "parcel" ? "PARCEL" : (o.table_name || "Counter"),
         waiter: o.server_name || "",
         items: (o.items ?? []).map(it => ({
           name: it.name ?? "Item",
@@ -216,7 +216,7 @@ export function Orders() {
     void load();
     const onSent = () => void load(true);
     window.addEventListener("CAFYZ_ORDER_SENT", onSent);
-    const id = window.setInterval(() => void load(true), 5000);
+    const id = window.setInterval(() => { if (document.visibilityState === "visible") void load(true); }, 5000);
     return () => {
       window.clearInterval(id);
       window.removeEventListener("CAFYZ_ORDER_SENT", onSent);

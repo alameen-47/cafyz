@@ -326,7 +326,9 @@ html.light .cafyz-accent-surface {
   position: absolute;
   inset: 0;
   filter: blur(var(--cafyz-logo-blob-blur));
-  will-change: border-radius, transform;
+  /* Transform-only animation: the blurred blob is painted once and moved on the GPU, instead of
+     re-blurring every frame. Rotating an uneven shape while stretching it keeps the outline morphing. */
+  will-change: transform;
 }
 
 .cafyz-logo-glow::before {
@@ -345,18 +347,27 @@ html.light .cafyz-accent-surface {
 }
 
 @keyframes cafyz-amoeba-a {
-  0%   { border-radius: 62% 38% 55% 45% / 48% 60% 40% 52%; transform: rotate(0deg) scale(1); }
-  25%  { border-radius: 44% 56% 36% 64% / 60% 44% 56% 40%; transform: rotate(35deg) scale(1.05) translate(2%, -2%); }
-  50%  { border-radius: 58% 42% 68% 32% / 36% 58% 42% 64%; transform: rotate(70deg) scale(0.96) translate(-3%, 2%); }
-  75%  { border-radius: 36% 64% 46% 54% / 54% 34% 66% 46%; transform: rotate(105deg) scale(1.04) translate(2%, 3%); }
-  100% { border-radius: 52% 48% 38% 62% / 42% 62% 38% 58%; transform: rotate(140deg) scale(1) translate(-2%, -1%); }
+  0%   { transform: rotate(0deg) scale(1, 1); }
+  25%  { transform: rotate(40deg) translate(2%, -2%) scale(1.08, 0.92); }
+  50%  { transform: rotate(90deg) translate(-3%, 2%) scale(0.93, 1.07); }
+  75%  { transform: rotate(135deg) translate(2%, 3%) scale(1.06, 0.94); }
+  100% { transform: rotate(180deg) translate(-2%, -1%) scale(0.96, 1.05); }
 }
 
 @keyframes cafyz-amoeba-b {
-  0%   { border-radius: 40% 60% 42% 58% / 58% 38% 62% 42%; transform: rotate(0deg) translate(0, 0); }
-  30%  { border-radius: 63% 37% 57% 43% / 41% 63% 37% 59%; transform: rotate(-45deg) translate(-4%, 3%); }
-  60%  { border-radius: 35% 65% 60% 40% / 62% 45% 55% 38%; transform: rotate(-90deg) translate(3%, -4%); }
-  100% { border-radius: 57% 43% 35% 65% / 45% 58% 42% 55%; transform: rotate(-150deg) translate(-2%, 2%); }
+  0%   { transform: rotate(0deg) translate(0, 0) scale(1, 1); }
+  30%  { transform: rotate(-50deg) translate(-4%, 3%) scale(0.92, 1.08); }
+  60%  { transform: rotate(-100deg) translate(3%, -4%) scale(1.08, 0.93); }
+  100% { transform: rotate(-160deg) translate(-2%, 2%) scale(0.95, 1.06); }
+}
+
+/* Lite mode (phones, tablets, low-memory devices — set in main.tsx): no live backdrop blur. It
+   re-blurs everything behind a bar or overlay on every scroll frame; these surfaces are near-opaque anyway. */
+html.cafyz-lite .app-top-bar,
+html.cafyz-lite [style*="backdrop-filter"],
+html.cafyz-lite [class*="backdrop-blur"] {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
 }
 
 /* Surfaces that are dark in both themes (login hero panel) keep the dark-mode glow. */

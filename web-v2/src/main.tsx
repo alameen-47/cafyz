@@ -32,6 +32,14 @@ function bootNativeShell() {
 
 bootNativeShell();
 
+/** Phones, tablets and low-memory machines skip the costliest effects (live backdrop blur). */
+function markLiteDevice() {
+  const nav = navigator as Navigator & { deviceMemory?: number };
+  const lowEnd = (nav.deviceMemory ?? 8) <= 4 || (nav.hardwareConcurrency ?? 8) <= 4;
+  if (Capacitor.isNativePlatform() || lowEnd) document.documentElement.classList.add("cafyz-lite");
+}
+markLiteDevice();
+
 function installGlobalErrorHandlers() {
   const log = (label: string, detail: unknown) => {
     console.error(`[cafyz] ${label}`, detail);

@@ -123,7 +123,7 @@ export function Reservations() {
 
   useEffect(() => {
     void load();
-    const id = window.setInterval(() => void load(true), 30_000);
+    const id = window.setInterval(() => { if (document.visibilityState === "visible") void load(true); }, 30_000);
     return () => window.clearInterval(id);
   }, [load]);
 

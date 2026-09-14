@@ -36,6 +36,11 @@ function catToStation(category: string): string {
   return map[category] ?? 'GARDE';
 }
 
+const PAYMENT_METHODS = ['cash', 'upi', 'card'] as const;
+
+/** Next running bill number for a restaurant; binds one `restaurant_id` arg. Safe inside a batch transaction. */
+const NEXT_BILL_NO_SQL = '(SELECT COALESCE(MAX(bill_no), 0) + 1 FROM orders WHERE restaurant_id=?)';
+
 // ── GET /api/orders/live ──────────────────────────────────────────────────────
 // Enriched live board: orders + line items + latest KDS ticket in two queries.
 // Lives under /api/orders so waiters on Basic plan can read kitchen progress
@@ -48,6 +53,7 @@ router.get('/live', requireRole('owner', 'manager', 'cashier', 'waiter', 'kitche
 
     let sql = `
       SELECT o.id, o.restaurant_id, o.table_id, o.server_id, o.status, o.covers, o.note, o.order_type,
+             o.payment_method, o.bill_no,
              o.created_at, o.updated_at,
              t.name AS table_name,
              u.name AS server_name,
@@ -105,6 +111,8 @@ router.get('/live', requireRole('owner', 'manager', 'cashier', 'waiter', 'kitche
         covers: o.covers,
         note: o.note ?? null,
         order_type: o.order_type ?? 'dine_in',
+        payment_method: o.payment_method ?? null,
+        bill_no: o.bill_no ?? null,
         table_name: o.table_name ?? null,
         server_name: o.server_name ?? null,
         created_at: o.created_at,
@@ -524,7 +532,10 @@ router.patch('/:id/status', requireRole('owner', 'manager', 'cashier', 'waiter')
 router.post('/settle-table', requireRole('owner', 'manager', 'cashier'), async (req: AuthRequest, res, next) => {
   try {
     const rid = req.user!.restaurant_id;
-    const { table_id } = z.object({ table_id: z.string().min(1) }).parse(req.body);
+    const { table_id, payment_method } = z.object({
+      table_id: z.string().min(1),
+      payment_method: z.enum(PAYMENT_METHODS).optional(),
+    }).parse(req.body);
     const db = getDb();
     const tableRes = await db.execute({
       sql: 'SELECT name FROM restaurant_tables WHERE id=? AND restaurant_id=?',
@@ -534,9 +545,16 @@ router.post('/settle-table', requireRole('owner', 'manager', 'cashier'), async (
 
     const result = await db.batch([
       {
-        sql: `UPDATE orders SET status='paid', updated_at=datetime('now')
+        // One bill number for the whole table, stamped on its oldest open order.
+        sql: `UPDATE orders SET bill_no=${NEXT_BILL_NO_SQL}
+              WHERE id=(SELECT id FROM orders WHERE restaurant_id=? AND table_id=? AND status IN ('open','sent')
+                        ORDER BY created_at ASC LIMIT 1)`,
+        args: [rid, rid, table_id],
+      },
+      {
+        sql: `UPDATE orders SET status='paid', payment_method=COALESCE(?, payment_method), updated_at=datetime('now')
               WHERE restaurant_id=? AND table_id=? AND status IN ('open','sent')`,
-        args: [rid, table_id],
+        args: [payment_method ?? null, rid, table_id],
       },
       {
         sql: `UPDATE kds_tickets SET status='delivered', updated_at=datetime('now')
@@ -550,8 +568,11 @@ router.post('/settle-table', requireRole('owner', 'manager', 'cashier'), async (
               WHERE id=? AND restaurant_id=?`,
         args: [table_id, rid],
       },
+      // Read back inside the same transaction, so this is the number stamped above.
+      { sql: 'SELECT MAX(bill_no) AS bill_no FROM orders WHERE restaurant_id=?', args: [rid] },
     ]);
-    const settled = result[0]?.rowsAffected ?? 0;
+    const settled = result[1]?.rowsAffected ?? 0;
+    const billNo = settled > 0 ? Number((result[4]?.rows[0] as Record<string, unknown> | undefined)?.bill_no) || null : null;
     if (settled > 0) {
       sendRestaurantPush(rid, {
         title: `Payment received — ${tableName}`,
@@ -561,7 +582,142 @@ router.post('/settle-table', requireRole('owner', 'manager', 'cashier'), async (
         excludeUserId: req.user!.id,
       });
     }
-    res.json({ ok: true, settled });
+    res.json({ ok: true, settled, bill_no: billNo });
+  } catch (e) { next(e); }
+});
+
+// ── POST /api/orders/instant-bill ─────────────────────────────────────────────
+// The quick counter path: selected menu items → a PAID bill in one batched round
+// trip. A table is optional (walk-in or takeaway at the counter). The kitchen still
+// gets its ticket so the food is made.
+const InstantBillSchema = z.object({
+  table_id:        z.string().min(1).nullish(),
+  parcel:          z.boolean().default(false),
+  payment_method:  z.enum(PAYMENT_METHODS).default('cash'),
+  note:            z.string().max(500).optional(),
+  send_to_kitchen: z.boolean().default(true),
+  items: z.array(z.object({
+    menu_item_id: z.string(),
+    qty:          z.number().int().positive().max(999).default(1),
+    mods:         z.array(z.string()).default([]),
+  })).min(1).max(200),
+});
+
+router.post('/instant-bill', requireRole('owner', 'manager', 'cashier'), async (req: AuthRequest, res, next) => {
+  try {
+    const rid  = req.user!.restaurant_id;
+    const data = InstantBillSchema.parse(req.body);
+    const db   = getDb();
+    const tableId = data.table_id ?? null;
+
+    const ids = [...new Set(data.items.map(i => i.menu_item_id))];
+    const ph  = ids.map(() => '?').join(',');
+    const [menuRes, tableRes, userRes, isDemo] = await Promise.all([
+      db.execute({ sql: `SELECT id,name,price,category FROM menu_items WHERE restaurant_id=? AND id IN (${ph})`, args: [rid, ...ids] }),
+      tableId
+        ? db.execute({
+          sql: `SELECT t.name,
+                       (SELECT COUNT(*) FROM orders o WHERE o.restaurant_id=t.restaurant_id AND o.table_id=t.id
+                          AND o.status IN ('open','sent')) AS open_orders
+                FROM restaurant_tables t WHERE t.id=? AND t.restaurant_id=?`,
+          args: [tableId, rid],
+        })
+        : Promise.resolve(null),
+      db.execute({ sql: 'SELECT name FROM users WHERE id=?', args: [req.user!.id] }),
+      isDemoDataEnabled(rid),
+    ]);
+
+    const menuMap = new Map(menuRes.rows.map(r => [String((r as Record<string, unknown>).id), r as Record<string, unknown>]));
+    const missing = data.items.find(it => !menuMap.has(it.menu_item_id));
+    if (missing) { res.status(400).json({ error: `Menu item not found: ${missing.menu_item_id}` }); return; }
+    const tableRow = tableRes?.rows[0] as Record<string, unknown> | undefined;
+    if (tableId && !tableRow) { res.status(400).json({ error: 'Table not found' }); return; }
+    if (tableRow && Number(tableRow.open_orders) > 0) {
+      // Paying here would leave the table's running bill off this receipt.
+      res.status(409).json({ error: 'This table already has an open bill. Open it to add items and take payment.', code: 'TABLE_HAS_OPEN_BILL' });
+      return;
+    }
+
+    const tableName   = tableRow ? String(tableRow.name) : null;
+    const ticketLabel = tableName ?? (data.parcel ? 'Parcel' : 'Counter');
+    const serverName  = userRes.rows.length ? String((userRes.rows[0] as Record<string, unknown>).name) : 'Staff';
+    const orderId  = uid();
+    const ticketId = uid();
+    const subtotal = data.items.reduce((s, it) => s + Number(menuMap.get(it.menu_item_id)!.price ?? 0) * it.qty, 0);
+
+    const stmts: { sql: string; args: InValue[] }[] = [
+      {
+        sql: `INSERT INTO orders(id,restaurant_id,table_id,server_id,covers,note,status,order_type,payment_method,bill_no,is_demo)
+              VALUES(?,?,?,?,1,?,'paid',?,?,${NEXT_BILL_NO_SQL},?)`,
+        args: [
+          orderId, rid, tableId, req.user!.id, data.note ?? null, data.parcel ? 'parcel' : 'dine_in',
+          data.payment_method, rid, isDemo ? 1 : 0,
+        ],
+      },
+      ...data.items.map(it => ({
+        sql:  `INSERT INTO order_items(id,order_id,menu_item_id,qty,mods) VALUES(?,?,?,?,?)`,
+        args: [uid(), orderId, it.menu_item_id, it.qty, JSON.stringify(it.mods)] as InValue[],
+      })),
+    ];
+    if (tableId) {
+      stmts.push({
+        sql: `UPDATE restaurant_tables SET status='empty', course='', covers=0 WHERE id=? AND restaurant_id=?`,
+        args: [tableId, rid],
+      });
+    }
+    if (data.send_to_kitchen) {
+      const payload = {
+        ticketId, tableName: ticketLabel, serverName, covers: 1,
+        items: data.items.map(it => ({ name: String(menuMap.get(it.menu_item_id)!.name), qty: it.qty, mods: it.mods, alert: false })),
+        note: data.note || undefined,
+        parcel: data.parcel,
+      };
+      stmts.push(
+        {
+          sql: `INSERT INTO kds_tickets(id,restaurant_id,order_id,table_name,server_name,covers,status,created_at,updated_at)
+                VALUES(?,?,?,?,?,1,'new',datetime('now'),datetime('now'))`,
+          args: [ticketId, rid, orderId, ticketLabel, serverName],
+        },
+        ...data.items.map(it => {
+          const m = menuMap.get(it.menu_item_id)!;
+          return {
+            sql:  `INSERT INTO kds_ticket_items(id,ticket_id,name,qty,station,mods,alert) VALUES(?,?,?,?,?,?,0)`,
+            args: [uid(), ticketId, String(m.name), it.qty, catToStation(String(m.category)), JSON.stringify(it.mods)] as InValue[],
+          };
+        }),
+        {
+          sql: `INSERT INTO kitchen_print_jobs(id,restaurant_id,ticket_id,payload_json,status) VALUES(?,?,?,?,'pending')`,
+          args: [uid(), rid, ticketId, JSON.stringify(payload)],
+        },
+      );
+    }
+    stmts.push({ sql: 'SELECT bill_no, created_at FROM orders WHERE id=?', args: [orderId] });
+
+    const results = await db.batch(stmts);
+    const saved = results[results.length - 1]?.rows[0] as Record<string, unknown> | undefined;
+
+    if (data.send_to_kitchen) {
+      sendRestaurantPush(rid, {
+        title: `New order — ${ticketLabel}`,
+        body: `${data.items.length} item${data.items.length === 1 ? '' : 's'} · paid`,
+        data: { type: 'order', orderId, page: 'kds' },
+        roles: ['kitchen', 'manager', 'owner'],
+        excludeUserId: req.user!.id,
+      });
+    }
+
+    res.status(201).json({
+      id: orderId,
+      bill_no: Number(saved?.bill_no) || null,
+      status: 'paid',
+      payment_method: data.payment_method,
+      order_type: data.parcel ? 'parcel' : 'dine_in',
+      table_id: tableId,
+      table_name: tableName,
+      subtotal,
+      ticket_id: data.send_to_kitchen ? ticketId : null,
+      created_at: saved?.created_at ?? null,
+    });
   } catch (e) { next(e); }
 });
 
