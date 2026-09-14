@@ -13,6 +13,7 @@ import { useAuth } from "../auth";
 import { planMeetsRequirement, canManagePlan } from "../../config/access";
 import { formatMoney, getCurrencySymbol } from "../../utils/currency";
 import { useAppNav } from "../nav";
+import { onResume } from "../../hooks/useOnResume";
 
 const CAT_COLORS = ["#1e7fff", "#00c6ff", "#a855f7", "#22d3ee", "#f59e0b", "#22c55e"];
 
@@ -290,7 +291,8 @@ export function Dashboard() {
         };
       }));
     } catch (e) {
-      toast.error("Couldn't load dashboard", (e as Error).message);
+      // A load that fails while the app is in the background retries on resume — no toast for it.
+      if (document.visibilityState === "visible") toast.error("Couldn't load dashboard", (e as Error).message);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -300,7 +302,8 @@ export function Dashboard() {
   useEffect(() => {
     void load();
     const id = window.setInterval(() => { if (document.visibilityState === "visible") void load(true); }, 45_000);
-    return () => window.clearInterval(id);
+    const stopResume = onResume(() => { void load(true); });
+    return () => { window.clearInterval(id); stopResume(); };
   }, [load]);
 
   const cur = getCurrencySymbol();

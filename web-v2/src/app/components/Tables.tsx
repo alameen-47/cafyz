@@ -4,6 +4,7 @@ import { Users, Clock, Plus, Utensils, X, Save } from "lucide-react";
 import { tablesApi, usersApi, ordersApi, reservationsApi, type ApiTable, type ApiReservation, type ApiUser } from "../../services/api";
 import { toast } from "./Toast";
 import { useAppNav } from "../nav";
+import { onResume } from "../../hooks/useOnResume";
 
 type TableStatus = "available" | "occupied" | "reserved" | "cleaning";
 
@@ -157,9 +158,11 @@ export function Tables() {
     const onResChange = () => void load();
     window.addEventListener("CAFYZ_RESERVATION_CHANGED", onResChange);
     const id = window.setInterval(() => { if (document.visibilityState === "visible") void load(); }, 8000);
+    const stopResume = onResume(() => { void load(); });
     return () => {
       window.clearInterval(id);
       window.removeEventListener("CAFYZ_RESERVATION_CHANGED", onResChange);
+      stopResume();
     };
   }, [load]);
 

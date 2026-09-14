@@ -4,6 +4,7 @@ import { Plus, Calendar, Users, StickyNote, Check, X, Crown, Edit2, Trash2, Armc
 import { toast } from "./Toast";
 import { reservationsApi, tablesApi, type ApiReservation, type ApiTable } from "../../services/api";
 import { useAppNav } from "../nav";
+import { onResume } from "../../hooks/useOnResume";
 
 type ResStatus = "confirmed" | "seated" | "cancelled" | "completed";
 
@@ -124,7 +125,8 @@ export function Reservations() {
   useEffect(() => {
     void load();
     const id = window.setInterval(() => { if (document.visibilityState === "visible") void load(true); }, 30_000);
-    return () => window.clearInterval(id);
+    const stopResume = onResume(() => { void load(true); });
+    return () => { window.clearInterval(id); stopResume(); };
   }, [load]);
 
   const filtered = useMemo(() =>

@@ -5,6 +5,7 @@ import { toast } from "./Toast";
 import { ordersApi } from "../../services/api";
 import { getCurrencySymbol } from "../../utils/currency";
 import { useAppNav } from "../nav";
+import { onResume } from "../../hooks/useOnResume";
 
 type UiStatus = "pending" | "preparing" | "ready" | "at_table" | "complete";
 type OrderRow = {
@@ -217,9 +218,11 @@ export function Orders() {
     const onSent = () => void load(true);
     window.addEventListener("CAFYZ_ORDER_SENT", onSent);
     const id = window.setInterval(() => { if (document.visibilityState === "visible") void load(true); }, 5000);
+    const stopResume = onResume(() => { void load(true); });
     return () => {
       window.clearInterval(id);
       window.removeEventListener("CAFYZ_ORDER_SENT", onSent);
+      stopResume();
     };
   }, [load]);
 

@@ -5,6 +5,7 @@ import { toast } from "./Toast";
 import { kdsApi, restaurantApi, type ApiKdsTicket } from "../../services/api";
 import { printerStatus } from "../../services/PrintService";
 import { useAuth } from "../auth";
+import { onResume } from "../../hooks/useOnResume";
 
 type KDSStatus = "new" | "prep" | "ready";
 
@@ -259,9 +260,11 @@ export function KDS() {
     const onSent = () => void load(true);
     window.addEventListener("CAFYZ_ORDER_SENT", onSent);
     const id = window.setInterval(() => { if (document.visibilityState === "visible") void load(true); }, 5000);
+    const stopResume = onResume(() => { void load(true); });
     return () => {
       window.clearInterval(id);
       window.removeEventListener("CAFYZ_ORDER_SENT", onSent);
+      stopResume();
     };
   }, [load]);
 

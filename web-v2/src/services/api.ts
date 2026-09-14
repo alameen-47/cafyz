@@ -120,7 +120,8 @@ async function request<T = unknown>(
     if ((e as Error).name === 'AbortError') {
       throw new Error('Request timed out — check your connection and try again.');
     }
-    throw e;
+    // fetch() rejects with a bare "Failed to fetch" / "Load failed" when there's no network.
+    throw new Error("Can't reach Cafyz — check your internet connection and try again.");
   } finally {
     window.clearTimeout(timeoutId);
   }
