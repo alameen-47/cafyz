@@ -86,6 +86,10 @@ html:not(.light) {
   --cafyz-hero-shadow: 0 8px 32px rgba(0, 0, 0, 0.22);
   --cafyz-hero-inset-bg: rgba(8, 12, 30, 0.45);
   --cafyz-logo-plate-bg: #0a1024;
+  /* Brand logo glow (see .cafyz-logo): soft blue halo on dark surfaces. */
+  --cafyz-logo-glow-core: rgba(30, 127, 255, 0.34);
+  --cafyz-logo-glow-mid: rgba(0, 198, 255, 0.12);
+  --cafyz-logo-shadow: drop-shadow(0 6px 20px rgba(30, 127, 255, 0.32));
   --cafyz-media-scrim: linear-gradient(to top, rgba(13, 19, 38, 0.65) 0%, transparent 55%);
   --cafyz-banner-warn-bg: linear-gradient(135deg, #0d2040 0%, #0d1326 100%);
   --cafyz-banner-expired-bg: linear-gradient(135deg, #2a1020 0%, #1a0d26 100%);
@@ -178,6 +182,10 @@ html.light {
   --cafyz-hero-shadow: 0 8px 28px rgba(15, 23, 42, 0.08), 0 1px 3px rgba(15, 23, 42, 0.04);
   --cafyz-hero-inset-bg: rgba(255, 255, 255, 0.92);
   --cafyz-logo-plate-bg: #f1f5f9;
+  /* Brand logo glow: a deep navy-to-blue halo so the silver lettering reads on light surfaces. */
+  --cafyz-logo-glow-core: rgba(8, 20, 52, 0.94);
+  --cafyz-logo-glow-mid: rgba(21, 101, 224, 0.42);
+  --cafyz-logo-shadow: drop-shadow(0 8px 22px rgba(21, 101, 224, 0.28));
   --cafyz-media-scrim: linear-gradient(to top, rgba(15, 23, 42, 0.52) 0%, transparent 55%);
   --cafyz-banner-warn-bg: linear-gradient(135deg, #eff6ff 0%, #ffffff 100%);
   --cafyz-banner-expired-bg: linear-gradient(135deg, #fef2f2 0%, #fff7ed 100%);
@@ -286,4 +294,26 @@ html.light .cafyz-subtle-surface {
 html.light .cafyz-accent-surface {
   background: var(--cafyz-accent-soft);
   border: 1px solid var(--cafyz-accent-border);
+}
+
+/* Brand logo — a radial glow painted behind the transparent PNG, centred on the mark.
+   `circle closest-side` keeps the halo round even when the <img> box is wider than the
+   drawn logo (object-contain); ending at 100% keeps it a clean circle inside the box. */
+.cafyz-logo {
+  background-image: radial-gradient(
+    circle closest-side at 50% 51%,
+    var(--cafyz-logo-glow-core) 0%,
+    var(--cafyz-logo-glow-core) 54%,
+    var(--cafyz-logo-glow-mid) 82%,
+    transparent 100%
+  );
+  background-repeat: no-repeat;
+  filter: var(--cafyz-logo-shadow);
+}
+
+/* Surfaces that are dark in both themes (login hero panel) keep the dark-mode glow. */
+.cafyz-logo.cafyz-logo--on-dark {
+  --cafyz-logo-glow-core: rgba(30, 127, 255, 0.34);
+  --cafyz-logo-glow-mid: rgba(0, 198, 255, 0.12);
+  --cafyz-logo-shadow: drop-shadow(0 6px 20px rgba(30, 127, 255, 0.32));
 }

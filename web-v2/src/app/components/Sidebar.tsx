@@ -107,7 +107,7 @@ export function Sidebar({
         >
           <CafyzLogo
             size={collapsed ? "xs" : "sidebar"}
-            className="flex-shrink-0 drop-shadow-[0_4px_16px_rgba(30,127,255,0.22)]"
+            className="flex-shrink-0"
           />
           <button
             onClick={onMobileClose}

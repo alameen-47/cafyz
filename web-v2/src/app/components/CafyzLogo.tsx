@@ -6,6 +6,11 @@ interface CafyzLogoProps {
   /** @deprecated Both variants use `logo.png`; size presets differ only. */
   variant?: 'full' | 'mark';
   size?: CafyzLogoSize;
+  /**
+   * `auto` follows the light/dark theme. `onDark` is for surfaces that stay dark in both
+   * themes (the login hero panel), so the logo keeps its dark-mode glow there.
+   */
+  tone?: 'auto' | 'onDark';
   className?: string;
   style?: React.CSSProperties;
 }
@@ -20,13 +25,18 @@ const LOGO_SIZE: Record<CafyzLogoSize, string> = {
   hero: 'w-[min(100%,18rem)] sm:w-[min(100%,20rem)]',
   login: 'w-[min(100%,19.8rem)] sm:w-[min(100%,25rem)]',
   /** Expanded app sidebar on large screens */
-  sidebar: 'w-[min(100%,11rem)] max-h-[3.5rem] lg:w-[min(100%,13rem)] lg:max-h-16',
+  sidebar: 'w-[min(100%,12rem)] max-h-20 lg:w-[min(100%,13rem)] lg:max-h-[5.5rem]',
   /** Fills the 30% mobile login logo band (height set in CSS) */
   loginMobile: 'login-screen-logo-img w-auto h-auto max-w-full',
 };
 
+/**
+ * The logo is silver and blue metal on a transparent canvas. `.cafyz-logo` (theme-modes.css)
+ * paints a theme-aware radial glow behind it so the silver stays legible on light backgrounds.
+ */
 export function CafyzLogo({
   size = 'md',
+  tone = 'auto',
   className = '',
   style,
 }: CafyzLogoProps) {
@@ -34,7 +44,7 @@ export function CafyzLogo({
     <img
       src={CAFYZ_LOGO_SRC}
       alt="Cafyz — Restaurant Management Solutions"
-      className={`object-contain select-none h-auto ${LOGO_SIZE[size]} ${className}`}
+      className={`cafyz-logo${tone === 'onDark' ? ' cafyz-logo--on-dark' : ''} object-contain select-none h-auto ${LOGO_SIZE[size]} ${className}`}
       style={style}
       draggable={false}
     />
