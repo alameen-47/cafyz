@@ -3,6 +3,7 @@ import { Capacitor } from "@capacitor/core";
 import { StatusBar, Style } from "@capacitor/status-bar";
 import { SplashScreen } from "@capacitor/splash-screen";
 import { applyNativeSafeAreas, watchNativeSafeAreas } from "./utils/nativeSafeArea";
+import { hydrateDurableStorage } from "./utils/safeStorage";
 import App from "./app/App.tsx";
 import { ErrorBoundary } from "./app/components/ErrorBoundary.tsx";
 import { AuthProvider } from "./app/auth.tsx";
@@ -54,16 +55,21 @@ function installGlobalErrorHandlers() {
 }
 installGlobalErrorHandlers();
 
-createRoot(document.getElementById("root")!).render(
-  <ErrorBoundary>
-    <ThemeProvider>
-      <LanguageProvider>
-        <AuthProvider>
-          <PlanConfigProvider>
-            <App />
-          </PlanConfigProvider>
-        </AuthProvider>
-      </LanguageProvider>
-    </ThemeProvider>
-  </ErrorBoundary>
-);
+function renderApp() {
+  createRoot(document.getElementById("root")!).render(
+    <ErrorBoundary>
+      <ThemeProvider>
+        <LanguageProvider>
+          <AuthProvider>
+            <PlanConfigProvider>
+              <App />
+            </PlanConfigProvider>
+          </AuthProvider>
+        </LanguageProvider>
+      </ThemeProvider>
+    </ErrorBoundary>
+  );
+}
+
+// Restore the saved sign-in from native storage before the first render, but never hold the app up for it.
+void Promise.race([hydrateDurableStorage(), new Promise(resolve => setTimeout(resolve, 1500))]).finally(renderApp);

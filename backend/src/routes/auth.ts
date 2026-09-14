@@ -468,6 +468,24 @@ router.post('/reset-password', async (req, res, next) => {
   } catch (e) { next(e); }
 });
 
+// ── POST /api/auth/refresh ────────────────────────────────────────────────────
+// Sliding sign-in: the apps trade a still-valid token for a fresh one (at most once a
+// day), so anyone who opens the app within a year stays signed in. Revoked sessions
+// never get here — requireAuth checks token_version and account status first.
+router.post('/refresh', requireAuth, async (req: AuthRequest, res, next) => {
+  try {
+    const row = await getDb().execute({
+      sql: 'SELECT id, role, email, restaurant_id, token_version FROM users WHERE id=? LIMIT 1',
+      args: [req.user!.id],
+    });
+    if (!row.rows.length) {
+      res.status(401).json({ error: 'Session expired. Please sign in again.', code: 'SESSION_INVALID' });
+      return;
+    }
+    res.json({ token: signTokenForUser(row.rows[0] as Record<string, unknown>) });
+  } catch (e) { next(e); }
+});
+
 // GET /api/auth/me
 router.get('/me', requireAuth, async (req: AuthRequest, res, next) => {
   try {

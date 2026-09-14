@@ -12,7 +12,7 @@ const PLAN_TTL = 60_000;
 
 export function requirePlan(minPlan: Plan) {
   return async (req: AuthRequest, res: Response, next: NextFunction) => {
-    if (!req.user) { res.status(401).json({ error: 'Not authenticated' }); return; }
+    if (!req.user) { res.status(401).json({ error: 'Not authenticated', code: 'SESSION_INVALID' }); return; }
     if (req.user.role === 'founder') { next(); return; }
 
     try {

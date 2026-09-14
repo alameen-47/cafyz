@@ -2,7 +2,7 @@
   "name": "cafyz",
   "version": "1.0.0",
   "private": true,
-  "description": "Cafyz restaurant OS \u2014 web-v2 UI for web and mobile (Capacitor)",
+  "description": "Cafyz restaurant OS — web-v2 UI for web and mobile (Capacitor)",
   "author": "Cafyz",
   "scripts": {
     "dev": "concurrently --names \"API,WEB\" --prefix-colors \"cyan,magenta\" \"npm run api\" \"npm run web-v2\"",
@@ -41,6 +41,7 @@
     "@capacitor/core": "^8.3.4",
     "@capacitor/ios": "^8.3.4",
     "@capacitor/keyboard": "^8.0.3",
+    "@capacitor/preferences": "^8.0.1",
     "@capacitor/push-notifications": "^8.0.2",
     "@capacitor/splash-screen": "^8.0.1",
     "@capacitor/status-bar": "^8.0.2",

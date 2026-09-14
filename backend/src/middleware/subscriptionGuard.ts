@@ -13,7 +13,7 @@ type SubStatus = { ok: true } | { ok: false; expiresAt: string };
 
 export async function requireActiveSubscription(req: AuthRequest, res: Response, next: NextFunction) {
   if (!req.user) {
-    res.status(401).json({ error: 'Not authenticated' });
+    res.status(401).json({ error: 'Not authenticated', code: 'SESSION_INVALID' });
     return;
   }
   if (req.user.role === 'founder') {

@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState, useCallback, type ReactNode } from 'react';
-import { authApi, restaurantApi, licensesApi, SESSION_EXPIRED_EVENT, type LoginResponse, type GoogleAccountChoice } from '../services/api';
+import { authApi, restaurantApi, licensesApi, SESSION_EXPIRED_EVENT, SessionExpiredError, type LoginResponse, type GoogleAccountChoice } from '../services/api';
 import { applyRestaurantCurrency } from '../utils/currency';
 import { syncRestaurantLogoCacheAsync } from '../services/restaurantLogoStorage';
 import { storageGet, storageRemove, storageSet } from '../utils/safeStorage';
@@ -87,6 +87,39 @@ function baseUser(d: LoginResponse): Omit<AuthUser, 'plan'> {
   };
 }
 
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+/** Milliseconds since the saved token was issued, or null when it can't be read. */
+function tokenAgeMs(token: string): number | null {
+  try {
+    const part = token.split('.')[1];
+    if (!part) return null;
+    const b64 = part.replace(/-/g, '+').replace(/_/g, '/').padEnd(Math.ceil(part.length / 4) * 4, '=');
+    const iat = (JSON.parse(atob(b64)) as { iat?: unknown }).iat;
+    return typeof iat === 'number' ? Date.now() - iat * 1000 : null;
+  } catch {
+    return null;
+  }
+}
+
+let renewing = false;
+/** Sliding sign-in: at most once a day, trade the saved token for a fresh year-long one. */
+async function renewSessionIfStale(): Promise<void> {
+  const current = storageGet('cafyz_token');
+  const age = current ? tokenAgeMs(current) : null;
+  if (!current || age === null || age < DAY_MS || renewing) return;
+  renewing = true;
+  try {
+    const { token } = await authApi.refresh();
+    // Skip if the user signed out or switched accounts in the meantime.
+    if (token && storageGet('cafyz_token') === current) storageSet('cafyz_token', token);
+  } catch {
+    /* try again the next time the app opens */
+  } finally {
+    renewing = false;
+  }
+}
+
 function readCachedUser(): AuthUser | null {
   try {
     const token = storageGet('cafyz_token');
@@ -115,6 +148,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => window.removeEventListener(SESSION_EXPIRED_EVENT, onSessionExpired);
   }, []);
 
+  // Renew a day-old sign-in whenever the app comes back to the foreground.
+  useEffect(() => {
+    const onVisible = () => { if (document.visibilityState === 'visible') void renewSessionIfStale(); };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => document.removeEventListener('visibilitychange', onVisible);
+  }, []);
+
   useEffect(() => {
     const token = storageGet('cafyz_token');
     if (!token) {
@@ -131,20 +171,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     void (async () => {
       try {
         const me = await authApi.me();
-        const stored = storageGet('cafyz_user');
         let plan: Plan = cached?.plan ?? 'basic';
         let restaurant_name = cached?.restaurant_name ?? '';
         try {
-          const parsed = stored ? JSON.parse(stored) as AuthUser : null;
-          plan = parsed?.plan ?? plan;
-          restaurant_name = parsed?.restaurant_name ?? restaurant_name;
-        } catch { /* ignore corrupt cache */ }
-
-        const r = await restaurantApi.me();
-        applyRestaurantCurrency(r);
-        void syncRestaurantLogoCacheAsync(r);
-        plan = (r.plan as Plan) ?? plan;
-        restaurant_name = String(r.name ?? restaurant_name);
+          const r = await restaurantApi.me();
+          applyRestaurantCurrency(r);
+          void syncRestaurantLogoCacheAsync(r);
+          plan = (r.plan as Plan) ?? plan;
+          restaurant_name = String(r.name ?? restaurant_name);
+        } catch { /* slow or offline: keep the saved plan and name */ }
 
         const u: AuthUser = {
           id: String(me.id),
@@ -158,8 +193,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         };
         storageSet('cafyz_user', JSON.stringify(u));
         setUser(u);
-      } catch {
-        if (!cached) {
+        void renewSessionIfStale();
+      } catch (e) {
+        // Only a rejected sign-in clears the device. No signal, a timeout or a server hiccup
+        // keeps the saved session, so the app opens straight back in next time.
+        if (e instanceof SessionExpiredError) {
           storageRemove('cafyz_token');
           storageRemove('cafyz_user');
           setUser(null);

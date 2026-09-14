@@ -36,6 +36,21 @@ export const TRIAL_EXPIRED_EVENT = 'cafyz:trial-expired';
 /** Dispatched on 401 — AuthProvider clears user without a broken native redirect. */
 export const SESSION_EXPIRED_EVENT = 'cafyz:session-expired';
 
+/** Thrown when the server no longer accepts the saved sign-in (expired or revoked). */
+export class SessionExpiredError extends Error {
+  constructor() {
+    super('Session expired — please sign in again.');
+    this.name = 'SessionExpiredError';
+  }
+}
+
+/** A 401 that rejects the saved sign-in itself, as opposed to a wrong password or PIN. */
+function isSessionRejection(payload: { code?: string; error?: string }): boolean {
+  if (payload.code) return payload.code === 'SESSION_INVALID';
+  // Servers from before the code existed: recognise their token/session messages.
+  return /token|session|not authenticated/i.test(payload.error ?? '');
+}
+
 /** Dispatched after role/permission changes — App reloads nav access. */
 export const ACCESS_CHANGED_EVENT = 'cafyz:access-changed';
 
@@ -53,6 +68,7 @@ function notifySessionExpired(): void {
     toastBus.error('Session expired — please sign in again.');
   }
   window.dispatchEvent(new Event(SESSION_EXPIRED_EVENT));
+  window.setTimeout(() => { sessionToastShown = false; }, 5000);
   // Capacitor serves only index.html — /login 404s and looks like a crash.
   if (Capacitor.isNativePlatform()) return;
   window.location.href = '/login';
@@ -110,14 +126,18 @@ async function request<T = unknown>(
   }
 
   if (res.status === 401) {
-    // Only notify on interactive requests (not background /me validation).
-    if (!path.includes('/api/auth/me')) {
-      notifySessionExpired();
-    } else {
-      storageRemove('cafyz_token');
-      storageRemove('cafyz_user');
+    const payload = await res.clone().json().catch(() => ({})) as { code?: string; error?: string };
+    // A wrong current password or PIN is a 401 too — that shows its own error below and never signs out.
+    if (token && isSessionRejection(payload)) {
+      // Only notify on interactive requests (not background /me validation).
+      if (!path.includes('/api/auth/me')) {
+        notifySessionExpired();
+      } else {
+        storageRemove('cafyz_token');
+        storageRemove('cafyz_user');
+      }
+      throw new SessionExpiredError();
     }
-    throw new Error('Session expired — please sign in again.');
   }
 
   if (res.status === 402) {
@@ -190,6 +210,8 @@ const del  = <T = unknown>(path: string, body?: unknown)     => request<T>('DELE
 
 // ── Auth ──────────────────────────────────────────────────────────────────────
 export const authApi = {
+  // Swap a day-old sign-in token for a fresh one (keeps devices signed in while in use).
+  refresh: () => post<{ token: string }>('/api/auth/refresh', {}),
   login: (login: string, password: string, device_id?: string) =>
     post<LoginResponse>('/api/auth/login', { login, password, device_id }),
   requestOtp: (phone: string) =>
@@ -324,9 +346,9 @@ export const menuApi = {
       headers: token ? { Authorization: `Bearer ${token}` } : {},
       body: form,
     });
-    if (res.status === 401) {
+    if (res.status === 401 && token) {
       notifySessionExpired();
-      throw new Error('Session expired — please sign in again.');
+      throw new SessionExpiredError();
     }
     let data: { error?: string; url?: string; public_id?: string } = {};
     const text = await res.text();

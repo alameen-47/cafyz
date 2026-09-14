@@ -24,7 +24,7 @@ type AccessEntry = { role: string; accessJson: unknown };
 export function requireSectionAccess(...screens: ScreenId[]) {
   return async (req: AuthRequest, res: Response, next: NextFunction) => {
     if (!req.user) {
-      res.status(401).json({ error: 'Not authenticated' });
+      res.status(401).json({ error: 'Not authenticated', code: 'SESSION_INVALID' });
       return;
     }
     if (req.user.role === 'founder') {

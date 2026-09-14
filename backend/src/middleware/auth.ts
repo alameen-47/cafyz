@@ -13,7 +13,9 @@ if (process.env.NODE_ENV === 'production' && (!configuredSecret || configuredSec
   throw new Error('JWT_SECRET must be set to a strong secret in production');
 }
 export const JWT_SECRET = configuredSecret || DEFAULT_DEV_SECRET;
-export const JWT_EXPIRES = '24h';
+/** How long a sign-in lasts on a device. The apps renew it daily while in use (POST /api/auth/refresh);
+ *  revocation still works instantly through token_version (password change, deactivation). */
+export const JWT_EXPIRES = process.env.JWT_EXPIRES?.trim() || '365d';
 
 const JWT_VERIFY_OPTS: jwt.VerifyOptions = { algorithms: ['HS256'] };
 
@@ -21,7 +23,7 @@ export function signToken(payload: AuthPayload) {
   return jwt.sign(
     { ...payload, tv: payload.tv ?? 0 },
     JWT_SECRET,
-    { expiresIn: JWT_EXPIRES, algorithm: 'HS256' },
+    { expiresIn: JWT_EXPIRES as jwt.SignOptions['expiresIn'], algorithm: 'HS256' },
   );
 }
 
@@ -63,7 +65,7 @@ async function loadLiveUser(userId: string): Promise<LiveUser | null> {
 export async function requireAuth(req: AuthRequest, res: Response, next: NextFunction) {
   const header = req.headers.authorization;
   if (!header?.startsWith('Bearer ')) {
-    res.status(401).json({ error: 'Missing or invalid token' });
+    res.status(401).json({ error: 'Missing or invalid token', code: 'SESSION_INVALID' });
     return;
   }
 
@@ -71,18 +73,18 @@ export async function requireAuth(req: AuthRequest, res: Response, next: NextFun
   try {
     decoded = jwt.verify(header.slice(7), JWT_SECRET, JWT_VERIFY_OPTS) as AuthPayload & { tv?: number };
   } catch {
-    res.status(401).json({ error: 'Token expired or invalid' });
+    res.status(401).json({ error: 'Token expired or invalid', code: 'SESSION_INVALID' });
     return;
   }
 
   try {
     const live = await loadLiveUser(decoded.id);
     if (!live) {
-      res.status(401).json({ error: 'Token expired or invalid' });
+      res.status(401).json({ error: 'Token expired or invalid', code: 'SESSION_INVALID' });
       return;
     }
     if ((decoded.tv ?? 0) !== live.token_version) {
-      res.status(401).json({ error: 'Session expired. Please sign in again.' });
+      res.status(401).json({ error: 'Session expired. Please sign in again.', code: 'SESSION_INVALID' });
       return;
     }
     if (live.status === 'off') {
