@@ -99,7 +99,7 @@ export function Sidebar({
       >
         {/* Logo — full wordmark when expanded, compact mark when collapsed */}
         <div
-          className={`flex items-center border-b cafyz-sidebar-border-t flex-shrink-0 ${
+          className={`cafyz-brand-glow flex items-center border-b cafyz-sidebar-border-t flex-shrink-0 ${
             collapsed
               ? "justify-center px-3 py-4"
               : "justify-center px-4 py-5 md:px-5 md:py-6"

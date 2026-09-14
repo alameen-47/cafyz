@@ -401,7 +401,7 @@ export function LoginScreen({ onLogin }: { onLogin?: () => void }) {
           <LanguageSwitcher variant="login" />
         </div>
 
-        <div className="login-screen-logo-band md:hidden">
+        <div className="login-screen-logo-band cafyz-brand-glow md:hidden">
           <CafyzLogo
             size="loginMobile"
             className="login-screen-logo"

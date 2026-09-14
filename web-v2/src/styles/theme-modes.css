@@ -300,60 +300,13 @@ html.light .cafyz-accent-surface {
   border: 1px solid var(--cafyz-accent-border);
 }
 
-/* Brand logo — the silver/blue metal mark sits on a deep navy rounded plate, like an app icon,
-   so it reads the same on light and dark screens. A slow amoeba glow moves inside the plate
-   (clipped to it) and the mark is inset so it never touches the plate's edge. The plate is sized
-   from the box's height, so it hugs the square mark even in wide boxes like the sidebar. */
-.cafyz-logo {
-  --cafyz-logo-shadow: drop-shadow(0 3px 8px rgba(0, 0, 0, 0.45));
-}
-
+/* Brand logo — an animated amoeba glow behind the transparent PNG. Two blurred gradient
+   blobs morph their border-radius and drift at different speeds, so the outline never settles
+   into a circle. Sized from the box's height so it hugs the mark even in wide boxes. */
 .cafyz-logo > img {
   position: relative;
   z-index: 1;
   filter: var(--cafyz-logo-shadow);
-  transform: scale(0.84);
-}
-
-.cafyz-logo-plate {
-  /* The plate is dark in every theme, so the glow always uses the luminous blues. */
-  --cafyz-logo-blob-a: linear-gradient(135deg, rgba(30, 127, 255, 0.72) 0%, rgba(0, 198, 255, 0.4) 100%);
-  --cafyz-logo-blob-b: linear-gradient(215deg, rgba(99, 102, 241, 0.45) 0%, rgba(0, 198, 255, 0.2) 100%);
-  --cafyz-logo-blob-blur: 12px;
-  --cafyz-logo-halo-blur: 22px;
-  --cafyz-logo-plate-shadow: 0 8px 22px rgba(15, 23, 42, 0.22), 0 2px 6px rgba(15, 23, 42, 0.12);
-  position: absolute;
-  z-index: 0;
-  inset: 0;
-  margin: auto;
-  height: 100%;
-  max-width: 100%;
-  aspect-ratio: 1 / 1;
-  border-radius: 24%;
-  overflow: hidden;
-  isolation: isolate;
-  background:
-    radial-gradient(120% 90% at 50% 0%, rgba(96, 165, 250, 0.24) 0%, transparent 55%),
-    linear-gradient(160deg, #152b60 0%, #0a1738 50%, #050b1f 100%);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.14),
-    inset 0 0 0 1px rgba(125, 170, 255, 0.22),
-    var(--cafyz-logo-plate-shadow);
-  pointer-events: none;
-}
-
-html.dark .cafyz-logo-plate,
-html:not(.light) .cafyz-logo-plate {
-  --cafyz-logo-plate-shadow: 0 8px 26px rgba(0, 0, 0, 0.5), 0 0 22px rgba(30, 127, 255, 0.16);
-}
-
-/* On surfaces that are dark in both themes (login hero), give the plate a brighter edge. */
-.cafyz-logo--on-dark .cafyz-logo-plate {
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.18),
-    inset 0 0 0 1px rgba(125, 170, 255, 0.32),
-    0 10px 30px rgba(0, 0, 0, 0.45),
-    0 0 28px rgba(30, 127, 255, 0.22);
 }
 
 .cafyz-logo-glow {
@@ -361,8 +314,8 @@ html:not(.light) .cafyz-logo-plate {
   z-index: 0; /* own stacking context: the core/halo order below never escapes above the logo */
   inset: 0;
   margin: auto;
-  height: 78%;
-  max-width: 78%;
+  height: 84%;
+  max-width: 84%;
   aspect-ratio: 1 / 1;
   pointer-events: none;
 }
@@ -429,6 +382,58 @@ html.cafyz-lite [class*="backdrop-blur"] {
 @media (prefers-reduced-motion: reduce) {
   .cafyz-logo-glow::before,
   .cafyz-logo-glow::after {
+    animation: none;
+  }
+}
+
+/* Brand header glow — the area around the logo (sidebar header, mobile login band) gets its own
+   soft blue light drifting behind the mark, so the whole header glows, not just the logo. Two large
+   blurred blobs move with transforms only (painted once, animated on the GPU) and are clipped to
+   the header. */
+html.light {
+  --cafyz-brand-glow-a: rgba(30, 127, 255, 0.24);
+  --cafyz-brand-glow-b: rgba(0, 198, 255, 0.2);
+}
+
+html.dark,
+html:not(.light) {
+  --cafyz-brand-glow-a: rgba(30, 127, 255, 0.3);
+  --cafyz-brand-glow-b: rgba(99, 102, 241, 0.26);
+}
+
+.cafyz-brand-glow {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+}
+
+.cafyz-brand-glow::before,
+.cafyz-brand-glow::after {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  pointer-events: none;
+  filter: blur(24px);
+  will-change: transform;
+}
+
+.cafyz-brand-glow::before {
+  inset: -30% 4%;
+  background: radial-gradient(closest-side, var(--cafyz-brand-glow-a), transparent);
+  border-radius: 58% 42% 52% 48% / 46% 58% 42% 54%;
+  animation: cafyz-amoeba-a 13s ease-in-out infinite alternate;
+}
+
+.cafyz-brand-glow::after {
+  inset: -40% -18% -40% 38%;
+  background: radial-gradient(closest-side, var(--cafyz-brand-glow-b), transparent);
+  border-radius: 42% 58% 60% 40% / 55% 40% 60% 45%;
+  animation: cafyz-amoeba-b 17s ease-in-out infinite alternate;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cafyz-brand-glow::before,
+  .cafyz-brand-glow::after {
     animation: none;
   }
 }
