@@ -6,6 +6,7 @@ import { requireAuth, type AuthRequest } from '../middleware/auth.js';
 import { requireRole } from '../middleware/rbac.js';
 import { uid } from '../utils.js';
 import { sendRestaurantPush } from '../services/push.js';
+import { isDemoDataEnabled } from '../services/demoData.js';
 
 const router = Router();
 router.use(requireAuth);
@@ -270,8 +271,12 @@ router.post('/quick-send', requireRole('owner', 'manager', 'cashier', 'waiter'),
     // Round trip 2: one batched transaction for the entire send.
     const stmts: { sql: string; args: InValue[] }[] = [
       {
-        sql: `INSERT INTO orders(id,restaurant_id,table_id,server_id,covers,note,status,order_type) VALUES(?,?,?,?,?,?,'sent',?)`,
-        args: [orderId, rid, data.table_id, req.user!.id, covers, data.note ?? null, data.parcel ? 'parcel' : 'dine_in'],
+        sql: `INSERT INTO orders(id,restaurant_id,table_id,server_id,covers,note,status,order_type,is_demo) VALUES(?,?,?,?,?,?,'sent',?,?)`,
+        args: [
+          orderId, rid, data.table_id, req.user!.id, covers, data.note ?? null, data.parcel ? 'parcel' : 'dine_in',
+          // Orders placed while exploring demo data are removed along with it.
+          (await isDemoDataEnabled(rid)) ? 1 : 0,
+        ],
       },
       ...data.items.map(it => ({
         sql:  `INSERT INTO order_items(id,order_id,menu_item_id,qty,mods) VALUES(?,?,?,?,?)`,
@@ -372,9 +377,9 @@ router.post('/', requireRole('owner', 'manager', 'cashier', 'waiter'), async (re
     const id   = uid();
     const db   = getDb();
     await db.execute({
-      sql:  `INSERT INTO orders(id,restaurant_id,table_id,server_id,covers,note)
-             VALUES(?,?,?,?,?,?)`,
-      args: [id, rid, data.table_id ?? null, req.user!.id, data.covers, data.note ?? null],
+      sql:  `INSERT INTO orders(id,restaurant_id,table_id,server_id,covers,note,is_demo)
+             VALUES(?,?,?,?,?,?,?)`,
+      args: [id, rid, data.table_id ?? null, req.user!.id, data.covers, data.note ?? null, (await isDemoDataEnabled(rid)) ? 1 : 0],
     });
     if (data.table_id) {
       await db.execute({

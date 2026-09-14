@@ -35,7 +35,7 @@ router.get('/restaurants', ...onlyFounder, async (_req: AuthRequest, res, next) 
   try {
     const rows = await getDb().execute(`
       SELECT r.*,
-        (SELECT COUNT(*) FROM users u WHERE u.restaurant_id = r.id AND u.role != 'founder') as user_count,
+        (SELECT COUNT(*) FROM users u WHERE u.restaurant_id = r.id AND u.role != 'founder' AND u.is_demo = 0) as user_count,
         (SELECT key_code FROM license_keys lk WHERE lk.restaurant_id = r.id AND lk.is_active=1 ORDER BY lk.activated_at DESC LIMIT 1) as active_key
       FROM restaurants r
       WHERE r.id != 'CAFYZ_SYSTEM'
@@ -138,7 +138,7 @@ router.get('/users', ...onlyFounder, async (req: AuthRequest, res, next) => {
              r.access_paused
       FROM users u
       JOIN restaurants r ON r.id = u.restaurant_id
-      WHERE u.role != 'founder' AND r.id != 'CAFYZ_SYSTEM'`;
+      WHERE u.role != 'founder' AND u.is_demo = 0 AND r.id != 'CAFYZ_SYSTEM'`;
     const args: string[] = [];
     if (restaurantId) {
       sql += ' AND u.restaurant_id=?';
@@ -254,7 +254,7 @@ router.get('/stats', ...onlyFounder, async (_req, res, next) => {
     const [rests, keys, users, pendingLic] = await Promise.all([
       db.execute(`SELECT plan, COUNT(*) as count FROM restaurants WHERE id != 'CAFYZ_SYSTEM' GROUP BY plan`),
       db.execute(`SELECT COUNT(*) as total, SUM(CASE WHEN restaurant_id IS NOT NULL THEN 1 ELSE 0 END) as activated FROM license_keys WHERE is_active=1`),
-      db.execute(`SELECT COUNT(*) as total FROM users WHERE role != 'founder'`),
+      db.execute(`SELECT COUNT(*) as total FROM users WHERE role != 'founder' AND is_demo = 0`),
       db.execute(`SELECT COUNT(*) as pending FROM license_purchase_requests WHERE status='pending'`),
     ]);
     res.json({

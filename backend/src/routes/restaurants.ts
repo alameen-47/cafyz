@@ -9,6 +9,9 @@ import { isValidPhoneE164, normalizePhone } from '../services/sms.js';
 import { passwordField } from '../utils/security.js';
 import { trialEndsAt, TRIAL_DAYS } from '../config/site.js';
 import { BCRYPT_ROUNDS } from '../constants/security.js';
+import {
+  enableDemoDataForNewRestaurant, getDemoStatus, markDemoIntroSeen, setDemoDataEnabled,
+} from '../services/demoData.js';
 
 const router = Router();
 
@@ -191,6 +194,9 @@ router.post('/onboarding', async (req, res, next) => {
       args: [uid(), `TRIAL-${uid().replace(/-/g, '').slice(0, 12).toUpperCase()}`, trialPlan, restId, new Date().toISOString(), trialEndsAt(), `Auto ${TRIAL_DAYS}-day trial`],
     });
 
+    // Load sample data so the first login shows how every screen works.
+    await enableDemoDataForNewRestaurant(restId);
+
     const restaurant = await db.execute({ sql: 'SELECT * FROM restaurants WHERE id=?', args: [restId] });
     const user = await db.execute({ sql: 'SELECT id,name,initials,email,role,status,restaurant_id,token_version FROM users WHERE id=?', args: [ownerId] });
 
@@ -261,6 +267,36 @@ router.put('/me', requireAuth, requireRole('owner', 'manager', 'cashier', 'kitch
     await getDb().execute({ sql: `UPDATE restaurants SET ${sets.join(',')} WHERE id=?`, args });
     const row = await getDb().execute({ sql: 'SELECT * FROM restaurants WHERE id=?', args: [rid] });
     res.json(normalizeRestaurantRow(row.rows[0] as Record<string, unknown>));
+  } catch (e) { next(e); }
+});
+
+// GET /api/restaurants/demo/status — demo-data state for the signed-in user
+router.get('/demo/status', requireAuth, async (req: AuthRequest, res, next) => {
+  try {
+    const { id, restaurant_id, role } = req.user!;
+    res.json(await getDemoStatus(restaurant_id, id, role));
+  } catch (e) { next(e); }
+});
+
+const DemoStatusSchema = z.object({
+  enabled:    z.boolean().optional(),
+  intro_seen: z.literal(true).optional(),
+}).refine(d => d.enabled !== undefined || d.intro_seen !== undefined, { message: 'Nothing to update' });
+
+// PUT /api/restaurants/demo/status — owners/managers switch demo data; anyone can dismiss the intro popup
+router.put('/demo/status', requireAuth, async (req: AuthRequest, res, next) => {
+  try {
+    const data = DemoStatusSchema.parse(req.body);
+    const { id, restaurant_id, role } = req.user!;
+    if (data.enabled !== undefined) {
+      if (role !== 'owner' && role !== 'manager') {
+        res.status(403).json({ error: 'Only owners and managers can change demo data.' });
+        return;
+      }
+      await setDemoDataEnabled(restaurant_id, data.enabled);
+    }
+    if (data.intro_seen) await markDemoIntroSeen(id);
+    res.json(await getDemoStatus(restaurant_id, id, role));
   } catch (e) { next(e); }
 });
 

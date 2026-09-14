@@ -42,6 +42,9 @@ export const ACCESS_CHANGED_EVENT = 'cafyz:access-changed';
 /** Dispatched when restaurant settings (currency, tax, etc.) are saved. */
 export const RESTAURANT_SETTINGS_CHANGED_EVENT = 'cafyz:restaurant-settings-changed';
 
+/** Dispatched after demo data is switched on/off — detail is the new ApiDemoStatus. */
+export const DEMO_DATA_CHANGED_EVENT = 'cafyz:demo-data-changed';
+
 function notifySessionExpired(): void {
   storageRemove('cafyz_token');
   storageRemove('cafyz_user');
@@ -216,6 +219,21 @@ export const authApi = {
     restaurant_name: string; owner_name: string;
     email: string; phone: string; password: string; plan?: string; timezone?: string;
   }) => post<{ token: string; user: ApiUser; restaurant: ApiRestaurant }>('/api/restaurants/onboarding', data),
+};
+
+// ── Demo data ─────────────────────────────────────────────────────────────────
+export interface ApiDemoStatus {
+  enabled: boolean;
+  intro_seen: boolean;
+  can_manage: boolean;
+  counts: { menu_items: number; tables: number; orders: number; reservations: number; inventory: number; staff: number };
+}
+
+// Paths end in /status so the client skips its generic "Updated successfully" toast.
+export const demoApi = {
+  status:       ()                 => get<ApiDemoStatus>('/api/restaurants/demo/status'),
+  setEnabled:   (enabled: boolean) => put<ApiDemoStatus>('/api/restaurants/demo/status', { enabled }),
+  dismissIntro: ()                 => put<ApiDemoStatus>('/api/restaurants/demo/status', { intro_seen: true }),
 };
 
 // ── Restaurant ────────────────────────────────────────────────────────────────

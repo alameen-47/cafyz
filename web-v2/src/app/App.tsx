@@ -20,6 +20,7 @@ import { LegalPage, legalPathToSlug } from "./components/LegalPage";
 import { UpgradeModal } from "./components/UpgradeModal";
 import { TrialExpiredModal } from "./components/TrialExpiredModal";
 import { RenewalBanner } from "./components/RenewalBanner";
+import { DemoBanner, DemoWelcomeModal, useDemoStatus } from "./components/DemoData";
 import { CafyzLogo } from "./components/CafyzLogo";
 import { useAuth, type Plan, type Role } from "./auth";
 import { NavContext } from "./nav";
@@ -68,6 +69,9 @@ export default function App() {
   const [accessPages, setAccessPages] = useState<PageId[] | null>(null);
   const [accessJson, setAccessJson] = useState<string | null>(null);
   const [upgrade, setUpgrade] = useState<{ requiredPlan: Plan; page: PageId } | null>(null);
+  const demo = useDemoStatus(Boolean(user && !isFounderRole(user.role)), user?.id);
+  const [demoGuideOpen, setDemoGuideOpen] = useState(false);
+  const [demoBannerHidden, setDemoBannerHidden] = useState(false);
 
   useKitchenPrintWorker(Boolean(user && user.role !== "founder"));
 
@@ -256,6 +260,15 @@ export default function App() {
           />
         )}
 
+        {!isFounder && demo.status?.enabled && (demoGuideOpen || !demo.status.intro_seen) && (
+          <DemoWelcomeModal
+            restaurantName={user.restaurant_name}
+            canManage={demo.status.can_manage}
+            onNavigate={navigate}
+            onClose={() => { setDemoGuideOpen(false); demo.dismissIntro(); }}
+          />
+        )}
+
         {showRenewalBanner && !subscription?.trial_expired && (
           <RenewalBanner
             subscription={subscription}
@@ -295,6 +308,15 @@ export default function App() {
             userEmail={user.email}
             userInitials={user.initials}
           />
+
+          {!isFounder && demo.status?.enabled && !demoBannerHidden && (
+            <DemoBanner
+              canManage={demo.status.can_manage}
+              onOpenGuide={() => setDemoGuideOpen(true)}
+              onManage={() => navigate("profile")}
+              onDismiss={() => setDemoBannerHidden(true)}
+            />
+          )}
 
           <main className={`flex-1 cafyz-main-scroll ${isFullHeight ? "app-main-full overflow-hidden" : "app-main-scroll overflow-y-auto"}`}>
             {permitted.includes(activePage) ? (

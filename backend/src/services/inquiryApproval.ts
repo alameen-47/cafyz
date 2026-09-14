@@ -6,6 +6,7 @@ import { uid } from '../utils.js';
 import { appPath, trialEndsAt, trialEndsDateLabel, TRIAL_DAYS, brandLogoUrl } from '../config/site.js';
 import { ADMIN_EMAIL, isEmailConfigured, sendMailReliable, smtpFrom } from './email.js';
 import { isValidPhoneE164, normalizePhone } from './sms.js';
+import { enableDemoDataForNewRestaurant } from './demoData.js';
 
 const LOGIN_URL = appPath('/login');
 const MANAGER_URL = appPath('/');
@@ -144,6 +145,9 @@ export async function provisionTrialFromInquiry(
     sql: `INSERT INTO license_keys(id,key_code,plan,restaurant_id,activated_at,expires_at,note) VALUES(?,?,?,?,?,?,?)`,
     args: [licId, keyCode, plan, restId, now, expiresAt, `${TRIAL_DAYS}-day trial (from inquiry ${inquiry.id})`],
   });
+
+  // Load sample data so the first login shows how every screen works.
+  await enableDemoDataForNewRestaurant(restId);
 
   await db.execute({
     sql: `UPDATE inquiries SET status='approved', approved_at=datetime('now'), restaurant_id=?, provisioned_user_id=? WHERE id=?`,

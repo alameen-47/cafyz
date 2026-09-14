@@ -19,6 +19,7 @@ import { computeBillTotals } from "../../utils/billTotals";
 import { useAuth } from "../auth";
 import { canManagePlan } from "../../config/access";
 import { PrinterSetupPanel } from "./PrinterSetupPanel";
+import { DemoDataPanel } from "./DemoData";
 import {
   autoReconnectBluetooth,
   printKitchenTicket,
@@ -545,6 +546,8 @@ export function Profile() {
           )}
         </div>
       </motion.div>
+
+      <DemoDataPanel />
 
       {/* Brand section */}
       <Section title="Brand Identity" icon={Shield}>

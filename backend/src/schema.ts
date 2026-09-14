@@ -365,6 +365,14 @@ export async function runMigrations() {
   // Dine-in vs parcel/takeaway. Used to flag PARCEL on kitchen tickets.
   await addCol(`ALTER TABLE orders ADD COLUMN order_type TEXT NOT NULL DEFAULT 'dine_in'`, 'order_type');
 
+  // Demo data: sample rows carry is_demo=1 so Settings can remove them all at once
+  // without touching anything the restaurant created itself.
+  await addCol(`ALTER TABLE restaurants ADD COLUMN demo_data_enabled INTEGER NOT NULL DEFAULT 0`, 'demo_data_enabled');
+  await addCol(`ALTER TABLE users ADD COLUMN demo_intro_seen INTEGER NOT NULL DEFAULT 0`, 'users.demo_intro_seen');
+  for (const table of ['menu_items', 'restaurant_tables', 'orders', 'reservations', 'inventory', 'users']) {
+    await addCol(`ALTER TABLE ${table} ADD COLUMN is_demo INTEGER NOT NULL DEFAULT 0`, `${table}.is_demo`);
+  }
+
   await db.execute({
     sql: `INSERT OR IGNORE INTO app_settings(key,value) VALUES('trial_device_guard_enabled','1')`,
     args: [],
