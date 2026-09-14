@@ -3,8 +3,10 @@
   "configurations": [
     {
       "name": "cafyz",
-      "runtimeExecutable": "npm",
+      "runtimeExecutable": "env",
       "runtimeArgs": [
+        "PORT=4000",
+        "npm",
         "run",
         "dev"
       ],
