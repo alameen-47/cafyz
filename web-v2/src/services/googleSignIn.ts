@@ -32,14 +32,23 @@ async function ensureNativeInitialised(cfg: GoogleConfig): Promise<void> {
  */
 export async function getNativeGoogleIdToken(cfg: GoogleConfig): Promise<string | null> {
   await ensureNativeInitialised(cfg);
+  // No `scopes`: the plugin already asks for openid/email/profile, and on
+  // Android any `scopes` option is rejected unless MainActivity implements
+  // ModifiedMainActivityForSocialLoginPlugin.
   const res = await SocialLogin.login({
     provider: 'google',
-    options: { scopes: ['profile', 'email'] },
+    options: {},
   });
   // The response is a union: offline mode returns only a serverAuthCode. We
   // stay in the default online mode, which is the variant carrying idToken.
   const result = res.result;
   return 'idToken' in result ? result.idToken ?? null : null;
+}
+
+/** True when the native picker failed because the user closed it. */
+export function isGoogleCancel(e: unknown): boolean {
+  const err = e as { code?: string; message?: string } | null;
+  return err?.code === 'USER_CANCELLED' || /cancel/i.test(err?.message ?? '');
 }
 
 /** True when this build is running inside an Android/iOS shell. */
@@ -131,8 +140,12 @@ export interface GoogleConfig {
 export async function googleSignInConfig(): Promise<GoogleConfig> {
   try {
     const cfg = await authApi.googleConfig();
+    // iOS cannot sign in without its own client ID (the plugin never sets up
+    // Google, and the SDK needs that ID's URL scheme), so hide the button there
+    // rather than show one that fails.
+    const iosMissingClient = Capacitor.getPlatform() === 'ios' && !cfg.ios_client_id;
     return {
-      enabled: cfg.enabled && !!cfg.client_id,
+      enabled: cfg.enabled && !!cfg.client_id && !iosMissingClient,
       clientId: cfg.client_id,
       iosClientId: cfg.ios_client_id ?? '',
     };

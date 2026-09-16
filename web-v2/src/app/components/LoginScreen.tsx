@@ -4,7 +4,7 @@ import { Eye, EyeOff, ArrowRight, Phone, Lock, Mail, Delete, ChevronRight, Star,
 import { toast } from "./Toast";
 import { useAuth, type GoogleChoice, type GoogleSignup } from "../auth";
 import { AmetronyxCredit } from "./AmetronyxCredit";
-import { getNativeGoogleIdToken, googleSignInConfig, isNativeShell, mountGoogleTrigger, type GoogleConfig } from "../../services/googleSignIn";
+import { getNativeGoogleIdToken, googleSignInConfig, isGoogleCancel, isNativeShell, mountGoogleTrigger, type GoogleConfig } from "../../services/googleSignIn";
 import { authApi, inquiryApi, type ApiPlanConfig } from "../../services/api";
 import { usePlanConfig } from "../PlanConfigProvider";
 import { formatPlanPrice, formatBillingSuffix } from "../../services/planConfigStore";
@@ -216,21 +216,42 @@ export function LoginScreen({ onLogin }: { onLogin?: () => void }) {
   const submitGoogleNative = async () => {
     if (!googleCfg) return;
     setGoogleBusy(true);
+    let idToken: string | null;
     try {
-      const idToken = await getNativeGoogleIdToken(googleCfg);
-      if (!idToken) return;            // user dismissed the picker
-      await completeGoogle(idToken);
-    } catch { /* the API layer already surfaced the message */ }
-    finally { setGoogleBusy(false); }
+      idToken = await getNativeGoogleIdToken(googleCfg);
+    } catch (e) {
+      // Picker errors never reach the API layer, so they must be shown here.
+      if (!isGoogleCancel(e)) {
+        console.error("[google sign-in]", e);
+        toast.error(t("Google sign-in failed. Please try again."));
+      }
+      setGoogleBusy(false);
+      return;
+    }
+    if (!idToken) { setGoogleBusy(false); return; }   // user dismissed the picker
+    await completeGoogle(idToken);
   };
 
+  // Web: null while Google's button loads, false if its script failed to load.
+  const [webGoogleReady, setWebGoogleReady] = useState<boolean | null>(null);
   useEffect(() => {
     if (native || !googleCfg?.enabled || authState !== "login") return;
     const el = googleBtnRef.current;
     if (!el) return;
-    void mountGoogleTrigger(el, googleCfg, (idToken) => { void completeGoogle(idToken); });
+    let alive = true;
+    setWebGoogleReady(null);
+    void mountGoogleTrigger(el, googleCfg, (idToken) => { void completeGoogle(idToken); })
+      .then((ok) => { if (alive) setWebGoogleReady(ok); });
+    return () => { alive = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [native, googleCfg, authState]);
+
+  // Clicks normally land on Google's invisible button; this only runs when it isn't there.
+  const googleWebUnavailable = () => {
+    toast.error(webGoogleReady === false
+      ? t("Couldn't reach Google. Check your connection and reload the page.")
+      : t("Google sign-in is still loading. Try again in a moment."));
+  };
 
   const chooseGoogleAccount = async (restaurantId: string) => {
     if (!googleChoice) return;
@@ -519,7 +540,7 @@ export function LoginScreen({ onLogin }: { onLogin?: () => void }) {
                     <div className="relative w-full">
                       <motion.button
                         whileTap={{ scale: 0.98 }}
-                        onClick={native ? submitGoogleNative : undefined}
+                        onClick={native ? submitGoogleNative : googleWebUnavailable}
                         disabled={googleBusy || loading}
                         aria-label={t("Continue with Google")}
                         className="w-full py-3 rounded-xl text-sm font-semibold flex items-center justify-center gap-2.5 transition-all"
@@ -554,7 +575,8 @@ export function LoginScreen({ onLogin }: { onLogin?: () => void }) {
                         <div
                           ref={googleBtnRef}
                           className="absolute inset-0"
-                          style={{ opacity: 0, cursor: "pointer" }}
+                          // Until Google's button is in, let clicks reach ours underneath.
+                          style={{ opacity: 0, cursor: "pointer", pointerEvents: webGoogleReady ? "auto" : "none" }}
                         />
                       )}
                     </div>
