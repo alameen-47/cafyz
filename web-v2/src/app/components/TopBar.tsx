@@ -97,7 +97,9 @@ function LiveClock() {
     return () => clearInterval(id);
   }, []);
   return (
-    <span style={{ color: "var(--cafyz-text-secondary)", fontFamily: "var(--font-mono)", fontSize: "0.78rem", fontWeight: 600 }}>{time}</span>
+    // translate="no": digits need no translation, and without this the tick
+    // queues a translation pass every second for the life of the session.
+    <span translate="no" style={{ color: "var(--cafyz-text-secondary)", fontFamily: "var(--font-mono)", fontSize: "0.78rem", fontWeight: 600 }}>{time}</span>
   );
 }
 

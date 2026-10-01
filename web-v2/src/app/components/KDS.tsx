@@ -6,6 +6,8 @@ import { kdsApi, restaurantApi, type ApiKdsTicket } from "../../services/api";
 import { printerStatus } from "../../services/PrintService";
 import { useAuth } from "../auth";
 import { onResume } from "../../hooks/useOnResume";
+import { usePolling } from "../../hooks/usePolling";
+import { keepIfSame } from "../../utils/sameData";
 
 type KDSStatus = "new" | "prep" | "ready";
 
@@ -243,7 +245,7 @@ export function KDS() {
         toast.info("New kitchen ticket", `${active.length - lastTicketCount.current} new order(s) on the board`);
       }
       lastTicketCount.current = active.length;
-      setTickets(list);
+      setTickets(prev => keepIfSame(prev, list));
       setKitchenPrinter(restaurant?.kitchen_printer?.name ?? null);
       setLoadError(null);
     } catch (e) {
@@ -259,14 +261,14 @@ export function KDS() {
     void load();
     const onSent = () => void load(true);
     window.addEventListener("CAFYZ_ORDER_SENT", onSent);
-    const id = window.setInterval(() => { if (document.visibilityState === "visible") void load(true); }, 5000);
     const stopResume = onResume(() => { void load(true); });
     return () => {
-      window.clearInterval(id);
-      window.removeEventListener("CAFYZ_ORDER_SENT", onSent);
+            window.removeEventListener("CAFYZ_ORDER_SENT", onSent);
       stopResume();
     };
   }, [load]);
+
+  usePolling(() => { void load(true); }, 5000);
 
   const orders: KDSOrder[] = tickets
     .filter(t => t.status !== "delivered")

@@ -5,6 +5,8 @@ import { toast } from "./Toast";
 import { reservationsApi, tablesApi, type ApiReservation, type ApiTable } from "../../services/api";
 import { useAppNav } from "../nav";
 import { onResume } from "../../hooks/useOnResume";
+import { usePolling } from "../../hooks/usePolling";
+import { keepIfSame } from "../../utils/sameData";
 
 type ResStatus = "confirmed" | "seated" | "cancelled" | "completed";
 
@@ -111,7 +113,7 @@ export function Reservations() {
       ]);
       setTableOpts(tables);
       const nameById = new Map(tables.map(t => [t.id, t.name]));
-      setItems(rows.map(r => mapRow(r, nameById)));
+      setItems(prev => keepIfSame(prev, rows.map(r => mapRow(r, nameById))));
       setLoadError(null);
     } catch (e) {
       const msg = (e as Error).message;
@@ -124,10 +126,11 @@ export function Reservations() {
 
   useEffect(() => {
     void load();
-    const id = window.setInterval(() => { if (document.visibilityState === "visible") void load(true); }, 30_000);
     const stopResume = onResume(() => { void load(true); });
-    return () => { window.clearInterval(id); stopResume(); };
+    return () => { stopResume(); };
   }, [load]);
+
+  usePolling(() => { void load(true); }, 30_000);
 
   const filtered = useMemo(() =>
     [...items].sort((a, b) => a.time.localeCompare(b.time)),

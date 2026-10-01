@@ -5,6 +5,8 @@ import { tablesApi, usersApi, ordersApi, reservationsApi, type ApiTable, type Ap
 import { toast } from "./Toast";
 import { useAppNav } from "../nav";
 import { onResume } from "../../hooks/useOnResume";
+import { usePolling } from "../../hooks/usePolling";
+import { keepIfSame } from "../../utils/sameData";
 
 type TableStatus = "available" | "occupied" | "reserved" | "cleaning";
 
@@ -150,21 +152,21 @@ export function Tables() {
           resvByTable.set(r.table_id, r);
         }
       });
-      setTables(ts.map(t => mapTable(t, nameById, orderByTable, resvByTable)));
+      setTables(prev => keepIfSame(prev, ts.map(t => mapTable(t, nameById, orderByTable, resvByTable))));
     } catch { /* keep last snapshot on transient errors */ }
   }, []);
   useEffect(() => {
     void load();
     const onResChange = () => void load();
     window.addEventListener("CAFYZ_RESERVATION_CHANGED", onResChange);
-    const id = window.setInterval(() => { if (document.visibilityState === "visible") void load(); }, 8000);
     const stopResume = onResume(() => { void load(); });
     return () => {
-      window.clearInterval(id);
-      window.removeEventListener("CAFYZ_RESERVATION_CHANGED", onResChange);
+            window.removeEventListener("CAFYZ_RESERVATION_CHANGED", onResChange);
       stopResume();
     };
   }, [load]);
+
+  usePolling(() => { void load(); }, 8000);
 
   const statusCounts = Object.fromEntries(
     (["available", "occupied", "reserved", "cleaning"] as TableStatus[]).map(s => [s, tables.filter(t => t.status === s).length])

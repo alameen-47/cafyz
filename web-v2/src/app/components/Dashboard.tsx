@@ -14,6 +14,8 @@ import { planMeetsRequirement, canManagePlan } from "../../config/access";
 import { formatMoney, getCurrencySymbol } from "../../utils/currency";
 import { useAppNav } from "../nav";
 import { onResume } from "../../hooks/useOnResume";
+import { usePolling } from "../../hooks/usePolling";
+import { keepIfSame } from "../../utils/sameData";
 
 const CAT_COLORS = ["#1e7fff", "#00c6ff", "#a855f7", "#22d3ee", "#f59e0b", "#22c55e"];
 
@@ -237,7 +239,7 @@ export function Dashboard() {
         ordersApi.list().catch(() => []),
       ]);
 
-      setStats(s);
+      setStats(prev => keepIfSame(prev, s));
       setTodayRevenue(today?.totalRevenue ?? 0);
       setWeekTotal(week?.totalRevenue ?? 0);
       const filled = week ? fillRevenueRows(week.from, week.to, week.rows ?? []) : [];
@@ -301,10 +303,11 @@ export function Dashboard() {
 
   useEffect(() => {
     void load();
-    const id = window.setInterval(() => { if (document.visibilityState === "visible") void load(true); }, 45_000);
     const stopResume = onResume(() => { void load(true); });
-    return () => { window.clearInterval(id); stopResume(); };
+    return () => { stopResume(); };
   }, [load]);
+
+  usePolling(() => { void load(true); }, 45_000);
 
   const cur = getCurrencySymbol();
   const occPct = stats?.tables_total ? Math.round((stats.tables_occupied / stats.tables_total) * 100) : 0;

@@ -7,8 +7,11 @@ import {
   loadLanguage,
   setActiveLanguageCode,
   translatePhrase,
+  translateSubtree,
   type AppLang,
 } from './index';
+
+const OBSERVE_OPTS: MutationObserverInit = { childList: true, subtree: true, characterData: true };
 import { dirFor, type TextDir } from './languages';
 
 interface LanguageContextValue {
@@ -23,12 +26,18 @@ interface LanguageContextValue {
 
 const LanguageContext = createContext<LanguageContextValue | null>(null);
 
-function debounce(fn: () => void, ms: number) {
-  let timer: ReturnType<typeof setTimeout> | undefined;
-  return () => {
-    if (timer) clearTimeout(timer);
-    timer = setTimeout(fn, ms);
-  };
+/** Run `fn` when the main thread is next free, falling back to a short timer. */
+function onIdle(fn: () => void): () => void {
+  const ric = (window as unknown as {
+    requestIdleCallback?: (cb: () => void, o?: { timeout: number }) => number;
+    cancelIdleCallback?: (id: number) => void;
+  });
+  if (typeof ric.requestIdleCallback === 'function') {
+    const id = ric.requestIdleCallback(fn, { timeout: 200 });
+    return () => ric.cancelIdleCallback?.(id);
+  }
+  const id = setTimeout(fn, 16);
+  return () => clearTimeout(id);
 }
 
 export function LanguageProvider({ children }: { children: ReactNode }) {
@@ -50,22 +59,54 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
   }, [lang]);
 
   useEffect(() => {
-    const apply = () => applyLanguageToDocument(langRef.current);
-    apply();
+    const root = document.getElementById('root');
+    const applyAll = () => applyLanguageToDocument(langRef.current);
+    applyAll();
 
     // DOM-walking translation fights React on native WebViews and can freeze the app.
     if (Capacitor.isNativePlatform()) return;
 
-    const debounced = debounce(apply, 120);
-    const observer = new MutationObserver(() => debounced());
-    const root = document.getElementById('root');
-    if (root) {
-      observer.observe(root, { childList: true, subtree: true, characterData: true });
-    }
-    const onLangEvent = () => debounced();
+    // Only the parts React actually changed are re-translated. Re-walking the
+    // whole page on every mutation meant a screen with a ticking clock paid for
+    // a full-document pass every second.
+    let pending = new Set<Element>();
+    let cancel: (() => void) | null = null;
+    let observer: MutationObserver | null = null;
+
+    const flush = () => {
+      cancel = null;
+      const targets = pending;
+      pending = new Set();
+      if (!targets.size) return;
+      // Our own rewrites would otherwise queue another round of work.
+      observer?.disconnect();
+      try {
+        for (const el of targets) {
+          if (el.isConnected) translateSubtree(el, langRef.current);
+        }
+      } finally {
+        if (root) observer?.observe(root, OBSERVE_OPTS);
+      }
+    };
+
+    const schedule = () => { if (!cancel) cancel = onIdle(flush); };
+
+    observer = new MutationObserver((records) => {
+      for (const rec of records) {
+        // characterData fires on the text node; its element owns the copy.
+        const node = rec.type === 'characterData' ? rec.target.parentElement : rec.target as Element;
+        const el = node?.nodeType === 1 ? (node as Element) : null;
+        if (el) pending.add(el);
+      }
+      if (pending.size) schedule();
+    });
+    if (root) observer.observe(root, OBSERVE_OPTS);
+
+    const onLangEvent = () => { if (root) pending.add(root); schedule(); };
     window.addEventListener('cafyz-language-changed', onLangEvent);
     return () => {
-      observer.disconnect();
+      cancel?.();
+      observer?.disconnect();
       window.removeEventListener('cafyz-language-changed', onLangEvent);
     };
   }, [lang, phrasesVersion]);

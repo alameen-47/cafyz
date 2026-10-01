@@ -18,6 +18,8 @@ import { useAppNav } from "../nav";
 import { useAuth } from "../auth";
 import { PrinterStatusBadge } from "./PrinterStatusBadge";
 import { demoMenuImage } from "../../utils/demoMenuImages";
+import { keepIfSame } from "../../utils/sameData";
+import { usePolling } from "../../hooks/usePolling";
 
 // ── Model ─────────────────────────────────────────────────────────────────────
 // A bill is a list of lines. Lines with an `orderItemId` are already saved on a
@@ -400,7 +402,7 @@ export function POS() {
           byTable.set(o.table_id, { table_id: o.table_id, table_name: o.table_name || "Table", items, subtotal, createdAt: o.created_at });
         }
       }
-      setPending(Array.from(byTable.values()));
+      setPending(prev => keepIfSame(prev, Array.from(byTable.values())));
     } catch {
       /* keep the last list through a network blip */
     }
@@ -408,17 +410,17 @@ export function POS() {
 
   useEffect(() => {
     void refreshPending();
-    const tick = () => { if (document.visibilityState === "visible") void refreshPending(); };
-    const id = window.setInterval(tick, 8000);
+    const onReturn = () => { if (document.visibilityState === "visible") void refreshPending(); };
     const onSent = () => { void refreshPending(); };
     window.addEventListener("CAFYZ_ORDER_SENT", onSent);
-    document.addEventListener("visibilitychange", tick);
+    document.addEventListener("visibilitychange", onReturn);
     return () => {
-      window.clearInterval(id);
       window.removeEventListener("CAFYZ_ORDER_SENT", onSent);
-      document.removeEventListener("visibilitychange", tick);
+      document.removeEventListener("visibilitychange", onReturn);
     };
   }, [refreshPending]);
+
+  usePolling(() => { void refreshPending(); }, 8000);
 
   // ── Derived ──────────────────────────────────────────────────────────────────
   const cur = getCurrencySymbol(restaurant?.currency_code, restaurant?.currency_symbol);

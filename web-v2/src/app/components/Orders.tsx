@@ -6,6 +6,8 @@ import { ordersApi } from "../../services/api";
 import { getCurrencySymbol } from "../../utils/currency";
 import { useAppNav } from "../nav";
 import { onResume } from "../../hooks/useOnResume";
+import { usePolling } from "../../hooks/usePolling";
+import { keepIfSame } from "../../utils/sameData";
 
 type UiStatus = "pending" | "preparing" | "ready" | "at_table" | "complete";
 type OrderRow = {
@@ -182,7 +184,8 @@ export function Orders() {
     if (!silent) setLoading(true);
     try {
       const rows = await ordersApi.live({ active: viewMode === "active" });
-      setOrders(rows.map(o => ({
+      // A poll that brings back the same service re-renders nothing.
+      setOrders(prev => keepIfSame(prev, rows.map(o => ({
         id: o.bill_no ? `Bill ${o.bill_no}` : "#" + o.id.slice(0, 4).toUpperCase(),
         oid: o.id,
         tid: o.ticket_id ?? undefined,
@@ -202,7 +205,7 @@ export function Orders() {
         priority: o.ticket_vip === 1,
         parcel: o.order_type === "parcel",
         note: o.note || undefined,
-      })));
+      }))));
       setLoadError(null);
     } catch (e) {
       const msg = (e as Error).message || "Couldn't load orders";
@@ -217,14 +220,14 @@ export function Orders() {
     void load();
     const onSent = () => void load(true);
     window.addEventListener("CAFYZ_ORDER_SENT", onSent);
-    const id = window.setInterval(() => { if (document.visibilityState === "visible") void load(true); }, 5000);
     const stopResume = onResume(() => { void load(true); });
     return () => {
-      window.clearInterval(id);
       window.removeEventListener("CAFYZ_ORDER_SENT", onSent);
       stopResume();
     };
   }, [load]);
+
+  usePolling(() => { void load(true); }, 5000);
 
   const handleAdvance = async (order: OrderRow) => {
     const next = advanceAction[order.status];
