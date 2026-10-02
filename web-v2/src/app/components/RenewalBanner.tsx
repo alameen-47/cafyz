@@ -5,6 +5,7 @@ import { toast } from "./Toast";
 import { licensesApi } from "../../services/api";
 import type { ApiSubscriptionStatus } from "../../services/api";
 import type { Plan } from "../auth";
+import { IN_STORE_APP } from "../../config/features";
 
 interface RenewalBannerProps {
   subscription: ApiSubscriptionStatus | null;
@@ -39,9 +40,13 @@ export function RenewalBanner({
     : onTrial
       ? (days === 0 ? "Your free trial ends today" : `Free trial · ${dayWord} left`)
       : `Your license renews in ${dayWord}`;
-  const detail = expired
-    ? "Your data is safe. Activate a license key from Cafyz to continue."
-    : "Request a license key from Cafyz, then enter it on the License page.";
+  const detail = IN_STORE_APP
+    ? (expired
+      ? "Your data is safe. Enter a license key to continue."
+      : "Enter your next license key on the License page before it ends.")
+    : expired
+      ? "Your data is safe. Activate a license key from Cafyz to continue."
+      : "Request a license key from Cafyz, then enter it on the License page.";
 
   const requestKey = async () => {
     if (requesting) return;
@@ -88,6 +93,7 @@ export function RenewalBanner({
             >
               <Key size={14} /> Enter key
             </button>
+            {!IN_STORE_APP && (
             <button
               type="button"
               onClick={() => void requestKey()}
@@ -98,6 +104,7 @@ export function RenewalBanner({
               {requesting ? <Loader2 size={14} className="animate-spin" /> : <Mail size={14} />}
               {requesting ? "Requesting…" : "Request key"}
             </button>
+            )}
             {!expired && (
               <button type="button" onClick={() => setDismissed(true)} className="p-1.5 rounded-lg" style={{ color: "var(--cafyz-muted)" }} aria-label="Dismiss">
                 <X size={16} />

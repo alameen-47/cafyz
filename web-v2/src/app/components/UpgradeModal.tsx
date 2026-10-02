@@ -5,7 +5,7 @@ import { useAuth, type Plan } from '../auth';
 import { PAGE_LABELS, PLAN_ORDER, canManagePlan, type PageId } from '../../config/access';
 import { usePlanConfig } from '../PlanConfigProvider';
 import { formatPlanPrice, formatBillingSuffix, getPlanConfig } from '../../services/planConfigStore';
-import { SHOW_PLAN_PRICING } from '../../config/features';
+import { IN_STORE_APP, SHOW_PLAN_PRICING } from '../../config/features';
 
 const PLAN_META: Record<Plan, { label: string; color: string; icon: typeof Shield }> = {
   basic: { label: 'Basic', color: 'var(--cafyz-muted)', icon: Shield },
@@ -45,20 +45,24 @@ export function UpgradeModal({ requiredPlan, featurePage, onClose, onGoLicense }
       >
         <div className="flex items-start justify-between gap-3 mb-4">
           <div>
-            <p style={{ color: 'var(--cafyz-muted)', fontSize: '0.68rem', letterSpacing: '0.12em', textTransform: 'uppercase' }}>Upgrade required</p>
+            <p style={{ color: 'var(--cafyz-muted)', fontSize: '0.68rem', letterSpacing: '0.12em', textTransform: 'uppercase' }}>{IN_STORE_APP ? 'Not in your plan' : 'Upgrade required'}</p>
             <h2 style={{ color: 'var(--cafyz-text)', fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: '1.25rem', marginTop: 6 }}>
-              Unlock {featureLabel}
+              {IN_STORE_APP ? featureLabel : `Unlock ${featureLabel}`}
             </h2>
             <p style={{ color: 'var(--cafyz-muted)', fontSize: '0.82rem', marginTop: 6 }}>
-              {managerUser
-                ? `Your ${PLAN_META[currentPlan].label} plan does not include this feature. Upgrade to ${PLAN_META[requiredPlan].label} or activate a license key.`
-                : `This feature is not included in your restaurant's current plan. Ask your manager or owner to upgrade.`}
+              {IN_STORE_APP
+                ? (managerUser
+                  ? `Your ${PLAN_META[currentPlan].label} plan does not include this feature. If you have a license key that includes it, activate it on the License page.`
+                  : `This feature is not included in your restaurant's current plan. Ask your manager or owner.`)
+                : managerUser
+                  ? `Your ${PLAN_META[currentPlan].label} plan does not include this feature. Upgrade to ${PLAN_META[requiredPlan].label} or activate a license key.`
+                  : `This feature is not included in your restaurant's current plan. Ask your manager or owner to upgrade.`}
             </p>
           </div>
           <button onClick={onClose} className="p-1.5 rounded-lg" style={{ color: 'var(--cafyz-muted)' }}><X size={16} /></button>
         </div>
 
-        {managerUser && (
+        {managerUser && !IN_STORE_APP && (
           <div className="space-y-2 mb-5">
             {plansToShow.map(plan => {
             const Meta = PLAN_META[plan];

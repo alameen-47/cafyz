@@ -10,6 +10,7 @@ import { getRestaurantLogo } from "../../services/restaurantLogoStorage";
 import { LanguageSwitcher } from "../../i18n/LanguageSwitcher";
 import { useLanguage } from "../../i18n/LanguageProvider";
 import { isFounderRole } from "../../config/access";
+import { IN_STORE_APP } from "../../config/features";
 import type { PageId } from "../../config/access";
 import { useNotifications } from "../../hooks/useNotifications";
 import { usePushNotifications } from "../../hooks/usePushNotifications";
@@ -28,7 +29,7 @@ const pageLabels: Record<string, { title: string; subtitle: string }> = {
   inventory:    { title: "Inventory",          subtitle: "Stock levels & suppliers" },
   roles:        { title: "Roles & Access",     subtitle: "Users, permissions & PINs" },
   profile:      { title: "Restaurant Profile", subtitle: "Brand, contact & tax settings" },
-  license:      { title: "License & Plan",     subtitle: "Subscription & upgrades" },
+  license:      { title: "License & Plan",     subtitle: IN_STORE_APP ? "Your license key" : "Subscription & upgrades" },
   founder:      { title: "Founder Console",    subtitle: "Super admin · All tenants" },
 };
 

@@ -6,7 +6,7 @@ import { licensesApi, billingApi, loadRazorpayCheckout, type ApiSubscriptionStat
 import { useAuth } from "../auth";
 import { usePlanConfig } from "../PlanConfigProvider";
 import { formatBillingSuffix, formatPlanPrice, isLifetimePlan, panelLabelsFromConfig } from "../../services/planConfigStore";
-import { SHOW_PLAN_PRICING } from "../../config/features";
+import { IN_STORE_APP, SHOW_PLAN_PRICING } from "../../config/features";
 
 const PLAN_STYLE: Record<string, { color: string; icon: typeof Shield; popular?: boolean }> = {
   basic: { color: "var(--cafyz-muted)", icon: Shield },
@@ -217,14 +217,18 @@ export function License() {
                   : <>License renews in <span style={{ color: "#1e7fff", fontFamily: "var(--font-mono)", fontWeight: 800 }}>{trialDaysLeft}</span> day{trialDaysLeft === 1 ? "" : "s"}</>}
             </p>
             <p style={{ color: "var(--cafyz-muted)", fontSize: "0.75rem" }}>
-              {pendingReq
-                ? "Key requested — Cafyz will email it to you. Enter it below when it arrives."
-                : expired
-                  ? "Your data is safe. Request a license key, then activate it below to continue."
-                  : "Request a license key from Cafyz before it ends, then activate it below."}
+              {IN_STORE_APP
+                ? (expired
+                  ? "Your data is safe. Enter a license key below to continue."
+                  : "Enter your next license key below before it ends.")
+                : pendingReq
+                  ? "Key requested — Cafyz will email it to you. Enter it below when it arrives."
+                  : expired
+                    ? "Your data is safe. Request a license key, then activate it below to continue."
+                    : "Request a license key from Cafyz before it ends, then activate it below."}
             </p>
           </div>
-          {pendingReq ? (
+          {IN_STORE_APP ? null : pendingReq ? (
             <span className="text-xs px-3 py-2 rounded-xl flex-shrink-0" style={{ background: "rgba(245,158,11,0.12)", color: "#f59e0b", fontWeight: 600 }}>Key requested</span>
           ) : (
             <button onClick={() => startPurchase(currentPlan)} disabled={busy}
@@ -243,8 +247,11 @@ export function License() {
           <h3 style={{ color: "var(--cafyz-text)", fontFamily: "var(--font-display)", fontWeight: 600 }}>Activate your license key</h3>
         </div>
         <p style={{ color: "var(--cafyz-muted)", fontSize: "0.8rem", lineHeight: 1.5 }}>
-          License keys are issued by Cafyz. Your plan starts the moment you activate it and replaces the free trial.
+          {IN_STORE_APP
+            ? "If your restaurant has a license key, enter it here. Your plan starts the moment you activate it and replaces the free trial."
+            : "License keys are issued by Cafyz. Your plan starts the moment you activate it and replaces the free trial."}
         </p>
+        {!IN_STORE_APP && (
         <ol className="grid grid-cols-1 sm:grid-cols-3 gap-2">
           {KEY_STEPS.map((step, i) => (
             <li key={step.title} className="flex items-start gap-2.5 rounded-xl p-3" style={{ background: "var(--cafyz-surface-2)", border: "1px solid var(--cafyz-border)" }}>
@@ -259,6 +266,7 @@ export function License() {
             </li>
           ))}
         </ol>
+        )}
         <div className="flex gap-2">
           <input
             type="text"
@@ -304,7 +312,8 @@ export function License() {
         </div>
       </div>
 
-      {/* Plan comparison */}
+      {/* Plan comparison — website only: store apps may not offer buying outside the store. */}
+      {!IN_STORE_APP && (
       <div>
         <h3 style={{ color: "var(--cafyz-text)", fontFamily: "var(--font-display)", fontWeight: 600, marginBottom: 6 }}>Choose a plan</h3>
         <p style={{ color: "var(--cafyz-muted)", fontSize: "0.78rem", marginBottom: 16 }}>
@@ -381,6 +390,7 @@ export function License() {
           })}
         </div>
       </div>
+      )}
 
       <p style={{ color: "var(--cafyz-muted)", fontSize: "0.72rem", lineHeight: 1.5 }}>
         Maintenance and support cover the Cafyz software only. Hardware — including

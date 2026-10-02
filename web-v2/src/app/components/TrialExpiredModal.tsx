@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { toast } from './Toast';
 import { licensesApi } from '../../services/api';
 import type { Plan } from '../auth';
+import { IN_STORE_APP } from '../../config/features';
 
 interface Props {
   expiresAt?: string | null;
@@ -75,7 +76,7 @@ export function TrialExpiredModal({
             <p style={{ color: 'var(--cafyz-muted)', fontSize: '0.82rem', marginTop: 6, lineHeight: 1.55 }}>
               {staffMode
                 ? `Your restaurant's ${ended} ended${expiryLabel ? ` on ${expiryLabel}` : ''}. Ask your owner or manager to activate a license key — everything will be right where you left it.`
-                : `It ended${expiryLabel ? ` on ${expiryLabel}` : ''}. Your restaurant data is safe. Enter your license key from Cafyz to continue right where you left off.`}
+                : `It ended${expiryLabel ? ` on ${expiryLabel}` : ''}. Your restaurant data is safe. Enter your license key to continue right where you left off.`}
             </p>
           </div>
         </div>
@@ -109,6 +110,8 @@ export function TrialExpiredModal({
               </div>
             </div>
 
+            {/* Requesting a key — website only: store apps may not point people at buying outside the store. */}
+            {!IN_STORE_APP && (
             <div className="rounded-xl px-4 py-3" style={{ background: 'var(--cafyz-surface-2)', border: '1px solid var(--cafyz-border)' }}>
               <p style={{ color: 'var(--cafyz-text)', fontSize: '0.82rem', fontWeight: 600 }}>Don&apos;t have a key yet?</p>
               <p style={{ color: 'var(--cafyz-muted)', fontSize: '0.74rem', marginTop: 3, lineHeight: 1.5 }}>
@@ -136,6 +139,7 @@ export function TrialExpiredModal({
                 </button>
               </div>
             </div>
+            )}
           </div>
         )}
       </motion.div>
