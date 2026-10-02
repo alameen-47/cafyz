@@ -8,6 +8,8 @@ const DEMO_PASSWORD = process.env.STORE_DEMO_PASSWORD ?? 'CafyzReview2026!';
 const DEMO_PHONE = process.env.STORE_DEMO_PHONE ?? '+971500000099';
 const DEMO_OWNER = process.env.STORE_DEMO_OWNER_NAME ?? 'App Reviewer';
 const DEMO_RESTAURANT = process.env.STORE_DEMO_RESTAURANT_NAME ?? 'Cafyz Demo Restaurant';
+// Premium so App Review can open every screen: the store apps offer no way to change plans.
+const DEMO_PLAN = 'premium';
 
 const MENU_ITEMS: Array<{
   name: string;
@@ -100,10 +102,16 @@ async function ensureDemoLicense(restaurantId: string): Promise<void> {
 
   if (lic.rows.length) {
     const expiry = new Date(String(lic.rows[0]?.expires_at ?? ''));
-    if (!Number.isNaN(expiry.getTime()) && expiry.getTime() > Date.now()) return;
+    if (!Number.isNaN(expiry.getTime()) && expiry.getTime() > Date.now()) {
+      await db.execute({
+        sql: `UPDATE license_keys SET plan=? WHERE id=?`,
+        args: [DEMO_PLAN, String(lic.rows[0]?.id)],
+      });
+      return;
+    }
     await db.execute({
-      sql: `UPDATE license_keys SET expires_at=?, activated_at=COALESCE(activated_at, ?), plan='pro', is_active=1 WHERE id=?`,
-      args: [expiresAt, now, String(lic.rows[0]?.id)],
+      sql: `UPDATE license_keys SET expires_at=?, activated_at=COALESCE(activated_at, ?), plan=?, is_active=1 WHERE id=?`,
+      args: [expiresAt, now, DEMO_PLAN, String(lic.rows[0]?.id)],
     });
     return;
   }
@@ -111,7 +119,7 @@ async function ensureDemoLicense(restaurantId: string): Promise<void> {
   await db.execute({
     sql: `INSERT INTO license_keys(id,key_code,plan,restaurant_id,activated_at,expires_at,note,is_active)
           VALUES(?,?,?,?,?,?,?,1)`,
-    args: [uid(), 'CAFYZ-PRO-STORE-DEMO', 'pro', restaurantId, now, expiresAt, 'App Store / Play Store reviewer account'],
+    args: [uid(), 'CAFYZ-PRO-STORE-DEMO', DEMO_PLAN, restaurantId, now, expiresAt, 'App Store / Play Store reviewer account'],
   });
 }
 
@@ -143,8 +151,8 @@ export async function ensureStoreDemoAccount(): Promise<void> {
       args: [hash, DEMO_PHONE, DEMO_OWNER, userId],
     });
     await db.execute({
-      sql: `UPDATE restaurants SET name=?, plan='pro', access_paused=0 WHERE id=?`,
-      args: [DEMO_RESTAURANT, restaurantId],
+      sql: `UPDATE restaurants SET name=?, plan=?, access_paused=0 WHERE id=?`,
+      args: [DEMO_RESTAURANT, DEMO_PLAN, restaurantId],
     });
     await ensureDemoLicense(restaurantId);
     await ensureDemoMenu(restaurantId);
@@ -162,14 +170,14 @@ export async function ensureStoreDemoAccount(): Promise<void> {
   if (bySlug.rows.length) {
     restaurantId = String(bySlug.rows[0]?.id);
     await db.execute({
-      sql: `UPDATE restaurants SET name=?, plan='pro', access_paused=0 WHERE id=?`,
-      args: [DEMO_RESTAURANT, restaurantId],
+      sql: `UPDATE restaurants SET name=?, plan=?, access_paused=0 WHERE id=?`,
+      args: [DEMO_RESTAURANT, DEMO_PLAN, restaurantId],
     });
   } else {
     restaurantId = uid();
     await db.execute({
       sql: `INSERT INTO restaurants(id,name,slug,plan,timezone,currency_code) VALUES(?,?,?,?,?,'INR')`,
-      args: [restaurantId, DEMO_RESTAURANT, DEMO_REST_SLUG, 'pro', 'UTC'],
+      args: [restaurantId, DEMO_RESTAURANT, DEMO_REST_SLUG, DEMO_PLAN, 'UTC'],
     });
   }
 
