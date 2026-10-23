@@ -184,6 +184,12 @@ Minimum length is 8 characters or the account is skipped.
 6. For screenshots later: `export STORE_DEMO_PASSWORD=...` before running the
    capture scripts, since they no longer carry a default.
 
+### Confirmed 23 Oct
+App Store Connect → Cafyz → App Review Information currently holds the **old,
+publicly-committed password** in the Sign-In Information field, in plaintext.
+Apple has been given the compromised value, so it is almost certainly the live
+one on Render too. Rotate.
+
 ### Timing
 **Cafyz is currently Rejected, so no reviewer is testing it right now** — this
 is the safe moment to rotate. The only rule: do step 4 before any resubmit, or
