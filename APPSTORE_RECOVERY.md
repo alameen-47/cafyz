@@ -371,6 +371,50 @@ Render free tier sleeping (see §0 above) — the keep-awake workflow fires ever
 
 ---
 
+## 0g. Self-ping keep-awake (23 Oct) — replaces the GitHub cron
+
+All three backends now ping their own public URL from inside the process every
+10 minutes. The request returns through Render's router as **inbound traffic**,
+which is what resets the 15-minute idle timer — a localhost ping would not, so
+each one requires `RENDER_EXTERNAL_URL` (Render sets it automatically) and
+skips with a warning if it is missing.
+
+| Repo | File | Pings |
+|---|---|---|
+| cafyz | `backend/src/services/keepAwake.ts` | `/health` |
+| Coorg Trade | `server/src/keepAwake.js` | `/api/health` |
+| CREDI8_Latest | `backend/src/services/keepAwake.js` | `/api/health` |
+
+Verified: 6 unit tests on the Cafyz one (off by default, no-URL guard, ping
+interval, window, midnight-wrapping window, survives a failed ping) — Cafyz
+suite now **218 passing**. The Coorg and CREDI8 copies were smoke-tested
+against a local HTTP server and both delivered pings to the right path.
+
+### ⚠️ IT IS OFF BY DEFAULT, ON PURPOSE — read the budget first
+Render gives **750 free instance hours per calendar month across the whole
+account**, and a month is ~730 hours. A service that never sleeps consumes
+nearly the entire allowance on its own. **Exhausting it suspends every free
+service in the account until the 1st** — all three APIs dark at once, which is
+far worse than an occasional cold start.
+
+Three free services awake 24/7 = ~2,190 h against a 750 cap: gone in ~10 days.
+
+So on Render → each service → Environment:
+- `KEEP_AWAKE=true`
+- `KEEP_AWAKE_WINDOW=3-10` (03:00–10:59 UTC). **3 services x 8 h/day x 30 days
+  = 720 h, which fits under 750.** Windows wrap midnight (`22-6` works).
+
+Leave `KEEP_AWAKE` unset on a service to keep the old behaviour.
+
+**The reliable alternative is a paid instance** (~$7/mo each): no sleep, no
+hour cap, no window needed. Cheapest insurance while the apps are in review.
+
+The GitHub workflows were left in place — harmless, and they cover a restart
+when the process is down.
+
+
+---
+
 ## 1. THE HEADLINE (read this first)
 
 **Nothing is "stuck in review." Three apps are REJECTED under Guideline 4.3.0
