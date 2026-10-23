@@ -19,6 +19,18 @@ services:
         value: https://cafyz.ametronyx.com
       - key: APP_URL
         value: https://cafyz.ametronyx.com
+      # Stops the free instance sleeping (see backend/src/services/keepAwake.ts).
+      # BUDGET: a Render account gets 750 free instance hours a calendar month,
+      # shared across every free service, and a month is ~730 hours. One service
+      # awake around the clock eats nearly all of it, and running out suspends
+      # EVERY free service in the account until the 1st. With cafyz-api, the
+      # Coorg API and credi8-backend all on free, pick a window instead:
+      # 3 services x 8 h/day x 30 days = 720 h, which fits. Leave KEEP_AWAKE
+      # unset to keep the old behaviour.
+      - key: KEEP_AWAKE
+        sync: false        # set to "true" in the dashboard when you want it
+      - key: KEEP_AWAKE_WINDOW
+        sync: false        # e.g. "3-10" = 03:00-10:59 UTC, eight hours a day
       # Set in Render dashboard (see backend/.env.example):
       # RESEND_API_KEY, CLOUDINARY_*, FOUNDER_EMAIL, FOUNDER_PASSWORD, FIREBASE_SERVER_KEY
       # RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET, RAZORPAY_WEBHOOK_SECRET (payments)
