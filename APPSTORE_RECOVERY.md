@@ -184,11 +184,16 @@ Minimum length is 8 characters or the account is skipped.
 6. For screenshots later: `export STORE_DEMO_PASSWORD=...` before running the
    capture scripts, since they no longer carry a default.
 
-### Confirmed 23 Oct
-App Store Connect → Cafyz → App Review Information currently holds the **old,
-publicly-committed password** in the Sign-In Information field, in plaintext.
-Apple has been given the compromised value, so it is almost certainly the live
-one on Render too. Rotate.
+### Confirmed 23 Oct — EXPOSURE IS LIVE
+Verified by Ameen against production: a login POST to
+`/api/auth/login` with the publicly-committed password returned **HTTP 200**.
+`STORE_DEMO_PASSWORD` is NOT overridden on Render, so the password in this
+public repo's history is the real one for `reviewer@cafyz.com`, an owner
+account on the live demo restaurant. App Store Connect holds the same value in
+plaintext in Sign-In Information.
+
+**Rotate now — this is an open door, not a tidiness issue.**
+After rotating, that same curl must return 401 instead of 200.
 
 ### Timing
 **Cafyz is currently Rejected, so no reviewer is testing it right now** — this
