@@ -290,13 +290,25 @@ and FCM integration"). `backend/.gitignore` already lists
 gitignore does not untrack. Note `alameen-47/CREDI8` is **public** and nearly
 the same name; one wrong visibility toggle exposes the private one's history.
 
-### Do NOT delete the repo copy yet
-`backend/src/config/firebase.js` loads the credential from
-`FIREBASE_SERVICE_ACCOUNT_PATH` and throws if unset. The gitignore comment says
-production should use a **Render Secret File** — but that is unverified. If that
-env var points at the committed file instead, deleting it breaks SMS reminders
-and FCM, and **CREDI8 is in App Review now**. Confirm the Render Secret File
-first, then remove the tracked file.
+### Repo copy removed (23 Oct) — production was never using it
+`render.yaml` settles it:
+
+```yaml
+- key: FIREBASE_SERVICE_ACCOUNT_PATH
+  value: /etc/secrets/firebase-service-account.json
+```
+
+Production reads a **Render Secret File**, not the committed key, so removing
+it could not break SMS or FCM. Removed in `e8934be` on `main`; verified gone
+from the tree. The `*firebase-adminsdk*.json` rule in `backend/.gitignore` was
+tested against a twin file and does catch it, so a key dropped there again will
+not be committed.
+
+Residual assumption: the Render dashboard could in principle override the
+blueprint's `FIREBASE_SERVICE_ACCOUNT_PATH`. Unverified — the dashboard needs a
+sign-in. **If SMS reminders or push stop working**, that is the cause: re-add
+the secret file in Render (Environment > Secret Files, named
+`firebase-service-account.json`) from `~/.credentials/credi8/`.
 
 ### The actual fix (blocked — needs a different Google account)
 The Google account signed in to Chrome **cannot access `credi8-73f30`**
@@ -307,7 +319,7 @@ account that owns these projects:
 2. Deploy it as a Render Secret File, set `FIREBASE_SERVICE_ACCOUNT_PATH` to it.
 3. Verify SMS reminders and push still work.
 4. **Then delete key IDs `1d0911cb15…` and `ccb51d4e24…`.**
-5. `git rm --cached` the committed file.
+5. ~~`git rm --cached` the committed file.~~ Done in `e8934be`.
 
 Step 4 is what actually closes it; the key stays in git history regardless.
 
