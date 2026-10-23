@@ -461,8 +461,14 @@ or a broken one. Note it reaches Apple only in a new build.
 | Coorg Trade | **1.0 (5)** | 75 s client timeout (was 45 s), honest message, self-ping keep-awake |
 
 Both archived and exported successfully, signed **Cloud Managed Apple
-Distribution**. Uploaded to App Store Connect via
-`xcodebuild -exportArchive` with `destination: upload`.
+Distribution**, and uploaded via `xcodebuild -exportArchive` with
+`destination: upload`. Xcode reported **"Upload succeeded" / "Uploaded App"**
+for both (Cafyz 20:07, Coorg 20:09).
+
+As of 20:15 neither had appeared in TestFlight yet — Apple's processing takes
+5–30 minutes and occasionally longer. **Check TestFlight before assuming an
+upload failed**, and if a build never appears, look for a rejection email from
+App Store Connect (an invalid binary is reported by email, not in the UI).
 
 ### The builds under review were NOT touched
 Cafyz 1.0 (2) and Coorg 1.0 (4) are still the submitted builds and both apps
