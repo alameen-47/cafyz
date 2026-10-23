@@ -401,8 +401,15 @@ Three free services awake 24/7 = ~2,190 h against a 750 cap: gone in ~10 days.
 
 So on Render → each service → Environment:
 - `KEEP_AWAKE=true`
-- `KEEP_AWAKE_WINDOW=3-10` (03:00–10:59 UTC). **3 services x 8 h/day x 30 days
-  = 720 h, which fits under 750.** Windows wrap midnight (`22-6` works).
+- `KEEP_AWAKE_WINDOW=4-9` (04:00–09:59 UTC, six hours). **3 services x 6 h/day
+  x 30 days = 540 h**, leaving ~210 h of headroom for real traffic that wakes a
+  service outside its window. 8 h/day would be 720 h of 750 — technically under
+  the cap but with almost nothing spare. Windows wrap midnight (`22-6` works).
+
+**Confirmed 23 Oct:** the 750 hours are **per workspace per calendar month**,
+pooled across every free web service, reset on the 1st, and do not roll over.
+Hours are only consumed while a service is awake — which is why the current
+sleep-by-default setup has never hit the cap.
 
 Leave `KEEP_AWAKE` unset on a service to keep the old behaviour.
 

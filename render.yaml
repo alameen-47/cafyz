@@ -25,8 +25,9 @@ services:
       # awake around the clock eats nearly all of it, and running out suspends
       # EVERY free service in the account until the 1st. With cafyz-api, the
       # Coorg API and credi8-backend all on free, pick a window instead:
-      # 3 services x 8 h/day x 30 days = 720 h, which fits. Leave KEEP_AWAKE
-      # unset to keep the old behaviour.
+      # 3 services x 6 h/day x 30 days = 540 h, leaving ~210 h of headroom for
+      # real traffic that wakes a service outside its window. 8 h/day would be
+      # 720 h and leave almost none. Leave KEEP_AWAKE unset for old behaviour.
       - key: KEEP_AWAKE
         sync: false        # set to "true" in the dashboard when you want it
       - key: KEEP_AWAKE_WINDOW
