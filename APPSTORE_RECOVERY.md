@@ -111,12 +111,12 @@ projects are marked **Warned / Appeal**. Not touched.
 ## 0c. ⚠️ SECURITY — reviewer password is public (pre-existing)
 
 **`cafyz` is a PUBLIC GitHub repo**, and the App Review demo password
-`CafyzReview2026!` is committed in it in ~10 places, including as a hardcoded
+the old demo password was committed in it in ~18 places, including as a hardcoded
 fallback in server source:
 
 ```
 backend/src/services/ensureStoreDemo.ts
-  const DEMO_PASSWORD = process.env.STORE_DEMO_PASSWORD ?? 'CafyzReview2026!';
+  const DEMO_PASSWORD = process.env.STORE_DEMO_PASSWORD ?? '<burned password>';
 ```
 
 Also in `backend/.env.example`, `store-release/CHECKLIST.md`,
@@ -138,6 +138,60 @@ restaurant on production.
 
 Coorg Trade and FitCore are private repos, so the same pattern is lower risk
 there, but worth the same treatment.
+
+
+---
+
+## 0d. ROTATING THE REVIEWER PASSWORD — runbook
+
+### Code side: DONE and pushed (23 Oct)
+- `ensureStoreDemo.ts` no longer has a hardcoded password. Config is read
+  **at call time** via `demoConfig()`, not at import, so a restart is what
+  rotates the password, and a missing `STORE_DEMO_PASSWORD` disables the demo
+  account instead of falling back to a known one.
+- The burned string is gone from `.env.example`, the three screenshot scripts
+  (they now exit with a message if the var is unset), and the store docs.
+- `ensureStoreDemo.test.ts` uses a fake value and now actually exercises the
+  env var. It also had a **pre-existing failure** — it asserted plan `pro`
+  while `289a3ee` moved the demo restaurant to `premium` — fixed.
+- Full backend suite: **211 passed / 24 files**.
+
+### How rotation actually works
+`ensureStoreDemoAccount()` runs on every API boot and does
+`UPDATE users SET password_hash=? WHERE id=?` for `reviewer@cafyz.com`.
+So **setting the Render env var and letting it redeploy IS the rotation.**
+Minimum length is 8 characters or the account is skipped.
+
+### Steps for Ameen (Claude cannot type passwords into production)
+
+1. **Generate a strong password locally** — it must never go through chat:
+   ```bash
+   LC_ALL=C tr -dc 'A-Za-z0-9!@#%^&*_-' < /dev/urandom | head -c 28; echo
+   ```
+2. **Render → `cafyz-api` → Environment** → set `STORE_DEMO_PASSWORD` to it →
+   Save. Render redeploys; the new hash is written on boot.
+3. **Verify** (reads the password from your shell, never hardcode it):
+   ```bash
+   read -rs CAFYZ_DEMO_PW && curl -s -X POST https://cafyz.onrender.com/api/auth/login \
+     -H 'Content-Type: application/json' \
+     -d "{\"email\":\"reviewer@cafyz.com\",\"password\":\"$CAFYZ_DEMO_PW\"}" \
+     | head -c 120; unset CAFYZ_DEMO_PW
+   ```
+   Expect a token and `"role":"owner"`.
+4. **App Store Connect → Cafyz → the version → App Review Information →
+   Sign-In Information** → update the password → **Save**.
+5. **Play Console → App access** → same update, if Cafyz is submitted there.
+6. For screenshots later: `export STORE_DEMO_PASSWORD=...` before running the
+   capture scripts, since they no longer carry a default.
+
+### Timing
+**Cafyz is currently Rejected, so no reviewer is testing it right now** — this
+is the safe moment to rotate. The only rule: do step 4 before any resubmit, or
+App Review will land on a failed login and reject on that alone.
+
+### The old password is burned
+It is in this public repo's history from commit `1abe0a0` onward. Rewriting
+history is optional and does not un-publish it; **rotating is the fix.**
 
 
 ---
@@ -237,7 +291,7 @@ expedite requests / complaints / calls about the same issue.**
   `Coorg_Buisness_Management/deployment/app-store/guideline-4.3-resubmission.md`
 - **Cafyz store metadata + demo account:**
   `cafyz/store-release/ios/metadata.md`, `cafyz/store-release/demo-account.md`
-  Reviewer login: `reviewer@cafyz.com` / `CafyzReview2026!`
+  Reviewer login: `reviewer@cafyz.com`, password set on Render (see §0d)
 
 ---
 

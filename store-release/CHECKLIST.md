@@ -14,7 +14,7 @@ Use this before submitting to **App Store** or **Play Store**.
 
 ## Shared (both stores)
 
-- [x] Demo reviewer account — `reviewer@cafyz.com` / `CafyzReview2026!` (auto-provisioned on API boot)
+- [x] Demo reviewer account — `reviewer@cafyz.com`, password set on Render as STORE_DEMO_PASSWORD (not stored in git) (auto-provisioned on API boot)
 - [ ] Privacy URL opens real policy: https://cafyz.ametronyx.com/privacy
 - [ ] Support URL opens real page: https://cafyz.ametronyx.com/support
 - [ ] Render env vars verified (`TURSO_*`, `FOUNDER_*`, `RESEND_*`, `CLOUDINARY_*`)

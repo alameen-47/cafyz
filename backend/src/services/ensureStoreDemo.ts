@@ -3,11 +3,21 @@ import { getDb } from '../db.js';
 import { uid } from '../utils.js';
 
 const DEMO_REST_SLUG = 'cafyz-demo-review';
-const DEMO_EMAIL = (process.env.STORE_DEMO_EMAIL ?? 'reviewer@cafyz.com').trim().toLowerCase();
-const DEMO_PASSWORD = process.env.STORE_DEMO_PASSWORD ?? 'CafyzReview2026!';
-const DEMO_PHONE = process.env.STORE_DEMO_PHONE ?? '+971500000099';
-const DEMO_OWNER = process.env.STORE_DEMO_OWNER_NAME ?? 'App Reviewer';
-const DEMO_RESTAURANT = process.env.STORE_DEMO_RESTAURANT_NAME ?? 'Cafyz Demo Restaurant';
+
+/**
+ * Read at call time, not at import: the password has no default, so a restart
+ * is what rotates it, and a missing STORE_DEMO_PASSWORD disables the account
+ * rather than falling back to a known one.
+ */
+function demoConfig() {
+  return {
+    email: (process.env.STORE_DEMO_EMAIL ?? 'reviewer@cafyz.com').trim().toLowerCase(),
+    password: process.env.STORE_DEMO_PASSWORD ?? '',
+    phone: process.env.STORE_DEMO_PHONE ?? '+971500000099',
+    owner: process.env.STORE_DEMO_OWNER_NAME ?? 'App Reviewer',
+    restaurant: process.env.STORE_DEMO_RESTAURANT_NAME ?? 'Cafyz Demo Restaurant',
+  };
+}
 // Premium so App Review can open every screen: the store apps offer no way to change plans.
 const DEMO_PLAN = 'premium';
 
@@ -128,6 +138,8 @@ export async function ensureStoreDemoAccount(): Promise<void> {
   if (process.env.STORE_DEMO_ENABLED === 'false') {
     return;
   }
+  const { email: DEMO_EMAIL, password: DEMO_PASSWORD, phone: DEMO_PHONE, owner: DEMO_OWNER, restaurant: DEMO_RESTAURANT } = demoConfig();
+
   if (!DEMO_PASSWORD || DEMO_PASSWORD.length < 8) {
     console.warn('[StoreDemo] STORE_DEMO_PASSWORD missing or < 8 chars — demo account disabled');
     return;

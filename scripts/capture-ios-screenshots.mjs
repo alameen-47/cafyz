@@ -10,7 +10,11 @@ const ROOT = path.resolve(__dirname, '..');
 const API = process.env.VITE_API_URL || 'https://cafyz.onrender.com';
 const APP = process.env.VITE_APP_URL || 'https://cafyz.ametronyx.com';
 const EMAIL = process.env.STORE_DEMO_EMAIL || 'reviewer@cafyz.com';
-const PASSWORD = process.env.STORE_DEMO_PASSWORD || 'CafyzReview2026!';
+const PASSWORD = process.env.STORE_DEMO_PASSWORD;
+if (!PASSWORD) {
+  console.error('Set STORE_DEMO_PASSWORD (the reviewer password from Render) before running this.');
+  process.exit(1);
+}
 
 const IPHONE_DIR = path.join(ROOT, 'store-release/ios/screenshots/iphone-6.7');
 const IPAD_DIR = path.join(ROOT, 'store-release/ios/screenshots/ipad-12.9');

@@ -7,7 +7,7 @@ import { ensureStoreDemoAccount } from '../services/ensureStoreDemo.js';
 beforeAll(async () => {
   await setupTestDb();
   process.env.STORE_DEMO_EMAIL = 'reviewer@cafyz.com';
-  process.env.STORE_DEMO_PASSWORD = 'CafyzReview2026!';
+  process.env.STORE_DEMO_PASSWORD = 'test-only-demo-password';
 });
 
 describe('ensureStoreDemoAccount', () => {
@@ -16,12 +16,12 @@ describe('ensureStoreDemoAccount', () => {
 
     const login = await request(app)
       .post('/api/auth/login')
-      .send({ email: 'reviewer@cafyz.com', password: 'CafyzReview2026!' });
+      .send({ email: 'reviewer@cafyz.com', password: 'test-only-demo-password' });
 
     expect(login.status).toBe(200);
     expect(login.body.user.role).toBe('owner');
     expect(login.body.restaurant_name).toBe('Cafyz Demo Restaurant');
-    expect(login.body.restaurant_plan).toBe('pro');
+    expect(login.body.restaurant_plan).toBe('premium');
 
     const token = login.body.token as string;
     const menu = await request(app)
@@ -37,7 +37,7 @@ describe('ensureStoreDemoAccount', () => {
 
     const login = await request(app)
       .post('/api/auth/login')
-      .send({ email: 'reviewer@cafyz.com', password: 'CafyzReview2026!' });
+      .send({ email: 'reviewer@cafyz.com', password: 'test-only-demo-password' });
 
     expect(login.status).toBe(200);
     expect(login.body.user.email).toBe('reviewer@cafyz.com');

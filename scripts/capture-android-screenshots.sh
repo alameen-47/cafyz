@@ -13,7 +13,11 @@ fi
 APK="${1:-$ROOT/store-release/builds/android/Cafyz-android-debug.apk}"
 OUT_DIR="${2:-$ROOT/store-release/android/screenshots/phone}"
 EMAIL="${STORE_DEMO_EMAIL:-reviewer@cafyz.com}"
-PASSWORD="${STORE_DEMO_PASSWORD:-CafyzReview2026!}"
+PASSWORD="${STORE_DEMO_PASSWORD:-}"
+if [ -z "$PASSWORD" ]; then
+  echo "Set STORE_DEMO_PASSWORD (the reviewer password from Render) before running this." >&2
+  exit 1
+fi
 
 mkdir -p "$OUT_DIR"
 

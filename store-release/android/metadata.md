@@ -67,7 +67,7 @@ Privacy: https://cafyz.ametronyx.com/privacy
 B2B restaurant app. Login required.
 Demo credentials:
 Email: reviewer@cafyz.com
-Password: CafyzReview2026!
+Password: set on Render as STORE_DEMO_PASSWORD (not stored in git)
 No in-app purchases.
 ```
 

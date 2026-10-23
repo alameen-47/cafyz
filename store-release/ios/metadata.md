@@ -80,7 +80,7 @@ Cafyz is a B2B restaurant management app. Login requires a restaurant account (e
 
 Demo account:
 Email: reviewer@cafyz.com
-Password: CafyzReview2026!
+Password: set on Render as STORE_DEMO_PASSWORD (not stored in git)
 
 API: https://cafyz.onrender.com
 Bluetooth: optional, ESC/POS thermal printers only.

@@ -10,12 +10,12 @@ Paste into App Store Connect → App Review Information:
 
 ```
 Email: reviewer@cafyz.com
-Password: CafyzReview2026!
+Password: set on Render as STORE_DEMO_PASSWORD (not stored in git)
 ```
 
 **Restaurant setup:**
 - Name: `Cafyz Demo Restaurant`
-- Plan: Pro (active license through 2028)
+- Plan: Premium (active license, 2 years from first boot)
 - Sample menu: 12 items (starters, mains, desserts, drinks)
 - 4 tables (Main, Patio, Bar)
 
@@ -25,7 +25,7 @@ Same credentials in Play Console → App access → provide test credentials:
 
 ```
 Email: reviewer@cafyz.com
-Password: CafyzReview2026!
+Password: set on Render as STORE_DEMO_PASSWORD (not stored in git)
 ```
 
 ## Notes for reviewers
@@ -49,12 +49,12 @@ Set on Render → Environment to change defaults:
 | Variable | Default |
 |----------|---------|
 | `STORE_DEMO_EMAIL` | `reviewer@cafyz.com` |
-| `STORE_DEMO_PASSWORD` | `CafyzReview2026!` |
+| `STORE_DEMO_PASSWORD` | _(no default — must be set on Render)_ |
 | `STORE_DEMO_ENABLED` | `true` (set `false` to disable) |
 
 ## Internal accounts (do not submit to stores)
 
 | Role | Email | Password | Notes |
 |------|-------|----------|-------|
-| Store reviewer | `reviewer@cafyz.com` | `CafyzReview2026!` | Submit to Apple/Google |
+| Store reviewer | `reviewer@cafyz.com` | _(Render env)_ | Submit to Apple/Google |
 | Founder | `FOUNDER_EMAIL` env | `FOUNDER_PASSWORD` env | Founder panel only — never submit |
