@@ -155,8 +155,17 @@ projects are marked **Warned / Appeal**. Not touched.
   `https://cafyz.onrender.com/health` every 10 minutes, same as Coorg's.
   Health is at **`/health`** (root), not `/api/health` — Render's
   `healthCheckPath` in `render.yaml`; `/api/health` returns 404.
-  ✅ **Pushed and verified live** (23 Oct): the workflow shows as *active* on
-  GitHub and a manual `workflow_dispatch` run finished `✓ ping in 2s`.
+  ⚠️ **CORRECTED 23 Oct 16:00 — the schedule does not hold 10 minutes.**
+  The workflow is active and works when triggered, but GitHub throttles
+  free-tier cron hard. Coorg's identical `*/10 * * * *` job, running since
+  2 Oct, actually fires every **3–5 hours**: 19:02, 22:15, 00:43, 05:26,
+  10:23, 15:20. Three of those runs took **36–37 s** instead of 7 s — the
+  signature of curl waiting for a sleeping instance to wake. So Render free
+  tier **is still sleeping**, on both apps, despite the workflow. Cafyz's
+  schedule had not fired at all 3 h after being pushed; only the manual run
+  shows. The workflow is better than nothing and costs nothing, but it is
+  **not** a guarantee a reviewer avoids a cold start. The only reliable fix is
+  a paid always-on Render instance (~$7/mo) until the apps are approved.
   Note that scheduled
   workflows are auto-disabled after 60 days of repo inactivity, and free-tier
   cron can drift by 10+ minutes — a paid always-on Render plan is the only
@@ -322,6 +331,42 @@ account that owns these projects:
 5. ~~`git rm --cached` the committed file.~~ Done in `e8934be`.
 
 Step 4 is what actually closes it; the key stays in git history regardless.
+
+
+---
+
+## 0f. WHAT IS AND IS NOT FIXED (honest read, 23 Oct 16:00)
+
+### Resubmitted on the SAME binaries
+Apple is reviewing the exact builds it rejected — nothing in any app changed:
+
+| App | Build rejected | Build now in review |
+|---|---|---|
+| Cafyz | 1.0 (2) | **1.0 (2)** — same |
+| Coorg Trade | 1.0 (4) | **1.0 (4)** — same |
+| CREDI8 | 1.0 (2) | **1.0 (2)** — same |
+| FitCore Plus | — (never rejected) | 1.0.8 (11), queued since 6 Oct |
+
+Today's code changes (arm64, package renames, demo-password handling,
+keep-awake) are in the repos but **not in these builds**. They reach Apple only
+after a new archive and upload.
+
+### Genuinely fixed
+- The 4.3 threads, unanswered since 6 Oct, now carry full 9-answer replies with
+  PDFs on Cafyz, Coorg Trade and CREDI8. That was the actual blocker.
+- Cafyz reviewer login verified working (HTTP 200).
+- Firebase admin key out of `CREDI8_Latest` and out of `~/Downloads`.
+
+### Cannot be cleared by us
+4.3 Spam is a **reviewer judgement**, not a defect with a fix. The replies
+argue the case; Apple decides. Apple's own warning stands: resubmitting
+without substantial improvement "will be rejected again, and may be rejected
+for additional issues." We resubmitted on unchanged binaries, at Ameen's
+explicit instruction after that risk was raised.
+
+### Still a live risk
+Render free tier sleeping (see §0 above) — the keep-awake workflow fires every
+3–5 hours, not every 10 minutes.
 
 
 ---
