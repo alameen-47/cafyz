@@ -1,6 +1,6 @@
 # App Store recovery — live status & handoff
 
-**Last updated:** 2026-10-23 16:40 (session 1) — ALL THREE RESUBMITTED
+**Last updated:** 2026-10-23 17:55 (session 1) — ALL FOUR IN REVIEW
 **Purpose:** Full state so any new session / account can resume with zero re-investigation.
 **Apple account:** Ameen Khan — Ametronyx. Team ID `647MZ9QGZJ`.
 
@@ -13,7 +13,21 @@
 | **Cafyz** | iOS 1.0 (2) — **Waiting for Review** |
 | **Coorg Trade** | iOS 1.0 (4) — **Waiting for Review** |
 | **FitCore Plus** | iOS 1.0.8 (11) — **Waiting for Review** |
-| CREDI8 | iOS 1.0 — still Rejected, 4.3 thread unanswered |
+| **CREDI8** | iOS 1.0 (2) — **Waiting for Review** |
+
+Nothing on the account is rejected any more. AxPro ERP and Ametronyx stay live.
+
+**CREDI8** (ASC 6791469433, submission `d6ffe14c-0dbe-401c-94d3-76086dfafd42`):
+9-answer reply sent 17:48 with `CREDI8-App-Review-answers.pdf`, then resubmitted.
+It is a credit book (khata/udhaar) for shops selling to regular customers on
+credit — balances with due dates, part payments, overdue/pending/paid filters,
+WhatsApp or SMS reminders with the amount pre-filled, monthly reminder
+schedule, contact and CSV/Excel import. Source: `alameen-47/CREDI8_Latest`
+(private). Stack verified from its package.json: Capacitor, React, MUI,
+Radix UI, Tailwind, Recharts, `@capacitor-community/contacts`,
+`@capgo/capacitor-social-login`. Its README is a Figma Make bundle header, and
+its package name is `@figma/my-make-file` — the same scaffold label renamed in
+the other repos; worth renaming there too.
 
 ### How the resubmit was done (the button path is not obvious)
 "Resubmit to App Review" on the submission page is **disabled** while the item
