@@ -97,13 +97,48 @@ projects are marked **Warned / Appeal**. Not touched.
   `https://cafyz.onrender.com/health` every 10 minutes, same as Coorg's.
   Health is at **`/health`** (root), not `/api/health` — Render's
   `healthCheckPath` in `render.yaml`; `/api/health` returns 404.
-  ⚠️ **A GitHub Actions workflow only runs once it is pushed to GitHub.**
-  Until `git push`, Cafyz's API still sleeps. Note too that scheduled
+  ✅ **Pushed and verified live** (23 Oct): the workflow shows as *active* on
+  GitHub and a manual `workflow_dispatch` run finished `✓ ping in 2s`.
+  Note that scheduled
   workflows are auto-disabled after 60 days of repo inactivity, and free-tier
   cron can drift by 10+ minutes — a paid always-on Render plan is the only
   hard guarantee during review.
 - **FitCore:** no keep-awake workflow either; its API is on a different host
   (`fitcore.ametronyx.com`) and was not measured. Worth checking.
+
+---
+
+## 0c. ⚠️ SECURITY — reviewer password is public (pre-existing)
+
+**`cafyz` is a PUBLIC GitHub repo**, and the App Review demo password
+`CafyzReview2026!` is committed in it in ~10 places, including as a hardcoded
+fallback in server source:
+
+```
+backend/src/services/ensureStoreDemo.ts
+  const DEMO_PASSWORD = process.env.STORE_DEMO_PASSWORD ?? 'CafyzReview2026!';
+```
+
+Also in `backend/.env.example`, `store-release/CHECKLIST.md`,
+`store-release/android/metadata.md`, `store-release/demo-account.md`, the
+screenshot scripts and the tests. It dates back to commit `1abe0a0`, long
+before this session.
+
+Unless `STORE_DEMO_PASSWORD` is set on Render, that string **is** the live
+password for `reviewer@cafyz.com`, which has full owner access to the demo
+restaurant on production.
+
+**To fix properly:**
+1. Set a strong `STORE_DEMO_PASSWORD` on Render and update App Store Connect →
+   App Review Information with the new value.
+2. Remove the hardcoded fallback in `ensureStoreDemo.ts` — fail closed rather
+   than defaulting to a known password.
+3. Treat the old string as burned. Scrubbing git history is optional (it is
+   already public and indexed); rotating the secret is what actually matters.
+
+Coorg Trade and FitCore are private repos, so the same pattern is lower risk
+there, but worth the same treatment.
+
 
 ---
 
