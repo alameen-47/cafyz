@@ -1,12 +1,53 @@
 # App Store recovery — live status & handoff
 
-**Last updated:** 2026-10-23 15:45 (session 1) — REPLIES SENT + HYGIENE FIXES
+**Last updated:** 2026-10-23 16:40 (session 1) — ALL THREE RESUBMITTED
 **Purpose:** Full state so any new session / account can resume with zero re-investigation.
 **Apple account:** Ameen Khan — Ametronyx. Team ID `647MZ9QGZJ`.
 
 ---
 
-## 0. WHAT WAS DONE TODAY (2026-10-23)
+## 0. CURRENT STATE — ALL THREE IN REVIEW (23 Oct, 16:35)
+
+| App | Status |
+|---|---|
+| **Cafyz** | iOS 1.0 (2) — **Waiting for Review** |
+| **Coorg Trade** | iOS 1.0 (4) — **Waiting for Review** |
+| **FitCore Plus** | iOS 1.0.8 (11) — **Waiting for Review** |
+| CREDI8 | iOS 1.0 — still Rejected, 4.3 thread unanswered |
+
+### How the resubmit was done (the button path is not obvious)
+"Resubmit to App Review" on the submission page is **disabled** while the item
+is Rejected. The working path is:
+1. App version page (`/distribution/ios/version/inflight`) → **Update Review**
+   → item flips from *Rejected* to *Ready for Review*.
+2. Back on the submission page → **Resubmit to App Review** → *Waiting for Review*.
+
+Coorg Trade showed a **"Newer Build Available"** dialog on step 1. Build 1.0 (4)
+— the one the 4.3 reply describes — was submitted. To ship the newer build
+instead: delete the attached build on the version page, add the newer one,
+then repeat the two steps above.
+
+The 4.3 replies sent at 15:24 / 15:28 remain in both threads, so the reviewer
+sees the answers alongside the resubmission.
+
+### ⚠️ Decided by Ameen: sign-in details stay as they are
+No password rotation. The same reviewer credentials are used across all store
+submissions. §0c/§0d below describe the exposure and are kept for the record,
+but **do not rotate** — that is a deliberate decision, not an oversight.
+
+**One loose end this creates:** `render.yaml` never defined
+`STORE_DEMO_PASSWORD` and Render does not have it set (a login with the
+committed password returned 200). Today's commit `b49da9c` removed the
+hardcoded fallback, so on the next Render deploy `ensureStoreDemoAccount` logs
+`demo account disabled` and stops re-syncing the premium plan, licence and demo
+data. The reviewer login itself keeps working — the hash is already in the
+database — but to restore the sync without changing any credential:
+**Render → `cafyz-api` → Environment → add `STORE_DEMO_PASSWORD` = the same
+password already in use.**
+
+---
+
+## 0a. WHAT WAS DONE TODAY (2026-10-23)
 
 **Both 4.3 replies are SENT.** Verified in the threads:
 
