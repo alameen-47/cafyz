@@ -27,7 +27,14 @@ function resolveApiBase(): string {
 
 const BASE = resolveApiBase();
 let sessionToastShown = false;
-const REQUEST_TIMEOUT_MS = 30_000;
+// The API sleeps on Render's free tier after 15 idle minutes, and the first
+// request then waits while it boots — measured at 51.9 s on cafyz.onrender.com,
+// and Render's own figure is "about a minute". At the old 30 s this aborted
+// before the server ever answered, so the first person to open the app after a
+// quiet spell was told to check their internet. A request to a host that is
+// genuinely unreachable still fails fast, because fetch rejects outright rather
+// than hanging; this budget only applies once the connection is accepted.
+const REQUEST_TIMEOUT_MS = 75_000;
 const inflightGets = new Map<string, Promise<unknown>>();
 
 /** Dispatched when the API returns 402 TRIAL_EXPIRED — App listens to lock the shell. */
@@ -118,7 +125,7 @@ async function request<T = unknown>(
     });
   } catch (e) {
     if ((e as Error).name === 'AbortError') {
-      throw new Error('Request timed out — check your connection and try again.');
+      throw new Error('Cafyz is taking longer than usual to respond. Please try again in a moment.');
     }
     // fetch() rejects with a bare "Failed to fetch" / "Load failed" when there's no network.
     throw new Error("Can't reach Cafyz — check your internet connection and try again.");
