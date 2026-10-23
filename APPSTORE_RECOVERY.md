@@ -422,6 +422,37 @@ when the process is down.
 
 ---
 
+## 0h. The real cold-start bug (23 Oct) — the client gave up first
+
+Waking the server was never the whole problem. A reviewer's request **does**
+wake it; the question is whether the app waits long enough to see the answer.
+
+| App | Client timeout | Cold start | Result |
+|---|---|---|---|
+| **Cafyz** | was **30 s** | **51.9 s measured** | **FAILED** — "check your connection" ~22 s before the server replied |
+| **Coorg Trade** | was 45 s | ~30 s, Render says "about a minute" | marginal, could abort on a slow wake |
+| CREDI8 | none (plain `fetch`, no AbortController) | — | never falsely errors; just a long spinner |
+
+Both raised to **75 s**, and the timeout messages no longer blame the user's
+internet ("…is taking longer than usual to respond"). A host that is genuinely
+unreachable still fails fast, because `fetch` rejects outright instead of
+hanging — the 75 s only applies once the connection is accepted.
+
+- `cafyz/web-v2/src/services/api.ts` — `REQUEST_TIMEOUT_MS`
+- `Coorg_Buisness_Management/src/lib/api.ts` — `TIMEOUT_MS`
+
+Verified: Cafyz web build succeeds; `tsc` reports 23 errors both with and
+without the change (all pre-existing, none in `api.ts`). Coorg's build could
+not be run locally — `.mise.toml` pins Node 22 and this machine has 20.19.6,
+so `pnpm install` fails. The change there is one constant and one string.
+
+**This matters more than the keep-awake work.** Keep-awake reduces how often a
+cold start happens; this fix decides whether a cold start looks like a slow app
+or a broken one. Note it reaches Apple only in a new build.
+
+
+---
+
 ## 1. THE HEADLINE (read this first)
 
 **Nothing is "stuck in review." Three apps are REJECTED under Guideline 4.3.0
