@@ -6,28 +6,27 @@
 
 ---
 
-## 0. CURRENT STATE — ALL THREE IN REVIEW (23 Oct, 16:35)
+## 0. CURRENT STATE — 23 Oct, 20:22
 
-| App | Status |
-|---|---|
-| **Cafyz** | iOS 1.0 (2) — **Waiting for Review** |
-| **Coorg Trade** | iOS 1.0 (4) — **Waiting for Review** |
-| **FitCore Plus** | iOS 1.0.8 (11) — **Waiting for Review** |
-| **CREDI8** | iOS 1.0 (2) — **Waiting for Review** |
+| App | Build in review | Status |
+|---|---|---|
+| **FitCore Plus** | 1.0.8 (11) | **In Review** — a reviewer has it open now |
+| **Cafyz** | **1.0 (3)** — has the cold-start fix | Waiting for Review |
+| **Coorg Trade** | **1.0 (6)** — has the cold-start fix | Waiting for Review |
+| **CREDI8** | 1.0 (2) | Waiting for Review |
 
-Nothing on the account is rejected any more. AxPro ERP and Ametronyx stay live.
+Nothing on the account is rejected. AxPro ERP and Ametronyx stay live.
 
-**CREDI8** (ASC 6791469433, submission `d6ffe14c-0dbe-401c-94d3-76086dfafd42`):
-9-answer reply sent 17:48 with `CREDI8-App-Review-answers.pdf`, then resubmitted.
-It is a credit book (khata/udhaar) for shops selling to regular customers on
-credit — balances with due dates, part payments, overdue/pending/paid filters,
-WhatsApp or SMS reminders with the amount pre-filled, monthly reminder
-schedule, contact and CSV/Excel import. Source: `alameen-47/CREDI8_Latest`
-(private). Stack verified from its package.json: Capacitor, React, MUI,
-Radix UI, Tailwind, Recharts, `@capacitor-community/contacts`,
-`@capgo/capacitor-social-login`. Its README is a Figma Make bundle header, and
-its package name is `@figma/my-make-file` — the same scaffold label renamed in
-the other repos; worth renaming there too.
+**Cafyz and Coorg were resubmitted on the NEW builds** (23 Oct ~20:16/20:20):
+the earlier submissions were cancelled, the build swapped on the version page,
+then Add for Review → Submit for Review. Queue position was restarted
+deliberately — a reviewer meeting the 30 s timeout bug was the bigger risk.
+
+⚠️ **Coorg's new build is 6, not 5.** Builds 5 and 6 already existed in
+TestFlight from early October, so the bump from 3 → 5 collided; the upload
+landed as 1.0 (6) (Upload Date 23 Oct 8:10 PM, Binary State Validated).
+**Check TestFlight for the highest existing build number before bumping** —
+`project.pbxproj` was two builds behind what App Store Connect already had.
 
 ### How the resubmit was done (the button path is not obvious)
 "Resubmit to App Review" on the submission page is **disabled** while the item
