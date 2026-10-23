@@ -453,6 +453,47 @@ or a broken one. Note it reaches Apple only in a new build.
 
 ---
 
+## 0i. New builds with the cold-start fix (23 Oct)
+
+| App | New build | Carries |
+|---|---|---|
+| Cafyz | **1.0 (3)** | 75 s client timeout (was 30 s), honest timeout message, self-ping keep-awake |
+| Coorg Trade | **1.0 (5)** | 75 s client timeout (was 45 s), honest message, self-ping keep-awake |
+
+Both archived and exported successfully, signed **Cloud Managed Apple
+Distribution**. Uploaded to App Store Connect via
+`xcodebuild -exportArchive` with `destination: upload`.
+
+### The builds under review were NOT touched
+Cafyz 1.0 (2) and Coorg 1.0 (4) are still the submitted builds and both apps
+remain *Waiting for Review*. Uploading a new build does not disturb an existing
+submission. To actually ship the fix, the submission has to be cancelled, the
+new build attached on the version page, and the app resubmitted — **which loses
+queue position**, so it is a deliberate choice, not automatic.
+
+### Build notes for next time
+- **Cafyz** uses CocoaPods, and `npx cap sync ios` fails at `pod install`
+  because the repo's `Gemfile` pins cocoapods 1.15.2 while Homebrew has 1.16.2.
+  Run it bypassing Bundler:
+  ```
+  env -u BUNDLE_GEMFILE -u RUBYOPT LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8 \
+    /opt/homebrew/bin/pod install
+  ```
+- **Coorg** uses Swift Package Manager, so no pod step. But `cap sync` needs
+  **Node >= 22** and this machine had 16/18/20; `nvm install 22` fixed it. Its
+  `pnpm` binary is also broken (MODULE_NOT_FOUND after an nvm switch) — use
+  `npx -y pnpm@10.34.3` instead. The vite build itself runs fine on Node 20.
+- **Coorg had no `DEVELOPMENT_TEAM`** in `project.pbxproj`, only
+  `CODE_SIGN_STYLE = Automatic`, so archiving failed with "Signing for App
+  requires a development team". Now set to `647MZ9QGZJ`, matching Cafyz and
+  FitCore. Earlier builds must have been made by picking the team in Xcode.
+- Signing works with `-allowProvisioningUpdates`: Xcode has a usable account
+  and issues a **cloud managed** distribution certificate on demand. There is
+  no local Apple Distribution cert in the keychain, and none is needed.
+
+
+---
+
 ## 1. THE HEADLINE (read this first)
 
 **Nothing is "stuck in review." Three apps are REJECTED under Guideline 4.3.0
