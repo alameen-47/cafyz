@@ -499,6 +499,39 @@ queue position**, so it is a deliberate choice, not automatic.
 
 ---
 
+## 0j. FitCore checked (23 Oct, while it was In Review)
+
+**No timeout bug.** `src/lib/api.ts` uses a plain `fetch` with no
+AbortController, like CREDI8, so a cold start is a long spinner, never a false
+"check your connection". Nothing to fix there.
+
+**Its API does sleep**, though: `fitcore-gym-management-rou5.onrender.com`,
+Render free tier, with no keep-awake and no GitHub workflow. It measured
+**0.62 s** when probed — warm only because a reviewer was using it at the time.
+
+Added the same opt-in self-ping at `server/src/jobs/keepAwake.js`, wired into
+`server/src/index.js`, pinging `/api/health`. Smoke-tested against a local
+server. **Off unless `KEEP_AWAKE=true`**, and this is now a *fourth* free
+service, so the 750-hour budget is tighter than ever — see §0g.
+
+Unlike the client-side timeout fixes, this one **takes effect on the next
+Render deploy with no new build and no resubmission**, because it runs on the
+server rather than in the app.
+
+### Keep-awake coverage now
+| Service | Self-ping in code | Enabled on Render |
+|---|---|---|
+| cafyz-api | yes | **not yet — needs `KEEP_AWAKE=true`** |
+| Coorg API | yes | **not yet** |
+| credi8-backend | yes | **not yet** |
+| FitCore API | yes | **not yet** |
+
+None of them is actually keeping itself awake until the env var is set in the
+Render dashboard.
+
+
+---
+
 ## 1. THE HEADLINE (read this first)
 
 **Nothing is "stuck in review." Three apps are REJECTED under Guideline 4.3.0
