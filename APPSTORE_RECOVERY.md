@@ -265,6 +265,55 @@ history is optional and does not un-publish it; **rotating is the fix.**
 
 ---
 
+## 0e. Firebase service-account keys (23 Oct, outside the App Store work)
+
+Five Firebase **admin** service-account keys were loose in `~/Downloads`.
+The Admin SDK bypasses Firestore and Storage security rules entirely, so each
+one is full read/write on its project plus auth-user and FCM control.
+
+**Moved** to `~/.credentials/<project>/`, dir `700`, files `600`:
+
+| Project | Key IDs |
+|---|---|
+| `credi8-73f30` | `1d0911cb15…`, `ccb51d4e24…` |
+| `ccg-track` | `a306efd208…`, `b680547b35…` |
+| `asrar-al-asrar` | `b5dcf96bf9…` |
+
+Moving them only reduces accidental exposure. **It is not the fix.**
+
+### One is committed to a repo
+`alameen-47/CREDI8_Latest` (**private**, 0 forks) contains
+`backend/credi8-73f30-firebase-adminsdk-fbsvc-1d0911cb15.json`, added
+2026-07-14 in `dfd6b285` ("Add support for SMS reminders via native SmsManager
+and FCM integration"). `backend/.gitignore` already lists
+`*firebase-adminsdk*.json` — the rule was added after the file was tracked, and
+gitignore does not untrack. Note `alameen-47/CREDI8` is **public** and nearly
+the same name; one wrong visibility toggle exposes the private one's history.
+
+### Do NOT delete the repo copy yet
+`backend/src/config/firebase.js` loads the credential from
+`FIREBASE_SERVICE_ACCOUNT_PATH` and throws if unset. The gitignore comment says
+production should use a **Render Secret File** — but that is unverified. If that
+env var points at the committed file instead, deleting it breaks SMS reminders
+and FCM, and **CREDI8 is in App Review now**. Confirm the Render Secret File
+first, then remove the tracked file.
+
+### The actual fix (blocked — needs a different Google account)
+The Google account signed in to Chrome **cannot access `credi8-73f30`**
+(missing `iam.serviceAccounts.list`, `resourcemanager.projects.get`) — the same
+wall as the Coorg OAuth project 278037584713. So rotation must be done from the
+account that owns these projects:
+1. Create a new key for `firebase-adminsdk-fbsvc@credi8-73f30.iam.gserviceaccount.com`.
+2. Deploy it as a Render Secret File, set `FIREBASE_SERVICE_ACCOUNT_PATH` to it.
+3. Verify SMS reminders and push still work.
+4. **Then delete key IDs `1d0911cb15…` and `ccb51d4e24…`.**
+5. `git rm --cached` the committed file.
+
+Step 4 is what actually closes it; the key stays in git history regardless.
+
+
+---
+
 ## 1. THE HEADLINE (read this first)
 
 **Nothing is "stuck in review." Three apps are REJECTED under Guideline 4.3.0
