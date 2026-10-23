@@ -140,13 +140,16 @@ export async function ensureStoreDemoAccount(): Promise<void> {
   }
   const { email: DEMO_EMAIL, password: DEMO_PASSWORD, phone: DEMO_PHONE, owner: DEMO_OWNER, restaurant: DEMO_RESTAURANT } = demoConfig();
 
-  if (!DEMO_PASSWORD || DEMO_PASSWORD.length < 8) {
-    console.warn('[StoreDemo] STORE_DEMO_PASSWORD missing or < 8 chars — demo account disabled');
-    return;
+  // With no usable password we can still keep an existing reviewer account in
+  // shape — plan, licence, menu, tables — and simply leave its password as it
+  // is. Only creating one from scratch actually needs the password.
+  const canSetPassword = Boolean(DEMO_PASSWORD) && DEMO_PASSWORD.length >= 8;
+  if (!canSetPassword) {
+    console.warn('[StoreDemo] STORE_DEMO_PASSWORD missing or < 8 chars — leaving the existing password untouched');
   }
 
   const db = getDb();
-  const hash = await bcrypt.hash(DEMO_PASSWORD, 10);
+  const hash = canSetPassword ? await bcrypt.hash(DEMO_PASSWORD, 10) : null;
   const initials = DEMO_OWNER.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2) || 'AR';
 
   const byEmail = await db.execute({
@@ -159,8 +162,12 @@ export async function ensureStoreDemoAccount(): Promise<void> {
     const userId = String(row.id);
     const restaurantId = String(row.restaurant_id);
     await db.execute({
-      sql: `UPDATE users SET password_hash=?, phone=?, role='owner', status='active', name=? WHERE id=?`,
-      args: [hash, DEMO_PHONE, DEMO_OWNER, userId],
+      sql: hash
+        ? `UPDATE users SET password_hash=?, phone=?, role='owner', status='active', name=? WHERE id=?`
+        : `UPDATE users SET phone=?, role='owner', status='active', name=? WHERE id=?`,
+      args: hash
+        ? [hash, DEMO_PHONE, DEMO_OWNER, userId]
+        : [DEMO_PHONE, DEMO_OWNER, userId],
     });
     await db.execute({
       sql: `UPDATE restaurants SET name=?, plan=?, access_paused=0 WHERE id=?`,
@@ -170,6 +177,11 @@ export async function ensureStoreDemoAccount(): Promise<void> {
     await ensureDemoMenu(restaurantId);
     await ensureDemoTables(restaurantId);
     console.log(`[StoreDemo] Synced reviewer account ${DEMO_EMAIL}`);
+    return;
+  }
+
+  if (!hash) {
+    console.warn('[StoreDemo] No reviewer account yet and no STORE_DEMO_PASSWORD — cannot create one');
     return;
   }
 

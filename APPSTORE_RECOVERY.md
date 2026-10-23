@@ -35,15 +35,18 @@ No password rotation. The same reviewer credentials are used across all store
 submissions. §0c/§0d below describe the exposure and are kept for the record,
 but **do not rotate** — that is a deliberate decision, not an oversight.
 
-**One loose end this creates:** `render.yaml` never defined
-`STORE_DEMO_PASSWORD` and Render does not have it set (a login with the
-committed password returned 200). Today's commit `b49da9c` removed the
-hardcoded fallback, so on the next Render deploy `ensureStoreDemoAccount` logs
-`demo account disabled` and stops re-syncing the premium plan, licence and demo
-data. The reviewer login itself keeps working — the hash is already in the
-database — but to restore the sync without changing any credential:
-**Render → `cafyz-api` → Environment → add `STORE_DEMO_PASSWORD` = the same
-password already in use.**
+**Resolved in code — no Render change needed.** Removing the hardcoded
+fallback in `b49da9c` would have stopped `ensureStoreDemoAccount` re-syncing
+the premium plan, licence and demo data on the next deploy, because Render has
+no `STORE_DEMO_PASSWORD` set. `ensureStoreDemoAccount` now treats the password
+as optional for an **existing** account: it syncs plan, licence, menu and
+tables as before and simply leaves the stored password alone, logging
+`leaving the existing password untouched`. Only **creating** a reviewer account
+from scratch still needs `STORE_DEMO_PASSWORD`, and it bails with a clear
+message if there is none. Covered by a test; suite is 212 passing.
+
+So the reviewer credentials are unchanged, the demo restaurant stays on the
+premium plan for App Review, and nothing has to be typed into Render.
 
 ---
 
