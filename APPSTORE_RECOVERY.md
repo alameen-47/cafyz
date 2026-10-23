@@ -91,13 +91,17 @@ projects are marked **Warned / Appeal**. Not touched.
 - **Coorg Trade: already solved.** Commit `6006c70` added
   `.github/workflows/keep-api-awake.yml`, which pings the API every 10 minutes.
   Confirmed live: `/api/auth/config` answered instantly.
-- **Cafyz: NOT solved, and it is the live risk.** `cafyz.onrender.com` took
-  **51.9 seconds** to answer a request today — a cold start from sleep. Cafyz
-  has no keep-awake workflow (`.github/workflows/` holds only
-  `desktop-build.yml`). The reviewer demo login goes through that API, so a
-  reviewer could open the app, wait ~52 s on a blank screen and reject it on
-  that alone. **Fix before any Cafyz resubmit** — either copy Coorg's
-  `keep-api-awake.yml` or move the instance to a paid always-on plan.
+- **Cafyz: fixed in the repo, BUT NOT LIVE UNTIL PUSHED.**
+  `cafyz.onrender.com` took **51.9 seconds** to answer a cold request today.
+  `.github/workflows/keep-api-awake.yml` now pings
+  `https://cafyz.onrender.com/health` every 10 minutes, same as Coorg's.
+  Health is at **`/health`** (root), not `/api/health` — Render's
+  `healthCheckPath` in `render.yaml`; `/api/health` returns 404.
+  ⚠️ **A GitHub Actions workflow only runs once it is pushed to GitHub.**
+  Until `git push`, Cafyz's API still sleeps. Note too that scheduled
+  workflows are auto-disabled after 60 days of repo inactivity, and free-tier
+  cron can drift by 10+ minutes — a paid always-on Render plan is the only
+  hard guarantee during review.
 - **FitCore:** no keep-awake workflow either; its API is on a different host
   (`fitcore.ametronyx.com`) and was not measured. Worth checking.
 
