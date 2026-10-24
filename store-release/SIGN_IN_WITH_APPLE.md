@@ -46,7 +46,8 @@ in the provisioning profile.
 
 ### 3. Set the backend env var on Render
 
-`cafyz-api` → Environment:
+The service is named `cafyz` in the dashboard (it serves cafyz.onrender.com),
+not `cafyz-api` as `render.yaml` says — it was created by hand. → Environment:
 
 ```
 APPLE_CLIENT_ID_IOS=com.cafyz.app
