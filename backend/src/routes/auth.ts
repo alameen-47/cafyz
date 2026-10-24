@@ -1,4 +1,4 @@
-import { Router } from 'express';
+import { Router, type Response, type RequestHandler } from 'express';
 import bcrypt from 'bcryptjs';
 import { createHash, randomBytes, timingSafeEqual } from 'crypto';
 import { z } from 'zod';
@@ -17,6 +17,7 @@ import { resetPasswordUrl, TRIAL_DAYS } from '../config/site.js';
 import { isEmailConfigured, sendMailReliable, smtpFrom } from '../services/email.js';
 import { isValidPhoneE164, normalizePhone, sendOtpSms } from '../services/sms.js';
 import { googleIosClientId, googleWebClientId, isGoogleAuthConfigured, verifyGoogleIdToken } from '../services/googleAuth.js';
+import { appleIosClientId, isAppleAuthConfigured, verifyAppleIdToken } from '../services/appleAuth.js';
 import { createTrialRestaurant, TOP_PLAN } from '../services/trialSignup.js';
 import { accountDeletionDate, formatDeletionDate } from '../services/accountDeletion.js';
 import jwt from 'jsonwebtoken';
@@ -689,27 +690,33 @@ router.post('/account/cancel-deletion', requireAuth, async (req: AuthRequest, re
 // Cafyz account. A new Google user gets a short-lived signup token instead and
 // finishes with /google/signup, which starts a trial restaurant on the top plan.
 
-const GOOGLE_SELECT_TTL_SEC = 300;
+// Google and Sign in with Apple differ only in how the email is proven; once an
+// identity provider has vouched for an address the rest of the flow is the same,
+// so the tokens and handlers below are shared. The purpose claim still names the
+// provider, so a token minted for one can never be replayed against the other.
+type SocialProvider = 'google' | 'apple';
 
-interface GoogleSelectClaims { email: string; purpose: 'google_select' }
+const SOCIAL_SELECT_TTL_SEC = 300;
 
-function signGoogleSelectToken(email: string): string {
+interface SocialSelectClaims { email: string; purpose: `${SocialProvider}_select` }
+
+function signSocialSelectToken(provider: SocialProvider, email: string): string {
   return jwt.sign(
-    { email, purpose: 'google_select' } satisfies GoogleSelectClaims,
+    { email, purpose: `${provider}_select` } satisfies SocialSelectClaims,
     JWT_SECRET,
-    { expiresIn: GOOGLE_SELECT_TTL_SEC },
+    { expiresIn: SOCIAL_SELECT_TTL_SEC },
   );
 }
 
-const GOOGLE_SIGNUP_TTL_SEC = 15 * 60;
+const SOCIAL_SIGNUP_TTL_SEC = 15 * 60;
 
-interface GoogleSignupClaims { email: string; name?: string; purpose: 'google_signup' }
+interface SocialSignupClaims { email: string; name?: string; purpose: `${SocialProvider}_signup` }
 
-function signGoogleSignupToken(email: string, name?: string): string {
+function signSocialSignupToken(provider: SocialProvider, email: string, name?: string): string {
   return jwt.sign(
-    { email, name, purpose: 'google_signup' } satisfies GoogleSignupClaims,
+    { email, name, purpose: `${provider}_signup` } satisfies SocialSignupClaims,
     JWT_SECRET,
-    { expiresIn: GOOGLE_SIGNUP_TTL_SEC },
+    { expiresIn: SOCIAL_SIGNUP_TTL_SEC },
   );
 }
 
@@ -757,53 +764,67 @@ router.post('/google', async (req, res, next) => {
       return;
     }
 
-    const rows = await findUsersForLogin({ kind: 'email', value: identity.email });
-    const active = rows.rows.filter((r) => String((r as Record<string, unknown>).status) !== 'off');
-
-    if (!active.length) {
-      if (rows.rows.length) {
-        res.status(403).json({ error: 'This user is currently inactive. Contact your manager.' });
-        return;
-      }
-      // A new Google user can start a trial right away. Google proved the address, but the
-      // restaurant details are unknown, so hand back a short-lived signup token and let the
-      // client ask for them (POST /google/signup). Nothing is created yet.
-      res.json({
-        status: 'signup_required' as const,
-        signup_token: signGoogleSignupToken(identity.email, identity.name),
-        email: identity.email,
-        name: identity.name ?? '',
-        trial_days: TRIAL_DAYS,
-      });
-      return;
-    }
-
-    if (active.length > 1) {
-      // The same email can belong to accounts in several restaurants, and Google
-      // proves only the address — so the user picks which one to enter. This is
-      // a normal outcome, not an error, so it is a 200 with a discriminator.
-      res.json({
-        status: 'choose_account' as const,
-        selection_token: signGoogleSelectToken(identity.email),
-        accounts: active.map((r) => {
-          const u = r as Record<string, unknown>;
-          return {
-            restaurant_id: u.restaurant_id,
-            restaurant_name: u.restaurant_name,
-            role: u.role,
-            name: u.name,
-          };
-        }),
-      });
-      return;
-    }
-
-    const user = await issueLoginSession(getDb(), String((active[0] as Record<string, unknown>).id));
-    res.json(sessionResponse(user));
+    await respondToSocialLogin(res, 'google', identity.email, identity.name);
   } catch (e) { next(e); }
 });
 
-const GoogleSignupSchema = z.object({
+/**
+ * Turn a provider-proven email into one of three outcomes: a session, a choice
+ * of restaurant, or an invitation to start a trial. Shared by Google and Apple
+ * so both behave identically once the address is proven.
+ */
+async function respondToSocialLogin(
+  res: Response,
+  provider: SocialProvider,
+  email: string,
+  name?: string,
+): Promise<void> {
+  const rows = await findUsersForLogin({ kind: 'email', value: email });
+  const active = rows.rows.filter((r) => String((r as Record<string, unknown>).status) !== 'off');
+
+  if (!active.length) {
+    if (rows.rows.length) {
+      res.status(403).json({ error: 'This user is currently inactive. Contact your manager.' });
+      return;
+    }
+    // A new user can start a trial right away. The provider proved the address, but the
+    // restaurant details are unknown, so hand back a short-lived signup token and let the
+    // client ask for them (POST /<provider>/signup). Nothing is created yet.
+    res.json({
+      status: 'signup_required' as const,
+      signup_token: signSocialSignupToken(provider, email, name),
+      email,
+      name: name ?? '',
+      trial_days: TRIAL_DAYS,
+    });
+    return;
+  }
+
+  if (active.length > 1) {
+    // The same email can belong to accounts in several restaurants, and the provider
+    // proves only the address — so the user picks which one to enter. This is
+    // a normal outcome, not an error, so it is a 200 with a discriminator.
+    res.json({
+      status: 'choose_account' as const,
+      selection_token: signSocialSelectToken(provider, email),
+      accounts: active.map((r) => {
+        const u = r as Record<string, unknown>;
+        return {
+          restaurant_id: u.restaurant_id,
+          restaurant_name: u.restaurant_name,
+          role: u.role,
+          name: u.name,
+        };
+      }),
+    });
+    return;
+  }
+
+  const user = await issueLoginSession(getDb(), String((active[0] as Record<string, unknown>).id));
+  res.json(sessionResponse(user));
+}
+
+const SocialSignupSchema = z.object({
   signup_token: z.string().min(16).max(4096),
   restaurant_name: z.string().trim().min(2).max(80),
   owner_name: z.string().trim().min(2).max(80).optional(),
@@ -811,20 +832,21 @@ const GoogleSignupSchema = z.object({
   timezone: z.string().max(80).optional(),
 });
 
-// POST /api/auth/google/signup — a new Google user starts a trial restaurant on the top plan.
-router.post('/google/signup', async (req, res, next) => {
+// POST /api/auth/<provider>/signup — a new social user starts a trial restaurant on the top plan.
+function socialSignupHandler(provider: SocialProvider, label: string): RequestHandler {
+  return async (req, res, next) => {
   try {
-    const data = GoogleSignupSchema.parse(req.body);
+    const data = SocialSignupSchema.parse(req.body);
 
-    let claims: GoogleSignupClaims;
+    let claims: SocialSignupClaims;
     try {
-      claims = jwt.verify(data.signup_token, JWT_SECRET) as GoogleSignupClaims;
+      claims = jwt.verify(data.signup_token, JWT_SECRET) as SocialSignupClaims;
     } catch {
-      res.status(401).json({ error: 'That sign-up took too long. Please continue with Google again.' });
+      res.status(401).json({ error: `That sign-up took too long. Please continue with ${label} again.` });
       return;
     }
-    if (claims.purpose !== 'google_signup' || !claims.email) {
-      res.status(401).json({ error: 'That sign-up took too long. Please continue with Google again.' });
+    if (claims.purpose !== `${provider}_signup` || !claims.email) {
+      res.status(401).json({ error: `That sign-up took too long. Please continue with ${label} again.` });
       return;
     }
 
@@ -840,7 +862,7 @@ router.post('/google/signup', async (req, res, next) => {
       db.execute({ sql: 'SELECT id FROM users WHERE phone=? LIMIT 1', args: [phone] }),
     ]);
     if (emailTaken.rows.length) {
-      res.status(409).json({ error: 'Your restaurant is already set up. Continue with Google to sign in.', code: 'ACCOUNT_EXISTS' });
+      res.status(409).json({ error: `Your restaurant is already set up. Continue with ${label} to sign in.`, code: 'ACCOUNT_EXISTS' });
       return;
     }
     if (phoneTaken.rows.length) {
@@ -859,24 +881,29 @@ router.post('/google/signup', async (req, res, next) => {
     const user = await issueLoginSession(db, ownerId);
     res.status(201).json(sessionResponse(user));
   } catch (e) { next(e); }
-});
+  };
+}
 
-// POST /api/auth/google/select — finish sign-in after the user picks a restaurant.
-router.post('/google/select', async (req, res, next) => {
+router.post('/google/signup', socialSignupHandler('google', 'Google'));
+router.post('/apple/signup', socialSignupHandler('apple', 'Apple'));
+
+// POST /api/auth/<provider>/select — finish sign-in after the user picks a restaurant.
+function socialSelectHandler(provider: SocialProvider): RequestHandler {
+  return async (req, res, next) => {
   try {
     const { selection_token, restaurant_id } = z.object({
       selection_token: z.string().min(16).max(4096),
       restaurant_id: z.string().min(1).max(64),
     }).parse(req.body);
 
-    let claims: GoogleSelectClaims;
+    let claims: SocialSelectClaims;
     try {
-      claims = jwt.verify(selection_token, JWT_SECRET) as GoogleSelectClaims;
+      claims = jwt.verify(selection_token, JWT_SECRET) as SocialSelectClaims;
     } catch {
       res.status(401).json({ error: 'That sign-in attempt expired. Please try again.' });
       return;
     }
-    if (claims.purpose !== 'google_select' || !claims.email) {
+    if (claims.purpose !== `${provider}_select` || !claims.email) {
       res.status(401).json({ error: 'That sign-in attempt expired. Please try again.' });
       return;
     }
@@ -899,6 +926,50 @@ router.post('/google/select', async (req, res, next) => {
 
     const user = await issueLoginSession(getDb(), String(row.id));
     res.json(sessionResponse(user));
+  } catch (e) { next(e); }
+  };
+}
+
+router.post('/google/select', socialSelectHandler('google'));
+router.post('/apple/select', socialSelectHandler('apple'));
+
+// ── Sign in with Apple ─────────────────────────────────────────────────────────
+// Apple proves the address on iOS and hands back an identity token. Apple only
+// sends the user's name on the very first authorization and never again, so the
+// name is taken from the client when offered and is never required.
+
+// GET /api/auth/apple/config — lets clients hide the button when it is not set up.
+router.get('/apple/config', (_req, res) => {
+  res.json({
+    enabled: isAppleAuthConfigured(),
+    client_id: appleIosClientId(),
+    trial_days: TRIAL_DAYS,
+  });
+});
+
+// POST /api/auth/apple — exchange a verified Apple identity token for a session.
+router.post('/apple', async (req, res, next) => {
+  try {
+    if (!isAppleAuthConfigured()) {
+      res.status(503).json({ error: 'Sign in with Apple is not enabled.', code: 'APPLE_DISABLED' });
+      return;
+    }
+    const { id_token, name } = z.object({
+      id_token: z.string().min(16).max(8192),
+      name: z.string().trim().max(80).optional(),
+    }).parse(req.body);
+
+    let identity;
+    try {
+      identity = await verifyAppleIdToken(id_token);
+    } catch {
+      // As with Google, never echo the verifier's reason — it would let an
+      // attacker tell a bad signature from a wrong audience.
+      res.status(401).json({ error: 'Sign in with Apple failed. Please try again.' });
+      return;
+    }
+
+    await respondToSocialLogin(res, 'apple', identity.email, name);
   } catch (e) { next(e); }
 });
 

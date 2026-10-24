@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState, useCallback, type ReactNode } from 'react';
-import { authApi, restaurantApi, licensesApi, SESSION_EXPIRED_EVENT, SessionExpiredError, type LoginResponse, type GoogleAccountChoice } from '../services/api';
+import { authApi, restaurantApi, licensesApi, SESSION_EXPIRED_EVENT, SessionExpiredError, type LoginResponse, type SocialAccountChoice } from '../services/api';
 import { applyRestaurantCurrency } from '../utils/currency';
 import { syncRestaurantLogoCacheAsync } from '../services/restaurantLogoStorage';
 import { storageGet, storageRemove, storageSet } from '../utils/safeStorage';
@@ -28,13 +28,18 @@ export interface SignupData {
   timezone?: string;
 }
 
-export interface GoogleChoice {
+/** Which identity provider proved the address; the flow after that is identical. */
+export type SocialProvider = 'google' | 'apple';
+
+export interface SocialChoice {
+  provider: SocialProvider;
   selectionToken: string;
-  accounts: GoogleAccountChoice[];
+  accounts: SocialAccountChoice[];
 }
 
-/** A Google user new to Cafyz: they add their restaurant details, then the trial starts. */
-export interface GoogleSignup {
+/** A social user new to Cafyz: they add their restaurant details, then the trial starts. */
+export interface SocialSignup {
+  provider: SocialProvider;
   signupToken: string;
   email: string;
   name: string;
@@ -49,10 +54,10 @@ interface AuthCtx {
   requestOtp: (phone: string) => Promise<{ dev_otp?: string; message: string }>;
   verifyOtp: (phone: string, otp: string) => Promise<void>;
   /** Resolves with a chooser (email in several restaurants) or signup payload (new to Cafyz). */
-  loginGoogle: (idToken: string) => Promise<{ choose: GoogleChoice } | { signup: GoogleSignup } | null>;
-  signupGoogle: (signupToken: string, details: { restaurant_name: string; phone: string; owner_name?: string }) => Promise<void>;
+  loginSocial: (provider: SocialProvider, idToken: string, name?: string) => Promise<{ choose: SocialChoice } | { signup: SocialSignup } | null>;
+  signupSocial: (provider: SocialProvider, signupToken: string, details: { restaurant_name: string; phone: string; owner_name?: string }) => Promise<void>;
 
-  loginGoogleSelect: (selectionToken: string, restaurantId: string) => Promise<void>;
+  loginSocialSelect: (provider: SocialProvider, selectionToken: string, restaurantId: string) => Promise<void>;
   signup: (data: SignupData) => Promise<void>;
   logout: () => void;
   /** Sync plan (and restaurant name) from API after founder approves renewal. */
@@ -240,27 +245,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await complete(d);
   };
 
-  // Google sign-in. A 409 is not an error: the address matches accounts in more
-  // than one restaurant, so the caller shows a picker and finishes via select().
-  const loginGoogle = async (idToken: string) => {
-    const d = await authApi.google(idToken);
+  // Google and Sign in with Apple share this flow: the provider proves an email
+  // and the three outcomes are identical. "choose_account" is not an error — the
+  // address matches accounts in more than one restaurant, so the caller shows a
+  // picker and finishes via select().
+  const loginSocial = async (provider: SocialProvider, idToken: string, name?: string) => {
+    const d = provider === 'apple' ? await authApi.apple(idToken, name) : await authApi.google(idToken);
     if (d.status === 'choose_account') {
-      return { choose: { selectionToken: d.selection_token, accounts: d.accounts } };
+      return { choose: { provider, selectionToken: d.selection_token, accounts: d.accounts } };
     }
     if (d.status === 'signup_required') {
-      return { signup: { signupToken: d.signup_token, email: d.email, name: d.name, trialDays: d.trial_days } };
+      return { signup: { provider, signupToken: d.signup_token, email: d.email, name: d.name, trialDays: d.trial_days } };
     }
     await complete(d);
     return null;
   };
-  const signupGoogle = async (signupToken: string, details: { restaurant_name: string; phone: string; owner_name?: string }) => {
+  const signupSocial = async (provider: SocialProvider, signupToken: string, details: { restaurant_name: string; phone: string; owner_name?: string }) => {
     let timezone: string | undefined;
     try { timezone = Intl.DateTimeFormat().resolvedOptions().timeZone; } catch { /* server defaults to UTC */ }
-    const d = await authApi.googleSignup({ signup_token: signupToken, ...details, timezone });
+    const body = { signup_token: signupToken, ...details, timezone };
+    const d = provider === 'apple' ? await authApi.appleSignup(body) : await authApi.googleSignup(body);
     await complete(d);
   };
-  const loginGoogleSelect = async (selectionToken: string, restaurantId: string) => {
-    const d = await authApi.googleSelect(selectionToken, restaurantId);
+  const loginSocialSelect = async (provider: SocialProvider, selectionToken: string, restaurantId: string) => {
+    const d = provider === 'apple'
+      ? await authApi.appleSelect(selectionToken, restaurantId)
+      : await authApi.googleSelect(selectionToken, restaurantId);
     await complete(d);
   };
 
@@ -324,7 +334,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   return (
-    <Ctx.Provider value={{ user, loading, loginEmail, loginPin, requestOtp, verifyOtp, loginGoogle, loginGoogleSelect, signupGoogle, signup, logout, refreshPlan }}>
+    <Ctx.Provider value={{ user, loading, loginEmail, loginPin, requestOtp, verifyOtp, loginSocial, loginSocialSelect, signupSocial, signup, logout, refreshPlan }}>
       {children}
     </Ctx.Provider>
   );

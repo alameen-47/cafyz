@@ -235,12 +235,21 @@ export const authApi = {
   googleConfig: () =>
     get<{ enabled: boolean; client_id: string; ios_client_id: string; trial_days?: number }>('/api/auth/google/config'),
   google: (id_token: string) =>
-    post<GoogleLoginResult>('/api/auth/google', { id_token }),
+    post<SocialLoginResult>('/api/auth/google', { id_token }),
   googleSelect: (selection_token: string, restaurant_id: string) =>
     post<LoginResponse>('/api/auth/google/select', { selection_token, restaurant_id }),
   /** A new Google user finishes sign-up: creates their restaurant on a free trial and signs in. */
   googleSignup: (d: { signup_token: string; restaurant_name: string; phone: string; owner_name?: string; timezone?: string }) =>
     post<LoginResponse>('/api/auth/google/signup', d),
+
+  appleConfig: () =>
+    get<{ enabled: boolean; client_id: string; trial_days?: number }>('/api/auth/apple/config'),
+  apple: (id_token: string, name?: string) =>
+    post<SocialLoginResult>('/api/auth/apple', { id_token, ...(name ? { name } : {}) }),
+  appleSelect: (selection_token: string, restaurant_id: string) =>
+    post<LoginResponse>('/api/auth/apple/select', { selection_token, restaurant_id }),
+  appleSignup: (d: { signup_token: string; restaurant_name: string; phone: string; owner_name?: string; timezone?: string }) =>
+    post<LoginResponse>('/api/auth/apple/signup', d),
   me: () => get<ApiUser>('/api/auth/me'),
   updateProfile: (d: { name?: string; phone?: string; email?: string }) =>
     put<ApiUser>('/api/auth/profile', d),
@@ -575,13 +584,14 @@ export function loadGoogleIdentity(): Promise<boolean> {
 }
 
 /** Google sign-in either completes, or asks which restaurant to enter. */
-export type GoogleLoginResult =
+/** Google and Sign in with Apple return the same three outcomes. */
+export type SocialLoginResult =
   | ({ status: 'ok' } & LoginResponse)
-  | { status: 'choose_account'; selection_token: string; accounts: GoogleAccountChoice[] }
+  | { status: 'choose_account'; selection_token: string; accounts: SocialAccountChoice[] }
   | { status: 'signup_required'; signup_token: string; email: string; name: string; trial_days: number };
 
-/** One account a Google email maps to, when it matches more than one restaurant. */
-export interface GoogleAccountChoice {
+/** One account a proven email maps to, when it matches more than one restaurant. */
+export interface SocialAccountChoice {
   restaurant_id: string;
   restaurant_name: string;
   role: string;

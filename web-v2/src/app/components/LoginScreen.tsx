@@ -2,9 +2,10 @@ import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Eye, EyeOff, ArrowRight, Phone, Lock, Mail, Delete, ChevronRight, Star, Store, User, CheckCircle2 } from "lucide-react";
 import { toast } from "./Toast";
-import { useAuth, type GoogleChoice, type GoogleSignup } from "../auth";
+import { useAuth, type SocialChoice, type SocialSignup, type SocialProvider } from "../auth";
 import { AmetronyxCredit } from "./AmetronyxCredit";
 import { getNativeGoogleIdToken, googleSignInConfig, isGoogleCancel, isNativeShell, mountGoogleTrigger, type GoogleConfig } from "../../services/googleSignIn";
+import { appleSignInConfig, getAppleCredential, isAppleCancel, isAppleSignInAvailable, type AppleConfig } from "../../services/appleSignIn";
 import { authApi, inquiryApi, type ApiPlanConfig } from "../../services/api";
 import { usePlanConfig } from "../PlanConfigProvider";
 import { formatPlanPrice, formatBillingSuffix } from "../../services/planConfigStore";
@@ -94,7 +95,7 @@ function ActivityLoader({ label, sublabel }: { label: string; sublabel?: string 
 export function LoginScreen({ onLogin }: { onLogin?: () => void }) {
   const { t, lang } = useLanguage();
   const { plans: planConfigs } = usePlanConfig();
-  const { loginEmail, loginPin, requestOtp, verifyOtp, loginGoogle, loginGoogleSelect, signupGoogle } = useAuth();
+  const { loginEmail, loginPin, requestOtp, verifyOtp, loginSocial, loginSocialSelect, signupSocial } = useAuth();
   const [method, setMethod] = useState<AuthMethod>("password");
   // If arriving from the reset email link (/login?mode=reset&token=…), mount
   // straight into the reset form — initialise here (not in an effect) so the
@@ -108,9 +109,12 @@ export function LoginScreen({ onLogin }: { onLogin?: () => void }) {
   // without shipping a new web or native build.
   const [googleCfg, setGoogleCfg] = useState<GoogleConfig | null>(null);
   const googleEnabled = googleCfg?.enabled === true;
+  // Sign in with Apple is iOS-only and, like Google, switched on by the API.
+  const [appleCfg, setAppleCfg] = useState<AppleConfig | null>(null);
+  const appleEnabled = appleCfg?.enabled === true && isAppleSignInAvailable();
   const [googleBusy, setGoogleBusy] = useState(false);
-  const [googleChoice, setGoogleChoice] = useState<GoogleChoice | null>(null);
-  const [googleSignup, setGoogleSignup] = useState<GoogleSignup | null>(null);
+  const [googleChoice, setGoogleChoice] = useState<SocialChoice | null>(null);
+  const [googleSignup, setGoogleSignup] = useState<SocialSignup | null>(null);
   const [signupForm, setSignupForm] = useState({ restaurant: "", name: "", phone: "" });
   const googleBtnRef = useRef<HTMLDivElement | null>(null);
   const native = isNativeShell();
@@ -188,13 +192,19 @@ export function LoginScreen({ onLogin }: { onLogin?: () => void }) {
       if (!alive) return;
       setGoogleCfg(cfg);
     });
+    if (isAppleSignInAvailable()) {
+      void appleSignInConfig().then((cfg) => {
+        if (!alive) return;
+        setAppleCfg(cfg);
+      });
+    }
     return () => { alive = false; };
   }, []);
 
-  const completeGoogle = async (idToken: string) => {
+  const completeSocial = async (provider: SocialProvider, idToken: string, name?: string) => {
     setGoogleBusy(true);
     try {
-      const res = await loginGoogle(idToken);
+      const res = await loginSocial(provider, idToken, name);
       if (res && "choose" in res) {    // email maps to several restaurants
         setGoogleChoice(res.choose);
         setAuthState("google-choose");
@@ -229,7 +239,26 @@ export function LoginScreen({ onLogin }: { onLogin?: () => void }) {
       return;
     }
     if (!idToken) { setGoogleBusy(false); return; }   // user dismissed the picker
-    await completeGoogle(idToken);
+    await completeSocial("google", idToken);
+  };
+
+  // Sign in with Apple: the system sheet, then the same flow as Google. Apple
+  // gives the name only on the first authorization, so it is forwarded when present.
+  const submitAppleNative = async () => {
+    setGoogleBusy(true);
+    let credential: Awaited<ReturnType<typeof getAppleCredential>>;
+    try {
+      credential = await getAppleCredential();
+    } catch (e) {
+      if (!isAppleCancel(e)) {
+        console.error("[apple sign-in]", e);
+        toast.error(t("Sign in with Apple failed. Please try again."));
+      }
+      setGoogleBusy(false);
+      return;
+    }
+    if (!credential) { setGoogleBusy(false); return; }   // user dismissed the sheet
+    await completeSocial("apple", credential.idToken, credential.name || undefined);
   };
 
   // Web: null while Google's button loads, false if its script failed to load.
@@ -240,7 +269,7 @@ export function LoginScreen({ onLogin }: { onLogin?: () => void }) {
     if (!el) return;
     let alive = true;
     setWebGoogleReady(null);
-    void mountGoogleTrigger(el, googleCfg, (idToken) => { void completeGoogle(idToken); })
+    void mountGoogleTrigger(el, googleCfg, (idToken) => { void completeSocial("google", idToken); })
       .then((ok) => { if (alive) setWebGoogleReady(ok); });
     return () => { alive = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -257,7 +286,7 @@ export function LoginScreen({ onLogin }: { onLogin?: () => void }) {
     if (!googleChoice) return;
     setGoogleBusy(true);
     try {
-      await loginGoogleSelect(googleChoice.selectionToken, restaurantId);
+      await loginSocialSelect(googleChoice.provider, googleChoice.selectionToken, restaurantId);
       onLogin?.();
     } catch {
       setAuthState("login");
@@ -275,7 +304,7 @@ export function LoginScreen({ onLogin }: { onLogin?: () => void }) {
     const phone = signupForm.phone.trim().startsWith("+") ? signupForm.phone.trim() : digits.length === 10 ? "+91" + digits : "+" + digits;
     setGoogleBusy(true);
     try {
-      await signupGoogle(googleSignup.signupToken, {
+      await signupSocial(googleSignup.provider, googleSignup.signupToken, {
         restaurant_name: restaurant,
         phone,
         owner_name: signupForm.name.trim() || undefined,
@@ -526,7 +555,7 @@ export function LoginScreen({ onLogin }: { onLogin?: () => void }) {
                   </motion.button>
                 )}
 
-                {googleEnabled && (
+                {(googleEnabled || appleEnabled) && (
                   <>
                     <div className="flex items-center gap-3" aria-hidden="true">
                       <span style={{ flex: 1, height: 1, background: "var(--cafyz-border, rgba(255,255,255,0.12))" }} />
@@ -534,9 +563,10 @@ export function LoginScreen({ onLogin }: { onLogin?: () => void }) {
                       <span style={{ flex: 1, height: 1, background: "var(--cafyz-border, rgba(255,255,255,0.12))" }} />
                     </div>
 
-                    {/* One visible design for both platforms. On web an invisible
-                        Google button is pinned on top (see mountGoogleTrigger);
-                        on native this button drives the system picker itself. */}
+                    {googleEnabled && (
+                    /* One visible design for both platforms. On web an invisible
+                       Google button is pinned on top (see mountGoogleTrigger);
+                       on native this button drives the system picker itself. */
                     <div className="relative w-full">
                       <motion.button
                         whileTap={{ scale: 0.98 }}
@@ -580,6 +610,38 @@ export function LoginScreen({ onLogin }: { onLogin?: () => void }) {
                         />
                       )}
                     </div>
+                    )}
+
+                    {/* Sign in with Apple. Black is one of the three appearances
+                        Apple's guidelines allow, and the logo must keep its
+                        clear space, so it is not scaled with the label. */}
+                    {appleEnabled && (
+                      <motion.button
+                        whileTap={{ scale: 0.98 }}
+                        onClick={submitAppleNative}
+                        disabled={googleBusy || loading}
+                        aria-label={t("Continue with Apple")}
+                        className="w-full py-3 rounded-xl text-sm font-semibold flex items-center justify-center gap-2.5 transition-all"
+                        style={{
+                          background: "#000",
+                          border: "1px solid #000",
+                          color: "#fff",
+                          opacity: (googleBusy || loading) ? 0.6 : 1,
+                        }}
+                      >
+                        {googleBusy ? (
+                          <div className="w-4 h-4 border-2 rounded-full animate-spin"
+                               style={{ borderColor: "rgba(255,255,255,0.3)", borderTopColor: "#fff" }} />
+                        ) : (
+                          <>
+                            <svg width="16" height="16" viewBox="0 0 170 170" aria-hidden="true" style={{ flexShrink: 0, marginTop: -2 }}>
+                              <path fill="#fff" d="M150.37 130.25c-2.45 5.66-5.35 10.87-8.71 15.66-4.58 6.53-8.33 11.05-11.22 13.56-4.48 4.12-9.28 6.23-14.42 6.35-3.69 0-8.14-1.05-13.32-3.18-5.197-2.12-9.973-3.17-14.34-3.17-4.58 0-9.492 1.05-14.746 3.17-5.262 2.13-9.501 3.24-12.742 3.35-4.929 0.21-9.842-1.96-14.746-6.52-3.13-2.73-7.045-7.41-11.735-14.04-5.032-7.08-9.169-15.29-12.41-24.65-3.471-10.11-5.211-19.9-5.211-29.378 0-10.857 2.346-20.221 7.045-28.068 3.693-6.303 8.606-11.275 14.755-14.925s12.793-5.51 19.948-5.629c3.915 0 9.049 1.211 15.429 3.591 6.362 2.388 10.447 3.599 12.238 3.599 1.339 0 5.877-1.416 13.57-4.239 7.275-2.618 13.415-3.702 18.445-3.275 13.63 1.1 23.87 6.473 30.68 16.153-12.19 7.386-18.22 17.731-18.1 31.002 0.11 10.337 3.86 18.939 11.23 25.769 3.34 3.17 7.07 5.62 11.22 7.36-0.9 2.61-1.85 5.11-2.86 7.51zM119.11 7.24c0 8.102-2.96 15.667-8.86 22.669-7.12 8.324-15.732 13.134-25.071 12.375a25.222 25.222 0 0 1-0.188-3.07c0-7.778 3.386-16.102 9.399-22.908 3.002-3.446 6.82-6.311 11.45-8.597 4.62-2.252 8.99-3.497 13.1-3.71 0.12 1.083 0.17 2.166 0.17 3.241z"/>
+                            </svg>
+                            {t("Continue with Apple")}
+                          </>
+                        )}
+                      </motion.button>
+                    )}
                   </>
                 )}
 
@@ -754,7 +816,7 @@ export function LoginScreen({ onLogin }: { onLogin?: () => void }) {
                 <div>
                   <h2 className="text-xl sm:text-[1.6rem]" style={{ fontFamily: "var(--font-display)", fontWeight: 700, color: "var(--cafyz-text)" }}>{t("Set up your restaurant")}</h2>
                   <p style={{ color: "var(--cafyz-muted)", fontSize: "0.8rem", marginTop: 4, lineHeight: 1.5 }}>
-                    {t("Signed in with Google as")} <b style={{ color: "var(--cafyz-text-secondary)" }}>{googleSignup.email}</b>
+                    {googleSignup.provider === "apple" ? t("Signed in with Apple as") : t("Signed in with Google as")} <b style={{ color: "var(--cafyz-text-secondary)" }}>{googleSignup.email}</b>
                   </p>
                 </div>
                 <div className="flex items-start gap-2.5 rounded-xl px-3 py-2.5" style={{ background: "rgba(34,197,94,0.08)", border: "1px solid rgba(34,197,94,0.25)" }}>
