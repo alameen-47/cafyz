@@ -25,6 +25,10 @@ Cafyz was not built from a commercial template or an app-generation service, and
 
 Build 1.0 (3) raises the network timeout so the app waits for a cold server to answer instead of showing a connection error.
 
+**If build 1.0 (4) replaces build 3**, use this as the last paragraph instead:
+
+Build 1.0 (4) adds Sign in with Apple on the login screen, using the system sheet (ASAuthorizationController); Hide My Email is supported. An Apple ID whose email matches an existing Cafyz account signs straight in, and a new one is offered a restaurant trial. The demo account in these notes still works with email and password. This build also keeps the longer network timeout from build 3, so a cold server is waited for rather than shown as a connection error.
+
 ---
 
 ## Coorg Trade — append to App Review Information > Notes

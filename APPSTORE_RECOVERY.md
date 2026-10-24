@@ -17,6 +17,25 @@
 
 Nothing on the account is rejected. AxPro ERP and Ametronyx stay live.
 
+### 24 Oct, 14:19 — Cafyz 1.0 (4) uploaded, NOT yet submitted
+Build 4 adds Sign in with Apple (see `store-release/SIGN_IN_WITH_APPLE.md`).
+Archived from `18660c9`, signed Cloud Managed Apple Distribution, uploaded with
+`xcodebuild -exportArchive` → "Upload succeeded". Its provisioning profile
+already carries `com.apple.developer.applesignin`, so automatic signing put the
+capability on the `com.cafyz.app` App ID — no developer-site step was needed.
+Render serves `APPLE_CLIENT_ID_IOS=com.cafyz.app`, so `/api/auth/apple/config`
+reports `enabled: true` (verified 14:03); build 3 has no Apple code and is
+unaffected.
+
+**Build 3 is still the build in review.** Moving to build 4 means cancelling
+that submission and resubmitting, which restarts queue position — Ameen's
+call. If swapped, replace the last line of the Cafyz notes addendum with the
+build-4 line in `store-release/REVIEW_NOTES_ADDENDUM.md`.
+
+Coorg Trade needs no Apple sign-in: its iOS app hides Google sign-in
+(`!isNativeApp()` in `src/pages/Login.tsx`) and offers email only, so
+Guideline 4.8 does not apply. Build 6 stays in review untouched.
+
 **Cafyz and Coorg were resubmitted on the NEW builds** (23 Oct ~20:16/20:20):
 the earlier submissions were cancelled, the build swapped on the version page,
 then Add for Review → Submit for Review. Queue position was restarted

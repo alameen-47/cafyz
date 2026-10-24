@@ -4,6 +4,11 @@ Added 24 Oct 2026 so Cafyz build 1.0 (4) can answer Guideline 4.3 the way
 FitCore Plus did: with a build that gained real Apple-platform integration,
 not a version bump.
 
+**Status 24 Oct, 14:19:** steps 1–4 below are done — licence accepted, App ID
+capability added by automatic signing, `APPLE_CLIENT_ID_IOS` live on Render,
+build 1.0 (4) uploaded. Left: the device test (step 5) and swapping build 4
+into the submission in place of build 3.
+
 ## What is in the code
 
 | Piece | File |
