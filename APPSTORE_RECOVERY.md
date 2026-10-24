@@ -40,8 +40,13 @@ Coorg Trade showed a **"Newer Build Available"** dialog on step 1. Build 1.0 (4)
 instead: delete the attached build on the version page, add the newer one,
 then repeat the two steps above.
 
-The 4.3 replies sent at 15:24 / 15:28 remain in both threads, so the reviewer
-sees the answers alongside the resubmission.
+⚠️ **CORRECTED 24 Oct.** The 4.3 replies sent at 15:24 / 15:28 are on the
+submissions that were then CANCELLED. The live submissions carry **zero
+messages** — a reviewer picking one up does not see the answers next to it.
+Compensated on 24 Oct by appending a 4.3 summary to App Review Notes on both
+apps (Cafyz 1,295 → 2,648 chars, Coorg 1,829 → 3,239); that field is editable
+while Waiting for Review and does not reset queue position. Draft kept in
+`store-release/REVIEW_NOTES_ADDENDUM.md`.
 
 ### ⚠️ Decided by Ameen: sign-in details stay as they are
 No password rotation. The same reviewer credentials are used across all store
