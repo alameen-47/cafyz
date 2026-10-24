@@ -6,8 +6,9 @@ not a version bump.
 
 **Status 24 Oct, 14:19:** steps 1–4 below are done — licence accepted, App ID
 capability added by automatic signing, `APPLE_CLIENT_ID_IOS` live on Render,
-build 1.0 (4) uploaded. Left: the device test (step 5) and swapping build 4
-into the submission in place of build 3.
+build 1.0 (4) uploaded, and at ~14:40 swapped into the submission in place of
+build 3 — Cafyz is *Waiting for Review* on build 4. Simulator smoke test
+passed; a full sign-in on a real device (step 5) was not done.
 
 ## What is in the code
 

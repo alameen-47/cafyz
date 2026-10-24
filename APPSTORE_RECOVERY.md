@@ -1,23 +1,23 @@
 # App Store recovery — live status & handoff
 
-**Last updated:** 2026-10-23 17:55 (session 1) — ALL FOUR IN REVIEW
+**Last updated:** 2026-10-24 14:43 — Cafyz resubmitted on build 1.0 (4)
 **Purpose:** Full state so any new session / account can resume with zero re-investigation.
 **Apple account:** Ameen Khan — Ametronyx. Team ID `647MZ9QGZJ`.
 
 ---
 
-## 0. CURRENT STATE — 23 Oct, 20:22
+## 0. CURRENT STATE — 24 Oct, 14:43
 
 | App | Build in review | Status |
 |---|---|---|
-| **FitCore Plus** | 1.0.8 (11) | **In Review** — a reviewer has it open now |
-| **Cafyz** | **1.0 (3)** — has the cold-start fix | Waiting for Review |
+| **FitCore Plus** | 1.0.8 (11) | **Approved** 23 Oct |
+| **Cafyz** | **1.0 (4)** — Sign in with Apple + cold-start fix | Waiting for Review (resubmitted 24 Oct ~14:40) |
 | **Coorg Trade** | **1.0 (6)** — has the cold-start fix | Waiting for Review |
 | **CREDI8** | 1.0 (2) | Waiting for Review |
 
 Nothing on the account is rejected. AxPro ERP and Ametronyx stay live.
 
-### 24 Oct, 14:19 — Cafyz 1.0 (4) uploaded, NOT yet submitted
+### 24 Oct, 14:19 — Cafyz 1.0 (4) uploaded; resubmitted ~14:40
 Build 4 adds Sign in with Apple (see `store-release/SIGN_IN_WITH_APPLE.md`).
 Archived from `18660c9`, signed Cloud Managed Apple Distribution, uploaded with
 `xcodebuild -exportArchive` → "Upload succeeded". Its provisioning profile
@@ -27,10 +27,21 @@ Render serves `APPLE_CLIENT_ID_IOS=com.cafyz.app`, so `/api/auth/apple/config`
 reports `enabled: true` (verified 14:03); build 3 has no Apple code and is
 unaffected.
 
-**Build 3 is still the build in review.** Moving to build 4 means cancelling
-that submission and resubmitting, which restarts queue position — Ameen's
-call. If swapped, replace the last line of the Cafyz notes addendum with the
-build-4 line in `store-release/REVIEW_NOTES_ADDENDUM.md`.
+**Swapped by Ameen at ~14:40:** the build 3 submission was cancelled, build 4
+attached on the version page, the last paragraph of App Review Notes replaced
+with the build-4 paragraph from `store-release/REVIEW_NOTES_ADDENDUM.md`, and
+the app resubmitted — now *Waiting for Review* on 1.0 (4). Queue position
+restarted, deliberately. (Done in Ameen's own Chrome: Claude in Chrome never
+connected to this account, and the app's browser pane never kept an App Store
+Connect sign-in, so this state is as Ameen reported it.)
+
+Build 4 was smoke-tested in the iOS 26.5 Simulator before the swap: the
+**Continue with Apple** button shows (Google is hidden on iOS), tapping it
+reaches Apple's system sign-in, and dismissing that returns cleanly with no
+error. A Simulator build needs `CODE_SIGN_IDENTITY=-` to carry the entitlement
+— with `CODE_SIGNING_ALLOWED=NO` the tap fails with AuthorizationError 1000,
+which is a test-build artefact, not a bug. A full sign-in on a real device was
+not done.
 
 Coorg Trade needs no Apple sign-in: its iOS app hides Google sign-in
 (`!isNativeApp()` in `src/pages/Login.tsx`) and offers email only, so
