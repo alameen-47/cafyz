@@ -33,7 +33,7 @@ interface TokenOverrides {
   aud?: string;
   iss?: string;
   sub?: string;
-  expiresIn?: string;
+  expiresIn?: jwt.SignOptions['expiresIn'];
   kid?: string;
 }
 
