@@ -11,6 +11,11 @@ const config: CapacitorConfig = {
     iosScheme: 'https',
   },
   plugins: {
+    // Cafyz signs in with Google and Apple only. Leaving Facebook and X out keeps their SDKs
+    // (and the Facebook SDK's advertising-ID permissions) out of the app.
+    SocialLogin: {
+      providers: { google: true, apple: true, facebook: false, twitter: false },
+    },
     // Light theme is the default; ThemeProvider switches the status bar at runtime for dark.
     SplashScreen: {
       launchAutoHide: true,

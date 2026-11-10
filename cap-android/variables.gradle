@@ -1,5 +1,5 @@
 ext {
-    minSdkVersion = 23
+    minSdkVersion = 24
     // Google Play requires targetSdk 36 for new apps and updates since 31 Aug 2026.
     compileSdkVersion = 36
     targetSdkVersion = 36
