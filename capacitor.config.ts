@@ -19,6 +19,9 @@ const config: CapacitorConfig = {
       providers: { google: true, apple: true, facebook: false, twitter: false },
     },
     // The dark sign-in palette is the default; ThemeProvider switches the status bar at runtime for light.
+    // Android: MainActivity pads the web view clear of the status and navigation bars itself,
+    // so Capacitor's own inset handling (which leaves it to the page's CSS) stays off.
+    SystemBars: { insetsHandling: 'disable' },
     SplashScreen: {
       launchAutoHide: true,
       backgroundColor: '#070511',

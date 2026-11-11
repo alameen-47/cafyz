@@ -1,4 +1,6 @@
-import { Capacitor } from '@capacitor/core';
+import { Capacitor, registerPlugin } from '@capacitor/core';
+
+const SystemBarColor = registerPlugin<{ set(options: { color: string; light: boolean }): Promise<void> }>('SystemBarColor');
 import { StatusBar, Style } from '@capacitor/status-bar';
 
 /** `light` content is white text and icons, for dark tops; `dark` content is the reverse. */
@@ -27,6 +29,11 @@ export function applyStatusBarLook(): void {
   const look = override ?? themeLook();
   document.querySelector('meta[name="theme-color"]')?.setAttribute('content', look.color);
   if (!Capacitor.isNativePlatform()) return;
+  if (Capacitor.getPlatform() === 'android') {
+    // Android: the shell colours the strips behind both system bars (see MainActivity).
+    void SystemBarColor.set({ color: look.color, light: look.content === 'dark' }).catch(() => {});
+    return;
+  }
   // Capacitor names styles by background: Style.Dark means light text.
   void StatusBar.setStyle({ style: look.content === 'light' ? Style.Dark : Style.Light }).catch(() => {});
   void StatusBar.setBackgroundColor({ color: look.color }).catch(() => {});
