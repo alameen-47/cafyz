@@ -16,8 +16,10 @@ import { useAppNav } from "../nav";
 import { onResume } from "../../hooks/useOnResume";
 import { usePolling } from "../../hooks/usePolling";
 import { keepIfSame } from "../../utils/sameData";
+import { withAlpha } from "../../utils/color";
 
-const CAT_COLORS = ["#1e7fff", "#00c6ff", "#a855f7", "#22d3ee", "#f59e0b", "#22c55e"];
+import { HScroll } from "./HScroll";
+const CAT_COLORS = ["var(--cafyz-brand)", "#b9a7e8", "var(--cafyz-brand-alt)", "var(--cafyz-brand-alt)", "#00d4ff", "#9188b8"];
 
 function mapStatus(s: string): "served" | "preparing" | "ready" {
   if (s === "paid" || s === "comped") return "served";
@@ -64,14 +66,14 @@ type CatDatum = { name: string; value: number; color: string };
 type OrderRow = { id: string; table: string; items: string; amount: number; status: string; time: string };
 
 const statusColors: Record<string, string> = {
-  served: "#22c55e",
-  preparing: "#f59e0b",
-  ready: "#1e7fff",
+  served: "#00d68f",
+  preparing: "#ffaa00",
+  ready: "var(--cafyz-brand)",
 };
 const statusBg: Record<string, string> = {
-  served: "rgba(34,197,94,0.12)",
-  preparing: "rgba(245,158,11,0.12)",
-  ready: "rgba(30,127,255,0.12)",
+  served: "rgba(0,214,143,0.12)",
+  preparing: "rgba(255,170,0,0.12)",
+  ready: "rgba(var(--cafyz-brand-rgb),0.12)",
 };
 
 function AreaSparkline({ data, color, labels, cur = "₹" }: { data: number[]; color: string; labels?: string[]; cur?: string }) {
@@ -103,11 +105,22 @@ function AreaSparkline({ data, color, labels, cur = "₹" }: { data: number[]; c
       {(labels ?? []).map((lbl, i) => i % 2 === 0 && xs[i] != null && (
         <text key={i} x={xs[i]} y={H - 4} textAnchor="middle" fill="var(--cafyz-muted)" fontSize={9}>{lbl}</text>
       ))}
-      <path d={areaPath} fill={color} fillOpacity={0.12} />
-      <path d={linePath} fill="none" stroke={color} strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" />
+      <defs>
+        <linearGradient id="cafyzAreaFill" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" style={{ stopColor: "var(--cafyz-brand-deep)" }} stopOpacity={0.42} />
+          <stop offset="100%" style={{ stopColor: "var(--cafyz-brand-alt)" }} stopOpacity={0} />
+        </linearGradient>
+        <linearGradient id="cafyzAreaLine" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0%" style={{ stopColor: "var(--cafyz-brand-alt)" }} />
+          <stop offset="45%" style={{ stopColor: "var(--cafyz-brand-bright)" }} />
+          <stop offset="100%" style={{ stopColor: "var(--cafyz-brand-deep)" }} />
+        </linearGradient>
+      </defs>
+      <path d={areaPath} fill="url(#cafyzAreaFill)" />
+      <path d={linePath} fill="none" stroke="url(#cafyzAreaLine)" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round" />
       {xs.map((x, i) => (
         <circle key={i} cx={x} cy={ys[i]} r={i === data.length - 1 ? 4 : 2.5}
-          fill={i === data.length - 1 ? color : "var(--cafyz-surface)"} stroke={color} strokeWidth={1.5} />
+          fill={color} stroke="var(--cafyz-surface)" strokeWidth={1.5} />
       ))}
       {data.length > 0 && (
         <>
@@ -143,7 +156,7 @@ function BarSparkline({ data, color, cur = "₹" }: { data: { day: string; reven
         return (
           <g key={i}>
             <rect x={x} y={padT} width={barW} height={innerH} rx={4} fill="var(--cafyz-accent-soft)" />
-            <rect x={x} y={y} width={barW} height={barH} rx={4} fill={isMax ? color : `${color}99`} />
+            <rect x={x} y={y} width={barW} height={barH} rx={4} fill={isMax ? color : `${withAlpha(color, 0x99)}`} />
             {isMax && (
               <text x={x + barW / 2} y={y - 4} textAnchor="middle" fill={color} fontSize={8} fontWeight="bold">
                 {compactMoney(cur, d.revenue)}
@@ -203,11 +216,12 @@ function DonutChart({ data, centerValue, centerLabel = "items" }: { data: CatDat
 }
 
 const QUICK_ACTIONS = [
-  { id: "pos", label: "POS", icon: MonitorSpeaker, color: "#1e7fff" },
-  { id: "tables", label: "Tables", icon: Users, color: "#00c6ff" },
-  { id: "menu", label: "Menu", icon: UtensilsCrossed, color: "#a855f7" },
-  { id: "orders", label: "Orders", icon: ShoppingBag, color: "#22d3ee" },
-  { id: "analytics", label: "Analytics", icon: BarChart3, color: "#f59e0b" },
+  { id: "pos", label: "POS", icon: MonitorSpeaker, color: "var(--cafyz-brand)" },
+  { id: "tables", label: "Tables", icon: Users, color: "var(--cafyz-brand-2)" },
+  { id: "menu", label: "Menu", icon: UtensilsCrossed, color: "var(--cafyz-brand)" },
+  { id: "orders", label: "Orders", icon: ShoppingBag, color: "var(--cafyz-brand-2)" },
+  { id: "inventory", label: "Inventory", icon: Package, color: "var(--cafyz-brand-2)" },
+  { id: "analytics", label: "Analytics", icon: BarChart3, color: "var(--cafyz-brand)" },
 ] as const;
 
 export function Dashboard() {
@@ -314,10 +328,10 @@ export function Dashboard() {
   const lowStock = (stats?.inventory_low ?? 0) > 0;
 
   const kpis = [
-    { label: "Today's Revenue", value: formatMoney(todayRevenue), change: "Paid orders today", up: todayRevenue > 0, icon: DollarSign, color: "#1e7fff", page: "analytics" as const },
-    { label: "Orders Today", value: String(stats?.orders_today ?? 0), change: `${stats?.orders_paid ?? 0} paid`, up: (stats?.orders_today ?? 0) > 0, icon: ShoppingBag, color: "#00c6ff", page: "orders" as const },
-    { label: "Active Tables", value: `${stats?.tables_occupied ?? 0}/${stats?.tables_total ?? 0}`, change: stats?.tables_total ? `${occPct}% occupied` : "—", up: occPct > 0, icon: Users, color: "#a855f7", page: "tables" as const },
-    { label: "Low Inventory", value: String(stats?.inventory_low ?? 0), change: "below par", up: (stats?.inventory_low ?? 0) === 0, icon: Package, color: "#22d3ee", page: "inventory" as const },
+    { label: "Today's Revenue", value: formatMoney(todayRevenue), change: "Paid orders today", up: todayRevenue > 0, icon: DollarSign, color: "var(--cafyz-brand)", page: "analytics" as const },
+    { label: "Orders Today", value: String(stats?.orders_today ?? 0), change: `${stats?.orders_paid ?? 0} paid`, up: (stats?.orders_today ?? 0) > 0, icon: ShoppingBag, color: "var(--cafyz-brand-2)", page: "orders" as const },
+    { label: "Active Tables", value: `${stats?.tables_occupied ?? 0}/${stats?.tables_total ?? 0}`, change: stats?.tables_total ? `${occPct}% occupied` : "—", up: occPct > 0, icon: Users, color: "var(--cafyz-brand)", page: "tables" as const },
+    { label: "Low Inventory", value: String(stats?.inventory_low ?? 0), change: "below par", up: (stats?.inventory_low ?? 0) === 0, icon: Package, color: "var(--cafyz-brand-2)", page: "inventory" as const },
   ];
 
   return (
@@ -325,11 +339,11 @@ export function Dashboard() {
       {/* Header row */}
       <div className="flex items-center justify-between gap-3">
         <div>
-          <h2 style={{ color: "var(--cafyz-text)", fontFamily: "var(--font-display)", fontWeight: 700, fontSize: "1.1rem" }}>Overview</h2>
-          <p style={{ color: "var(--cafyz-muted)", fontSize: "0.75rem" }}>
+          <h2 style={{ color: "var(--cafyz-text-strong)", fontFamily: "var(--font-display)", fontWeight: 700, fontSize: "1.45rem", lineHeight: 1.2, letterSpacing: "-0.02em" }}>Overview</h2>
+          <p style={{ color: "var(--cafyz-muted)", fontSize: "0.76rem", marginTop: 2 }}>
             {stats ? (
               <>
-                <UserCheck size={12} className="inline me-1" style={{ verticalAlign: "-2px" }} />
+                <UserCheck size={13} className="inline me-1" style={{ verticalAlign: "-2px" }} />
                 {stats.staff_active} on shift
                 {stats.staff_on_break > 0 && ` · ${stats.staff_on_break} on break`}
                 {weekTotal > 0 && ` · ${formatMoney(weekTotal)} this week`}
@@ -338,43 +352,40 @@ export function Dashboard() {
           </p>
         </div>
         <button type="button" onClick={() => void load(true)} disabled={refreshing}
-          className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold"
-          style={{ background: "var(--cafyz-border)", color: "#1e7fff", border: "1px solid rgba(30,127,255,0.15)" }}>
-          <RefreshCw size={14} className={refreshing ? "animate-spin" : ""} />
+          className="cafyz-pill-btn flex-shrink-0">
+          <RefreshCw size={15} className={refreshing ? "animate-spin" : ""} />
           Refresh
         </button>
       </div>
 
       {lowStock && (
         <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}
-          className="flex items-start gap-2.5 px-3 py-2.5 rounded-xl cursor-pointer"
-          style={{ background: "rgba(245,158,11,0.08)", border: "1px solid rgba(245,158,11,0.2)" }}
+          role="button" tabIndex={0}
+          className="cafyz-warn-banner cursor-pointer"
+          onKeyDown={e => { if (e.key === "Enter") goToPage("inventory"); }}
           onClick={() => goToPage("inventory")}>
-          <AlertCircle size={15} style={{ color: "#f59e0b", flexShrink: 0, marginTop: 2 }} />
-          <p style={{ color: "#f59e0b", fontSize: "0.78rem", lineHeight: 1.5 }}>
+          <AlertCircle size={18} style={{ color: "var(--cafyz-warning)", flexShrink: 0 }} />
+          <p className="flex-1 min-w-0" style={{ color: "var(--cafyz-warning)", fontSize: "0.82rem", lineHeight: 1.45 }}>
             <strong>Low stock:</strong> {stats?.inventory_low} item{(stats?.inventory_low ?? 0) > 1 ? "s are" : " is"} below par — tap to review inventory
           </p>
+          <ChevronRight size={16} className="flex-shrink-0 rtl:rotate-180" style={{ color: "var(--cafyz-text-secondary)" }} />
         </motion.div>
       )}
 
       {/* Quick actions */}
-      <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-0.5">
-        {QUICK_ACTIONS.map(a => {
+      <HScroll className="gap-2.5 pb-1">
+        {QUICK_ACTIONS.map((a, i) => {
           const Icon = a.icon;
           return (
             <button key={a.id} type="button"
               onClick={() => { if (a.id === "pos") goToPos(); else goToPage(a.id); }}
-              className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl flex-shrink-0 transition-all min-h-[44px]"
-              style={{ background: "var(--cafyz-surface)", border: `1px solid ${a.color}33` }}>
-              <span className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
-                style={{ background: `${a.color}18` }}>
-                <Icon size={16} style={{ color: a.color }} />
-              </span>
-              <span style={{ color: "var(--cafyz-text)", fontSize: "0.78rem", fontWeight: 600 }}>{a.label}</span>
+              className={`cafyz-shortcut flex-shrink-0 ${i === 0 ? "is-primary" : ""}`}>
+              <Icon size={19} strokeWidth={1.9} style={{ color: i === 0 ? "#ffffff" : a.color, flexShrink: 0 }} />
+              <span>{a.label}</span>
             </button>
           );
         })}
-      </div>
+      </HScroll>
 
       {/* KPI Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -383,22 +394,17 @@ export function Dashboard() {
           return (
             <motion.button key={kpi.label} type="button" onClick={() => goToPage(kpi.page)}
               initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.07 }}
-              className="rounded-2xl p-3 sm:p-4 relative overflow-hidden text-start transition-all hover:border-[rgba(30,127,255,0.25)]"
-              style={{ background: "var(--cafyz-surface)", border: "1px solid var(--cafyz-border)" }}>
-              <div className="absolute top-0 right-0 w-20 h-20 rounded-full opacity-10 blur-xl"
-                style={{ background: kpi.color, transform: "translate(30%,-30%)" }} />
-              <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl flex items-center justify-center mb-2 sm:mb-3"
-                style={{ background: `${kpi.color}18` }}>
-                <Icon size={16} style={{ color: kpi.color }} />
-              </div>
-              <div style={{ color: "var(--cafyz-muted)", fontSize: "0.68rem", marginBottom: 2 }}>{kpi.label}</div>
-              <div style={{ color: "var(--cafyz-text-strong)", fontFamily: "var(--font-display)", fontWeight: 700, fontSize: "1.15rem", lineHeight: 1.2, marginBottom: 4 }}>
-                {loading ? "—" : kpi.value}
-              </div>
-              <div className="flex items-center gap-1" style={{ color: kpi.up ? "#22c55e" : "#ff3b5c", fontSize: "0.68rem" }}>
-                {kpi.up ? <TrendingUp size={11} /> : <TrendingDown size={11} />}
-                {kpi.change}
-              </div>
+              className={`cafyz-metric ${i % 2 === 1 ? "is-alt" : ""}`}>
+              <span className="cafyz-metric-wave" aria-hidden />
+              <span className="cafyz-metric-icon" style={{ background: `${withAlpha(kpi.color, 0x2e)}`, color: kpi.color }}>
+                <Icon size={19} strokeWidth={1.9} />
+              </span>
+              <span className="cafyz-metric-label">{kpi.label}</span>
+              <span className="cafyz-metric-value">{loading ? "—" : kpi.value}</span>
+              <span className="cafyz-metric-status" style={{ color: kpi.up ? "var(--cafyz-success)" : "var(--cafyz-danger)" }}>
+                {kpi.up ? <TrendingUp size={14} /> : <TrendingDown size={14} />}
+                <span className="truncate">{kpi.change}</span>
+              </span>
             </motion.button>
           );
         })}
@@ -407,14 +413,17 @@ export function Dashboard() {
       {/* Charts */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4">
         <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}
-          className="md:col-span-2 rounded-2xl p-3 sm:p-4"
-          style={{ background: "var(--cafyz-surface)", border: "1px solid var(--cafyz-border)" }}>
-          <div className="flex items-center justify-between mb-3">
-            <div>
-              <h3 style={{ color: "var(--cafyz-text)", fontFamily: "var(--font-display)", fontWeight: 600, fontSize: "0.92rem" }}>7-Day Revenue</h3>
-              <p style={{ color: "var(--cafyz-muted)", fontSize: "0.72rem" }}>Paid orders · daily</p>
+          className="md:col-span-2 cafyz-dash-card p-4"
+          style={{ background: "var(--cafyz-card-a)" }}>
+          <div className="flex items-center justify-between gap-3 mb-3">
+            <div className="flex items-center gap-3 min-w-0">
+              <BarChart3 size={22} strokeWidth={2.2} style={{ color: "var(--cafyz-brand)", flexShrink: 0 }} />
+              <div className="min-w-0">
+                <h3 className="truncate" style={{ color: "var(--cafyz-text-strong)", fontFamily: "var(--font-display)", fontWeight: 700, fontSize: "1rem" }}>7-Day Revenue</h3>
+                <p className="truncate" style={{ color: "var(--cafyz-muted)", fontSize: "0.76rem" }}>Paid orders · daily</p>
+              </div>
             </div>
-            <span className="text-xs px-2.5 py-1 rounded-full" style={{ background: "rgba(30,127,255,0.12)", color: "#1e7fff" }}>
+            <span className="px-3 py-1.5 rounded-full flex-shrink-0" style={{ background: "rgba(var(--cafyz-brand-rgb),0.14)", color: "var(--cafyz-brand-bright)", border: "1px solid rgba(var(--cafyz-brand-rgb),0.4)", fontSize: "0.8rem", fontWeight: 700 }}>
               {formatMoney(weekTotal)}
             </span>
           </div>
@@ -426,7 +435,7 @@ export function Dashboard() {
                 data={revRows.map(d => d.revenue)}
                 labels={revRows.map(d => d.day)}
                 cur={cur}
-                color="#1e7fff"
+                color="var(--cafyz-brand)"
               />
             ) : !hasProAnalytics ? (
               <div className="h-40 flex flex-col items-center justify-center gap-2 px-4 text-center">
@@ -434,7 +443,7 @@ export function Dashboard() {
                   {showPlanCta ? "Revenue charts require the Pro plan" : "Revenue charts require the Pro plan — ask your manager to upgrade"}
                 </span>
                 {showPlanCta && (
-                <button type="button" onClick={() => goToPage("license")} className="text-xs font-semibold px-3 py-1.5 rounded-lg" style={{ background: "rgba(30,127,255,0.12)", color: "#1e7fff" }}>View plans</button>
+                <button type="button" onClick={() => goToPage("license")} className="text-xs font-semibold px-3 py-1.5 rounded-lg" style={{ background: "rgba(var(--cafyz-brand-rgb),0.12)", color: "var(--cafyz-brand)" }}>View plans</button>
                 )}
               </div>
             ) : (
@@ -444,8 +453,7 @@ export function Dashboard() {
         </motion.div>
 
         <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.35 }}
-          className="rounded-2xl p-3 sm:p-4"
-          style={{ background: "var(--cafyz-surface)", border: "1px solid var(--cafyz-border)" }}>
+          className="cafyz-dash-card p-4">
           <h3 style={{ color: "var(--cafyz-text)", fontFamily: "var(--font-display)", fontWeight: 600, fontSize: "0.92rem", marginBottom: 2 }}>Items by Category</h3>
           <p style={{ color: "var(--cafyz-muted)", fontSize: "0.72rem", marginBottom: 12 }}>This week's sales mix</p>
           <div className="flex md:flex-col items-center gap-4 md:gap-2">
@@ -473,19 +481,17 @@ export function Dashboard() {
       {/* Weekly bar + Recent orders */}
       <div className="grid grid-cols-1 md:grid-cols-5 gap-3 md:gap-4">
         <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}
-          className="md:col-span-2 rounded-2xl p-3 sm:p-4"
-          style={{ background: "var(--cafyz-surface)", border: "1px solid var(--cafyz-border)" }}>
+          className="md:col-span-2 cafyz-dash-card p-4">
           <h3 style={{ color: "var(--cafyz-text)", fontFamily: "var(--font-display)", fontWeight: 600, fontSize: "0.92rem", marginBottom: 2 }}>Daily Totals</h3>
           <p style={{ color: "var(--cafyz-muted)", fontSize: "0.72rem", marginBottom: 8 }}>Bar view · this week</p>
-          <BarSparkline data={revRows.length ? revRows : [{ day: "—", revenue: 0 }]} cur={cur} color="#1e7fff" />
+          <BarSparkline data={revRows.length ? revRows : [{ day: "—", revenue: 0 }]} cur={cur} color="var(--cafyz-brand)" />
         </motion.div>
 
         <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.45 }}
-          className="md:col-span-3 rounded-2xl p-3 sm:p-4"
-          style={{ background: "var(--cafyz-surface)", border: "1px solid var(--cafyz-border)" }}>
+          className="md:col-span-3 cafyz-dash-card p-4">
           <div className="flex items-center justify-between mb-3">
             <h3 style={{ color: "var(--cafyz-text)", fontFamily: "var(--font-display)", fontWeight: 600, fontSize: "0.92rem" }}>Recent Orders</h3>
-            <button type="button" onClick={() => goToPage("orders")} className="flex items-center gap-1" style={{ color: "#1e7fff", fontSize: "0.75rem" }}>
+            <button type="button" onClick={() => goToPage("orders")} className="flex items-center gap-1" style={{ color: "var(--cafyz-brand)", fontSize: "0.75rem" }}>
               View all <ChevronRight size={12} />
             </button>
           </div>
@@ -499,18 +505,18 @@ export function Dashboard() {
                 <p style={{ color: "var(--cafyz-muted)", fontSize: "0.8rem" }}>No orders yet — start from POS</p>
                 <button type="button" onClick={goToPos}
                   className="mt-1 px-4 py-2 rounded-xl text-xs font-semibold"
-                  style={{ background: "linear-gradient(135deg, #1e7fff, #00c6ff)", color: "#fff" }}>
+                  style={{ background: "var(--cafyz-gradient)", color: "#fff" }}>
                   Open POS
                 </button>
               </div>
             )}
             {recentOrders.map(order => (
               <button key={order.id} type="button" onClick={() => goToPage("orders")}
-                className="w-full flex items-center gap-2 sm:gap-3 p-2.5 sm:p-3 rounded-xl transition-all text-start hover:border-[rgba(30,127,255,0.2)]"
-                style={{ border: "1px solid rgba(30,127,255,0.06)" }}>
+                className="w-full flex items-center gap-2 sm:gap-3 p-2.5 sm:p-3 rounded-xl transition-all text-start hover:border-[rgba(var(--cafyz-brand-rgb),0.2)]"
+                style={{ border: "1px solid rgba(var(--cafyz-brand-rgb),0.06)" }}>
                 <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
                   style={{ background: "var(--cafyz-border)" }}>
-                  <span style={{ color: "#1e7fff", fontSize: "0.6rem", fontFamily: "var(--font-mono)", fontWeight: 700 }}>
+                  <span style={{ color: "var(--cafyz-brand)", fontSize: "0.6rem", fontFamily: "var(--font-mono)", fontWeight: 700 }}>
                     {order.table}
                   </span>
                 </div>

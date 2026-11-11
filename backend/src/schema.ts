@@ -62,6 +62,18 @@ export async function runMigrations() {
       created_at    TEXT NOT NULL DEFAULT (datetime('now'))
     );
 
+    -- One-time sign-in codes sent by email. Keyed by address, not user: one address
+    -- can belong to accounts in several restaurants, chosen after the code is proven.
+    CREATE TABLE IF NOT EXISTS login_email_otp_codes (
+      id            TEXT PRIMARY KEY,
+      email         TEXT NOT NULL,
+      otp_hash      TEXT NOT NULL,
+      expires_at    TEXT NOT NULL,
+      used_at       TEXT,
+      attempt_count INTEGER NOT NULL DEFAULT 0,
+      created_at    TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+
     CREATE TABLE IF NOT EXISTS restaurant_tables (
       id            TEXT PRIMARY KEY,
       restaurant_id TEXT NOT NULL REFERENCES restaurants(id) ON DELETE CASCADE,
@@ -231,6 +243,7 @@ export async function runMigrations() {
     CREATE INDEX IF NOT EXISTS idx_reset_tokens_user        ON password_reset_tokens(user_id, created_at);
     CREATE INDEX IF NOT EXISTS idx_users_restaurant_email   ON users(restaurant_id, email);
     CREATE INDEX IF NOT EXISTS idx_login_otp_phone_created  ON login_otp_codes(phone, created_at);
+    CREATE INDEX IF NOT EXISTS idx_login_email_otp_created ON login_email_otp_codes(email, created_at);
     CREATE INDEX IF NOT EXISTS idx_orders_rest_status_time  ON orders(restaurant_id, status, created_at);
     CREATE INDEX IF NOT EXISTS idx_tables_restaurant_status ON restaurant_tables(restaurant_id, status);
     CREATE INDEX IF NOT EXISTS idx_menu_rest_cat_available  ON menu_items(restaurant_id, category, is_available);

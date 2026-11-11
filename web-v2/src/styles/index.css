@@ -2,5 +2,7 @@
 @import './tailwind.css';
 @import './theme.css';
 @import './theme-modes.css';
+@import './theme-palettes.css';
 @import './native-shell.css';
 @import "./rtl.css";
+@import "./premium.css";

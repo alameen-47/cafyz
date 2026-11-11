@@ -1,4 +1,11 @@
-/* Cafyz shell theme tokens — toggled via html.dark / html.light */
+/* Cafyz theme tokens, toggled via html.dark / html.light.
+ *
+ * Both themes wear the sign-in screen's palette: neon violet #b444ff, electric blue #007bff and
+ * cyan #00d4ff, with the violet → blue → cyan sweep on primary actions. Dark is that screen's
+ * night-time dining room: deep indigo grounds lit violet from one side and blue from the other.
+ * Light keeps the same accents on lavender-white, with a deeper violet so text links stay
+ * readable (6:1 on white).
+ */
 
 html {
   transition: background-color 0.28s ease, color 0.2s ease;
@@ -7,193 +14,308 @@ html {
 html.dark,
 html:not(.light) {
   color-scheme: dark;
-  --cafyz-app-bg: #06091a;
-  --cafyz-main-bg: radial-gradient(ellipse at 20% 0%, rgba(30, 127, 255, 0.04) 0%, transparent 60%), #06091a;
-  --cafyz-sidebar-bg: linear-gradient(180deg, #080c1e 0%, #06091a 100%);
-  --cafyz-sidebar-shadow: 4px 0 24px rgba(30, 127, 255, 0.06);
-  --cafyz-sidebar-border: rgba(30, 127, 255, 0.12);
-  --cafyz-sidebar-border-soft: rgba(30, 127, 255, 0.1);
-  --cafyz-text: #e8eef8;
+
+  /* Brand: one violet family. Primary #8b2cff fills, electric #a735ff reads as text and icons on
+     the dark grounds, bright #bd4aff marks the active item. */
+  --cafyz-brand: #b347ff;
+  --cafyz-brand-rgb: 179, 71, 255;
+  --cafyz-brand-deep: #a020f0;
+  --cafyz-brand-deep-rgb: 160, 32, 240;
+  --cafyz-brand-bright: #c77dff;
+  --cafyz-brand-bright-rgb: 199, 125, 255;
+  --cafyz-brand-alt: #6c35ff;
+  --cafyz-brand-alt-rgb: 108, 53, 255;
+  --cafyz-art-filter: none;
+  --cafyz-brand-2: #00d4ff;
+  --cafyz-brand-2-rgb: 0, 212, 255;
+  --cafyz-gradient: linear-gradient(135deg, #a020f0 0%, #6c35ff 100%);
+  --cafyz-gradient-glow: 0 0 22px rgba(160, 32, 240, 0.32);
+  --cafyz-active-gradient: linear-gradient(135deg, rgba(160, 32, 240, 0.55) 0%, rgba(108, 53, 255, 0.38) 100%);
+  --cafyz-card-gradient: linear-gradient(135deg, #24155a 0%, #171239 58%, #121a45 100%);
+  --cafyz-glow: 0 0 22px rgba(160, 32, 240, 0.24);
+  --cafyz-glow-strong: 0 0 30px rgba(160, 32, 240, 0.4);
+  --cafyz-nav-glow: 0 0 24px rgba(160, 32, 240, 0.3);
+
+  /* Grounds */
+  --cafyz-app-bg: #080619;
+  --cafyz-main-bg: 
+    radial-gradient(ellipse 80% 38% at 12% 0%, rgba(108, 53, 255, 0.26) 0%, transparent 70%),
+    radial-gradient(ellipse 60% 34% at 100% 4%, rgba(160, 32, 240, 0.2) 0%, transparent 70%),
+    radial-gradient(ellipse 70% 40% at 90% 100%, rgba(0, 112, 255, 0.1) 0%, transparent 70%),
+    #080619;
+  --cafyz-sidebar-bg: #0b0820;
+  --cafyz-sidebar-shadow: 1px 0 0 rgba(151, 105, 255, 0.04), 8px 0 32px rgba(0, 0, 0, 0.28);
+  --cafyz-sidebar-border: rgba(138, 108, 255, 0.16);
+  --cafyz-sidebar-border-soft: rgba(138, 108, 255, 0.12);
+  --cafyz-text: #f5f2ff;
   --cafyz-text-strong: #ffffff;
-  --cafyz-text-secondary: #a8bdd4;
-  --cafyz-muted: #6b82a0;
-  --cafyz-nav-hover: #ffffff;
-  --cafyz-nav-active-bg: linear-gradient(135deg, rgba(30, 127, 255, 0.18) 0%, rgba(0, 198, 255, 0.06) 100%);
-  --cafyz-nav-active-border: rgba(30, 127, 255, 0.22);
-  --cafyz-collapse-btn-bg: #0d1326;
-  --cafyz-mobile-nav-bg: rgba(8, 12, 30, 0.97);
-  --cafyz-toast-bg: #0d1326;
-  --cafyz-toast-border: rgba(30, 127, 255, 0.2);
-  --cafyz-toast-text: #e8eef8;
-  --cafyz-toast-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+  --cafyz-text-secondary: #cfc9ea;
+  --cafyz-muted: #a6a0c7;
+  --cafyz-text-disabled: #6f6a92;
+  --cafyz-nav-hover: #f5f2ff;
+  --cafyz-nav-hover-bg: rgba(138, 108, 255, 0.09);
+  --cafyz-nav-active-bg: linear-gradient(110deg, rgba(160, 32, 240, 0.34) 0%, rgba(108, 53, 255, 0.22) 55%, rgba(18, 26, 69, 0.75) 100%);
+  --cafyz-nav-active-border: rgba(179, 71, 255, 0.8);
+  --cafyz-icon-tile-bg: rgba(33, 26, 78, 0.78);
+  --cafyz-icon-tile-border: rgba(255, 255, 255, 0.08);
+  --cafyz-collapse-btn-bg: #171239;
+  --cafyz-mobile-nav-bg: #120d2c;
+  --cafyz-toast-bg: #171239;
+  --cafyz-toast-border: rgba(160, 32, 240, 0.35);
+  --cafyz-toast-text: #f5f2ff;
+  --cafyz-toast-shadow: 0 10px 35px rgba(0, 0, 0, 0.5), 0 0 22px rgba(150, 45, 255, 0.1);
 
-  --cafyz-surface: #0d1326;
-  --cafyz-surface-2: #111b35;
-  --cafyz-surface-subtle: #080c1e;
-  --cafyz-surface-hover: rgba(30, 127, 255, 0.06);
-  --cafyz-topbar-bg: rgba(6, 9, 26, 0.92);
-  --cafyz-border: rgba(30, 127, 255, 0.1);
-  --cafyz-border-strong: rgba(30, 127, 255, 0.18);
-  --cafyz-border-focus: rgba(30, 127, 255, 0.4);
-  --cafyz-shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.22);
-  --cafyz-shadow-md: 0 8px 24px rgba(0, 0, 0, 0.35);
-  --cafyz-shadow-lg: 0 16px 40px rgba(0, 0, 0, 0.55);
-  --cafyz-overlay: rgba(0, 0, 0, 0.65);
-  --cafyz-input-bg: #0d1326;
-  --cafyz-input-placeholder: #6b82a0;
-  --cafyz-scrollbar: rgba(30, 127, 255, 0.15);
-  --cafyz-scrollbar-hover: rgba(30, 127, 255, 0.3);
+  /* Metric cards: a violet wash for the first column, an indigo-blue one for the second. */
+  --cafyz-card-a: linear-gradient(140deg, #2a1668 0%, #1a1345 55%, #151038 100%);
+  --cafyz-card-b: linear-gradient(140deg, #1a1650 0%, #141a4a 55%, #10224f 100%);
+  --cafyz-card-border: rgba(150, 110, 255, 0.28);
 
-  --background: #06091a;
-  --foreground: #e8eef8;
-  --card: #0d1326;
-  --card-foreground: #e8eef8;
-  --popover: #0d1326;
-  --popover-foreground: #e8eef8;
-  --secondary: #111b35;
-  --secondary-foreground: #a8bdd4;
-  --muted: #0f1830;
-  --muted-foreground: #6b82a0;
-  --border: rgba(30, 127, 255, 0.15);
-  --input: rgba(30, 127, 255, 0.08);
-  --input-background: #111b35;
-  --surface-1: #0d1326;
-  --surface-2: #111b35;
-  --switch-background: #1e3055;
-  --sidebar: #080c1e;
-  --sidebar-foreground: #a8bdd4;
-  --sidebar-accent: #111b35;
-  --sidebar-accent-foreground: #e8eef8;
-  --sidebar-border: rgba(30, 127, 255, 0.1);
+  /* Surfaces */
+  --cafyz-surface: #171239;
+  --cafyz-surface-2: #1f184a;
+  --cafyz-surface-subtle: #100b25;
+  --cafyz-surface-hover: rgba(138, 108, 255, 0.1);
+  --cafyz-glass: rgba(23, 18, 57, 0.78);
+  --cafyz-glass-border: rgba(255, 255, 255, 0.08);
+  --cafyz-topbar-bg: rgba(8, 6, 25, 0.72);
+  --cafyz-border: rgba(138, 108, 255, 0.18);
+  --cafyz-border-strong: rgba(150, 100, 255, 0.36);
+  --cafyz-border-focus: rgba(179, 71, 255, 0.9);
+  --cafyz-shadow-sm: 0 2px 10px rgba(0, 0, 0, 0.24);
+  --cafyz-shadow-md: 0 10px 35px rgba(0, 0, 0, 0.32);
+  --cafyz-shadow-lg: 0 20px 56px rgba(0, 0, 0, 0.55);
+  --cafyz-overlay: rgba(4, 3, 14, 0.74);
+  --cafyz-input-bg: #100b25;
+  --cafyz-input-placeholder: #8f89b4;
+  --cafyz-scrollbar: rgba(138, 108, 255, 0.26);
+  --cafyz-scrollbar-hover: rgba(179, 71, 255, 0.5);
 
-  --cafyz-accent-bg: rgba(30, 127, 255, 0.1);
-  --cafyz-accent-border: rgba(30, 127, 255, 0.18);
-  --cafyz-accent-soft: rgba(30, 127, 255, 0.06);
-  --cafyz-badge-bg: rgba(30, 127, 255, 0.12);
-  --cafyz-grid-line: rgba(30, 127, 255, 0.08);
-  --cafyz-subtle-bg: rgba(30, 127, 255, 0.06);
-  --cafyz-danger: #ff6b84;
-  --cafyz-danger-bg: rgba(255, 59, 92, 0.12);
-  --cafyz-warning: #fbbf24;
-  --cafyz-warning-bg: rgba(245, 158, 11, 0.12);
-  --cafyz-success: #4ade80;
-  --cafyz-success-bg: rgba(34, 197, 94, 0.12);
+  /* UI kit (shadcn) */
+  --background: #080619;
+  --foreground: #f5f2ff;
+  --card: #171239;
+  --card-foreground: #f5f2ff;
+  --popover: #171239;
+  --popover-foreground: #f5f2ff;
+  --primary: #a020f0;
+  --primary-foreground: #ffffff;
+  --secondary: #1f184a;
+  --secondary-foreground: #cfc9ea;
+  --muted: #100b25;
+  --muted-foreground: #a6a0c7;
+  --accent: #241c57;
+  --accent-foreground: #f5f2ff;
+  --destructive: #ff416c;
+  --destructive-foreground: #ffffff;
+  --border: rgba(138, 108, 255, 0.18);
+  --input: rgba(138, 108, 255, 0.18);
+  --input-background: #100b25;
+  --ring: rgba(179, 71, 255, 0.6);
+  --surface-1: #171239;
+  --surface-2: #1f184a;
+  --switch-background: #2b2262;
+  --chart-1: #a020f0;
+  --chart-2: #00d4ff;
+  --chart-3: #6c35ff;
+  --chart-4: #c77dff;
+  --chart-5: #ffaa00;
+  --sidebar: #0b0820;
+  --sidebar-foreground: #cfc9ea;
+  --sidebar-primary: #a020f0;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #1f184a;
+  --sidebar-accent-foreground: #f5f2ff;
+  --sidebar-border: rgba(138, 108, 255, 0.16);
+  --sidebar-ring: rgba(179, 71, 255, 0.6);
+
+  /* Accents and states. Status colours carry meaning only; they are never decoration. */
+  --cafyz-accent-bg: rgba(160, 32, 240, 0.16);
+  --cafyz-accent-border: rgba(160, 32, 240, 0.36);
+  --cafyz-accent-soft: rgba(138, 108, 255, 0.09);
+  --cafyz-badge-bg: rgba(160, 32, 240, 0.2);
+  --cafyz-grid-line: rgba(138, 108, 255, 0.12);
+  --cafyz-subtle-bg: rgba(138, 108, 255, 0.07);
+  --cafyz-danger: #ff416c;
+  --cafyz-danger-bg: rgba(255, 65, 108, 0.13);
+  --cafyz-warning: #ffaa00;
+  --cafyz-warning-bg: rgba(255, 170, 0, 0.12);
+  --cafyz-success: #00d68f;
+  --cafyz-success-bg: rgba(0, 214, 143, 0.12);
+  --cafyz-info: #00d4ff;
+  --cafyz-info-bg: rgba(0, 212, 255, 0.12);
   --cafyz-on-gradient: #ffffff;
-  --cafyz-brand: #1e7fff;
 
-  --cafyz-hero-gradient: linear-gradient(135deg, rgba(30, 127, 255, 0.14) 0%, rgba(13, 19, 38, 0.96) 58%);
-  --cafyz-hero-footer-bg: rgba(0, 0, 0, 0.18);
-  --cafyz-hero-shadow: 0 8px 32px rgba(0, 0, 0, 0.22);
-  --cafyz-hero-inset-bg: rgba(8, 12, 30, 0.45);
-  --cafyz-logo-plate-bg: #0a1024;
-  /* Brand logo amoeba glow (see .cafyz-logo-glow): luminous blues that bloom on dark surfaces. */
-  --cafyz-logo-blob-a: linear-gradient(135deg, rgba(30, 127, 255, 0.62) 0%, rgba(0, 198, 255, 0.38) 100%);
-  --cafyz-logo-blob-b: linear-gradient(215deg, rgba(99, 102, 241, 0.42) 0%, rgba(0, 198, 255, 0.18) 100%);
+  /* Feature pieces */
+  --cafyz-hero-gradient: linear-gradient(135deg, #24155a 0%, #171239 58%, #121a45 100%);
+  --cafyz-hero-footer-bg: rgba(0, 0, 0, 0.22);
+  --cafyz-hero-shadow: 0 10px 35px rgba(0, 0, 0, 0.32);
+  --cafyz-hero-inset-bg: rgba(8, 6, 25, 0.5);
+  --cafyz-logo-plate-bg: #100b25;
+  /* Brand logo amoeba glow (see .cafyz-logo-glow): violet into indigo. */
+  --cafyz-logo-blob-a: linear-gradient(135deg, rgba(160, 32, 240, 0.5) 0%, rgba(108, 53, 255, 0.46) 100%);
+  --cafyz-logo-blob-b: linear-gradient(215deg, rgba(0, 212, 255, 0.2) 0%, rgba(108, 53, 255, 0.3) 100%);
   --cafyz-logo-blob-blur: 12px;
   --cafyz-logo-halo-blur: 22px;
-  --cafyz-logo-shadow: drop-shadow(0 4px 14px rgba(30, 127, 255, 0.38));
-  --cafyz-media-scrim: linear-gradient(to top, rgba(13, 19, 38, 0.65) 0%, transparent 55%);
-  --cafyz-banner-warn-bg: linear-gradient(135deg, #0d2040 0%, #0d1326 100%);
-  --cafyz-banner-expired-bg: linear-gradient(135deg, #2a1020 0%, #1a0d26 100%);
-  --cafyz-nav-pill-bg: rgba(30, 127, 255, 0.14);
+  --cafyz-logo-shadow: drop-shadow(0 4px 14px rgba(118, 43, 255, 0.4));
+  --cafyz-media-scrim: linear-gradient(to top, rgba(8, 6, 25, 0.76) 0%, transparent 55%);
+  --cafyz-banner-warn-bg: linear-gradient(135deg, #24155a 0%, #171239 58%, #121a45 100%);
+  --cafyz-banner-expired-bg: linear-gradient(135deg, #2a0f24 0%, #150c24 100%);
+  --cafyz-nav-pill-bg: linear-gradient(135deg, rgba(160, 32, 240, 0.62) 0%, rgba(108, 53, 255, 0.45) 100%);
 }
 
 html.light {
   color-scheme: light;
-  --cafyz-app-bg: #e8edf4;
+
+  /* Brand */
+  --cafyz-brand: #7a2ee6;
+  --cafyz-brand-rgb: 122, 46, 230;
+  --cafyz-brand-2: #4b3fc9;
+  --cafyz-brand-2-rgb: 75, 63, 201;
+  --cafyz-brand-deep: #7a2ee6;
+  --cafyz-brand-deep-rgb: 122, 46, 230;
+  --cafyz-brand-bright: #7a2ee6;
+  --cafyz-brand-bright-rgb: 122, 46, 230;
+  --cafyz-brand-alt: #4b3fc9;
+  --cafyz-brand-alt-rgb: 75, 63, 201;
+  --cafyz-art-filter: none;
+  --cafyz-gradient: linear-gradient(135deg, #a020f0 0%, #6c35ff 100%);
+  --cafyz-gradient-glow: 0 6px 18px rgba(118, 43, 255, 0.22);
+  --cafyz-active-gradient: linear-gradient(110deg, rgba(122, 46, 230, 0.14) 0%, rgba(75, 63, 201, 0.07) 100%);
+  --cafyz-card-gradient: linear-gradient(120deg, #f6efff 0%, #ffffff 55%, #f3f4ff 100%);
+  --cafyz-glow: 0 6px 18px rgba(118, 43, 255, 0.14);
+  --cafyz-glow-strong: 0 8px 24px rgba(118, 43, 255, 0.22);
+  --cafyz-nav-glow: 0 4px 14px rgba(118, 43, 255, 0.12);
+
+  /* Grounds */
+  --cafyz-app-bg: #f4f2fb;
   --cafyz-main-bg:
-    radial-gradient(ellipse 110% 70% at 0% -15%, rgba(30, 127, 255, 0.11) 0%, transparent 52%),
-    radial-gradient(ellipse 70% 55% at 100% 0%, rgba(0, 198, 255, 0.07) 0%, transparent 42%),
-    linear-gradient(180deg, #f8fafc 0%, #e8edf4 100%);
-  --cafyz-sidebar-bg: linear-gradient(180deg, #ffffff 0%, #f4f7fb 100%);
-  --cafyz-sidebar-shadow: 4px 0 28px rgba(15, 23, 42, 0.05);
-  --cafyz-sidebar-border: rgba(15, 23, 42, 0.07);
-  --cafyz-sidebar-border-soft: rgba(15, 23, 42, 0.05);
-  --cafyz-text: #0f172a;
-  --cafyz-text-strong: #020617;
-  --cafyz-text-secondary: #1e293b;
-  --cafyz-muted: #475569;
-  --cafyz-nav-hover: #0f172a;
-  --cafyz-nav-active-bg: linear-gradient(135deg, rgba(30, 127, 255, 0.11) 0%, rgba(0, 198, 255, 0.04) 100%);
-  --cafyz-nav-active-border: rgba(30, 127, 255, 0.22);
+    radial-gradient(ellipse 110% 70% at 0% -15%, rgba(180, 68, 255, 0.1) 0%, transparent 52%),
+    radial-gradient(ellipse 70% 55% at 100% 0%, rgba(0, 123, 255, 0.07) 0%, transparent 42%),
+    linear-gradient(180deg, #fbfaff 0%, #f1eefa 100%);
+  --cafyz-sidebar-bg: linear-gradient(180deg, #ffffff 0%, #f7f5fe 100%);
+  --cafyz-sidebar-shadow: 4px 0 28px rgba(40, 20, 100, 0.06);
+  --cafyz-sidebar-border: rgba(40, 20, 100, 0.08);
+  --cafyz-sidebar-border-soft: rgba(40, 20, 100, 0.06);
+  --cafyz-text: #160f33;
+  --cafyz-text-strong: #0b0620;
+  --cafyz-text-secondary: #2c2456;
+  --cafyz-muted: #5b5580;
+  --cafyz-text-disabled: #a29dbd;
+  --cafyz-nav-hover: #160f33;
+  --cafyz-nav-hover-bg: rgba(122, 46, 230, 0.06);
+  --cafyz-card-a: linear-gradient(140deg, #f3eaff 0%, #ffffff 70%);
+  --cafyz-card-b: linear-gradient(140deg, #eaf3ff 0%, #ffffff 70%);
+  --cafyz-card-border: rgba(40, 20, 100, 0.1);
+  --cafyz-icon-tile-bg: #f4f1fc;
+  --cafyz-icon-tile-border: rgba(40, 20, 100, 0.07);
+  --cafyz-nav-active-bg: linear-gradient(110deg, rgba(122, 46, 230, 0.14) 0%, rgba(75, 63, 201, 0.06) 100%);
+  --cafyz-nav-active-border: rgba(122, 46, 230, 0.45);
   --cafyz-collapse-btn-bg: #ffffff;
   --cafyz-mobile-nav-bg: rgba(255, 255, 255, 0.96);
   --cafyz-toast-bg: #ffffff;
-  --cafyz-toast-border: rgba(30, 127, 255, 0.16);
-  --cafyz-toast-text: #0f172a;
-  --cafyz-toast-shadow: 0 10px 36px rgba(15, 23, 42, 0.1), 0 2px 8px rgba(15, 23, 42, 0.04);
+  --cafyz-toast-border: rgba(122, 46, 230, 0.18);
+  --cafyz-toast-text: #160f33;
+  --cafyz-toast-shadow: 0 10px 36px rgba(40, 20, 100, 0.12), 0 2px 8px rgba(40, 20, 100, 0.05);
 
+  /* Surfaces */
   --cafyz-surface: #ffffff;
-  --cafyz-surface-2: #f8fafc;
-  --cafyz-surface-subtle: #f1f5f9;
-  --cafyz-surface-hover: rgba(30, 127, 255, 0.05);
+  --cafyz-surface-2: #f8f6ff;
+  --cafyz-surface-subtle: #f2effb;
+  --cafyz-surface-hover: rgba(122, 46, 230, 0.06);
+  --cafyz-glass: rgba(255, 255, 255, 0.9);
+  --cafyz-glass-border: rgba(40, 20, 100, 0.08);
   --cafyz-topbar-bg: rgba(255, 255, 255, 0.86);
-  --cafyz-border: rgba(15, 23, 42, 0.08);
-  --cafyz-border-strong: rgba(15, 23, 42, 0.12);
-  --cafyz-border-focus: rgba(30, 127, 255, 0.32);
-  --cafyz-shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.04), 0 1px 3px rgba(15, 23, 42, 0.03);
-  --cafyz-shadow-md: 0 4px 20px rgba(15, 23, 42, 0.07), 0 2px 6px rgba(15, 23, 42, 0.03);
-  --cafyz-shadow-lg: 0 16px 48px rgba(15, 23, 42, 0.1), 0 4px 12px rgba(15, 23, 42, 0.04);
-  --cafyz-overlay: rgba(15, 23, 42, 0.38);
+  --cafyz-border: rgba(40, 20, 100, 0.09);
+  --cafyz-border-strong: rgba(40, 20, 100, 0.14);
+  --cafyz-border-focus: rgba(122, 46, 230, 0.4);
+  --cafyz-shadow-sm: 0 1px 2px rgba(40, 20, 100, 0.05), 0 1px 3px rgba(40, 20, 100, 0.04);
+  --cafyz-shadow-md: 0 4px 20px rgba(40, 20, 100, 0.08), 0 2px 6px rgba(40, 20, 100, 0.04);
+  --cafyz-shadow-lg: 0 16px 48px rgba(40, 20, 100, 0.12), 0 4px 12px rgba(40, 20, 100, 0.05);
+  --cafyz-overlay: rgba(22, 15, 51, 0.4);
   --cafyz-input-bg: #ffffff;
-  --cafyz-input-placeholder: #94a3b8;
-  --cafyz-scrollbar: rgba(15, 23, 42, 0.12);
-  --cafyz-scrollbar-hover: rgba(30, 127, 255, 0.28);
+  --cafyz-input-placeholder: #8f8ab0;
+  --cafyz-scrollbar: rgba(40, 20, 100, 0.14);
+  --cafyz-scrollbar-hover: rgba(122, 46, 230, 0.3);
 
-  --background: #e8edf4;
-  --foreground: #0f172a;
+  /* UI kit (shadcn) */
+  --background: #f4f2fb;
+  --foreground: #160f33;
   --card: #ffffff;
-  --card-foreground: #0f172a;
+  --card-foreground: #160f33;
   --popover: #ffffff;
-  --popover-foreground: #0f172a;
-  --secondary: #f1f5f9;
-  --secondary-foreground: #1e293b;
-  --muted: #eef2f7;
-  --muted-foreground: #475569;
-  --border: rgba(15, 23, 42, 0.09);
-  --input: rgba(15, 23, 42, 0.06);
+  --popover-foreground: #160f33;
+  --primary: #7a2ee6;
+  --primary-foreground: #ffffff;
+  --secondary: #f2effb;
+  --secondary-foreground: #2c2456;
+  --muted: #efecf9;
+  --muted-foreground: #5b5580;
+  --accent: #f0ebfd;
+  --accent-foreground: #160f33;
+  --destructive: #dc2626;
+  --destructive-foreground: #ffffff;
+  --border: rgba(40, 20, 100, 0.1);
+  --input: rgba(40, 20, 100, 0.07);
   --input-background: #ffffff;
+  --ring: rgba(122, 46, 230, 0.35);
   --surface-1: #ffffff;
-  --surface-2: #f1f5f9;
-  --switch-background: #cbd5e1;
+  --surface-2: #f2effb;
+  --switch-background: #cfc8e8;
+  --chart-1: #7a2ee6;
+  --chart-2: #4b3fc9;
+  --chart-3: #b08cf0;
+  --chart-4: #1f8fcf;
+  --chart-5: #d97706;
   --sidebar: #ffffff;
-  --sidebar-foreground: #1e293b;
-  --sidebar-accent: #f1f5f9;
-  --sidebar-accent-foreground: #0f172a;
-  --sidebar-border: rgba(15, 23, 42, 0.1);
+  --sidebar-foreground: #2c2456;
+  --sidebar-primary: #7a2ee6;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #f2effb;
+  --sidebar-accent-foreground: #160f33;
+  --sidebar-border: rgba(40, 20, 100, 0.1);
+  --sidebar-ring: rgba(122, 46, 230, 0.35);
 
-  --cafyz-accent-bg: rgba(30, 127, 255, 0.12);
-  --cafyz-accent-border: rgba(30, 127, 255, 0.22);
-  --cafyz-accent-soft: rgba(30, 127, 255, 0.07);
-  --cafyz-badge-bg: rgba(30, 127, 255, 0.14);
-  --cafyz-grid-line: rgba(15, 23, 42, 0.1);
-  --cafyz-subtle-bg: #f1f5f9;
-  --cafyz-danger: #dc2626;
+  /* Accents and states */
+  --cafyz-accent-bg: rgba(122, 46, 230, 0.1);
+  --cafyz-accent-border: rgba(122, 46, 230, 0.22);
+  --cafyz-accent-soft: rgba(122, 46, 230, 0.06);
+  --cafyz-badge-bg: rgba(122, 46, 230, 0.12);
+  --cafyz-grid-line: rgba(40, 20, 100, 0.1);
+  --cafyz-subtle-bg: #f2effb;
+  --cafyz-danger: #d33555;
   --cafyz-danger-bg: rgba(220, 38, 38, 0.1);
   --cafyz-warning: #b45309;
   --cafyz-warning-bg: rgba(245, 158, 11, 0.14);
-  --cafyz-success: #15803d;
+  --cafyz-success: #0f8a66;
   --cafyz-success-bg: rgba(22, 163, 74, 0.12);
+  --cafyz-info: #1f7fbf;
+  --cafyz-info-bg: rgba(53, 168, 232, 0.12);
   --cafyz-on-gradient: #ffffff;
-  --cafyz-brand: #1565e0;
-  --primary: #1565e0;
-  --ring: rgba(21, 101, 224, 0.35);
 
-  --cafyz-hero-gradient: linear-gradient(135deg, #ffffff 0%, #f8fafc 42%, #e8f2ff 100%);
-  --cafyz-hero-footer-bg: rgba(30, 127, 255, 0.06);
-  --cafyz-hero-shadow: 0 8px 28px rgba(15, 23, 42, 0.08), 0 1px 3px rgba(15, 23, 42, 0.04);
+  /* Feature pieces */
+  --cafyz-hero-gradient: linear-gradient(135deg, #ffffff 0%, #faf7ff 44%, #efe6ff 100%);
+  --cafyz-hero-footer-bg: rgba(122, 46, 230, 0.06);
+  --cafyz-hero-shadow: 0 8px 28px rgba(40, 20, 100, 0.09), 0 1px 3px rgba(40, 20, 100, 0.04);
   --cafyz-hero-inset-bg: rgba(255, 255, 255, 0.92);
-  --cafyz-logo-plate-bg: #f1f5f9;
-  /* Brand logo amoeba glow: richer, tighter blues so the silver lettering reads on light surfaces. */
-  --cafyz-logo-blob-a: linear-gradient(140deg, rgba(14, 58, 158, 0.92) 0%, rgba(21, 101, 224, 0.85) 50%, rgba(34, 168, 255, 0.72) 100%);
-  --cafyz-logo-blob-b: linear-gradient(215deg, rgba(99, 102, 241, 0.32) 0%, rgba(0, 170, 255, 0.24) 100%);
+  --cafyz-logo-plate-bg: #f2effb;
+  /* Brand logo glow: faint, because the light-surface logo has an ink wordmark. */
+  --cafyz-logo-blob-a: linear-gradient(140deg, rgba(122, 46, 230, 0.16) 0%, rgba(75, 63, 201, 0.1) 100%);
+  --cafyz-logo-blob-b: linear-gradient(215deg, rgba(0, 170, 255, 0.1) 0%, rgba(167, 53, 255, 0.1) 100%);
   --cafyz-logo-blob-blur: 11px;
   --cafyz-logo-halo-blur: 20px;
-  --cafyz-logo-shadow: drop-shadow(0 2px 6px rgba(8, 20, 52, 0.38));
-  --cafyz-media-scrim: linear-gradient(to top, rgba(15, 23, 42, 0.52) 0%, transparent 55%);
-  --cafyz-banner-warn-bg: linear-gradient(135deg, #eff6ff 0%, #ffffff 100%);
+  --cafyz-logo-shadow: drop-shadow(0 2px 5px rgba(20, 8, 52, 0.16));
+  --cafyz-media-scrim: linear-gradient(to top, rgba(22, 15, 51, 0.52) 0%, transparent 55%);
+  --cafyz-banner-warn-bg: linear-gradient(135deg, #f4edff 0%, #ffffff 100%);
   --cafyz-banner-expired-bg: linear-gradient(135deg, #fef2f2 0%, #fff7ed 100%);
-  --cafyz-nav-pill-bg: rgba(30, 127, 255, 0.14);
+  --cafyz-nav-pill-bg: rgba(122, 46, 230, 0.12);
+}
+
+/* Pages that are always dark whatever the theme (the public menu): the dark brand tokens. */
+.cafyz-on-dark {
+  --cafyz-brand: #b347ff;
+  --cafyz-brand-rgb: 179, 71, 255;
+  --cafyz-brand-2: #00d4ff;
+  --cafyz-brand-2-rgb: 0, 212, 255;
 }
 
 html.dark body,
@@ -246,7 +368,6 @@ html.light #root {
 
 .app-top-bar {
   background: var(--cafyz-topbar-bg) !important;
-  border-color: var(--cafyz-border) !important;
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
 }
@@ -372,11 +493,11 @@ html.cafyz-lite [class*="backdrop-blur"] {
 
 /* Surfaces that are dark in both themes (login hero panel) keep the dark-mode glow. */
 .cafyz-logo.cafyz-logo--on-dark {
-  --cafyz-logo-blob-a: linear-gradient(135deg, rgba(30, 127, 255, 0.62) 0%, rgba(0, 198, 255, 0.38) 100%);
-  --cafyz-logo-blob-b: linear-gradient(215deg, rgba(99, 102, 241, 0.42) 0%, rgba(0, 198, 255, 0.18) 100%);
+  --cafyz-logo-blob-a: linear-gradient(135deg, rgba(180, 68, 255, 0.52) 0%, rgba(0, 123, 255, 0.46) 100%);
+  --cafyz-logo-blob-b: linear-gradient(215deg, rgba(0, 212, 255, 0.26) 0%, rgba(100, 26, 255, 0.3) 100%);
   --cafyz-logo-blob-blur: 12px;
   --cafyz-logo-halo-blur: 22px;
-  --cafyz-logo-shadow: drop-shadow(0 4px 14px rgba(30, 127, 255, 0.38));
+  --cafyz-logo-shadow: drop-shadow(0 4px 14px rgba(0, 123, 255, 0.4));
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -391,14 +512,14 @@ html.cafyz-lite [class*="backdrop-blur"] {
    blurred blobs move with transforms only (painted once, animated on the GPU) and are clipped to
    the header. */
 html.light {
-  --cafyz-brand-glow-a: rgba(30, 127, 255, 0.24);
-  --cafyz-brand-glow-b: rgba(0, 198, 255, 0.2);
+  --cafyz-brand-glow-a: rgba(122, 46, 230, 0.22);
+  --cafyz-brand-glow-b: rgba(75, 63, 201, 0.16);
 }
 
 html.dark,
 html:not(.light) {
-  --cafyz-brand-glow-a: rgba(30, 127, 255, 0.3);
-  --cafyz-brand-glow-b: rgba(99, 102, 241, 0.26);
+  --cafyz-brand-glow-a: rgba(139, 44, 255, 0.26);
+  --cafyz-brand-glow-b: rgba(35, 56, 140, 0.24);
 }
 
 .cafyz-brand-glow {

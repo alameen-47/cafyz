@@ -9,10 +9,10 @@ import { MENU_IMAGE_ACCEPT } from "../../utils/menuImage";
 import { getCurrencySymbol } from "../../utils/currency";
 import { notifyMenuChanged } from "../../utils/menuEvents";
 import { demoMenuImage } from "../../utils/demoMenuImages";
+import { VEG_SYMBOL, NON_VEG_SYMBOL } from "./FoodTypeMark";
 
-const VEG_SYMBOL = "🟢";
-const NON_VEG_SYMBOL = "🔴";
 
+import { HScroll } from "./HScroll";
 function vegFromSymbol(symbol?: string): boolean {
   return symbol !== NON_VEG_SYMBOL;
 }
@@ -40,9 +40,9 @@ function Field({ label, value, onChange, error, type = "text", placeholder = "" 
         className="w-full rounded-xl px-3 py-2.5 text-sm outline-none transition-all"
         style={{
           background: "var(--cafyz-surface-2)", color: "var(--cafyz-text)",
-          border: `1px solid ${error ? "rgba(255,59,92,0.4)" : "rgba(30,127,255,0.12)"}`,
+          border: `1px solid ${error ? "rgba(255,65,108,0.4)" : "rgba(var(--cafyz-brand-rgb),0.12)"}`,
         }} />
-      {error && <p style={{ color: "#ff3b5c", fontSize: "0.68rem", marginTop: 3 }}>{error}</p>}
+      {error && <p style={{ color: "#ff416c", fontSize: "0.68rem", marginTop: 3 }}>{error}</p>}
     </div>
   );
 }
@@ -117,7 +117,7 @@ function ItemModal({ item, itemCategories, onSave, onClose }: {
         transition={{ type: "spring", damping: 30, stiffness: 320 }}
         onClick={e => e.stopPropagation()}
         className="w-full sm:max-w-lg rounded-t-3xl sm:rounded-2xl overflow-hidden flex flex-col"
-        style={{ background: "var(--cafyz-surface)", border: "1px solid rgba(30,127,255,0.2)", maxHeight: "90vh" }}>
+        style={{ background: "var(--cafyz-surface)", border: "1px solid rgba(var(--cafyz-brand-rgb),0.2)", maxHeight: "90vh" }}>
 
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b flex-shrink-0"
@@ -125,7 +125,7 @@ function ItemModal({ item, itemCategories, onSave, onClose }: {
           <h3 style={{ color: "var(--cafyz-text)", fontFamily: "var(--font-display)", fontWeight: 700 }}>
             {isEdit ? "Edit Item" : "Add Menu Item"}
           </h3>
-          <button onClick={onClose} className="w-8 h-8 rounded-xl flex items-center justify-center hover:bg-[rgba(30,127,255,0.08)] transition-all"
+          <button onClick={onClose} className="w-8 h-8 rounded-xl flex items-center justify-center hover:bg-[rgba(var(--cafyz-brand-rgb),0.08)] transition-all"
             style={{ color: "var(--cafyz-muted)" }}><X size={16} /></button>
         </div>
 
@@ -139,7 +139,7 @@ function ItemModal({ item, itemCategories, onSave, onClose }: {
               if (file) void handlePickImage(file);
             }} />
           <div className="rounded-2xl overflow-hidden h-36 relative flex items-center justify-center cursor-pointer"
-            style={{ background: "var(--cafyz-surface-2)", border: "1px dashed rgba(30,127,255,0.2)" }}
+            style={{ background: "var(--cafyz-surface-2)", border: "1px dashed rgba(var(--cafyz-brand-rgb),0.2)" }}
             onClick={() => !imageUploading && fileRef.current?.click()}
             role="button"
             tabIndex={0}
@@ -155,7 +155,7 @@ function ItemModal({ item, itemCategories, onSave, onClose }: {
             )}
             {imageUploading && (
               <div className="absolute inset-0 flex items-center justify-center" style={{ background: "var(--cafyz-overlay)" }}>
-                <Loader2 size={28} className="animate-spin" style={{ color: "#1e7fff" }} />
+                <Loader2 size={28} className="animate-spin" style={{ color: "var(--cafyz-brand)" }} />
               </div>
             )}
           </div>
@@ -163,19 +163,19 @@ function ItemModal({ item, itemCategories, onSave, onClose }: {
             <button type="button" disabled={saving || imageUploading}
               onClick={() => fileRef.current?.click()}
               className="flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-semibold"
-              style={{ background: "var(--cafyz-border)", color: "#1e7fff", border: "1px solid rgba(30,127,255,0.2)" }}>
+              style={{ background: "var(--cafyz-border)", color: "var(--cafyz-brand)", border: "1px solid rgba(var(--cafyz-brand-rgb),0.2)" }}>
               <Camera size={14} /> {form.image ? "Change photo" : "Upload photo"}
             </button>
             {form.image && (
               <button type="button" disabled={saving || imageUploading}
                 onClick={() => { setForm(f => ({ ...f, image: "" })); setImageUploadError(""); }}
                 className="px-3 py-2 rounded-xl text-sm font-semibold"
-                style={{ background: "rgba(255,59,92,0.08)", color: "#ff3b5c", border: "1px solid rgba(255,59,92,0.15)" }}>
+                style={{ background: "rgba(255,65,108,0.08)", color: "#ff416c", border: "1px solid rgba(255,65,108,0.15)" }}>
                 Remove
               </button>
             )}
           </div>
-          {imageUploadError && <p style={{ color: "#ff3b5c", fontSize: "0.72rem" }}>{imageUploadError}</p>}
+          {imageUploadError && <p style={{ color: "#ff416c", fontSize: "0.72rem" }}>{imageUploadError}</p>}
           <p style={{ color: "var(--cafyz-muted)", fontSize: "0.68rem" }}>JPEG, PNG, WebP, GIF, or HEIC · max 8 MB</p>
 
           <div className="grid grid-cols-2 gap-3">
@@ -184,7 +184,7 @@ function ItemModal({ item, itemCategories, onSave, onClose }: {
               <label style={{ color: "var(--cafyz-text-secondary)", fontSize: "0.75rem", display: "block", marginBottom: 5 }}>Category *</label>
               <select value={form.category} onChange={e => setForm(f => ({ ...f, category: e.target.value }))}
                 className="w-full rounded-xl px-3 py-2.5 text-sm outline-none"
-                style={{ background: "var(--cafyz-surface-2)", color: "var(--cafyz-text)", border: "1px solid rgba(30,127,255,0.12)" }}>
+                style={{ background: "var(--cafyz-surface-2)", color: "var(--cafyz-text)", border: "1px solid rgba(var(--cafyz-brand-rgb),0.12)" }}>
                 {itemCategories.map(c => <option key={c}>{c}</option>)}
               </select>
             </div>
@@ -196,35 +196,35 @@ function ItemModal({ item, itemCategories, onSave, onClose }: {
             <textarea value={form.description} onChange={e => { setForm(f => ({ ...f, description: e.target.value })); setErrors(er => ({ ...er, description: "" })); }}
               placeholder="Describe the dish — ingredients, style, accompaniments..."
               rows={3} className="w-full rounded-xl px-3 py-2.5 text-sm outline-none resize-none"
-              style={{ background: "var(--cafyz-surface-2)", color: "var(--cafyz-text)", border: `1px solid ${errors.description ? "rgba(255,59,92,0.4)" : "rgba(30,127,255,0.12)"}` }} />
-            {errors.description && <p style={{ color: "#ff3b5c", fontSize: "0.68rem", marginTop: 3 }}>{errors.description}</p>}
+              style={{ background: "var(--cafyz-surface-2)", color: "var(--cafyz-text)", border: `1px solid ${errors.description ? "rgba(255,65,108,0.4)" : "rgba(var(--cafyz-brand-rgb),0.12)"}` }} />
+            {errors.description && <p style={{ color: "#ff416c", fontSize: "0.68rem", marginTop: 3 }}>{errors.description}</p>}
           </div>
 
-          <div className="rounded-xl p-3 flex items-center justify-between" style={{ background: "var(--cafyz-surface-2)", border: "1px solid rgba(30,127,255,0.08)" }}>
+          <div className="rounded-xl p-3 flex items-center justify-between" style={{ background: "var(--cafyz-surface-2)", border: "1px solid rgba(var(--cafyz-brand-rgb),0.08)" }}>
             <span style={{ color: "var(--cafyz-text-secondary)", fontSize: "0.82rem" }}>Mark as popular</span>
             <button type="button" onClick={() => setForm(f => ({ ...f, isPopular: !f.isPopular }))}
               className="rounded-full relative transition-all"
-              style={{ background: form.isPopular ? "#f59e0b" : "rgba(30,127,255,0.12)", width: 40, height: 22 }}>
+              style={{ background: form.isPopular ? "#ffaa00" : "rgba(var(--cafyz-brand-rgb),0.12)", width: 40, height: 22 }}>
               <div className="w-4 h-4 rounded-full bg-white absolute top-1 transition-all"
                 style={{ left: form.isPopular ? "calc(100% - 18px)" : 2 }} />
             </button>
           </div>
 
           <div className="grid grid-cols-2 gap-3">
-            <div className="rounded-xl p-3 flex items-center justify-between" style={{ background: "var(--cafyz-surface-2)", border: "1px solid rgba(30,127,255,0.08)" }}>
+            <div className="rounded-xl p-3 flex items-center justify-between" style={{ background: "var(--cafyz-surface-2)", border: "1px solid rgba(var(--cafyz-brand-rgb),0.08)" }}>
               <span style={{ color: "var(--cafyz-text-secondary)", fontSize: "0.82rem" }}>Vegetarian</span>
               <button onClick={() => setForm(f => ({ ...f, veg: !f.veg }))}
                 className="w-10 h-5.5 rounded-full relative transition-all"
-                style={{ background: form.veg ? "#22c55e" : "rgba(30,127,255,0.12)", width: 40, height: 22 }}>
+                style={{ background: form.veg ? "#00d68f" : "rgba(var(--cafyz-brand-rgb),0.12)", width: 40, height: 22 }}>
                 <div className="w-4 h-4 rounded-full bg-white absolute top-1 transition-all"
                   style={{ left: form.veg ? "calc(100% - 18px)" : 2 }} />
               </button>
             </div>
-            <div className="rounded-xl p-3 flex items-center justify-between" style={{ background: "var(--cafyz-surface-2)", border: "1px solid rgba(30,127,255,0.08)" }}>
+            <div className="rounded-xl p-3 flex items-center justify-between" style={{ background: "var(--cafyz-surface-2)", border: "1px solid rgba(var(--cafyz-brand-rgb),0.08)" }}>
               <span style={{ color: "var(--cafyz-text-secondary)", fontSize: "0.82rem" }}>Available</span>
               <button onClick={() => setForm(f => ({ ...f, available: !f.available }))}
                 className="rounded-full relative transition-all"
-                style={{ background: form.available ? "#1e7fff" : "rgba(30,127,255,0.12)", width: 40, height: 22 }}>
+                style={{ background: form.available ? "var(--cafyz-brand)" : "rgba(var(--cafyz-brand-rgb),0.12)", width: 40, height: 22 }}>
                 <div className="w-4 h-4 rounded-full bg-white absolute top-1 transition-all"
                   style={{ left: form.available ? "calc(100% - 18px)" : 2 }} />
               </button>
@@ -235,12 +235,12 @@ function ItemModal({ item, itemCategories, onSave, onClose }: {
         {/* Footer */}
         <div className="flex gap-2.5 p-4 border-t flex-shrink-0" style={{ borderColor: "var(--cafyz-border)" }}>
           <button onClick={onClose} className="flex-1 py-2.5 rounded-xl text-sm font-semibold"
-            style={{ background: "rgba(30,127,255,0.06)", color: "var(--cafyz-text-secondary)", border: "1px solid var(--cafyz-border)" }}>
+            style={{ background: "rgba(var(--cafyz-brand-rgb),0.06)", color: "var(--cafyz-text-secondary)", border: "1px solid var(--cafyz-border)" }}>
             Cancel
           </button>
           <motion.button whileTap={{ scale: 0.96 }} onClick={handleSave} disabled={saving || imageUploading}
             className="flex-1 py-2.5 rounded-xl text-sm font-semibold flex items-center justify-center gap-2 transition-all"
-            style={{ background: "linear-gradient(135deg, #1e7fff, #00c6ff)", color: "#fff", opacity: saving || imageUploading ? 0.8 : 1 }}>
+            style={{ background: "var(--cafyz-gradient)", color: "#fff", opacity: saving || imageUploading ? 0.8 : 1 }}>
             {saving || imageUploading
               ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
               : <><Save size={14} /> {isEdit ? "Save Changes" : "Add to Menu"}</>}
@@ -421,13 +421,13 @@ export function MenuPage() {
         <motion.button whileTap={{ scale: 0.95 }}
           onClick={() => setShowCategoryForm(v => !v)}
           className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold flex-shrink-0"
-          style={{ background: "rgba(30,127,255,0.08)", color: "#1e7fff", border: "1px solid rgba(30,127,255,0.15)" }}>
+          style={{ background: "rgba(var(--cafyz-brand-rgb),0.08)", color: "var(--cafyz-brand)", border: "1px solid rgba(var(--cafyz-brand-rgb),0.15)" }}>
           <Plus size={16} /> Category
         </motion.button>
         <motion.button whileTap={{ scale: 0.95 }}
           onClick={() => setModalItem(null)}
           className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold flex-shrink-0"
-          style={{ background: "linear-gradient(135deg, #1e7fff, #00c6ff)", color: "white" }}>
+          style={{ background: "var(--cafyz-gradient)", color: "white" }}>
           <Plus size={16} /> Add Item
         </motion.button>
       </div>
@@ -438,23 +438,23 @@ export function MenuPage() {
           <input type="text" placeholder="New category name" value={newCategory}
             onChange={e => setNewCategory(e.target.value)}
             className="flex-1 rounded-xl px-3 py-2 text-sm outline-none placeholder:text-[var(--cafyz-muted)]"
-            style={{ background: "var(--cafyz-surface-2)", color: "var(--cafyz-text)", border: "1px solid rgba(30,127,255,0.12)" }} />
+            style={{ background: "var(--cafyz-surface-2)", color: "var(--cafyz-text)", border: "1px solid rgba(var(--cafyz-brand-rgb),0.12)" }} />
           <button onClick={() => void addCategory()}
             className="px-4 py-2 rounded-xl text-sm font-semibold"
-            style={{ background: "linear-gradient(135deg, #1e7fff, #00c6ff)", color: "#fff" }}>
+            style={{ background: "var(--cafyz-gradient)", color: "#fff" }}>
             Add Category
           </button>
         </div>
       )}
 
       {/* Category pills */}
-      <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
+      <HScroll className="gap-2 pb-1">
         {categories.map(cat => (
           <div key={cat} className="flex items-center gap-1 flex-shrink-0">
             <button onClick={() => setActiveCategory(cat)}
               className="px-4 py-2 rounded-full text-sm whitespace-nowrap transition-all font-medium"
               style={activeCategory === cat
-                ? { background: "linear-gradient(135deg, #1e7fff, #00c6ff)", color: "white" }
+                ? { background: "var(--cafyz-gradient)", color: "white" }
                 : { background: "var(--cafyz-surface)", color: "var(--cafyz-muted)", border: "1px solid var(--cafyz-border)" }}>
               {cat}
             </button>
@@ -465,12 +465,12 @@ export function MenuPage() {
                 <>
                   <button onClick={() => void renameCategory(row)} title={`Rename ${cat}`}
                     className="w-7 h-7 rounded-full flex items-center justify-center"
-                    style={{ background: "rgba(30,127,255,0.08)", color: "#1e7fff" }}>
+                    style={{ background: "rgba(var(--cafyz-brand-rgb),0.08)", color: "var(--cafyz-brand)" }}>
                     <Edit2 size={12} />
                   </button>
                   <button onClick={() => void removeCategory(row)} title={`Delete ${cat}`}
                     className="w-7 h-7 rounded-full flex items-center justify-center"
-                    style={{ background: "rgba(255,59,92,0.08)", color: "#ff3b5c" }}>
+                    style={{ background: "rgba(255,65,108,0.08)", color: "#ff416c" }}>
                     ×
                   </button>
                 </>
@@ -478,12 +478,12 @@ export function MenuPage() {
             })()}
           </div>
         ))}
-      </div>
+      </HScroll>
 
       {/* Menu grid */}
       {filtered.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-16 gap-3 rounded-2xl"
-          style={{ border: "1px dashed rgba(30,127,255,0.15)" }}>
+          style={{ border: "1px dashed rgba(var(--cafyz-brand-rgb),0.15)" }}>
           <Search size={28} style={{ color: "var(--cafyz-muted)" }} />
           <p style={{ color: "var(--cafyz-muted)", fontSize: "0.85rem" }}>No items match your search</p>
         </div>
@@ -507,7 +507,7 @@ export function MenuPage() {
                   ) : (
                     // No uploaded photo: show a neutral placeholder rather than an unrelated food picture.
                     <div className="w-full h-full flex flex-col items-center justify-center gap-1.5"
-                      style={{ background: "linear-gradient(135deg, rgba(30,127,255,0.10), rgba(0,198,255,0.05))", color: "var(--cafyz-muted)" }}>
+                      style={{ background: "linear-gradient(135deg, rgba(var(--cafyz-brand-rgb),0.10), rgba(var(--cafyz-brand-2-rgb),0.05))", color: "var(--cafyz-muted)" }}>
                       <ImageIcon size={26} />
                       <span style={{ fontSize: "0.72rem" }}>No photo yet</span>
                     </div>
@@ -516,13 +516,13 @@ export function MenuPage() {
                   <div className="absolute top-2 left-2 flex items-center gap-1.5">
                     {item.isPopular && (
                       <span className="text-xs px-2 py-0.5 rounded-full font-semibold"
-                        style={{ background: "rgba(30,127,255,0.85)", color: "white", backdropFilter: "blur(4px)" }}>
+                        style={{ background: "rgba(var(--cafyz-brand-rgb),0.85)", color: "white", backdropFilter: "blur(4px)" }}>
                         Popular
                       </span>
                     )}
                     {item.veg !== undefined && (
                       <span className="w-4 h-4 rounded flex items-center justify-center"
-                        style={{ background: item.veg ? "rgba(34,197,94,0.9)" : "rgba(255,59,92,0.9)" }}>
+                        style={{ background: item.veg ? "rgba(0,214,143,0.9)" : "rgba(255,65,108,0.9)" }}>
                         <div className="w-2 h-2 rounded-full bg-white" />
                       </span>
                     )}
@@ -531,7 +531,7 @@ export function MenuPage() {
                     <div className="absolute inset-0 flex items-center justify-center"
                       style={{ background: "var(--cafyz-overlay)" }}>
                       <span className="text-sm font-semibold px-3 py-1 rounded-full"
-                        style={{ background: "rgba(107,130,160,0.25)", color: "var(--cafyz-text-secondary)", border: "1px solid rgba(107,130,160,0.3)" }}>
+                        style={{ background: "rgba(166,160,199,0.25)", color: "var(--cafyz-text-secondary)", border: "1px solid rgba(166,160,199,0.3)" }}>
                         Unavailable
                       </span>
                     </div>
@@ -542,15 +542,15 @@ export function MenuPage() {
                 <div className="p-3.5">
                   <div className="flex items-start justify-between gap-2 mb-1">
                     <h4 style={{ color: "var(--cafyz-text)", fontFamily: "var(--font-display)", fontWeight: 600, fontSize: "0.92rem", lineHeight: 1.3 }}>{item.name}</h4>
-                    <span style={{ color: "#1e7fff", fontFamily: "var(--font-mono)", fontWeight: 700, fontSize: "0.95rem", flexShrink: 0 }}>{cur}{item.price}</span>
+                    <span style={{ color: "var(--cafyz-brand)", fontFamily: "var(--font-mono)", fontWeight: 700, fontSize: "0.95rem", flexShrink: 0 }}>{cur}{item.price}</span>
                   </div>
                   <p style={{ color: "var(--cafyz-muted)", fontSize: "0.73rem", lineHeight: 1.5, marginBottom: 10 }} className="line-clamp-2">{item.description}</p>
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2.5">
                       {item.rating != null && (
                         <div className="flex items-center gap-1">
-                          <Star size={11} fill="#f59e0b" stroke="none" />
-                          <span style={{ color: "#f59e0b", fontSize: "0.72rem", fontWeight: 600 }}>{item.rating}</span>
+                          <Star size={11} fill="#ffaa00" stroke="none" />
+                          <span style={{ color: "#ffaa00", fontSize: "0.72rem", fontWeight: 600 }}>{item.rating}</span>
                         </div>
                       )}
                       <span style={{ color: "var(--cafyz-muted)", fontSize: "0.68rem" }}>{item.orders.toLocaleString()} sold</span>
@@ -564,13 +564,13 @@ export function MenuPage() {
                       </motion.button>
                       <motion.button whileTap={{ scale: 0.9 }}
                         onClick={() => setDeleteTarget(item.id)}
-                        className="w-7 h-7 rounded-lg flex items-center justify-center hover:bg-[rgba(255,59,92,0.1)] transition-all"
+                        className="w-7 h-7 rounded-lg flex items-center justify-center hover:bg-[rgba(255,65,108,0.1)] transition-all"
                         style={{ color: "var(--cafyz-muted)" }}>
                         <Trash2 size={13} />
                       </motion.button>
                       <motion.button whileTap={{ scale: 0.9 }} onClick={() => toggleAvailable(item.id)}>
                         {item.available
-                          ? <ToggleRight size={22} style={{ color: "#22c55e" }} />
+                          ? <ToggleRight size={22} style={{ color: "var(--cafyz-brand)" }} />
                           : <ToggleLeft size={22} style={{ color: "var(--cafyz-muted)" }} />}
                       </motion.button>
                     </div>

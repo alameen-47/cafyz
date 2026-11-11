@@ -187,10 +187,10 @@ function DualAreaChart({ data, cur = "₹" }: { data: RevPoint[]; cur?: string }
       {data.map((d, i) => i % labelEvery === 0 && (
         <text key={i} x={xs[i]} y={H - 6} textAnchor="middle" fill="var(--cafyz-muted)" fontSize={9}>{d.month}</text>
       ))}
-      <path d={areaPath(yRev)} fill="#1e7fff" fillOpacity={0.1} />
-      <path d={linePath(yRev)} fill="none" stroke="#1e7fff" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+      <path d={areaPath(yRev)} fill="var(--cafyz-brand)" fillOpacity={0.1} />
+      <path d={linePath(yRev)} fill="none" stroke="var(--cafyz-brand)" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
       {xs.map((x, i) => (
-        <circle key={i} cx={x} cy={yRev[i]} r={3} fill="#1e7fff" />
+        <circle key={i} cx={x} cy={yRev[i]} r={3} fill="var(--cafyz-brand)" />
       ))}
     </svg>
   );
@@ -220,7 +220,7 @@ function HorizontalBarChart({ data, cur = "₹" }: { data: ItemPoint[]; cur?: st
                 animate={{ width: `${pct}%` }}
                 transition={{ duration: 0.6, delay: i * 0.07, ease: "easeOut" }}
                 className="h-full rounded-full"
-                style={{ background: i === 0 ? "#1e7fff" : i === 2 ? "#00c6ff" : "#1e4a88" }}
+                style={{ background: i === 0 ? "var(--cafyz-brand)" : i === 2 ? "var(--cafyz-brand-2)" : "var(--cafyz-brand-alt)" }}
               />
             </div>
             <span style={{ color: "var(--cafyz-muted)", fontFamily: "var(--font-mono)", fontSize: "0.72rem", width: 72, textAlign: "right", flexShrink: 0 }}>
@@ -269,13 +269,13 @@ function RadarChart({ data }: { data: RadarPoint[] }) {
         const { x, y } = pt(i, r);
         return <line key={i} x1={cx} y1={cy} x2={x} y2={y} stroke="var(--cafyz-grid-line)" strokeWidth={1} />;
       })}
-      <path d={dataPath} fill="#1e7fff" fillOpacity={0.15} stroke="#1e7fff" strokeWidth={2} />
+      <path d={dataPath} fill="var(--cafyz-brand)" fillOpacity={0.15} stroke="var(--cafyz-brand)" strokeWidth={2} />
       {data.map((d, i) => {
         const { x, y } = pt(i, (d.score / 100) * r);
         const lp = pt(i, r + 14);
         return (
           <g key={d.metric}>
-            <circle cx={x} cy={y} r={3} fill="#1e7fff" />
+            <circle cx={x} cy={y} r={3} fill="var(--cafyz-brand)" />
             <text x={lp.x} y={lp.y + 4} textAnchor="middle" fill="var(--cafyz-muted)" fontSize={8.5}>{d.metric}</text>
           </g>
         );
@@ -323,9 +323,9 @@ function LineSparkline({ data }: { data: HourPoint[] }) {
       {data.map((d, i) => i % 2 === 0 && (
         <text key={d.hour} x={xs[i]} y={H - 4} textAnchor="middle" fill="var(--cafyz-muted)" fontSize={8}>{d.hour}</text>
       ))}
-      <path d={linePath} fill="none" stroke="#00c6ff" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" />
-      <circle cx={xs[peak]} cy={ys[peak]} r={4} fill="#00c6ff" />
-      <text x={xs[peak]} y={ys[peak] - 8} textAnchor="middle" fill="#00c6ff" fontSize={8} fontWeight="bold">peak</text>
+      <path d={linePath} fill="none" stroke="var(--cafyz-brand-2)" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" />
+      <circle cx={xs[peak]} cy={ys[peak]} r={4} fill="var(--cafyz-brand-2)" />
+      <text x={xs[peak]} y={ys[peak] - 8} textAnchor="middle" fill="var(--cafyz-brand-2)" fontSize={8} fontWeight="bold">peak</text>
     </svg>
   );
 }
@@ -496,11 +496,12 @@ export function Analytics() {
     <div className="p-3 sm:p-4 md:p-6 space-y-4 md:space-y-6 max-w-7xl mx-auto w-full">
       <div className="space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-2 p-1 rounded-xl w-fit flex-wrap" style={{ background: "var(--cafyz-surface)", border: "1px solid var(--cafyz-border)" }}>
+          {/* Phones: five equal columns on one line; wider screens size each button to its label. */}
+          <div className="grid grid-cols-5 w-full gap-1 sm:flex sm:items-center sm:gap-2 sm:w-fit p-1 rounded-xl" style={{ background: "var(--cafyz-surface)", border: "1px solid var(--cafyz-border)" }}>
             {periods.map(p => (
               <button key={p} type="button" onClick={() => setPreset(p)}
-                className="px-3 py-1.5 rounded-lg text-xs font-medium transition-all"
-                style={period === p ? { background: "linear-gradient(135deg, #1e7fff, #00c6ff)", color: "white" } : { color: "var(--cafyz-muted)" }}>
+                className="px-0.5 sm:px-3 py-1.5 rounded-lg text-xs font-medium transition-all whitespace-nowrap text-center"
+                style={period === p ? { background: "var(--cafyz-gradient)", color: "white" } : { color: "var(--cafyz-muted)" }}>
                 {p}
               </button>
             ))}
@@ -514,7 +515,7 @@ export function Analytics() {
               onClick={() => void load(true)}
               disabled={loading || refreshing}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold"
-              style={{ background: "var(--cafyz-border)", color: "#1e7fff", opacity: loading || refreshing ? 0.6 : 1 }}
+              style={{ background: "var(--cafyz-border)", color: "var(--cafyz-brand)", opacity: loading || refreshing ? 0.6 : 1 }}
             >
               {refreshing ? <Loader2 size={13} className="animate-spin" /> : <RefreshCw size={13} />}
               Refresh
@@ -532,7 +533,7 @@ export function Analytics() {
                 setPeriod("Custom");
               }}
               className="rounded-lg px-2.5 py-1.5 text-xs"
-              style={{ background: "var(--cafyz-surface-subtle)", border: "1px solid rgba(30,127,255,0.15)", color: "var(--cafyz-text)" }} />
+              style={{ background: "var(--cafyz-surface-subtle)", border: "1px solid rgba(var(--cafyz-brand-rgb),0.15)", color: "var(--cafyz-text)" }} />
           </label>
           <label className="flex flex-col gap-1">
             <span style={{ color: "var(--cafyz-muted)", fontSize: "0.68rem", textTransform: "uppercase", letterSpacing: "0.05em" }}>To</span>
@@ -542,26 +543,26 @@ export function Analytics() {
                 setPeriod("Custom");
               }}
               className="rounded-lg px-2.5 py-1.5 text-xs"
-              style={{ background: "var(--cafyz-surface-subtle)", border: "1px solid rgba(30,127,255,0.15)", color: "var(--cafyz-text)" }} />
+              style={{ background: "var(--cafyz-surface-subtle)", border: "1px solid rgba(var(--cafyz-brand-rgb),0.15)", color: "var(--cafyz-text)" }} />
           </label>
           {filterRangeCaption && (
             <p style={{ color: "var(--cafyz-text-secondary)", fontSize: "0.78rem", marginLeft: "auto" }}>
-              Showing <span style={{ color: "#1e7fff", fontWeight: 600 }}>{filterRangeCaption}</span>
+              Showing <span style={{ color: "var(--cafyz-brand)", fontWeight: 600 }}>{filterRangeCaption}</span>
             </p>
           )}
         </div>
       </div>
 
       {error && !loading && (
-        <div className="rounded-xl px-4 py-3 flex items-center gap-2" style={{ background: "rgba(255,59,92,0.08)", border: "1px solid rgba(255,59,92,0.2)" }}>
-          <AlertCircle size={16} style={{ color: "#ff3b5c", flexShrink: 0 }} />
+        <div className="rounded-xl px-4 py-3 flex items-center gap-2" style={{ background: "rgba(255,65,108,0.08)", border: "1px solid rgba(255,65,108,0.2)" }}>
+          <AlertCircle size={16} style={{ color: "#ff416c", flexShrink: 0 }} />
           <p style={{ color: "var(--cafyz-danger)", fontSize: "0.82rem" }}>{error}</p>
         </div>
       )}
 
       {loading ? (
         <div className="flex flex-col items-center justify-center py-24 gap-3">
-          <Loader2 size={28} className="animate-spin" style={{ color: "#1e7fff" }} />
+          <Loader2 size={28} className="animate-spin" style={{ color: "var(--cafyz-brand)" }} />
           <p style={{ color: "var(--cafyz-muted)", fontSize: "0.85rem" }}>Loading analytics…</p>
         </div>
       ) : (
@@ -573,7 +574,7 @@ export function Analytics() {
                 <div style={{ color: "var(--cafyz-muted)", fontSize: "0.7rem", marginBottom: 4 }}>{kpi.label}</div>
                 <div style={{ color: "var(--cafyz-text)", fontFamily: "var(--font-display)", fontWeight: 700, fontSize: "1.1rem" }}>{kpi.value}</div>
                 <div className="flex items-center gap-1 mt-1" style={{ color: "var(--cafyz-muted)", fontSize: "0.72rem" }}>
-                  {kpi.up ? <TrendingUp size={10} style={{ color: "#22c55e" }} /> : <TrendingDown size={10} style={{ color: "#f59e0b" }} />}
+                  {kpi.up ? <TrendingUp size={10} style={{ color: "#00d68f" }} /> : <TrendingDown size={10} style={{ color: "#ffaa00" }} />}
                   {kpi.change}
                 </div>
               </motion.div>
@@ -584,8 +585,8 @@ export function Analytics() {
             className="rounded-2xl p-5" style={{ background: "var(--cafyz-surface)", border: "1px solid var(--cafyz-border)" }}>
             <div className="flex items-center justify-between mb-1">
               <h3 style={{ color: "var(--cafyz-text)", fontFamily: "var(--font-display)", fontWeight: 600 }}>Revenue Trend</h3>
-              <span className="flex items-center gap-1.5 text-xs" style={{ color: "#1e7fff" }}>
-                <span className="w-3 h-0.5 rounded inline-block" style={{ background: "#1e7fff" }} /> Paid revenue
+              <span className="flex items-center gap-1.5 text-xs" style={{ color: "var(--cafyz-brand)" }}>
+                <span className="w-3 h-0.5 rounded inline-block" style={{ background: "var(--cafyz-brand)" }} /> Paid revenue
               </span>
             </div>
             <p style={{ color: "var(--cafyz-muted)", fontSize: "0.75rem", marginBottom: 12 }}>Daily paid revenue · {filterRangeCaption || periodLabel}</p>
@@ -632,14 +633,14 @@ export function Analytics() {
                     </span>
                     <span style={{ color: "var(--cafyz-text)", fontSize: "0.82rem", fontWeight: 600 }}>{periodLabel}</span>
                     {filterRangeCaption && (
-                      <span style={{ color: "#1e7fff", fontSize: "0.75rem" }}>{filterRangeCaption}</span>
+                      <span style={{ color: "var(--cafyz-brand)", fontSize: "0.75rem" }}>{filterRangeCaption}</span>
                     )}
                   </div>
                 )}
               </div>
               <div className="rounded-xl px-3 py-2" style={{ background: "var(--cafyz-accent-soft)", border: "1px solid var(--cafyz-accent-border)" }}>
                 <p style={{ color: "var(--cafyz-muted)", fontSize: "0.65rem", textTransform: "uppercase", letterSpacing: "0.06em" }}>Printer</p>
-                <p style={{ color: livePrinter.type === "none" ? "#fbbf24" : "#22c55e", fontSize: "0.78rem", fontWeight: 600 }}>
+                <p style={{ color: livePrinter.type === "none" ? "#ffaa00" : "#00d68f", fontSize: "0.78rem", fontWeight: 600 }}>
                   {livePrinter.type === "none"
                     ? "Not connected — configure in Restaurant profile"
                     : `Connected · ${livePrinter.name}`}
@@ -651,8 +652,8 @@ export function Analytics() {
               <div className="rounded-xl p-4 space-y-3" style={{ background: "var(--cafyz-surface-subtle)", border: "1px solid var(--cafyz-border)" }}>
                 <div className="flex items-start gap-3">
                   <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
-                    style={{ background: "rgba(30,127,255,0.12)" }}>
-                    <FileText size={18} style={{ color: "#1e7fff" }} />
+                    style={{ background: "rgba(var(--cafyz-brand-rgb),0.12)" }}>
+                    <FileText size={18} style={{ color: "var(--cafyz-brand)" }} />
                   </div>
                   <div className="min-w-0 flex-1">
                     <p style={{ color: "var(--cafyz-text)", fontWeight: 700, fontSize: "0.9rem" }}>Sales Summary Report</p>
@@ -667,7 +668,7 @@ export function Analytics() {
                   onClick={() => void runReportPrint("sales")}
                   className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold transition-all"
                   style={{
-                    background: "linear-gradient(135deg, #1e7fff, #00c6ff)",
+                    background: "var(--cafyz-gradient)",
                     color: "var(--cafyz-text-strong)",
                     opacity: printBusy || analyticsData?.revenue.totalOrders === 0 ? 0.55 : 1,
                   }}
@@ -680,8 +681,8 @@ export function Analytics() {
               <div className="rounded-xl p-4 space-y-3" style={{ background: "var(--cafyz-surface-subtle)", border: "1px solid var(--cafyz-border)" }}>
                 <div className="flex items-start gap-3">
                   <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
-                    style={{ background: "rgba(168,85,247,0.12)" }}>
-                    <CalendarRange size={18} style={{ color: "#a855f7" }} />
+                    style={{ background: "rgba(var(--cafyz-brand-rgb),0.12)" }}>
+                    <CalendarRange size={18} style={{ color: "var(--cafyz-brand)" }} />
                   </div>
                   <div className="min-w-0 flex-1">
                     <p style={{ color: "var(--cafyz-text)", fontWeight: 700, fontSize: "0.9rem" }}>Daily Breakdown Report</p>
@@ -696,9 +697,9 @@ export function Analytics() {
                   onClick={() => void runReportPrint("period")}
                   className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold transition-all"
                   style={{
-                    background: "rgba(168,85,247,0.15)",
-                    color: "#c4b5fd",
-                    border: "1px solid rgba(168,85,247,0.25)",
+                    background: "rgba(var(--cafyz-brand-rgb),0.15)",
+                    color: "#b9a7e8",
+                    border: "1px solid rgba(var(--cafyz-brand-rgb),0.25)",
                     opacity: printBusy || analyticsData?.revenue.totalOrders === 0 ? 0.55 : 1,
                   }}
                 >
@@ -717,7 +718,7 @@ export function Analytics() {
           </motion.div>
 
           {!error && kpis.length > 0 && kpis[0].value === formatMoney(0) && (
-            <div className="rounded-xl px-4 py-6 text-center flex flex-col items-center gap-2" style={{ background: "var(--cafyz-surface)", border: "1px dashed rgba(30,127,255,0.15)" }}>
+            <div className="rounded-xl px-4 py-6 text-center flex flex-col items-center gap-2" style={{ background: "var(--cafyz-surface)", border: "1px dashed rgba(var(--cafyz-brand-rgb),0.15)" }}>
               <BarChart3 size={24} style={{ color: "var(--cafyz-muted)" }} />
               <p style={{ color: "var(--cafyz-text-secondary)", fontSize: "0.88rem", fontWeight: 600 }}>No paid sales in this period</p>
               <p style={{ color: "var(--cafyz-muted)", fontSize: "0.78rem" }}>Complete payments in POS — charts update automatically.</p>

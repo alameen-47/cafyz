@@ -8,7 +8,9 @@ import { useAuth } from "../auth";
 import { onResume } from "../../hooks/useOnResume";
 import { usePolling } from "../../hooks/usePolling";
 import { keepIfSame } from "../../utils/sameData";
+import { withAlpha } from "../../utils/color";
 
+import { HScroll } from "./HScroll";
 type KDSStatus = "new" | "prep" | "ready";
 
 interface KDSOrder {
@@ -25,11 +27,11 @@ interface KDSOrder {
 }
 
 const STATION_PRESET: Record<string, string> = {
-  hot: "#ff6b35", grill: "#f59e0b", tandoor: "#ef4444", oven: "#f97316",
-  fry: "#eab308", cold: "#22d3ee", expedite: "#1e7fff", bar: "#a855f7",
-  garde: "#22d3ee", patisserie: "#f472b6",
+  hot: "#ff6b35", grill: "#ffaa00", tandoor: "#ff416c", oven: "#f97316",
+  fry: "#ffaa00", cold: "#00d4ff", expedite: "var(--cafyz-brand)", bar: "var(--cafyz-brand)",
+  garde: "#00d4ff", patisserie: "#f472b6",
 };
-const STATION_PALETTE = ["#ff6b35", "#f59e0b", "#ef4444", "#f97316", "#eab308", "#22d3ee", "#a855f7", "#1e7fff"];
+const STATION_PALETTE = ["#ff6b35", "#ffaa00", "#ff416c", "#f97316", "#ffaa00", "#00d4ff", "var(--cafyz-brand)", "var(--cafyz-brand)"];
 
 function stationColor(name?: string): string {
   if (!name) return "var(--cafyz-muted)";
@@ -93,7 +95,7 @@ function useElapsed(startedAt: number) {
 function ElapsedBadge({ startedAt }: { startedAt: number }) {
   const elapsed = useElapsed(startedAt);
   const m = Math.floor(elapsed / 60), s = elapsed % 60;
-  const color = elapsed >= 600 ? "#ff3b5c" : elapsed >= 300 ? "#f59e0b" : "#22c55e";
+  const color = elapsed >= 600 ? "#ff416c" : elapsed >= 300 ? "#ffaa00" : "#00d68f";
   return (
     <div className="flex items-center gap-1">
       <Clock size={11} style={{ color }} />
@@ -124,13 +126,13 @@ function OrderTicket({
       className="rounded-2xl overflow-hidden w-full"
       style={{
         background: "var(--cafyz-surface)",
-        border: `1px solid ${order.vip ? "rgba(245,158,11,0.35)" : "rgba(30,127,255,0.12)"}`,
-        boxShadow: order.vip ? "0 0 16px rgba(245,158,11,0.08)" : "none",
+        border: `1px solid ${order.vip ? "rgba(255,170,0,0.35)" : "rgba(var(--cafyz-brand-rgb),0.12)"}`,
+        boxShadow: order.vip ? "0 0 16px rgba(255,170,0,0.08)" : "none",
       }}>
       <div className="flex items-center justify-between px-3 py-2.5"
         style={{
-          background: order.status === "new" ? "rgba(30,127,255,0.08)" : order.status === "prep" ? "rgba(245,158,11,0.08)" : "rgba(34,197,94,0.08)",
-          borderBottom: "1px solid rgba(30,127,255,0.08)",
+          background: order.status === "new" ? "rgba(var(--cafyz-brand-rgb),0.08)" : order.status === "prep" ? "rgba(255,170,0,0.08)" : "rgba(0,214,143,0.08)",
+          borderBottom: "1px solid rgba(var(--cafyz-brand-rgb),0.08)",
         }}>
         <div className="flex items-center gap-2 flex-wrap">
           <span style={{ color: "var(--cafyz-text)", fontFamily: "var(--font-mono)", fontWeight: 800, fontSize: "0.88rem" }}>{order.table}</span>
@@ -138,15 +140,15 @@ function OrderTicket({
             #{order.id.slice(0, 4).toUpperCase()}
           </span>
           {order.parcel && (
-            <span className="flex items-center gap-0.5 text-xs px-1.5 py-0.5 rounded-full" style={{ background: "rgba(34,211,238,0.12)", color: "#22d3ee" }}>
+            <span className="flex items-center gap-0.5 text-xs px-1.5 py-0.5 rounded-full" style={{ background: "rgba(0,212,255,0.12)", color: "#00d4ff" }}>
               <Package size={9} /> Parcel
             </span>
           )}
           {order.vip && (
-            <span className="text-xs px-1.5 py-0.5 rounded-full" style={{ background: "rgba(245,158,11,0.15)", color: "#f59e0b" }}>⭐ VIP</span>
+            <span className="flex items-center gap-0.5 text-xs px-1.5 py-0.5 rounded-full" style={{ background: "rgba(255,170,0,0.15)", color: "#ffaa00" }}><Star size={9} fill="currentColor" aria-hidden="true" /> VIP</span>
           )}
           {hasAllergy && (
-            <span className="flex items-center gap-1 text-xs px-1.5 py-0.5 rounded-full" style={{ background: "rgba(255,59,92,0.15)", color: "#ff3b5c" }}>
+            <span className="flex items-center gap-1 text-xs px-1.5 py-0.5 rounded-full" style={{ background: "rgba(255,65,108,0.15)", color: "#ff416c" }}>
               <AlertTriangle size={9} /> Allergy
             </span>
           )}
@@ -158,7 +160,7 @@ function OrderTicket({
       </div>
 
       {order.orderNote && (
-        <p className="mx-3 mt-2 px-2 py-1.5 rounded-lg text-[0.68rem]" style={{ color: "#f59e0b", background: "rgba(245,158,11,0.08)" }}>
+        <p className="mx-3 mt-2 px-2 py-1.5 rounded-lg text-[0.68rem]" style={{ color: "#ffaa00", background: "rgba(255,170,0,0.08)" }}>
           Order note: {order.orderNote}
         </p>
       )}
@@ -166,13 +168,13 @@ function OrderTicket({
       <div className="p-3 space-y-2">
         {order.items.map((item, i) => (
           <div key={i} className="flex items-start gap-2">
-            <span style={{ color: "#1e7fff", fontFamily: "var(--font-mono)", fontWeight: 700, fontSize: "0.95rem", lineHeight: 1.3, flexShrink: 0 }}>×{item.qty}</span>
+            <span style={{ color: "var(--cafyz-brand)", fontFamily: "var(--font-mono)", fontWeight: 700, fontSize: "0.95rem", lineHeight: 1.3, flexShrink: 0 }}>×{item.qty}</span>
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
-                <span style={{ color: item.alert ? "#ff3b5c" : "var(--cafyz-text)", fontSize: "0.82rem", fontWeight: item.alert ? 700 : 500 }}>{item.name}</span>
+                <span style={{ color: item.alert ? "#ff416c" : "var(--cafyz-text)", fontSize: "0.82rem", fontWeight: item.alert ? 700 : 500 }}>{item.name}</span>
                 {item.station && (
                   <span className="text-xs px-1.5 py-0.5 rounded"
-                    style={{ background: `${stationColor(item.station)}18`, color: stationColor(item.station) }}>
+                    style={{ background: `${withAlpha(stationColor(item.station), 0x18)}`, color: stationColor(item.station) }}>
                     {item.station}
                   </span>
                 )}
@@ -188,7 +190,7 @@ function OrderTicket({
           <motion.button whileTap={{ scale: 0.95 }}
             onClick={() => onToggleVip(order.id, !order.vip)}
             className="px-2.5 py-2.5 rounded-xl text-xs font-semibold flex items-center justify-center gap-1"
-            style={{ background: "rgba(245,158,11,0.1)", color: order.vip ? "#f59e0b" : "var(--cafyz-muted)", minWidth: 44 }}>
+            style={{ background: "rgba(255,170,0,0.1)", color: order.vip ? "#ffaa00" : "var(--cafyz-muted)", minWidth: 44 }}>
             <Star size={13} />
           </motion.button>
         )}
@@ -199,9 +201,9 @@ function OrderTicket({
           }}
           className="flex-1 py-2.5 rounded-xl text-sm font-semibold flex items-center justify-center gap-2 transition-all"
           style={{
-            background: order.status === "new" ? "linear-gradient(135deg, #ff6b35, #f59e0b)"
-              : order.status === "prep" ? "linear-gradient(135deg, #22c55e, #16a34a)"
-              : "rgba(107,130,160,0.12)",
+            background: order.status === "new" ? "linear-gradient(135deg, #ff6b35, #ffaa00)"
+              : order.status === "prep" ? "linear-gradient(135deg, #00d68f, #00d68f)"
+              : "rgba(166,160,199,0.12)",
             color: order.status === "ready" ? "var(--cafyz-muted)" : "#fff",
           }}>
           <Icon size={14} />
@@ -213,9 +215,9 @@ function OrderTicket({
 }
 
 const columns: { key: KDSStatus; label: string; color: string; icon: React.ElementType }[] = [
-  { key: "new",   label: "New Orders",   color: "#1e7fff", icon: Flame },
-  { key: "prep",  label: "In Prep",      color: "#f59e0b", icon: ChefHat },
-  { key: "ready", label: "Ready · Pass", color: "#22c55e", icon: CheckCircle2 },
+  { key: "new",   label: "New Orders",   color: "var(--cafyz-brand)", icon: Flame },
+  { key: "prep",  label: "In Prep",      color: "#ffaa00", icon: ChefHat },
+  { key: "ready", label: "Ready · Pass", color: "#00d68f", icon: CheckCircle2 },
 ];
 
 export function KDS() {
@@ -327,23 +329,25 @@ export function KDS() {
   return (
     <div className="p-3 md:p-5 h-full flex flex-col gap-3 overflow-hidden">
       <div className="flex flex-wrap items-center gap-2 flex-shrink-0">
-        <div className="flex items-center gap-1 p-1 rounded-xl overflow-x-auto scrollbar-hide flex-1 min-w-0"
+        <div className="flex-1 min-w-0 p-1 rounded-xl"
           style={{ background: "var(--cafyz-surface)", border: "1px solid var(--cafyz-border)" }}>
+          <HScroll className="items-center gap-1">
           {stations.map(s => (
             <button key={s} onClick={() => setStationFilter(s)}
               className="px-2.5 py-1.5 rounded-lg text-xs whitespace-nowrap transition-all font-medium flex-shrink-0"
-              style={stationFilter === s ? { background: "linear-gradient(135deg, #1e7fff, #00c6ff)", color: "#fff" } : { color: "var(--cafyz-muted)" }}>
+              style={stationFilter === s ? { background: "var(--cafyz-gradient)", color: "#fff" } : { color: "var(--cafyz-muted)" }}>
               {s}
             </button>
           ))}
+          </HScroll>
         </div>
         <div className="flex items-center gap-2 px-3 py-2 rounded-xl flex-shrink-0"
           style={{ background: "var(--cafyz-surface)", border: "1px solid var(--cafyz-border)" }}>
-          <Printer size={13} style={{ color: printReady ? "#22c55e" : "#f59e0b" }} />
+          <Printer size={13} style={{ color: printReady ? "#00d68f" : "#ffaa00" }} />
           <span style={{ color: "var(--cafyz-muted)", fontSize: "0.72rem" }}>Auto-print</span>
           <button onClick={() => setAutoPrint(p => !p)}
             className="w-8 h-4 rounded-full relative transition-all flex-shrink-0"
-            style={{ background: autoPrint ? "#1e7fff" : "var(--cafyz-border)" }}>
+            style={{ background: autoPrint ? "var(--cafyz-brand)" : "var(--cafyz-border)" }}>
             <div className="w-3 h-3 rounded-full bg-white absolute top-0.5 transition-all"
               style={{ left: autoPrint ? "calc(100% - 14px)" : 2 }} />
           </button>
@@ -351,14 +355,14 @@ export function KDS() {
       </div>
 
       {autoPrint && !printReady && (
-        <p className="text-[0.72rem] px-3 py-2 rounded-lg flex-shrink-0" style={{ color: "#f59e0b", background: "rgba(245,158,11,0.08)" }}>
+        <p className="text-[0.72rem] px-3 py-2 rounded-lg flex-shrink-0" style={{ color: "#ffaa00", background: "rgba(255,170,0,0.08)" }}>
           Auto-print is on but no kitchen printer is connected. Assign a kitchen printer in POS → Printer setup.
           {kitchenPrinter ? ` Expected: ${kitchenPrinter}` : ""}
         </p>
       )}
 
       {loadError && (
-        <p className="text-sm px-3 py-2 rounded-lg flex-shrink-0" style={{ color: "#ff3b5c", background: "rgba(255,59,92,0.08)" }}>
+        <p className="text-sm px-3 py-2 rounded-lg flex-shrink-0" style={{ color: "#ff416c", background: "rgba(255,65,108,0.08)" }}>
           {loadError}
         </p>
       )}
@@ -370,10 +374,10 @@ export function KDS() {
           return (
             <button key={col.key} onClick={() => setActiveCol(col.key)}
               className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-semibold transition-all"
-              style={activeCol === col.key ? { background: `${col.color}20`, color: col.color } : { color: "var(--cafyz-muted)" }}>
+              style={activeCol === col.key ? { background: `${withAlpha(col.color, 0x20)}`, color: col.color } : { color: "var(--cafyz-muted)" }}>
               <span>{col.label.split(" ")[0]}</span>
               <span className="w-4 h-4 rounded-full flex items-center justify-center text-xs"
-                style={{ background: activeCol === col.key ? `${col.color}25` : "rgba(30,127,255,0.08)", color: activeCol === col.key ? col.color : "var(--cafyz-muted)", fontFamily: "var(--font-mono)", fontSize: "0.6rem" }}>
+                style={{ background: activeCol === col.key ? `${withAlpha(col.color, 0x25)}` : "rgba(var(--cafyz-brand-rgb),0.08)", color: activeCol === col.key ? col.color : "var(--cafyz-muted)", fontFamily: "var(--font-mono)", fontSize: "0.6rem" }}>
                 {count}
               </span>
             </button>
@@ -383,7 +387,7 @@ export function KDS() {
 
       {loading && orders.length === 0 ? (
         <div className="flex-1 flex flex-col items-center justify-center gap-3">
-          <Loader2 size={28} className="animate-spin" style={{ color: "#1e7fff" }} />
+          <Loader2 size={28} className="animate-spin" style={{ color: "var(--cafyz-brand)" }} />
           <p style={{ color: "var(--cafyz-muted)", fontSize: "0.85rem" }}>Loading kitchen tickets…</p>
         </div>
       ) : (
@@ -400,7 +404,7 @@ export function KDS() {
                       <span style={{ color: col.color, fontFamily: "var(--font-display)", fontWeight: 600, fontSize: "0.88rem" }}>{col.label}</span>
                     </div>
                     <span className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold"
-                      style={{ background: `${col.color}18`, color: col.color, fontFamily: "var(--font-mono)" }}>
+                      style={{ background: `${withAlpha(col.color, 0x18)}`, color: col.color, fontFamily: "var(--font-mono)" }}>
                       {colOrders.length}
                     </span>
                   </div>

@@ -30,9 +30,11 @@ export interface SignupData {
 
 /** Which identity provider proved the address; the flow after that is identical. */
 export type SocialProvider = 'google' | 'apple';
+/** What proved the address before a restaurant choice: a provider, or an emailed code. */
+export type ChoiceProvider = SocialProvider | 'email';
 
 export interface SocialChoice {
-  provider: SocialProvider;
+  provider: ChoiceProvider;
   selectionToken: string;
   accounts: SocialAccountChoice[];
 }
@@ -51,13 +53,14 @@ interface AuthCtx {
   loading: boolean;
   loginEmail: (email: string, password: string) => Promise<void>;
   loginPin: (login: string, pin: string) => Promise<void>;
-  requestOtp: (phone: string) => Promise<{ dev_otp?: string; message: string }>;
-  verifyOtp: (phone: string, otp: string) => Promise<void>;
+  requestEmailOtp: (email: string) => Promise<{ dev_otp?: string; message: string }>;
+  /** Resolves with a chooser when the address has accounts in several restaurants. */
+  verifyEmailOtp: (email: string, otp: string) => Promise<{ choose: SocialChoice } | null>;
   /** Resolves with a chooser (email in several restaurants) or signup payload (new to Cafyz). */
   loginSocial: (provider: SocialProvider, idToken: string, name?: string) => Promise<{ choose: SocialChoice } | { signup: SocialSignup } | null>;
   signupSocial: (provider: SocialProvider, signupToken: string, details: { restaurant_name: string; phone: string; owner_name?: string }) => Promise<void>;
 
-  loginSocialSelect: (provider: SocialProvider, selectionToken: string, restaurantId: string) => Promise<void>;
+  loginSocialSelect: (provider: ChoiceProvider, selectionToken: string, restaurantId: string) => Promise<void>;
   signup: (data: SignupData) => Promise<void>;
   logout: () => void;
   /** Sync plan (and restaurant name) from API after founder approves renewal. */
@@ -236,13 +239,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const d = await authApi.pin(login.trim(), pin, deviceId());
     await complete(d);
   };
-  const requestOtp = async (phone: string) => {
-    const r = await authApi.requestOtp(phone.trim());
+  const requestEmailOtp = async (email: string) => {
+    const r = await authApi.requestEmailOtp(email.trim().toLowerCase());
     return { dev_otp: r.dev_otp, message: r.message };
   };
-  const verifyOtp = async (phone: string, otp: string) => {
-    const d = await authApi.verifyOtp(phone.trim(), otp);
+  const verifyEmailOtp = async (email: string, otp: string) => {
+    const d = await authApi.verifyEmailOtp(email.trim().toLowerCase(), otp);
+    if (d.status === 'choose_account') {
+      return { choose: { provider: 'email' as const, selectionToken: d.selection_token, accounts: d.accounts } };
+    }
     await complete(d);
+    return null;
   };
 
   // Google and Sign in with Apple share this flow: the provider proves an email
@@ -267,10 +274,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const d = provider === 'apple' ? await authApi.appleSignup(body) : await authApi.googleSignup(body);
     await complete(d);
   };
-  const loginSocialSelect = async (provider: SocialProvider, selectionToken: string, restaurantId: string) => {
+  const loginSocialSelect = async (provider: ChoiceProvider, selectionToken: string, restaurantId: string) => {
     const d = provider === 'apple'
       ? await authApi.appleSelect(selectionToken, restaurantId)
-      : await authApi.googleSelect(selectionToken, restaurantId);
+      : provider === 'email'
+        ? await authApi.emailOtpSelect(selectionToken, restaurantId)
+        : await authApi.googleSelect(selectionToken, restaurantId);
     await complete(d);
   };
 
@@ -334,7 +343,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   return (
-    <Ctx.Provider value={{ user, loading, loginEmail, loginPin, requestOtp, verifyOtp, loginSocial, loginSocialSelect, signupSocial, signup, logout, refreshPlan }}>
+    <Ctx.Provider value={{ user, loading, loginEmail, loginPin, requestEmailOtp, verifyEmailOtp, loginSocial, loginSocialSelect, signupSocial, signup, logout, refreshPlan }}>
       {children}
     </Ctx.Provider>
   );

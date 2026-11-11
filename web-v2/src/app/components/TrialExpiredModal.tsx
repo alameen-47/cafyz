@@ -66,8 +66,8 @@ export function TrialExpiredModal({
         style={{ background: 'var(--cafyz-surface)', border: '1px solid var(--cafyz-border-strong)', boxShadow: 'var(--cafyz-shadow-lg)' }}
       >
         <div className="flex items-start gap-3 mb-4">
-          <div className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: 'rgba(245,158,11,0.12)' }}>
-            <Clock size={22} style={{ color: '#f59e0b' }} />
+          <div className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: 'rgba(255,170,0,0.12)' }}>
+            <Clock size={22} style={{ color: '#ffaa00' }} />
           </div>
           <div>
             <h2 style={{ color: 'var(--cafyz-text)', fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: '1.15rem' }}>
@@ -103,7 +103,7 @@ export function TrialExpiredModal({
                   onClick={() => void activate()}
                   disabled={!licenseKey.trim() || activating}
                   className="px-4 rounded-xl text-sm font-semibold flex items-center gap-1.5 flex-shrink-0"
-                  style={{ background: 'linear-gradient(135deg, #1e7fff, #00c6ff)', color: '#fff', opacity: (!licenseKey.trim() || activating) ? 0.6 : 1 }}
+                  style={{ background: 'var(--cafyz-gradient)', color: '#fff', opacity: (!licenseKey.trim() || activating) ? 0.6 : 1 }}
                 >
                   {activating ? <Loader2 size={16} className="animate-spin" /> : <>Activate <ArrowRight size={15} /></>}
                 </button>
@@ -116,7 +116,7 @@ export function TrialExpiredModal({
               <p style={{ color: 'var(--cafyz-text)', fontSize: '0.82rem', fontWeight: 600 }}>Don&apos;t have a key yet?</p>
               <p style={{ color: 'var(--cafyz-muted)', fontSize: '0.74rem', marginTop: 3, lineHeight: 1.5 }}>
                 Request one and Cafyz will email it to you, or write to{' '}
-                <a href={`mailto:${email}`} style={{ color: '#1e7fff', fontWeight: 600 }}>{email}</a>.
+                <a href={`mailto:${email}`} style={{ color: 'var(--cafyz-brand)', fontWeight: 600 }}>{email}</a>.
               </p>
               <div className="flex flex-col sm:flex-row gap-2 mt-3">
                 <button

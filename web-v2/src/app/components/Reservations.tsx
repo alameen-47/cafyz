@@ -23,10 +23,10 @@ interface Reservation {
 }
 
 const statusConfig: Record<ResStatus, { color: string; bg: string; label: string }> = {
-  confirmed: { color: "#22c55e", bg: "rgba(34,197,94,0.1)", label: "Confirmed" },
-  seated: { color: "#1e7fff", bg: "var(--cafyz-badge-bg)", label: "Seated" },
-  cancelled: { color: "#ff3b5c", bg: "rgba(255,59,92,0.1)", label: "Cancelled" },
-  completed: { color: "var(--cafyz-muted)", bg: "rgba(107,130,160,0.1)", label: "No-show" },
+  confirmed: { color: "#00d68f", bg: "rgba(0,214,143,0.1)", label: "Confirmed" },
+  seated: { color: "var(--cafyz-brand)", bg: "var(--cafyz-badge-bg)", label: "Seated" },
+  cancelled: { color: "#ff416c", bg: "rgba(255,65,108,0.1)", label: "Cancelled" },
+  completed: { color: "var(--cafyz-muted)", bg: "rgba(166,160,199,0.1)", label: "No-show" },
 };
 
 const timeSlots = ["12:00", "12:30", "13:00", "13:30", "18:00", "18:30", "19:00", "19:30", "20:00", "20:30", "21:00", "21:30", "22:00"];
@@ -76,7 +76,7 @@ function TableSelect({
   return (
     <select value={value} onChange={e => onChange(e.target.value)}
       className="w-full rounded-xl px-3 py-2.5 text-sm outline-none"
-      style={{ background: "var(--cafyz-surface-2)", color: "var(--cafyz-text)", border: "1px solid rgba(30,127,255,0.12)" }}>
+      style={{ background: "var(--cafyz-surface-2)", color: "var(--cafyz-text)", border: "1px solid rgba(var(--cafyz-brand-rgb),0.12)" }}>
       <option value="">No table assigned</option>
       {fits.map(t => (
         <option key={t.id} value={t.id}>
@@ -205,9 +205,9 @@ export function Reservations() {
 
   return (
     <div className="p-3 sm:p-4 md:p-6 space-y-4 max-w-7xl mx-auto w-full">
-      <div className="flex items-center gap-2 px-3 py-2 rounded-xl w-fit" style={{ background: "rgba(168,85,247,0.1)", border: "1px solid rgba(168,85,247,0.2)" }}>
-        <Crown size={14} style={{ color: "#a855f7" }} />
-        <span style={{ color: "#a855f7", fontSize: "0.75rem", fontWeight: 600 }}>Premium Feature</span>
+      <div className="flex items-center gap-2 px-3 py-2 rounded-xl w-fit" style={{ background: "rgba(var(--cafyz-brand-rgb),0.1)", border: "1px solid rgba(var(--cafyz-brand-rgb),0.2)" }}>
+        <Crown size={14} style={{ color: "var(--cafyz-brand)" }} />
+        <span style={{ color: "var(--cafyz-brand)", fontSize: "0.75rem", fontWeight: 600 }}>Premium Feature</span>
       </div>
 
       <div className="flex flex-wrap items-center gap-3 justify-between">
@@ -222,29 +222,29 @@ export function Reservations() {
           />
           <button type="button" onClick={() => setFilterDate(todayIso())}
             className="px-3 py-2 rounded-xl text-xs font-semibold"
-            style={{ background: "var(--cafyz-border)", color: "#1e7fff" }}>
+            style={{ background: "var(--cafyz-border)", color: "var(--cafyz-brand)" }}>
             Today
           </button>
         </div>
         <button type="button" onClick={() => { setNewRes(r => ({ ...r, date: filterDate || todayIso() })); setShowForm(true); }}
           className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold"
-          style={{ background: "linear-gradient(135deg, #1e7fff, #00c6ff)", color: "#fff" }}>
+          style={{ background: "var(--cafyz-gradient)", color: "#fff" }}>
           <Plus size={16} /> New Reservation
         </button>
       </div>
 
       {loadError && (
-        <p className="px-3 py-2 rounded-lg text-sm" style={{ color: "#ff3b5c", background: "rgba(255,59,92,0.08)" }}>
+        <p className="px-3 py-2 rounded-lg text-sm" style={{ color: "#ff416c", background: "rgba(255,65,108,0.08)" }}>
           {loadError}
         </p>
       )}
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {[
-          { label: statsLabel, value: filtered.length, color: "#1e7fff" },
-          { label: "Confirmed", value: filtered.filter(r => r.status === "confirmed").length, color: "#22c55e" },
-          { label: "Seated", value: filtered.filter(r => r.status === "seated").length, color: "#1e7fff" },
-          { label: "Total Covers", value: filtered.reduce((s, r) => s + r.covers, 0), color: "#00c6ff" },
+          { label: statsLabel, value: filtered.length, color: "var(--cafyz-brand)" },
+          { label: "Confirmed", value: filtered.filter(r => r.status === "confirmed").length, color: "#00d68f" },
+          { label: "Seated", value: filtered.filter(r => r.status === "seated").length, color: "var(--cafyz-brand)" },
+          { label: "Total Covers", value: filtered.reduce((s, r) => s + r.covers, 0), color: "var(--cafyz-brand-2)" },
         ].map(s => (
           <div key={s.label} className="rounded-2xl p-4" style={{ background: "var(--cafyz-surface)", border: "1px solid var(--cafyz-border)" }}>
             <div style={{ color: s.color, fontFamily: "var(--font-display)", fontWeight: 700, fontSize: "1.5rem" }}>{s.value}</div>
@@ -255,13 +255,13 @@ export function Reservations() {
 
       {loading && items.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-16 gap-3">
-          <Loader2 size={28} className="animate-spin" style={{ color: "#1e7fff" }} />
+          <Loader2 size={28} className="animate-spin" style={{ color: "var(--cafyz-brand)" }} />
           <p style={{ color: "var(--cafyz-muted)", fontSize: "0.85rem" }}>Loading reservations…</p>
         </div>
       ) : (
         <div className="space-y-3">
           {filtered.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-16 gap-3 rounded-2xl" style={{ border: "1px dashed rgba(30,127,255,0.15)" }}>
+            <div className="flex flex-col items-center justify-center py-16 gap-3 rounded-2xl" style={{ border: "1px dashed rgba(var(--cafyz-brand-rgb),0.15)" }}>
               <Calendar size={28} style={{ color: "var(--cafyz-muted)" }} />
               <p style={{ color: "var(--cafyz-muted)" }}>No reservations for {filterDate || "this date"}</p>
             </div>
@@ -278,8 +278,8 @@ export function Reservations() {
                   style={{ background: "var(--cafyz-surface)", border: "1px solid var(--cafyz-border)" }}
                 >
                   <div className="w-16 flex-shrink-0 text-center">
-                    <div style={{ color: "#1e7fff", fontFamily: "var(--font-mono)", fontWeight: 700, fontSize: "1rem" }}>{res.time}</div>
-                    <div className="text-xs px-2 py-0.5 rounded-full mt-1" style={{ background: "rgba(30,127,255,0.08)", color: "#1e7fff" }}>{res.table}</div>
+                    <div style={{ color: "var(--cafyz-brand)", fontFamily: "var(--font-mono)", fontWeight: 700, fontSize: "1rem" }}>{res.time}</div>
+                    <div className="text-xs px-2 py-0.5 rounded-full mt-1" style={{ background: "rgba(var(--cafyz-brand-rgb),0.08)", color: "var(--cafyz-brand)" }}>{res.table}</div>
                   </div>
 
                   <div className="flex-1 min-w-0">
@@ -289,7 +289,7 @@ export function Reservations() {
                         <Users size={11} /> {res.covers} covers
                       </span>
                       {res.note && (
-                        <span className="flex items-center gap-1" style={{ color: "#f59e0b", fontSize: "0.72rem" }}>
+                        <span className="flex items-center gap-1" style={{ color: "#ffaa00", fontSize: "0.72rem" }}>
                           <StickyNote size={11} /> {res.note}
                         </span>
                       )}
@@ -302,12 +302,12 @@ export function Reservations() {
                       <>
                         <button type="button" onClick={() => void updateStatus(res.id, "seated", true)} title="Seat guest & open POS"
                           className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold"
-                          style={{ background: "rgba(30,127,255,0.12)", color: "#1e7fff" }}>
+                          style={{ background: "rgba(var(--cafyz-brand-rgb),0.12)", color: "var(--cafyz-brand)" }}>
                           <Armchair size={13} /> Seat
                         </button>
                         <button type="button" onClick={() => void updateStatus(res.id, "completed")} title="Mark no-show"
                           className="px-2 py-1 rounded-lg text-xs font-medium"
-                          style={{ background: "rgba(107,130,160,0.12)", color: "var(--cafyz-muted)" }}>
+                          style={{ background: "rgba(166,160,199,0.12)", color: "var(--cafyz-muted)" }}>
                           No-show
                         </button>
                       </>
@@ -316,19 +316,19 @@ export function Reservations() {
                       <>
                         <button type="button" onClick={() => setEditRes(res)} title="Edit"
                           className="w-7 h-7 rounded-lg flex items-center justify-center"
-                          style={{ background: "rgba(30,127,255,0.08)" }}>
-                          <Edit2 size={13} style={{ color: "#1e7fff" }} />
+                          style={{ background: "rgba(var(--cafyz-brand-rgb),0.08)" }}>
+                          <Edit2 size={13} style={{ color: "var(--cafyz-brand)" }} />
                         </button>
                         <button type="button" onClick={() => void updateStatus(res.id, "cancelled")} title="Cancel"
                           className="w-7 h-7 rounded-lg flex items-center justify-center"
-                          style={{ background: "rgba(255,59,92,0.08)" }}>
-                          <X size={13} style={{ color: "#ff3b5c" }} />
+                          style={{ background: "rgba(255,65,108,0.08)" }}>
+                          <X size={13} style={{ color: "#ff416c" }} />
                         </button>
                       </>
                     )}
                     <button type="button" onClick={() => void deleteReservation(res)} title="Delete"
                       className="w-7 h-7 rounded-lg flex items-center justify-center"
-                      style={{ background: "rgba(107,130,160,0.1)" }}>
+                      style={{ background: "rgba(166,160,199,0.1)" }}>
                       <Trash2 size={13} style={{ color: "var(--cafyz-muted)" }} />
                     </button>
                   </div>
@@ -349,7 +349,7 @@ export function Reservations() {
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.92 }}
               className="w-full max-w-md rounded-2xl p-5 space-y-4 max-h-[90dvh] overflow-y-auto"
-              style={{ background: "var(--cafyz-surface)", border: "1px solid rgba(30,127,255,0.2)" }}
+              style={{ background: "var(--cafyz-surface)", border: "1px solid rgba(var(--cafyz-brand-rgb),0.2)" }}
               onClick={e => e.stopPropagation()}
             >
               <div className="flex items-center justify-between">
@@ -362,20 +362,20 @@ export function Reservations() {
                   <input type="text" placeholder="Guest name" value={newRes.guest}
                     onChange={e => setNewRes(r => ({ ...r, guest: e.target.value }))}
                     className="w-full rounded-xl px-3 py-2.5 text-sm outline-none placeholder:text-[var(--cafyz-muted)]"
-                    style={{ background: "var(--cafyz-surface-2)", color: "var(--cafyz-text)", border: "1px solid rgba(30,127,255,0.12)" }} />
+                    style={{ background: "var(--cafyz-surface-2)", color: "var(--cafyz-text)", border: "1px solid rgba(var(--cafyz-brand-rgb),0.12)" }} />
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label style={{ color: "var(--cafyz-text-secondary)", fontSize: "0.78rem", display: "block", marginBottom: 4 }}>Date</label>
                     <input type="date" value={newRes.date} onChange={e => setNewRes(r => ({ ...r, date: e.target.value }))}
                       className="w-full rounded-xl px-3 py-2.5 text-sm outline-none"
-                      style={{ background: "var(--cafyz-surface-2)", color: "var(--cafyz-text)", border: "1px solid rgba(30,127,255,0.12)" }} />
+                      style={{ background: "var(--cafyz-surface-2)", color: "var(--cafyz-text)", border: "1px solid rgba(var(--cafyz-brand-rgb),0.12)" }} />
                   </div>
                   <div>
                     <label style={{ color: "var(--cafyz-text-secondary)", fontSize: "0.78rem", display: "block", marginBottom: 4 }}>Time</label>
                     <select value={newRes.time} onChange={e => setNewRes(r => ({ ...r, time: e.target.value }))}
                       className="w-full rounded-xl px-3 py-2.5 text-sm outline-none"
-                      style={{ background: "var(--cafyz-surface-2)", color: "var(--cafyz-text)", border: "1px solid rgba(30,127,255,0.12)" }}>
+                      style={{ background: "var(--cafyz-surface-2)", color: "var(--cafyz-text)", border: "1px solid rgba(var(--cafyz-brand-rgb),0.12)" }}>
                       {timeSlots.map(t => <option key={t} value={t}>{t}</option>)}
                     </select>
                   </div>
@@ -384,7 +384,7 @@ export function Reservations() {
                     <input type="number" min={1} max={20} value={newRes.covers}
                       onChange={e => setNewRes(r => ({ ...r, covers: +e.target.value }))}
                       className="w-full rounded-xl px-3 py-2.5 text-sm outline-none"
-                      style={{ background: "var(--cafyz-surface-2)", color: "var(--cafyz-text)", border: "1px solid rgba(30,127,255,0.12)" }} />
+                      style={{ background: "var(--cafyz-surface-2)", color: "var(--cafyz-text)", border: "1px solid rgba(var(--cafyz-brand-rgb),0.12)" }} />
                   </div>
                   <div>
                     <label style={{ color: "var(--cafyz-text-secondary)", fontSize: "0.78rem", display: "block", marginBottom: 4 }}>Table</label>
@@ -397,17 +397,17 @@ export function Reservations() {
                   <input type="text" placeholder="Special requests…" value={newRes.note}
                     onChange={e => setNewRes(r => ({ ...r, note: e.target.value }))}
                     className="w-full rounded-xl px-3 py-2.5 text-sm outline-none placeholder:text-[var(--cafyz-muted)]"
-                    style={{ background: "var(--cafyz-surface-2)", color: "var(--cafyz-text)", border: "1px solid rgba(30,127,255,0.12)" }} />
+                    style={{ background: "var(--cafyz-surface-2)", color: "var(--cafyz-text)", border: "1px solid rgba(var(--cafyz-brand-rgb),0.12)" }} />
                 </div>
               </div>
               <div className="flex gap-2 pt-1">
                 <button type="button" onClick={() => setShowForm(false)} className="flex-1 py-2.5 rounded-xl text-sm font-semibold"
-                  style={{ background: "rgba(30,127,255,0.06)", color: "var(--cafyz-muted)", border: "1px solid var(--cafyz-border)" }}>
+                  style={{ background: "rgba(var(--cafyz-brand-rgb),0.06)", color: "var(--cafyz-muted)", border: "1px solid var(--cafyz-border)" }}>
                   Cancel
                 </button>
                 <button type="button" onClick={() => void saveReservation(newRes)}
                   className="flex-1 py-2.5 rounded-xl text-sm font-semibold flex items-center justify-center gap-2"
-                  style={{ background: "linear-gradient(135deg, #1e7fff, #00c6ff)", color: "#fff" }}>
+                  style={{ background: "var(--cafyz-gradient)", color: "#fff" }}>
                   <Check size={15} /> Confirm
                 </button>
               </div>
@@ -426,7 +426,7 @@ export function Reservations() {
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.92 }}
               className="w-full max-w-md rounded-2xl p-5 space-y-4 max-h-[90dvh] overflow-y-auto"
-              style={{ background: "var(--cafyz-surface)", border: "1px solid rgba(30,127,255,0.2)" }}
+              style={{ background: "var(--cafyz-surface)", border: "1px solid rgba(var(--cafyz-brand-rgb),0.2)" }}
               onClick={e => e.stopPropagation()}
             >
               <div className="flex items-center justify-between">
@@ -439,7 +439,7 @@ export function Reservations() {
                   <input type="text" value={editRes.guest}
                     onChange={e => setEditRes(r => r ? { ...r, guest: e.target.value } : r)}
                     className="w-full rounded-xl px-3 py-2.5 text-sm outline-none"
-                    style={{ background: "var(--cafyz-surface-2)", color: "var(--cafyz-text)", border: "1px solid rgba(30,127,255,0.12)" }} />
+                    style={{ background: "var(--cafyz-surface-2)", color: "var(--cafyz-text)", border: "1px solid rgba(var(--cafyz-brand-rgb),0.12)" }} />
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
@@ -447,14 +447,14 @@ export function Reservations() {
                     <input type="date" value={editRes.date}
                       onChange={e => setEditRes(r => r ? { ...r, date: e.target.value } : r)}
                       className="w-full rounded-xl px-3 py-2.5 text-sm outline-none"
-                      style={{ background: "var(--cafyz-surface-2)", color: "var(--cafyz-text)", border: "1px solid rgba(30,127,255,0.12)" }} />
+                      style={{ background: "var(--cafyz-surface-2)", color: "var(--cafyz-text)", border: "1px solid rgba(var(--cafyz-brand-rgb),0.12)" }} />
                   </div>
                   <div>
                     <label style={{ color: "var(--cafyz-text-secondary)", fontSize: "0.78rem", display: "block", marginBottom: 4 }}>Time</label>
                     <select value={editRes.time}
                       onChange={e => setEditRes(r => r ? { ...r, time: e.target.value } : r)}
                       className="w-full rounded-xl px-3 py-2.5 text-sm outline-none"
-                      style={{ background: "var(--cafyz-surface-2)", color: "var(--cafyz-text)", border: "1px solid rgba(30,127,255,0.12)" }}>
+                      style={{ background: "var(--cafyz-surface-2)", color: "var(--cafyz-text)", border: "1px solid rgba(var(--cafyz-brand-rgb),0.12)" }}>
                       {timeSlots.map(t => <option key={t} value={t}>{t}</option>)}
                     </select>
                   </div>
@@ -463,7 +463,7 @@ export function Reservations() {
                     <input type="number" min={1} max={20} value={editRes.covers}
                       onChange={e => setEditRes(r => r ? { ...r, covers: +e.target.value } : r)}
                       className="w-full rounded-xl px-3 py-2.5 text-sm outline-none"
-                      style={{ background: "var(--cafyz-surface-2)", color: "var(--cafyz-text)", border: "1px solid rgba(30,127,255,0.12)" }} />
+                      style={{ background: "var(--cafyz-surface-2)", color: "var(--cafyz-text)", border: "1px solid rgba(var(--cafyz-brand-rgb),0.12)" }} />
                   </div>
                   <div>
                     <label style={{ color: "var(--cafyz-text-secondary)", fontSize: "0.78rem", display: "block", marginBottom: 4 }}>Table</label>
@@ -476,12 +476,12 @@ export function Reservations() {
                   <input type="text" value={editRes.note}
                     onChange={e => setEditRes(r => r ? { ...r, note: e.target.value } : r)}
                     className="w-full rounded-xl px-3 py-2.5 text-sm outline-none"
-                    style={{ background: "var(--cafyz-surface-2)", color: "var(--cafyz-text)", border: "1px solid rgba(30,127,255,0.12)" }} />
+                    style={{ background: "var(--cafyz-surface-2)", color: "var(--cafyz-text)", border: "1px solid rgba(var(--cafyz-brand-rgb),0.12)" }} />
                 </div>
               </div>
               <div className="flex gap-2 pt-1">
                 <button type="button" onClick={() => setEditRes(null)} className="flex-1 py-2.5 rounded-xl text-sm font-semibold"
-                  style={{ background: "rgba(30,127,255,0.06)", color: "var(--cafyz-muted)", border: "1px solid var(--cafyz-border)" }}>
+                  style={{ background: "rgba(var(--cafyz-brand-rgb),0.06)", color: "var(--cafyz-muted)", border: "1px solid var(--cafyz-border)" }}>
                   Cancel
                 </button>
                 <button type="button"
@@ -494,7 +494,7 @@ export function Reservations() {
                     note: editRes.note,
                   }, editRes.id)}
                   className="flex-1 py-2.5 rounded-xl text-sm font-semibold flex items-center justify-center gap-2"
-                  style={{ background: "linear-gradient(135deg, #1e7fff, #00c6ff)", color: "#fff" }}>
+                  style={{ background: "var(--cafyz-gradient)", color: "#fff" }}>
                   <Check size={15} /> Save
                 </button>
               </div>

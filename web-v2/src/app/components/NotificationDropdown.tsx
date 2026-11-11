@@ -17,12 +17,12 @@ interface NotificationDropdownProps {
 }
 
 const typeConfig = {
-  order:       { icon: ShoppingBag,   color: "#1e7fff",  bg: "var(--cafyz-badge-bg)" },
-  kds:         { icon: ChefHat,       color: "#a855f7",  bg: "rgba(168,85,247,0.1)" },
-  alert:       { icon: AlertTriangle, color: "#f59e0b",  bg: "rgba(245,158,11,0.1)" },
-  stock:       { icon: Package,       color: "#ff3b5c",  bg: "rgba(255,59,92,0.1)" },
-  reservation: { icon: CalendarCheck, color: "#22d3ee", bg: "rgba(34,211,238,0.1)" },
-  system:      { icon: CheckCircle2,  color: "#22c55e",  bg: "rgba(34,197,94,0.1)" },
+  order:       { icon: ShoppingBag,   color: "var(--cafyz-brand)",  bg: "var(--cafyz-badge-bg)" },
+  kds:         { icon: ChefHat,       color: "var(--cafyz-brand)",  bg: "rgba(var(--cafyz-brand-rgb),0.1)" },
+  alert:       { icon: AlertTriangle, color: "#ffaa00",  bg: "rgba(255,170,0,0.1)" },
+  stock:       { icon: Package,       color: "#ff416c",  bg: "rgba(255,65,108,0.1)" },
+  reservation: { icon: CalendarCheck, color: "#00d4ff", bg: "rgba(0,212,255,0.1)" },
+  system:      { icon: CheckCircle2,  color: "#00d68f",  bg: "rgba(0,214,143,0.1)" },
 };
 
 function relTime(iso?: string): string {
@@ -77,31 +77,31 @@ export function NotificationDropdown({
             }}>
             <div className="flex items-center justify-between px-4 py-3 border-b" style={{ borderColor: "var(--cafyz-border)" }}>
               <div className="flex items-center gap-2">
-                <Bell size={15} style={{ color: "#1e7fff" }} />
+                <Bell size={15} style={{ color: "var(--cafyz-brand)" }} />
                 <span style={{ color: "var(--cafyz-text)", fontFamily: "var(--font-display)", fontWeight: 700, fontSize: "0.92rem" }}>
                   Notifications
                 </span>
                 {unread > 0 && (
                   <span className="px-1.5 py-0.5 rounded-full text-xs font-bold"
-                    style={{ background: "#ff3b5c", color: "var(--cafyz-text-strong)", fontFamily: "var(--font-mono)" }}>
+                    style={{ background: "#ff416c", color: "var(--cafyz-text-strong)", fontFamily: "var(--font-mono)" }}>
                     {unread}
                   </span>
                 )}
               </div>
               <div className="flex items-center gap-2">
                 <button type="button" onClick={onRefresh}
-                  className="text-xs px-2 py-1 rounded-lg transition-all hover:bg-[rgba(30,127,255,0.08)]"
+                  className="text-xs px-2 py-1 rounded-lg transition-all hover:bg-[rgba(var(--cafyz-brand-rgb),0.08)]"
                   style={{ color: "var(--cafyz-muted)" }}>
                   Refresh
                 </button>
                 {unread > 0 && (
                   <button type="button" onClick={onMarkAllRead}
-                    className="text-xs px-2 py-1 rounded-lg transition-all hover:bg-[rgba(30,127,255,0.08)]"
-                    style={{ color: "#1e7fff" }}>
+                    className="text-xs px-2 py-1 rounded-lg transition-all hover:bg-[rgba(var(--cafyz-brand-rgb),0.08)]"
+                    style={{ color: "var(--cafyz-brand)" }}>
                     Mark all read
                   </button>
                 )}
-                <button type="button" onClick={onClose} className="p-1 rounded-lg hover:bg-[rgba(30,127,255,0.08)] transition-all"
+                <button type="button" onClick={onClose} className="p-1 rounded-lg hover:bg-[rgba(var(--cafyz-brand-rgb),0.08)] transition-all"
                   style={{ color: "var(--cafyz-muted)" }}>
                   <X size={15} />
                 </button>
@@ -117,11 +117,11 @@ export function NotificationDropdown({
             <div className="overflow-y-auto scrollbar-hide" style={{ maxHeight: 380 }}>
               {loading && items.length === 0 ? (
                 <div className="flex items-center justify-center py-12">
-                  <div className="w-6 h-6 border-2 border-white/20 border-t-[#1e7fff] rounded-full animate-spin" />
+                  <div className="w-6 h-6 border-2 border-white/20 border-t-[var(--cafyz-brand)] rounded-full animate-spin" />
                 </div>
               ) : items.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-12 gap-2">
-                  <Check size={28} style={{ color: "#22c55e" }} />
+                  <Check size={28} style={{ color: "#00d68f" }} />
                   <p style={{ color: "var(--cafyz-muted)", fontSize: "0.82rem" }}>All caught up!</p>
                 </div>
               ) : (
@@ -132,10 +132,10 @@ export function NotificationDropdown({
                     <motion.div key={note.id} layout
                       initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
                       onClick={() => handleClick(note)}
-                      className="group flex items-start gap-3 px-4 py-3 cursor-pointer transition-all hover:bg-[rgba(30,127,255,0.04)] border-b"
+                      className="group flex items-start gap-3 px-4 py-3 cursor-pointer transition-all hover:bg-[rgba(var(--cafyz-brand-rgb),0.04)] border-b"
                       style={{
-                        borderColor: "rgba(30,127,255,0.06)",
-                        background: note.read ? "transparent" : "rgba(30,127,255,0.03)",
+                        borderColor: "rgba(var(--cafyz-brand-rgb),0.06)",
+                        background: note.read ? "transparent" : "rgba(var(--cafyz-brand-rgb),0.03)",
                       }}>
                       <div className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0"
                         style={{ background: cfg.bg }}>
@@ -147,14 +147,14 @@ export function NotificationDropdown({
                             {note.title}
                           </p>
                           {!note.read && (
-                            <div className="w-2 h-2 rounded-full flex-shrink-0 mt-1" style={{ background: "#1e7fff" }} />
+                            <div className="w-2 h-2 rounded-full flex-shrink-0 mt-1" style={{ background: "var(--cafyz-brand)" }} />
                           )}
                         </div>
                         <p style={{ color: "var(--cafyz-muted)", fontSize: "0.72rem", marginTop: 2, lineHeight: 1.4 }}>{note.body}</p>
                         <p style={{ color: "var(--cafyz-muted)", fontSize: "0.65rem", marginTop: 3 }}>{relTime(note.at)}</p>
                       </div>
                       <button type="button" onClick={e => { e.stopPropagation(); onDismiss(note.id); }}
-                        className="p-0.5 rounded-md hover:bg-[rgba(255,59,92,0.08)] opacity-0 group-hover:opacity-100 transition-all flex-shrink-0"
+                        className="p-0.5 rounded-md hover:bg-[rgba(255,65,108,0.08)] opacity-0 group-hover:opacity-100 transition-all flex-shrink-0"
                         style={{ color: "var(--cafyz-muted)" }}>
                         <X size={12} />
                       </button>

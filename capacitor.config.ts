@@ -5,7 +5,9 @@ const config: CapacitorConfig = {
   appName: 'Cafyz',
   webDir: 'web-v2/dist',
   android: { path: 'cap-android' },
-  ios: { path: 'cap-ios' },
+  // The page itself never scrolls (html/body are fixed; screens scroll inside), so the web
+  // view's own scroll view stays off: no rubber-band bounce of the whole app.
+  ios: { path: 'cap-ios', scrollEnabled: false },
   server: {
     androidScheme: 'https',
     iosScheme: 'https',
@@ -16,15 +18,15 @@ const config: CapacitorConfig = {
     SocialLogin: {
       providers: { google: true, apple: true, facebook: false, twitter: false },
     },
-    // Light theme is the default; ThemeProvider switches the status bar at runtime for dark.
+    // The dark sign-in palette is the default; ThemeProvider switches the status bar at runtime for light.
     SplashScreen: {
       launchAutoHide: true,
-      backgroundColor: '#e8edf4',
+      backgroundColor: '#070511',
       showSpinner: false,
     },
     StatusBar: {
-      style: 'LIGHT',
-      backgroundColor: '#e8edf4',
+      style: 'DARK',
+      backgroundColor: '#070511',
       overlaysWebView: false,
     },
     PushNotifications: {

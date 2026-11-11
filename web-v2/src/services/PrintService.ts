@@ -299,7 +299,7 @@ export function buildKitchenTicket(data: KitchenTicketData, width = 32, logoByte
   b.divider(W);
   // All kitchen item names print in BLOCK LETTERS for line-cook legibility.
   for (const it of data.items) {
-    const name = `${it.alert ? '⚠ ' : ''}${it.qty}x ${String(it.name).toUpperCase()}`;
+    const name = `${it.alert ? '! ' : ''}${it.qty}x ${String(it.name).toUpperCase()}`;
     b.boldOn().text(name).boldOff().nl();
     for (const m of (it.mods ?? [])) b.text(` · ${String(m).toUpperCase()}`).nl();
   }
@@ -316,7 +316,7 @@ export function buildKitchenTicketHTML(data: KitchenTicketData): string {
   const e = escapeHtml;
   const rows = data.items.map(it => `
     <tr>
-      <td style="padding:2px 0;font-weight:700;text-transform:uppercase">${it.alert ? '⚠ ' : ''}${it.qty}× ${e(it.name)}</td>
+      <td style="padding:2px 0;font-weight:700;text-transform:uppercase">${it.alert ? '! ' : ''}${it.qty}× ${e(it.name)}</td>
     </tr>
     ${(it.mods ?? []).map(m => `<tr><td style="padding:1px 0 1px 14px;font-size:11px;text-transform:uppercase">· ${e(m)}</td></tr>`).join('')}
   `).join('');

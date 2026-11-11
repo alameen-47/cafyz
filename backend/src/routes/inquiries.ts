@@ -263,7 +263,7 @@ router.post('/', async (req, res, next) => {
         from:    smtpFrom(false),
         to:      email,
         replyTo: ADMIN_EMAIL,
-        subject: `We received your request, ${name.split(' ')[0]} ✓ (pending approval)`,
+        subject: `We received your request, ${name.split(' ')[0]} (pending approval)`,
         html:    autoReplyHtml(name, restaurant_name, plan),
       }, 12000);
       emailStatus.founder = founderResult.ok;

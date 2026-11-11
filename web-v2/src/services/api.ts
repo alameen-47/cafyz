@@ -222,10 +222,14 @@ export const authApi = {
   refresh: () => post<{ token: string }>('/api/auth/refresh', {}),
   login: (login: string, password: string, device_id?: string) =>
     post<LoginResponse>('/api/auth/login', { login, password, device_id }),
-  requestOtp: (phone: string) =>
-    post<{ ok: boolean; message: string; dev_otp?: string }>('/api/auth/request-otp', { phone }),
-  verifyOtp: (phone: string, otp: string) =>
-    post<LoginResponse>('/api/auth/verify-otp', { phone, otp }),
+  /** Email a 6-digit sign-in code. The reply is the same whether or not the address has an account. */
+  requestEmailOtp: (email: string) =>
+    post<{ ok: boolean; message: string; dev_otp?: string }>('/api/auth/email-otp/request', { email }),
+  /** A proven code signs in, or asks which restaurant when the address has accounts in several. */
+  verifyEmailOtp: (email: string, otp: string) =>
+    post<EmailOtpResult>('/api/auth/email-otp/verify', { email, otp }),
+  emailOtpSelect: (selection_token: string, restaurant_id: string) =>
+    post<LoginResponse>('/api/auth/email-otp/select', { selection_token, restaurant_id }),
   pin: (login: string, pin: string, device_id: string) =>
     post<LoginResponse>('/api/auth/pin', { login, pin, device_id }),
   forgotPassword: (email: string) =>
@@ -593,6 +597,11 @@ export type SocialLoginResult =
   | ({ status: 'ok' } & LoginResponse)
   | { status: 'choose_account'; selection_token: string; accounts: SocialAccountChoice[] }
   | { status: 'signup_required'; signup_token: string; email: string; name: string; trial_days: number };
+
+/** An email code either signs in or, like Google and Apple, asks which restaurant. */
+export type EmailOtpResult =
+  | ({ status: 'ok' } & LoginResponse)
+  | { status: 'choose_account'; selection_token: string; accounts: SocialAccountChoice[] };
 
 /** One account a proven email maps to, when it matches more than one restaurant. */
 export interface SocialAccountChoice {

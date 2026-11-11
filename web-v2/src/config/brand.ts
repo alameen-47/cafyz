@@ -1,5 +1,7 @@
-/** Canonical Cafyz brand logo — always sync from repo root `logo.png`. */
+/** The Cafyz logo: emblem over wordmark, for dark surfaces. Every file here is built by `scripts/build-brand.py`. */
 export const CAFYZ_LOGO_SRC = '/cafyz-logo.png';
+/** The same logo with an ink wordmark, for light surfaces (swapped in by CSS in the light theme). */
+export const CAFYZ_LOGO_LIGHT_SRC = '/cafyz-logo-light.png';
 
-/** Same asset; collapsed nav and small chrome use tighter size presets only. */
-export const CAFYZ_MARK_SRC = CAFYZ_LOGO_SRC;
+/** The emblem alone (cloche and cup in its ring), centred in a square: icons, tiles and small chrome. */
+export const CAFYZ_MARK_SRC = '/cafyz-mark.png';

@@ -1,0 +1,708 @@
+/*
+ * Sign-in screen: a fine-dining room after dark, lit in the Cafyz neon violet
+ * and electric blue. Phones get the room across the top with the logo over its
+ * dark ceiling and the form on deep indigo below; tablets and desktops give the
+ * room the left column. The screen stays dark in both app themes.
+ */
+
+/* ── Tokens ───────────────────────────────────────────────────────────────── */
+
+.login-screen {
+  /* Brand */
+  --cz-violet: #b444ff;
+  --cz-purple: #a020f0;
+  --cz-deep-purple: #641aff;
+  --cz-blue: #007bff;
+  --cz-cyan: #00d4ff;
+  --cz-lavender: #c9c1ff;
+
+  /* Grounds */
+  --cz-bg-0: #070511;
+  --cz-bg-1: #0a0b2d;
+  --cz-bg-2: #100b3d;
+  --cz-bg-3: #020617;
+
+  /* Text */
+  --cz-text: #ffffff;
+  --cz-text-2: #c9c1ff;
+  --cz-muted: #9592bc;
+
+  /* Gradients */
+  --cz-cta: linear-gradient(110deg, #d946ff 0%, #a020f0 24%, #4f18ff 55%, #007bff 78%, #00d4ff 100%);
+  --cz-tab: linear-gradient(110deg, #d946ff 0%, #641aff 52%, #00d4ff 100%);
+  --cz-accent-text: linear-gradient(110deg, #d946ff 0%, #b444ff 55%, #8f5bff 100%);
+  --cz-ground:
+    radial-gradient(ellipse at 0% 75%, rgba(112, 0, 255, 0.42) 0%, transparent 38%),
+    radial-gradient(ellipse at 100% 80%, rgba(0, 100, 255, 0.38) 0%, transparent 35%),
+    linear-gradient(180deg, #070511 0%, #0a0b2d 38%, #100b3d 68%, #020617 100%);
+
+  /* Glass */
+  --cz-glass: rgba(255, 255, 255, 0.06);
+  --cz-glass-line: rgba(153, 120, 255, 0.55);
+  --cz-line-soft: rgba(153, 120, 255, 0.24);
+
+  /* Light */
+  --cz-glow-purple: 0 0 20px rgba(160, 32, 240, 0.45);
+  --cz-glow-blue: 0 0 24px rgba(0, 123, 255, 0.35);
+  --cz-glow-cyan: 0 0 18px rgba(0, 212, 255, 0.3);
+  --cz-card-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
+
+  /* The app's own tokens, pinned to the dark brand here whatever the theme. */
+  --cafyz-text: var(--cz-text);
+  --cafyz-text-secondary: var(--cz-text-2);
+  --cafyz-muted: var(--cz-muted);
+  --cafyz-surface: var(--cz-bg-2);
+  --cafyz-surface-2: var(--cz-glass);
+  --cafyz-border: var(--cz-line-soft);
+  --cafyz-border-strong: rgba(201, 193, 255, 0.28);
+  --cafyz-accent-soft: rgba(180, 68, 255, 0.16);
+  --cafyz-shadow-lg: var(--cz-card-shadow);
+
+  color-scheme: dark;
+  color: var(--cz-text);
+  background: var(--cz-bg-0);
+}
+
+.login-screen-form-shell { background: var(--cz-ground); }
+
+/* ── Phones: the room across the top ──────────────────────────────────────── */
+
+.login-canvas {
+  position: relative;
+  isolation: isolate;
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+
+  /* Density. Step 0 is the full design; useLoginFit picks the roomiest step that lets the
+     sign-in screen fit the phone without scrolling (data-fit 1–3 below). */
+  --fit-gap: 20px;        /* between the blocks of the form */
+  --fit-field-gap: 16px;  /* between fields, and between the social buttons */
+  --fit-seg: 46px;
+  --fit-field: 54px;
+  --fit-primary: 56px;
+  --fit-social: 52px;
+  --fit-pin-dot: 46px;
+  --fit-pin-key: 46px;
+  --fit-title: 1.85rem;
+  --fit-footer: 22px;
+  --fit-credit: 16px;
+}
+.login-canvas[data-fit="1"] {
+  --fit-gap: 15px;
+  --fit-field-gap: 12px;
+  --fit-seg: 44px;
+  --fit-field: 50px;
+  --fit-primary: 52px;
+  --fit-social: 48px;
+  --fit-pin-dot: 42px;
+  --fit-pin-key: 44px;
+  --fit-title: 1.75rem;
+  --fit-footer: 14px;
+  --fit-credit: 12px;
+}
+.login-canvas[data-fit="2"] {
+  --fit-gap: 12px;
+  --fit-field-gap: 10px;
+  --fit-seg: 42px;
+  --fit-field: 48px;
+  --fit-primary: 50px;
+  --fit-social: 46px;
+  --fit-pin-dot: 38px;
+  --fit-pin-key: 41px;
+  --fit-title: 1.6rem;
+  --fit-footer: 12px;
+  --fit-credit: 10px;
+}
+.login-canvas[data-fit="3"] {
+  --fit-gap: 10px;
+  --fit-field-gap: 8px;
+  --fit-seg: 40px;
+  --fit-field: 46px;
+  --fit-primary: 48px;
+  --fit-social: 46px;
+  --fit-pin-dot: 32px;
+  --fit-pin-key: 36px;
+  --fit-title: 1.5rem;
+  --fit-footer: 10px;
+  --fit-credit: 8px;
+}
+
+.login-canvas > .login-screen-panel-inner {
+  position: relative;
+  z-index: 1;
+  flex: 1 0 auto;
+  min-height: 0;
+}
+/* Fitted: exactly the phone's height. The logo gives way first (see .login-brand), the
+   footer settles at the foot. If nothing fits, data-fit-overflow lets the canvas scroll. */
+.login-canvas[data-fit]:not([data-fit-overflow]) {
+  height: var(--login-fit-h);
+  min-height: 0;
+}
+.login-canvas[data-fit]:not([data-fit-overflow]) > .login-screen-panel-inner { flex: 1 1 auto; }
+/* While a step is being measured nothing may ease into its size. */
+.login-canvas[data-fitting] *,
+.login-canvas[data-fitting] *::before,
+.login-canvas[data-fitting] *::after { transition: none !important; }
+
+.login-backdrop {
+  position: absolute;
+  z-index: 0;
+  /* The frame's empty ceiling is cropped so the cloche meets the welcome line, and it
+     rides up with the logo when a short screen shrinks it. */
+  top: calc(-14vw - var(--login-logo-give, 0px) + env(safe-area-inset-top, 0px));
+  left: 0;
+  right: 0;
+  pointer-events: none;
+  -webkit-mask-image: linear-gradient(180deg, #000 0%, #000 52%, transparent 86%);
+  mask-image: linear-gradient(180deg, #000 0%, #000 52%, transparent 86%);
+}
+/* Forms other than sign-in put their own headings where the cloche is, so the room steps back. */
+.login-backdrop { transition: opacity 0.4s ease; }
+.login-canvas[data-step="other"] .login-backdrop { opacity: 0.32; }
+
+.login-backdrop::after {
+  /* Runs the status bar's colour into the photograph. */
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    180deg,
+    var(--cz-bg-0) calc(14vw + var(--login-logo-give, 0px)),
+    rgba(7, 5, 17, 0) calc(14vw + var(--login-logo-give, 0px) + 90px)
+  );
+}
+.login-backdrop-img,
+.login-photo-img {
+  display: block;
+  width: 100%;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+.login-backdrop-img { height: auto; }
+
+/* The lights come up as the screen opens. */
+@keyframes login-lights-up {
+  from { opacity: 0; filter: brightness(0.4); transform: scale(1.04); }
+  to   { opacity: 1; filter: none; transform: none; }
+}
+.login-backdrop-img,
+.login-photo-img { animation: login-lights-up 1.4s cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+
+/* Full size where there is room; on a fitted screen it shrinks (never below the minimum)
+   before anything else does. The mark is drawn from the box's height, so it scales whole. */
+.login-brand {
+  position: relative;
+  flex: 0 1 clamp(128px, 41vw, 168px);
+  min-height: 72px;
+}
+.login-brand .cafyz-logo {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  width: auto;
+  height: 100%;
+  max-height: none;
+  aspect-ratio: 1 / 1;
+  transform: translateX(-50%);
+  filter: drop-shadow(0 0 18px rgba(0, 123, 255, 0.42));
+}
+/* The logo's built-in glow is tuned for flat panels; over the room it only needs a halo. */
+.login-brand .cafyz-logo-glow,
+.login-photo-copy .cafyz-logo-glow { opacity: 0.38; }
+
+.login-sheet .login-screen-panel-inner {
+  max-width: 440px;
+  /* iOS puts the web view below an opaque status bar (a few points at most are left over);
+     Android draws edge to edge, so there this clears the whole status bar. */
+  padding-top: calc(0.5rem + env(safe-area-inset-top, 0px));
+  padding-left: 1.5rem;
+  padding-right: 1.5rem;
+  padding-bottom: max(1rem, env(safe-area-inset-bottom, 0px));
+}
+
+/* ── Welcome ──────────────────────────────────────────────────────────────── */
+
+.login-welcome {
+  text-align: center;
+  text-shadow: 0 2px 18px rgba(7, 5, 17, 0.9), 0 0 2px rgba(7, 5, 17, 0.6);
+}
+/* The sign-in step, top to bottom: welcome, tabs, the method's fields, the button, the
+   alternatives and the trial line. */
+.login-step,
+.login-fields,
+.login-socials,
+.login-pin {
+  display: flex;
+  flex-direction: column;
+}
+.login-step { gap: var(--fit-gap); }
+.login-fields,
+.login-socials,
+.login-pin { gap: var(--fit-field-gap); }
+.login-forgot { display: flex; justify-content: flex-end; margin-top: -4px; }
+
+.login-title {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: min(var(--fit-title), var(--login-title-cap, 9rem));
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  color: var(--cz-text);
+}
+.login-accent {
+  background: var(--cz-accent-text);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  text-shadow: none;
+}
+.login-subtitle {
+  margin-top: 8px;
+  font-size: 0.92rem;
+  line-height: 1.4;
+  color: var(--cz-text-2);
+}
+.login-welcome-rule {
+  display: block;
+  width: 76px;
+  height: 3px;
+  margin: 14px auto 0;
+  border-radius: 3px;
+  background: linear-gradient(90deg, rgba(180, 68, 255, 0) 0%, var(--cz-violet) 50%, rgba(180, 68, 255, 0) 100%);
+  box-shadow: 0 0 12px rgba(180, 68, 255, 0.6);
+}
+
+/* ── Method tabs ──────────────────────────────────────────────────────────── */
+
+.login-seg {
+  display: flex;
+  align-items: center;
+  padding: 4px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--cz-line-soft);
+  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(16px);
+}
+.login-seg button {
+  position: relative;
+  flex: 1 1 auto; /* sized by label, so "Email / Mobile" never truncates beside the short ones */
+  min-width: 0;
+  height: var(--fit-seg);
+  padding: 0 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border-radius: 999px;
+  font-size: 0.88rem;
+  font-weight: 600;
+  white-space: nowrap;
+  color: var(--cz-text-2);
+  transition: color 0.2s ease, box-shadow 0.25s ease;
+}
+.login-seg button svg { flex-shrink: 0; }
+.login-seg button[aria-pressed="true"] {
+  color: #fff;
+  background: var(--cz-tab);
+  box-shadow: var(--cz-glow-purple), inset 0 0 0 1px rgba(255, 255, 255, 0.22);
+}
+/* A hairline between two tabs that are both off. */
+.login-seg button[aria-pressed="false"] + button[aria-pressed="false"]::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 25%;
+  bottom: 25%;
+  width: 1px;
+  background: rgba(201, 193, 255, 0.24);
+}
+
+/* ── Fields ───────────────────────────────────────────────────────────────── */
+
+.login-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 9px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--cz-text);
+}
+.login-label svg { color: var(--cz-text-2); flex-shrink: 0; }
+
+.login-field,
+.login-box {
+  background: var(--cz-glass);
+  border: 1px solid var(--cz-glass-line);
+  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(16px);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
+}
+.login-field {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: var(--fit-field);
+  padding: 0 18px;
+  border-radius: 22px;
+}
+.login-box {
+  width: 100%;
+  border-radius: 18px;
+  padding: 14px 16px;
+  color: var(--cz-text);
+  outline: none;
+}
+.login-field:focus-within,
+.login-box:focus {
+  border-color: var(--cz-violet);
+  background: rgba(255, 255, 255, 0.08);
+  box-shadow: 0 0 0 3px rgba(180, 68, 255, 0.16), var(--cz-glow-cyan);
+}
+/* Icons are lavender whatever the markup set inline. */
+.login-field svg { color: var(--cz-text-2) !important; flex-shrink: 0; }
+.login-field input { min-width: 0; padding: 0; color: var(--cz-text) !important; }
+.login-field input::placeholder,
+.login-box::placeholder { color: var(--cz-muted); opacity: 1; }
+/* 16px keeps iOS from zooming the page when a field takes focus. */
+.login-screen input,
+.login-screen textarea,
+.login-screen select { font-size: 16px; }
+.login-box option { background: var(--cz-bg-2); color: var(--cz-text); }
+
+.login-reveal {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  margin-right: -8px;
+  border-radius: 999px;
+}
+
+.login-otp-cell {
+  width: 2.75rem;
+  height: 3.1rem;
+  border-radius: 14px;
+  text-align: center;
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--cz-text);
+  outline: none;
+  background: var(--cz-glass);
+  border: 1px solid var(--cz-line-soft);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+.login-otp-cell[data-filled="true"] { border-color: var(--cz-glass-line); }
+.login-otp-cell:focus { border-color: var(--cz-violet); box-shadow: var(--cz-glow-cyan); }
+
+/* ── Links ────────────────────────────────────────────────────────────────── */
+
+.login-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.86rem;
+  font-weight: 600;
+  color: var(--cz-violet);
+  transition: color 0.15s ease;
+}
+.login-link:hover { color: #c876ff; }
+.login-back {
+  font-size: 0.85rem;
+  color: var(--cz-text-2);
+}
+.login-back:hover { color: #fff; }
+
+/* ── Buttons ──────────────────────────────────────────────────────────────── */
+
+.login-primary {
+  position: relative;
+  min-height: var(--fit-primary);
+  border-radius: 999px;
+  font-size: 1.02rem !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.005em;
+  color: #fff;
+  background: var(--cz-cta);
+  box-shadow: var(--cz-glow-purple), var(--cz-glow-blue), inset 0 1px 0 rgba(255, 255, 255, 0.28);
+  transition: filter 0.15s ease, box-shadow 0.2s ease, opacity 0.15s ease;
+}
+.login-primary:hover:not(:disabled) { filter: brightness(1.08) saturate(1.05); }
+.login-primary-arrow {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  margin-left: 6px;
+  border-radius: 999px;
+  border: 1.5px solid rgba(255, 255, 255, 0.72);
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.login-or {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  font-size: 0.85rem;
+  color: var(--cz-text-2);
+}
+.login-or::before,
+.login-or::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg, rgba(201, 193, 255, 0), rgba(201, 193, 255, 0.28));
+}
+.login-or::after { background: linear-gradient(270deg, rgba(201, 193, 255, 0), rgba(201, 193, 255, 0.28)); }
+
+.login-social {
+  min-height: var(--fit-social);
+  border-radius: 999px;
+  font-size: 0.98rem;
+  font-weight: 600;
+  color: #fff;
+  transition: background-color 0.15s ease, border-color 0.15s ease, opacity 0.15s ease;
+}
+.login-social--google {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.55);
+}
+.login-social--google:hover:not(:disabled) { background: rgba(255, 255, 255, 0.08); }
+.login-social--apple {
+  background: #000;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.login-primary:focus-visible,
+.login-social:focus-visible,
+.login-seg button:focus-visible,
+.login-link:focus-visible,
+.login-reveal:focus-visible {
+  outline: 2px solid var(--cz-cyan);
+  outline-offset: 3px;
+}
+
+.login-trial {
+  font-size: 0.92rem;
+  text-align: center;
+  color: var(--cz-text-2);
+}
+.login-trial .login-link { font-size: 1.05rem; font-weight: 700; }
+
+/* ── Footer ───────────────────────────────────────────────────────────────── */
+
+/* The footer settles at the foot of the screen, however short the step above it. */
+.login-canvas .login-screen-credentials { flex: 0 0 auto; }
+.login-footer { flex: 0 0 auto; margin-top: auto; padding-top: var(--fit-footer); }
+.login-credit { padding-top: var(--fit-credit); }
+/* The maker's mark breathes: 15% larger than in other footers, with a slow violet-and-cyan
+   glow. It stays within the tagline's height and only the filter moves, so the fit is unchanged. */
+.login-credit img {
+  width: calc(22px * 1.15);
+  height: calc(22px * 1.15);
+  animation: login-mark-glow 2.8s ease-in-out infinite;
+}
+@keyframes login-mark-glow {
+  0%, 100% {
+    filter: brightness(1) drop-shadow(0 0 1px rgba(214, 140, 255, 0.3))
+      drop-shadow(0 0 3px rgba(180, 68, 255, 0.25)) drop-shadow(0 0 6px rgba(0, 212, 255, 0));
+  }
+  50% {
+    filter: brightness(1.3) drop-shadow(0 0 2px rgba(214, 140, 255, 0.95))
+      drop-shadow(0 0 7px rgba(180, 68, 255, 0.9)) drop-shadow(0 0 14px rgba(0, 212, 255, 0.55));
+  }
+}
+.login-footer-links {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.8rem;
+  color: var(--cz-muted);
+}
+.login-footer-links a { color: var(--cz-muted); }
+.login-footer-links a:hover { color: var(--cz-text-2); }
+.login-footer-links span { opacity: 0.6; }
+
+.login-hat {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin: 14px auto 0;
+  max-width: 260px;
+  color: var(--cz-violet);
+}
+.login-hat::before,
+.login-hat::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg, rgba(180, 68, 255, 0), rgba(180, 68, 255, 0.55));
+}
+.login-hat::after { background: linear-gradient(270deg, rgba(180, 68, 255, 0), rgba(180, 68, 255, 0.55)); }
+.login-hat svg { filter: drop-shadow(0 0 8px rgba(180, 68, 255, 0.7)); }
+
+/* The neon sweeps in the bottom corners. */
+.login-arcs {
+  position: absolute;
+  z-index: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 120px;
+  pointer-events: none;
+}
+.login-arcs svg {
+  position: absolute;
+  bottom: 0;
+  width: 48%;
+  height: 100%;
+  overflow: visible;
+}
+.login-arcs svg:first-child { left: 0; filter: drop-shadow(0 0 6px rgba(180, 68, 255, 0.8)); }
+.login-arcs svg:last-child { right: 0; transform: scaleX(-1); filter: drop-shadow(0 0 6px rgba(0, 123, 255, 0.8)); }
+
+/* ── PIN pad ──────────────────────────────────────────────────────────────── */
+
+.login-pin-dot { width: var(--fit-pin-dot); height: var(--fit-pin-dot); }
+.login-pin-key { height: var(--fit-pin-key); }
+
+/* ── Fitted density: what each step lets go of ────────────────────────────── */
+
+/* Step 1 and tighter: the ornaments. */
+.login-canvas:is([data-fit="1"], [data-fit="2"], [data-fit="3"]) .login-hat,
+.login-canvas:is([data-fit="1"], [data-fit="2"], [data-fit="3"]) .login-welcome-rule { display: none; }
+
+/* Step 2 and tighter: the subtitle, and the field captions. Each field keeps its icon and
+   placeholder on screen and its caption for screen readers. */
+.login-canvas:is([data-fit="2"], [data-fit="3"]) .login-subtitle { display: none; }
+.login-canvas:is([data-fit="2"], [data-fit="3"]) .login-step .login-label,
+.login-canvas[data-fit="3"] .login-socials[data-count="2"] .login-social-label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* Step 3: Google and Apple share a row as logo-only buttons, which both companies' button
+   guidelines allow; each keeps its full name for screen readers. */
+.login-canvas[data-fit="3"] .login-socials[data-count="2"] { flex-direction: row; }
+.login-canvas[data-fit="3"] .login-socials[data-count="2"] > * { flex: 1 1 0; min-width: 0; }
+
+/* ── Language button ──────────────────────────────────────────────────────── */
+
+.login-lang > div > button {
+  background: rgba(7, 5, 17, 0.5) !important;
+  border-color: rgba(201, 193, 255, 0.26) !important;
+  color: var(--cz-text) !important;
+  border-radius: 999px !important;
+  -webkit-backdrop-filter: blur(14px) saturate(140%);
+  backdrop-filter: blur(14px) saturate(140%);
+}
+.login-lang > div > button svg { color: var(--cz-text-2) !important; }
+
+@media (max-width: 767px) {
+  /* A globe on phones; the button keeps its "Language" label for screen readers. */
+  .login-lang > div > button { width: 40px; height: 40px; padding: 0 !important; justify-content: center; }
+  .login-lang .lang-switcher-label { display: none; }
+}
+
+/* ── Tablet and desktop: the room takes the left column ───────────────────── */
+
+.login-photo-panel {
+  position: relative;
+  flex: 0 0 auto;
+  width: 44%;
+  max-width: 680px;
+  overflow: hidden;
+  background: var(--cz-bg-0);
+}
+.login-photo-img {
+  position: absolute;
+  inset: 0;
+  height: 100%;
+  object-fit: cover;
+  object-position: 30% 38%;
+}
+.login-photo-scrim {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(180deg, rgba(7, 5, 17, 0.7) 0%, rgba(7, 5, 17, 0) 24%),
+    linear-gradient(0deg, rgba(7, 5, 17, 0.92) 0%, rgba(7, 5, 17, 0.55) 34%, rgba(7, 5, 17, 0) 60%),
+    linear-gradient(270deg, rgba(10, 11, 45, 0.55) 0%, rgba(10, 11, 45, 0) 30%);
+  pointer-events: none;
+}
+.login-photo-copy {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  width: 100%;
+  height: 100%;
+  padding: 2rem;
+}
+.login-photo-copy .cafyz-logo { filter: drop-shadow(0 0 22px rgba(0, 123, 255, 0.45)); }
+.login-photo-title {
+  max-width: 13ch;
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: clamp(2rem, 3.4vw, 3.1rem);
+  line-height: 1.04;
+  letter-spacing: -0.025em;
+  color: #fff;
+  text-wrap: balance;
+}
+.login-photo-sub {
+  max-width: 34ch;
+  margin-top: 14px;
+  font-size: 1rem;
+  line-height: 1.55;
+  color: var(--cz-text-2);
+}
+.login-photo-legal {
+  margin-top: 28px;
+  font-size: 0.72rem;
+  color: var(--cz-muted);
+}
+
+@media (min-width: 768px) {
+  .login-brand { display: none; } /* the left column carries the logo */
+  .login-welcome { text-shadow: none; }
+  .login-title { font-size: 2.2rem; }
+  .login-sheet .login-screen-panel-inner {
+    padding-top: 5rem; /* clear of the language button */
+    padding-left: 2rem;
+    padding-right: 2rem;
+    padding-bottom: 1.5rem;
+  }
+  /* The form sits in the middle of the column, the footer at its foot. */
+  .login-canvas .login-screen-credentials { margin-block: auto; }
+  .login-forgot { margin-top: 12px; }
+  .login-footer { margin-top: 0; padding-top: 2.5rem; }
+  .login-photo-copy .cafyz-logo-glow { display: none; }
+}
+
+@media (min-width: 1024px) {
+  .login-photo-panel { width: 50%; }
+  .login-photo-copy { padding: 2.75rem; }
+}
+
+@media (max-width: 360px) {
+  .login-sheet .login-screen-panel-inner { padding-left: 1rem; padding-right: 1rem; }
+  .login-canvas { --login-title-cap: 1.6rem; }
+  .login-seg button { gap: 6px; font-size: 0.82rem; padding: 0 6px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .login-backdrop-img,
+  .login-photo-img { animation: none; }
+  .login-credit img { animation: none; filter: drop-shadow(0 0 2px rgba(214, 140, 255, 0.6)) drop-shadow(0 0 6px rgba(180, 68, 255, 0.5)); }
+}

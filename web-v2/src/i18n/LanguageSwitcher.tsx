@@ -5,8 +5,8 @@ import { useLanguage } from './LanguageProvider';
 import { SUPPORTED_LANGUAGES, type AppLang } from './index';
 
 interface LanguageSwitcherProps {
-  /** compact = icon + short code; full = native label on larger screens */
-  variant?: 'compact' | 'header' | 'login';
+  /** compact = icon + short code; icon = a round globe button only; header = native label */
+  variant?: 'compact' | 'header' | 'login' | 'icon';
   className?: string;
 }
 
@@ -45,23 +45,24 @@ export function LanguageSwitcher({ variant = 'header', className = '' }: Languag
         onClick={() => setOpen(o => !o)}
         aria-label={t('Language')}
         aria-expanded={open}
-        className="flex items-center gap-1.5 rounded-xl transition-all active:scale-95"
-        style={{
-          background: 'rgba(30,127,255,0.08)',
-          border: '1px solid var(--cafyz-border-strong)',
+        title={variant === 'icon' ? current.nativeLabel : undefined}
+        className={variant === 'icon' ? 'cafyz-topbar-btn' : 'flex items-center gap-1.5 rounded-full transition-all active:scale-95'}
+        style={variant === 'icon' ? undefined : {
+          background: 'var(--cafyz-glass)',
+          border: '1px solid var(--cafyz-border)',
           color: 'var(--cafyz-text-secondary)',
-          padding: variant === 'login' ? '8px 12px' : '6px 10px',
+          padding: variant === 'login' ? '8px 12px' : '6px 12px',
           fontSize: variant === 'login' ? '0.82rem' : '0.75rem',
           fontWeight: 600,
-          minHeight: variant === 'header' ? 36 : undefined,
+          minHeight: variant === 'header' ? 40 : undefined,
         }}
       >
-        <Globe size={variant === 'login' ? 15 : 14} style={{ color: '#1e7fff', flexShrink: 0 }} />
-        <span
+        <Globe size={variant === 'login' ? 15 : variant === 'icon' ? 18 : 14} style={{ color: variant === 'icon' ? 'currentColor' : 'var(--cafyz-brand)', flexShrink: 0 }} />
+        {variant !== 'icon' && <span
           lang={current.code}
           dir={current.dir}
           className={`lang-switcher-label truncate ${variant === 'login' ? 'max-w-[4.5rem] sm:max-w-none' : 'max-w-[5.5rem] sm:max-w-none'}`}
-        >{btnLabel}</span>
+        >{btnLabel}</span>}
       </button>
 
       <AnimatePresence>
@@ -95,7 +96,7 @@ export function LanguageSwitcher({ variant = 'header', className = '' }: Languag
                     {opt.nativeLabel}
                   </span>
                   <span style={{ color: 'var(--cafyz-muted)', fontSize: '0.68rem' }}>{opt.label}</span>
-                  {active && <Check size={14} style={{ color: '#1e7fff', flexShrink: 0 }} />}
+                  {active && <Check size={14} style={{ color: 'var(--cafyz-brand)', flexShrink: 0 }} />}
                 </button>
               );
             })}

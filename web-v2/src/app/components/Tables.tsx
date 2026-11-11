@@ -7,6 +7,7 @@ import { useAppNav } from "../nav";
 import { onResume } from "../../hooks/useOnResume";
 import { usePolling } from "../../hooks/usePolling";
 import { keepIfSame } from "../../utils/sameData";
+import { withAlpha } from "../../utils/color";
 
 type TableStatus = "available" | "occupied" | "reserved" | "cleaning";
 
@@ -63,10 +64,10 @@ function mapTable(
 }
 
 const statusConfig: Record<TableStatus, { color: string; bg: string; border: string; label: string }> = {
-  available: { color: "#22c55e", bg: "rgba(34,197,94,0.08)", border: "rgba(34,197,94,0.25)", label: "Available" },
-  occupied: { color: "#1e7fff", bg: "var(--cafyz-badge-bg)", border: "rgba(30,127,255,0.3)", label: "Occupied" },
-  reserved: { color: "#f59e0b", bg: "rgba(245,158,11,0.08)", border: "rgba(245,158,11,0.25)", label: "Reserved" },
-  cleaning: { color: "var(--cafyz-muted)", bg: "rgba(107,130,160,0.08)", border: "rgba(107,130,160,0.2)", label: "Cleaning" },
+  available: { color: "#00d68f", bg: "rgba(0,214,143,0.08)", border: "rgba(0,214,143,0.25)", label: "Available" },
+  occupied: { color: "var(--cafyz-brand)", bg: "var(--cafyz-badge-bg)", border: "rgba(var(--cafyz-brand-rgb),0.3)", label: "Occupied" },
+  reserved: { color: "#ffaa00", bg: "rgba(255,170,0,0.08)", border: "rgba(255,170,0,0.25)", label: "Reserved" },
+  cleaning: { color: "var(--cafyz-muted)", bg: "rgba(166,160,199,0.08)", border: "rgba(166,160,199,0.2)", label: "Cleaning" },
 };
 
 function TableCard({ table, onClick }: { table: TableData; onClick: () => void }) {
@@ -85,13 +86,13 @@ function TableCard({ table, onClick }: { table: TableData; onClick: () => void }
       <div className="flex items-start justify-between mb-3">
         <div
           className="w-10 h-10 rounded-xl flex items-center justify-center"
-          style={{ background: `${cfg.color}18` }}
+          style={{ background: `${withAlpha(cfg.color, 0x18)}` }}
         >
           <Utensils size={16} style={{ color: cfg.color }} />
         </div>
         <span
           className="text-xs px-2 py-0.5 rounded-full font-medium"
-          style={{ background: `${cfg.color}15`, color: cfg.color }}
+          style={{ background: `${withAlpha(cfg.color, 0x15)}`, color: cfg.color }}
         >
           {cfg.label}
         </span>
@@ -107,13 +108,13 @@ function TableCard({ table, onClick }: { table: TableData; onClick: () => void }
       {table.status === "occupied" && (
         <div className="space-y-0.5">
           <p style={{ color: "var(--cafyz-text-secondary)", fontSize: "0.72rem" }}>
-            <span style={{ color: "#1e7fff" }}>●</span> {table.waiter} · {table.since}
+            <span style={{ color: "var(--cafyz-brand)" }}>●</span> {table.waiter} · {table.since}
           </p>
           <p style={{ color: "var(--cafyz-muted)", fontSize: "0.7rem", fontFamily: "var(--font-mono)" }}>{table.order}</p>
         </div>
       )}
       {table.status === "reserved" && (
-        <p style={{ color: "#f59e0b", fontSize: "0.7rem" }}>{table.reservation}</p>
+        <p style={{ color: "#ffaa00", fontSize: "0.7rem" }}>{table.reservation}</p>
       )}
     </motion.button>
   );
@@ -238,7 +239,7 @@ export function Tables() {
         <button
           onClick={() => setTableForm({ mode: "create", name: "", seats: "4", zone: "Main" })}
           className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold"
-          style={{ background: "rgba(30,127,255,0.12)", color: "#1e7fff", border: "1px solid rgba(30,127,255,0.2)" }}
+          style={{ background: "rgba(var(--cafyz-brand-rgb),0.12)", color: "var(--cafyz-brand)", border: "1px solid rgba(var(--cafyz-brand-rgb),0.2)" }}
         >
           <Plus size={16} /> Add Table
         </button>
@@ -262,7 +263,7 @@ export function Tables() {
             initial={{ opacity: 0, scale: 0.92 }}
             animate={{ opacity: 1, scale: 1 }}
             className="w-full max-w-sm rounded-2xl p-5 space-y-4"
-            style={{ background: "var(--cafyz-surface)", border: "1px solid rgba(30,127,255,0.2)" }}
+            style={{ background: "var(--cafyz-surface)", border: "1px solid rgba(var(--cafyz-brand-rgb),0.2)" }}
             onClick={e => e.stopPropagation()}
           >
             <div className="flex items-center justify-between">
@@ -284,7 +285,7 @@ export function Tables() {
             <button
               onClick={() => setTableForm({ mode: "edit", id: selected.id, name: selected.name, seats: String(selected.seats) })}
               className="w-full py-2 rounded-xl text-xs font-semibold"
-              style={{ background: "rgba(30,127,255,0.08)", color: "#1e7fff", border: "1px solid rgba(30,127,255,0.15)" }}
+              style={{ background: "rgba(var(--cafyz-brand-rgb),0.08)", color: "var(--cafyz-brand)", border: "1px solid rgba(var(--cafyz-brand-rgb),0.15)" }}
             >
               Edit name / capacity
             </button>
@@ -292,7 +293,7 @@ export function Tables() {
             <button
               onClick={() => { nav.goToTableOrder(selected.id); setSelected(null); }}
               className="w-full py-2.5 rounded-xl text-sm font-semibold flex items-center justify-center gap-2"
-              style={{ background: "linear-gradient(135deg, #1e7fff, #00c6ff)", color: "#fff" }}
+              style={{ background: "var(--cafyz-gradient)", color: "#fff" }}
             >
               <Utensils size={15} /> {selected.status === "occupied" ? "View / Edit Order" : "Take Order"}
             </button>
@@ -326,7 +327,7 @@ export function Tables() {
                 } catch (e) { toast.error("Delete failed", (e as Error).message); }
               }}
               className="w-full py-2 rounded-xl text-xs font-medium"
-              style={{ background: "rgba(255,59,92,0.08)", color: "#ff3b5c" }}
+              style={{ background: "rgba(255,65,108,0.08)", color: "#ff416c" }}
             >
               Delete table
             </button>
@@ -342,7 +343,7 @@ export function Tables() {
             <motion.div
               initial={{ opacity: 0, scale: 0.92 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.92 }}
               className="w-full max-w-sm rounded-2xl p-5 space-y-4"
-              style={{ background: "var(--cafyz-surface)", border: "1px solid rgba(30,127,255,0.2)" }}
+              style={{ background: "var(--cafyz-surface)", border: "1px solid rgba(var(--cafyz-brand-rgb),0.2)" }}
               onClick={e => e.stopPropagation()}>
               <div className="flex items-center justify-between">
                 <h3 style={{ fontFamily: "var(--font-display)", color: "var(--cafyz-text)", fontWeight: 700 }}>
@@ -356,14 +357,14 @@ export function Tables() {
                   <input type="text" value={tableForm.name}
                     onChange={e => setTableForm(f => f ? { ...f, name: e.target.value } : f)}
                     className="w-full rounded-xl px-3 py-2.5 text-sm outline-none"
-                    style={{ background: "var(--cafyz-surface-2)", color: "var(--cafyz-text)", border: "1px solid rgba(30,127,255,0.12)" }} />
+                    style={{ background: "var(--cafyz-surface-2)", color: "var(--cafyz-text)", border: "1px solid rgba(var(--cafyz-brand-rgb),0.12)" }} />
                 </div>
                 <div>
                   <label style={{ color: "var(--cafyz-text-secondary)", fontSize: "0.78rem", display: "block", marginBottom: 4 }}>Seats</label>
                   <input type="number" min={1} value={tableForm.seats}
                     onChange={e => setTableForm(f => f ? { ...f, seats: e.target.value } : f)}
                     className="w-full rounded-xl px-3 py-2.5 text-sm outline-none"
-                    style={{ background: "var(--cafyz-surface-2)", color: "var(--cafyz-text)", border: "1px solid rgba(30,127,255,0.12)" }} />
+                    style={{ background: "var(--cafyz-surface-2)", color: "var(--cafyz-text)", border: "1px solid rgba(var(--cafyz-brand-rgb),0.12)" }} />
                 </div>
                 {tableForm.mode === "create" && (
                   <div>
@@ -371,18 +372,18 @@ export function Tables() {
                     <input type="text" value={tableForm.zone}
                       onChange={e => setTableForm(f => f && f.mode === "create" ? { ...f, zone: e.target.value } : f)}
                       className="w-full rounded-xl px-3 py-2.5 text-sm outline-none"
-                      style={{ background: "var(--cafyz-surface-2)", color: "var(--cafyz-text)", border: "1px solid rgba(30,127,255,0.12)" }} />
+                      style={{ background: "var(--cafyz-surface-2)", color: "var(--cafyz-text)", border: "1px solid rgba(var(--cafyz-brand-rgb),0.12)" }} />
                   </div>
                 )}
               </div>
               <div className="flex gap-2 pt-1">
                 <button onClick={() => setTableForm(null)} className="flex-1 py-2.5 rounded-xl text-sm font-semibold"
-                  style={{ background: "rgba(30,127,255,0.06)", color: "var(--cafyz-muted)", border: "1px solid var(--cafyz-border)" }}>
+                  style={{ background: "rgba(var(--cafyz-brand-rgb),0.06)", color: "var(--cafyz-muted)", border: "1px solid var(--cafyz-border)" }}>
                   Cancel
                 </button>
                 <button onClick={() => void saveTableForm()} disabled={savingTable}
                   className="flex-1 py-2.5 rounded-xl text-sm font-semibold flex items-center justify-center gap-2"
-                  style={{ background: "linear-gradient(135deg, #1e7fff, #00c6ff)", color: "#fff", opacity: savingTable ? 0.7 : 1 }}>
+                  style={{ background: "var(--cafyz-gradient)", color: "#fff", opacity: savingTable ? 0.7 : 1 }}>
                   <Save size={15} /> Save
                 </button>
               </div>

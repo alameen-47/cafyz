@@ -1,9 +1,8 @@
 import { motion, AnimatePresence } from "motion/react";
-import { Bell, Search, ChevronDown, Menu, Clock, X, UtensilsCrossed, LayoutGrid, ShoppingBag, Users, Package, CalendarCheck, Headset } from "lucide-react";
+import { Bell, Search, Menu, UserRound, Clock, X, UtensilsCrossed, LayoutGrid, ShoppingBag, Users, Package, CalendarCheck, Headset } from "lucide-react";
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { NotificationDropdown } from "./NotificationDropdown";
 import { UserProfileDropdown } from "./UserProfileDropdown";
-import { AccountSettingsModal } from "./AccountSettingsModal";
 import { PrinterSetupPanel } from "./PrinterSetupPanel";
 import { searchApi, restaurantApi, type ApiSearchResult, type ApiRestaurant } from "../../services/api";
 import { getRestaurantLogo } from "../../services/restaurantLogoStorage";
@@ -11,10 +10,12 @@ import { LanguageSwitcher } from "../../i18n/LanguageSwitcher";
 import { useLanguage } from "../../i18n/LanguageProvider";
 import { isFounderRole } from "../../config/access";
 import { IN_STORE_APP } from "../../config/features";
+import { CAFYZ_MARK_SRC } from "../../config/brand";
 import type { PageId } from "../../config/access";
 import { useNotifications } from "../../hooks/useNotifications";
 import { usePushNotifications } from "../../hooks/usePushNotifications";
 import { nameInitials } from "../../utils/initials";
+import { withAlpha } from "../../utils/color";
 
 const pageLabels: Record<string, { title: string; subtitle: string }> = {
   dashboard:    { title: "Dashboard",          subtitle: "Welcome back, Alex" },
@@ -31,6 +32,7 @@ const pageLabels: Record<string, { title: string; subtitle: string }> = {
   profile:      { title: "Restaurant Profile", subtitle: "Brand, contact & tax settings" },
   license:      { title: "License & Plan",     subtitle: IN_STORE_APP ? "Your license key" : "Subscription & upgrades" },
   founder:      { title: "Founder Console",    subtitle: "Super admin · All tenants" },
+  account:      { title: "Account",            subtitle: "Profile, security & appearance" },
 };
 
 const typeIcon: Record<ApiSearchResult["type"], React.ElementType> = {
@@ -43,40 +45,42 @@ const typeIcon: Record<ApiSearchResult["type"], React.ElementType> = {
 };
 
 const typeColor: Record<ApiSearchResult["type"], string> = {
-  menu:        "#1e7fff",
-  table:       "#00c6ff",
-  order:       "#a855f7",
-  staff:       "#22c55e",
-  inventory:   "#f59e0b",
-  reservation: "#22d3ee",
+  menu:        "var(--cafyz-brand)",
+  table:       "var(--cafyz-brand-2)",
+  order:       "var(--cafyz-brand)",
+  staff:       "#00d68f",
+  inventory:   "#ffaa00",
+  reservation: "#00d4ff",
 };
 
 const metaBadge: Record<string, { color: string; bg: string }> = {
-  open:       { color: "#1e7fff",  bg: "var(--cafyz-badge-bg)" },
-  sent:       { color: "#a855f7",  bg: "rgba(168,85,247,0.1)" },
-  paid:       { color: "#22c55e",  bg: "rgba(34,197,94,0.1)" },
-  voided:     { color: "var(--cafyz-muted)",  bg: "rgba(107,130,160,0.1)" },
-  comped:     { color: "#22d3ee",  bg: "rgba(34,211,238,0.1)" },
-  active:     { color: "#22c55e",  bg: "rgba(34,197,94,0.1)" },
-  break:      { color: "#f59e0b",  bg: "rgba(245,158,11,0.1)" },
-  off:        { color: "var(--cafyz-muted)",  bg: "rgba(107,130,160,0.1)" },
-  occupied:   { color: "#f59e0b",  bg: "rgba(245,158,11,0.1)" },
-  empty:      { color: "#22c55e",  bg: "rgba(34,197,94,0.1)" },
-  low:        { color: "#ff3b5c",  bg: "rgba(255,59,92,0.1)" },
-  ok:         { color: "#22c55e",  bg: "rgba(34,197,94,0.1)" },
-  confirmed:  { color: "#1e7fff",  bg: "var(--cafyz-badge-bg)" },
-  seated:     { color: "#22c55e",  bg: "rgba(34,197,94,0.1)" },
-  cancelled:  { color: "#ff3b5c",  bg: "rgba(255,59,92,0.1)" },
-  available:  { color: "#22c55e",  bg: "rgba(34,197,94,0.1)" },
+  open:       { color: "var(--cafyz-brand)",  bg: "var(--cafyz-badge-bg)" },
+  sent:       { color: "var(--cafyz-brand)",  bg: "rgba(var(--cafyz-brand-rgb),0.1)" },
+  paid:       { color: "#00d68f",  bg: "rgba(0,214,143,0.1)" },
+  voided:     { color: "var(--cafyz-muted)",  bg: "rgba(166,160,199,0.1)" },
+  comped:     { color: "#00d4ff",  bg: "rgba(0,212,255,0.1)" },
+  active:     { color: "#00d68f",  bg: "rgba(0,214,143,0.1)" },
+  break:      { color: "#ffaa00",  bg: "rgba(255,170,0,0.1)" },
+  off:        { color: "var(--cafyz-muted)",  bg: "rgba(166,160,199,0.1)" },
+  occupied:   { color: "#ffaa00",  bg: "rgba(255,170,0,0.1)" },
+  empty:      { color: "#00d68f",  bg: "rgba(0,214,143,0.1)" },
+  low:        { color: "#ff416c",  bg: "rgba(255,65,108,0.1)" },
+  ok:         { color: "#00d68f",  bg: "rgba(0,214,143,0.1)" },
+  confirmed:  { color: "var(--cafyz-brand)",  bg: "var(--cafyz-badge-bg)" },
+  seated:     { color: "#00d68f",  bg: "rgba(0,214,143,0.1)" },
+  cancelled:  { color: "#ff416c",  bg: "rgba(255,65,108,0.1)" },
+  available:  { color: "#00d68f",  bg: "rgba(0,214,143,0.1)" },
 };
 
 function getBadge(meta: string) {
-  return metaBadge[meta] ?? { color: "var(--cafyz-text-secondary)", bg: "rgba(168,189,212,0.08)" };
+  return metaBadge[meta] ?? { color: "var(--cafyz-text-secondary)", bg: "rgba(207,201,234,0.08)" };
 }
 
 interface TopBarProps {
   active: string;
   onMobileMenuOpen: () => void;
+  /** Opens the Account screen. */
+  onOpenAccount: () => void;
   onNavigate: (page: string) => void;
   onLogout: () => void;
   role: string;
@@ -113,7 +117,7 @@ function useDebounce<T>(value: T, delay: number): T {
   return debounced;
 }
 
-export function TopBar({ active, onMobileMenuOpen, onNavigate, onLogout, role, plan, permittedPages = [], userName = "there", userEmail = "", userInitials = "?" }: TopBarProps) {
+export function TopBar({ active, onMobileMenuOpen, onOpenAccount, onNavigate, onLogout, role, plan, permittedPages = [], userName = "there", userEmail = "", userInitials = "?" }: TopBarProps) {
   const { t } = useLanguage();
   const [searchQuery, setSearchQuery] = useState("");
   const [searchFocused, setSearchFocused] = useState(false);
@@ -121,7 +125,6 @@ export function TopBar({ active, onMobileMenuOpen, onNavigate, onLogout, role, p
   const [searchLoading, setSearchLoading] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
-  const [accountOpen, setAccountOpen] = useState(false);
   const [printerOpen, setPrinterOpen] = useState(false);
   const [restaurant, setRestaurant] = useState<ApiRestaurant | null>(null);
   const notifRef = useRef<HTMLDivElement>(null);
@@ -201,34 +204,32 @@ export function TopBar({ active, onMobileMenuOpen, onNavigate, onLogout, role, p
 
   return (
     <header
-      className="app-top-bar sticky top-0 z-30 flex items-center gap-2 sm:gap-3 px-3 sm:px-4 md:px-6 border-b"
-      style={{
-        background: "var(--cafyz-topbar-bg)",
-        backdropFilter: "blur(20px)",
-        borderColor: "var(--cafyz-border)",
-        minHeight: 56,
-      }}>
+      className="app-top-bar cafyz-topbar sticky top-0 z-30 flex items-center gap-2 sm:gap-3 px-3 sm:px-4 md:px-6"
+      style={{ background: "var(--cafyz-topbar-bg)", backdropFilter: "blur(20px)" }}>
 
-      {/* Mobile hamburger */}
-      <button onClick={onMobileMenuOpen}
-        className="md:hidden flex items-center justify-center w-9 h-9 rounded-xl flex-shrink-0 transition-all active:scale-95"
-        style={{ background: "var(--cafyz-surface-hover)", color: "var(--cafyz-muted)" }}>
-        <Menu size={18} />
+      {/* Phones and tablets: the brand tile opens the menu drawer */}
+      <button onClick={onMobileMenuOpen} type="button" aria-label="Open menu"
+        className="cafyz-brand-tile md:hidden flex-shrink-0">
+        <img src={CAFYZ_MARK_SRC} alt="" draggable={false} />
+        <span className="cafyz-brand-tile-menu" aria-hidden><Menu size={10} strokeWidth={2.5} /></span>
       </button>
 
-      {/* Page title */}
+      {/* Phones: app name over the current page. Desktop: page title over its subtitle. */}
       <div className="flex-1 min-w-0">
-        <h1 className="truncate" style={{ color: "var(--cafyz-text)", fontFamily: "var(--font-display)", fontWeight: 700, fontSize: "0.98rem", lineHeight: 1.25 }}>
+        <p className="md:hidden truncate" translate="no" style={{ color: "var(--cafyz-text-strong)", fontFamily: "var(--font-display)", fontWeight: 700, fontSize: "1.02rem", lineHeight: 1.2, letterSpacing: "-0.01em" }}>
+          Cafyz
+        </p>
+        <h1 className="truncate cafyz-topbar-title">
           {page.title}
         </h1>
-        <p className="truncate hidden sm:block" style={{ color: "var(--cafyz-muted)", fontSize: "0.67rem" }}>
+        <p className="truncate hidden md:block" style={{ color: "var(--cafyz-muted)", fontSize: "0.7rem" }}>
           {active === "dashboard" ? `${t("Welcome back,")} ${(userName ?? "").trim().split(/\s+/)[0] || "there"}` : page.subtitle}
         </p>
       </div>
 
       {/* Live clock — desktop only */}
-      <div className="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-xl flex-shrink-0"
-        style={{ background: "var(--cafyz-surface)", border: "1px solid var(--cafyz-border)" }}>
+      <div className="hidden md:flex items-center gap-1.5 px-3.5 rounded-full flex-shrink-0"
+        style={{ background: "var(--cafyz-glass)", border: "1px solid var(--cafyz-border)", minHeight: 40 }}>
         <Clock size={12} style={{ color: "var(--cafyz-muted)" }} />
         <LiveClock />
       </div>
@@ -237,14 +238,15 @@ export function TopBar({ active, onMobileMenuOpen, onNavigate, onLogout, role, p
       {!founderUser && (
       <div ref={searchRef} className="hidden md:block relative flex-shrink-0 w-[140px] lg:w-[200px] xl:w-[220px]">
         <div
-          className="flex items-center gap-2 rounded-xl px-3 py-2 transition-all duration-200"
+          className="flex items-center gap-2 rounded-full px-3.5 transition-all duration-200"
           style={{
-            background: "var(--cafyz-surface)",
-            border: `1px solid ${searchFocused ? "rgba(30,127,255,0.4)" : "var(--cafyz-border)"}`,
-            boxShadow: searchFocused ? "0 0 0 3px rgba(30,127,255,0.08)" : "none",
+            minHeight: 40,
+            background: "var(--cafyz-glass)",
+            border: `1px solid ${searchFocused ? "rgba(var(--cafyz-brand-rgb),0.4)" : "var(--cafyz-border)"}`,
+            boxShadow: searchFocused ? "0 0 0 3px rgba(var(--cafyz-brand-rgb),0.08)" : "none",
           }}>
           {searchLoading
-            ? <div className="w-3 h-3 border border-white/20 border-t-[#1e7fff] rounded-full animate-spin flex-shrink-0" />
+            ? <div className="w-3 h-3 border border-white/20 border-t-[var(--cafyz-brand)] rounded-full animate-spin flex-shrink-0" />
             : <Search size={13} style={{ color: "var(--cafyz-muted)", flexShrink: 0 }} />
           }
           <input
@@ -297,7 +299,7 @@ export function TopBar({ active, onMobileMenuOpen, onNavigate, onLogout, role, p
                         className="w-full flex items-center gap-3 px-4 py-2.5 text-start transition-all hover:bg-[var(--cafyz-surface-hover)]"
                       >
                         <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
-                          style={{ background: `${color}18` }}>
+                          style={{ background: `${withAlpha(color, 0x18)}` }}>
                           <Icon size={13} style={{ color }} />
                         </div>
                         <div className="flex-1 min-w-0">
@@ -321,7 +323,7 @@ export function TopBar({ active, onMobileMenuOpen, onNavigate, onLogout, role, p
               ) : null}
               {searchResults.length > 0 && (
                 <div className="px-4 py-2 border-t flex items-center justify-between"
-                  style={{ borderColor: "rgba(30,127,255,0.08)" }}>
+                  style={{ borderColor: "rgba(var(--cafyz-brand-rgb),0.08)" }}>
                   <span style={{ color: "var(--cafyz-muted)", fontSize: "0.65rem" }}>
                     {searchResults.length} result{searchResults.length !== 1 ? "s" : ""} for "{searchQuery}"
                   </span>
@@ -335,14 +337,13 @@ export function TopBar({ active, onMobileMenuOpen, onNavigate, onLogout, role, p
       )}
 
       {/* Language — compact on mobile, full label on desktop */}
-      <LanguageSwitcher variant="compact" className="flex-shrink-0 sm:hidden" />
+      <LanguageSwitcher variant="icon" className="flex-shrink-0 sm:hidden" />
       <LanguageSwitcher variant="header" className="flex-shrink-0 hidden sm:block" />
 
       {/* Customer support */}
       <button
         onClick={openSupport}
-        className="relative flex items-center justify-center w-9 h-9 rounded-xl transition-all hover:bg-[rgba(30,127,255,0.08)] active:scale-95 flex-shrink-0"
-        style={{ color: "var(--cafyz-muted)" }}
+        className="cafyz-topbar-btn flex-shrink-0"
         title="Customer support"
         aria-label="Open customer support"
       >
@@ -354,13 +355,10 @@ export function TopBar({ active, onMobileMenuOpen, onNavigate, onLogout, role, p
       <div ref={notifRef} className="relative flex-shrink-0">
         <button
           onClick={() => { setNotifOpen(o => !o); setProfileOpen(false); }}
-          className="relative flex items-center justify-center w-9 h-9 rounded-xl transition-all hover:bg-[rgba(30,127,255,0.08)] active:scale-95"
-          style={{ color: notifOpen ? "#1e7fff" : "var(--cafyz-muted)" }}>
-          <Bell size={17} />
-          {unreadNotifs > 0 && (
-            <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full"
-              style={{ background: "#ff3b5c", boxShadow: "0 0 6px rgba(255,59,92,0.7)" }} />
-          )}
+          aria-label="Notifications"
+          className={`cafyz-topbar-btn ${notifOpen ? "is-open" : ""}`}>
+          <Bell size={18} />
+          {unreadNotifs > 0 && <span className="cafyz-topbar-dot" aria-hidden />}
         </button>
         <NotificationDropdown
           open={notifOpen}
@@ -382,22 +380,22 @@ export function TopBar({ active, onMobileMenuOpen, onNavigate, onLogout, role, p
       <div ref={profileRef} className="relative flex-shrink-0">
         <button
           onClick={() => { setProfileOpen(o => !o); setNotifOpen(false); }}
-          className="flex items-center gap-2 rounded-xl px-1.5 py-1 transition-all hover:bg-[var(--cafyz-surface-hover)] active:scale-95">
-          <div className="w-8 h-8 rounded-full flex items-center justify-center"
-            style={{ background: "linear-gradient(135deg, #1e7fff, #00c6ff)", boxShadow: "0 0 10px rgba(30,127,255,0.35)" }}>
-            <span style={{ color: "var(--cafyz-text-strong)", fontSize: "0.65rem", fontWeight: 800 }}>{initials}</span>
+          aria-label="Account menu"
+          className="flex items-center gap-1.5 md:gap-2 rounded-full ps-0.5 pe-0.5 md:pe-3 py-0.5 transition-all hover:bg-[var(--cafyz-surface-hover)] active:scale-95">
+          <div className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0"
+            style={{ background: "var(--cafyz-gradient)", boxShadow: "0 0 0 1px rgba(255,255,255,0.1), 0 0 16px rgba(var(--cafyz-brand-rgb),0.4)" }}>
+            <UserRound size={20} strokeWidth={2} color="#ffffff" aria-hidden />
           </div>
           <div className="hidden md:block text-start">
             <p style={{ color: "var(--cafyz-text)", fontSize: "0.78rem", fontWeight: 600, lineHeight: 1.2 }}>{userName}</p>
             <p style={{ color: "var(--cafyz-muted)", fontSize: "0.62rem", textTransform: "capitalize" }}>{founderUser ? "Super Admin" : role}</p>
           </div>
-          <ChevronDown size={13} className="hidden md:block" style={{ color: "var(--cafyz-muted)", transform: profileOpen ? "rotate(180deg)" : "rotate(0)", transition: "transform 0.2s" }} />
         </button>
         <UserProfileDropdown
           open={profileOpen}
           onClose={() => setProfileOpen(false)}
           onNavigate={(p) => { onNavigate(p); setProfileOpen(false); }}
-          onOpenAccountSettings={() => { setAccountOpen(true); setProfileOpen(false); }}
+          onOpenAccountSettings={() => { onOpenAccount(); setProfileOpen(false); }}
           onOpenPrinter={founderUser ? undefined : openPrinterSetup}
           onLogout={onLogout}
           role={role}
@@ -407,10 +405,6 @@ export function TopBar({ active, onMobileMenuOpen, onNavigate, onLogout, role, p
           userInitials={initials}
         />
       </div>
-      <AccountSettingsModal
-        open={accountOpen}
-        onClose={() => setAccountOpen(false)}
-      />
       {printerOpen && (
         restaurant ? (
           <PrinterSetupPanel
@@ -427,7 +421,7 @@ export function TopBar({ active, onMobileMenuOpen, onNavigate, onLogout, role, p
           />
         ) : (
           <div className="fixed inset-0 z-[80] flex items-center justify-center" style={{ background: "var(--cafyz-overlay)" }}>
-            <div className="w-8 h-8 border-2 border-white/20 border-t-[#1e7fff] rounded-full animate-spin" />
+            <div className="w-8 h-8 border-2 border-white/20 border-t-[var(--cafyz-brand)] rounded-full animate-spin" />
           </div>
         )
       )}

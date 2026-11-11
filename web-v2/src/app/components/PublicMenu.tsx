@@ -1,12 +1,13 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { motion } from "motion/react";
-import { MapPin, Search, Shield } from "lucide-react";
+import { MapPin, Search, Shield, Star, UtensilsCrossed } from "lucide-react";
 import { CafyzLogo } from "./CafyzLogo";
 import { publicApi, type PublicMenuResponse } from "../../services/api";
 import { getCurrencySymbol } from "../../utils/currency";
 import { useAuth } from "../auth";
 import { subscribeMenuChanged } from "../../utils/menuEvents";
 
+import { HScroll } from "./HScroll";
 function urlRestaurantId(): string | null {
   const m = window.location.pathname.match(/\/m\/([^/?#]+)/);
   return m ? decodeURIComponent(m[1]) : null;
@@ -73,22 +74,22 @@ export function PublicMenu({ restaurantId }: { restaurantId?: string }) {
   const location = [restaurant?.city, restaurant?.country].filter(Boolean).join(", ");
 
   return (
-    <div className="min-h-screen" style={{ background: "#06091a" }}>
+    <div className="cafyz-on-dark min-h-screen" style={{ background: "#070511" }}>
       {/* Hero */}
       <div
         className="relative px-4 pt-12 pb-8 text-center overflow-hidden"
         style={{
-          background: "linear-gradient(160deg, #080d1e 0%, #0a1535 60%, #06091a 100%)",
-          borderBottom: "1px solid rgba(30,127,255,0.12)",
+          background: "linear-gradient(160deg, #100b25 0%, #171239 60%, #070511 100%)",
+          borderBottom: "1px solid rgba(var(--cafyz-brand-rgb),0.12)",
         }}
       >
         <div className="absolute inset-0 overflow-hidden">
-          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-96 h-96 rounded-full blur-3xl opacity-10" style={{ background: "#1e7fff" }} />
+          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-96 h-96 rounded-full blur-3xl opacity-10" style={{ background: "var(--cafyz-brand)" }} />
         </div>
         <div className="relative">
           <div
             className="w-20 h-20 rounded-2xl mx-auto mb-4 flex items-center justify-center overflow-hidden"
-            style={{ background: "linear-gradient(135deg, #1e7fff, #00c6ff)", boxShadow: "0 0 32px rgba(30,127,255,0.4)" }}
+            style={{ background: "var(--cafyz-gradient)", boxShadow: "0 0 32px rgba(var(--cafyz-brand-rgb),0.4)" }}
           >
             {restaurant?.logo_url
               ? <img src={restaurant.logo_url} alt={restaurant.name} className="w-full h-full object-cover" />
@@ -97,10 +98,10 @@ export function PublicMenu({ restaurantId }: { restaurantId?: string }) {
           <h1 style={{ fontFamily: "var(--font-display)", fontWeight: 800, color: "#fff", fontSize: "1.8rem" }}>
             {restaurant?.name ?? (err ? "Menu unavailable" : "Loading…")}
           </h1>
-          {restaurant?.tagline && <p style={{ color: "#a8bdd4", marginTop: 4, fontSize: "0.9rem" }}>{restaurant.tagline}</p>}
+          {restaurant?.tagline && <p style={{ color: "#cfc9ea", marginTop: 4, fontSize: "0.9rem" }}>{restaurant.tagline}</p>}
           {location && (
             <div className="flex items-center justify-center gap-4 mt-3">
-              <div className="flex items-center gap-1" style={{ color: "#6b82a0", fontSize: "0.78rem" }}>
+              <div className="flex items-center gap-1" style={{ color: "#a6a0c7", fontSize: "0.78rem" }}>
                 <MapPin size={12} /> {location}
               </div>
             </div>
@@ -110,33 +111,33 @@ export function PublicMenu({ restaurantId }: { restaurantId?: string }) {
 
       {err && !restaurant ? (
         <div className="max-w-2xl mx-auto px-4 py-16 text-center">
-          <p style={{ color: "#6b82a0", fontSize: "0.85rem" }}>{err}</p>
+          <p style={{ color: "#a6a0c7", fontSize: "0.85rem" }}>{err}</p>
         </div>
       ) : (
         <>
           {/* Sticky category + search bar */}
           <div
             className="sticky top-0 z-10 px-4 py-3 space-y-3"
-            style={{ background: "rgba(6,9,26,0.92)", backdropFilter: "blur(12px)", borderBottom: "1px solid rgba(30,127,255,0.08)" }}
+            style={{ background: "rgba(6,9,26,0.92)", backdropFilter: "blur(12px)", borderBottom: "1px solid rgba(var(--cafyz-brand-rgb),0.08)" }}
           >
             <div className="flex items-center gap-2 rounded-xl px-3 py-2.5 max-w-lg mx-auto"
-              style={{ background: "#0d1326", border: "1px solid rgba(30,127,255,0.12)" }}>
-              <Search size={14} style={{ color: "#6b82a0" }} />
+              style={{ background: "#171239", border: "1px solid rgba(var(--cafyz-brand-rgb),0.12)" }}>
+              <Search size={14} style={{ color: "#a6a0c7" }} />
               <input type="text" placeholder="Search dishes..." value={search} onChange={e => setSearch(e.target.value)}
-                className="flex-1 bg-transparent outline-none text-sm placeholder:text-[#6b82a0]"
-                style={{ color: "#e8eef8" }} />
+                className="flex-1 bg-transparent outline-none text-sm placeholder:text-[#a6a0c7]"
+                style={{ color: "#f5f2ff" }} />
             </div>
-            <div ref={catRef} className="flex gap-2 overflow-x-auto scrollbar-hide pb-1">
+            <HScroll ref={catRef} className="gap-2 pb-1">
               {categories.map(cat => (
                 <button key={cat} onClick={() => setActiveCategory(cat)}
                   className="px-4 py-1.5 rounded-full text-sm whitespace-nowrap flex-shrink-0 transition-all font-medium"
                   style={activeCategory === cat
-                    ? { background: "linear-gradient(135deg, #1e7fff, #00c6ff)", color: "#fff" }
-                    : { background: "rgba(30,127,255,0.06)", color: "#6b82a0", border: "1px solid rgba(30,127,255,0.1)" }
+                    ? { background: "var(--cafyz-gradient)", color: "#fff" }
+                    : { background: "rgba(var(--cafyz-brand-rgb),0.06)", color: "#a6a0c7", border: "1px solid rgba(var(--cafyz-brand-rgb),0.1)" }
                   }
                 >{cat}</button>
               ))}
-            </div>
+            </HScroll>
           </div>
 
           {/* Menu items */}
@@ -147,7 +148,7 @@ export function PublicMenu({ restaurantId }: { restaurantId?: string }) {
               return (
                 <div key={cat}>
                   {activeCategory === "All" && (
-                    <h2 style={{ color: "#e8eef8", fontFamily: "var(--font-display)", fontWeight: 700, fontSize: "1rem", marginBottom: 12, marginTop: 8 }}>{cat}</h2>
+                    <h2 style={{ color: "#f5f2ff", fontFamily: "var(--font-display)", fontWeight: 700, fontSize: "1rem", marginBottom: 12, marginTop: 8 }}>{cat}</h2>
                   )}
                   <div className="space-y-2">
                     {catItems.map((item, i) => (
@@ -157,26 +158,26 @@ export function PublicMenu({ restaurantId }: { restaurantId?: string }) {
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: i * 0.03 }}
                         className="flex items-start gap-3 p-3 rounded-2xl"
-                        style={{ background: "#0d1326", border: "1px solid rgba(30,127,255,0.08)" }}
+                        style={{ background: "#171239", border: "1px solid rgba(var(--cafyz-brand-rgb),0.08)" }}
                       >
                         <div
-                          className="w-16 h-16 rounded-xl flex items-center justify-center flex-shrink-0 text-3xl overflow-hidden"
-                          style={{ background: "rgba(30,127,255,0.06)" }}
+                          className="w-16 h-16 rounded-xl flex items-center justify-center flex-shrink-0 overflow-hidden"
+                          style={{ background: "rgba(var(--cafyz-brand-rgb),0.06)" }}
                         >
-                          {item.image ? <img src={item.image} alt={item.name} className="w-full h-full object-cover" /> : "🍽"}
+                          {item.image ? <img src={item.image} alt={item.name} className="w-full h-full object-cover" /> : <UtensilsCrossed size={22} aria-hidden="true" style={{ color: "#a6a0c7" }} />}
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-start justify-between gap-2">
                             <div>
                               <div className="flex items-center gap-2 flex-wrap">
-                                <span style={{ color: "#e8eef8", fontSize: "0.9rem", fontWeight: 600 }}>{item.name}</span>
+                                <span style={{ color: "#f5f2ff", fontSize: "0.9rem", fontWeight: 600 }}>{item.name}</span>
                                 {item.popular && (
-                                  <span className="text-xs px-1.5 py-0.5 rounded-full" style={{ background: "rgba(245,158,11,0.12)", color: "#f59e0b" }}>★ Popular</span>
+                                  <span className="inline-flex items-center gap-1 text-xs px-1.5 py-0.5 rounded-full" style={{ background: "rgba(255,170,0,0.12)", color: "#ffaa00" }}><Star size={10} fill="currentColor" aria-hidden="true" /> Popular</span>
                                 )}
                               </div>
-                              <p style={{ color: "#6b82a0", fontSize: "0.75rem", marginTop: 2, lineHeight: 1.4 }}>{item.description}</p>
+                              <p style={{ color: "#a6a0c7", fontSize: "0.75rem", marginTop: 2, lineHeight: 1.4 }}>{item.description}</p>
                             </div>
-                            <span style={{ color: "#1e7fff", fontFamily: "var(--font-mono)", fontWeight: 800, fontSize: "1rem", flexShrink: 0 }}>{cur}{item.price}</span>
+                            <span style={{ color: "var(--cafyz-brand)", fontFamily: "var(--font-mono)", fontWeight: 800, fontSize: "1rem", flexShrink: 0 }}>{cur}{item.price}</span>
                           </div>
                         </div>
                       </motion.div>
@@ -187,12 +188,12 @@ export function PublicMenu({ restaurantId }: { restaurantId?: string }) {
             })}
             {filtered.length === 0 && restaurant && (
               <div className="text-center py-12">
-                <p style={{ color: "#6b82a0", fontSize: "0.85rem" }}>{search ? `No dishes match "${search}"` : "No items on the menu yet"}</p>
+                <p style={{ color: "#a6a0c7", fontSize: "0.85rem" }}>{search ? `No dishes match "${search}"` : "No items on the menu yet"}</p>
               </div>
             )}
             <div className="text-center pt-6 pb-2 flex flex-col items-center gap-2">
-              <p style={{ color: "#6b82a0", fontSize: "0.72rem" }}>Powered by</p>
-              <CafyzLogo size="sm" className="opacity-95 mx-auto" />
+              <p style={{ color: "#a6a0c7", fontSize: "0.72rem" }}>Powered by</p>
+              <CafyzLogo size="sm" tone="onDark" className="opacity-95 mx-auto" />
             </div>
           </div>
         </>

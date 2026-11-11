@@ -8,7 +8,9 @@ import { useAppNav } from "../nav";
 import { onResume } from "../../hooks/useOnResume";
 import { usePolling } from "../../hooks/usePolling";
 import { keepIfSame } from "../../utils/sameData";
+import { withAlpha } from "../../utils/color";
 
+import { HScroll } from "./HScroll";
 type UiStatus = "pending" | "preparing" | "ready" | "at_table" | "complete";
 type OrderRow = {
   id: string;
@@ -60,11 +62,11 @@ function relTime(iso?: string | null): string {
 }
 
 const statusConfig: Record<string, { color: string; bg: string; icon: React.ElementType; label: string }> = {
-  pending:   { color: "#f59e0b", bg: "rgba(245,158,11,0.12)",  icon: Clock,         label: "Pending" },
-  preparing: { color: "#1e7fff", bg: "rgba(30,127,255,0.12)",  icon: ChefHat,       label: "Preparing" },
-  ready:     { color: "#22d3ee", bg: "rgba(34,211,238,0.12)",  icon: CheckCircle2,  label: "Ready" },
-  at_table:  { color: "#a78bfa", bg: "rgba(167,139,250,0.12)", icon: Truck,         label: "At table" },
-  complete:  { color: "#22c55e", bg: "rgba(34,197,94,0.12)",   icon: CheckCircle2,  label: "Paid" },
+  pending:   { color: "#ffaa00", bg: "rgba(255,170,0,0.12)",  icon: Clock,         label: "Pending" },
+  preparing: { color: "var(--cafyz-brand)", bg: "rgba(var(--cafyz-brand-rgb),0.12)",  icon: ChefHat,       label: "Preparing" },
+  ready:     { color: "#00d4ff", bg: "rgba(0,212,255,0.12)",  icon: CheckCircle2,  label: "Ready" },
+  at_table:  { color: "#b9a7e8", bg: "rgba(185,167,232,0.12)", icon: Truck,         label: "At table" },
+  complete:  { color: "#00d68f", bg: "rgba(0,214,143,0.12)",   icon: CheckCircle2,  label: "Paid" },
 };
 
 const advanceAction: Partial<Record<UiStatus, { action: "fire" | "ready" | "delivered"; label: string }>> = {
@@ -94,20 +96,20 @@ function OrderCard({
       tabIndex={0}
       onClick={() => onOpen(order)}
       onKeyDown={e => { if (e.key === "Enter" || e.key === " ") onOpen(order); }}
-      className="rounded-2xl p-3 sm:p-4 flex flex-col gap-2.5 cursor-pointer transition-colors hover:border-[rgba(30,127,255,0.25)]"
+      className="rounded-2xl p-3 sm:p-4 flex flex-col gap-2.5 cursor-pointer transition-colors hover:border-[rgba(var(--cafyz-brand-rgb),0.25)]"
       style={{
         background: "var(--cafyz-surface)",
-        border: `1px solid ${order.priority ? "rgba(245,158,11,0.25)" : "var(--cafyz-border)"}`,
+        border: `1px solid ${order.priority ? "rgba(255,170,0,0.25)" : "var(--cafyz-border)"}`,
       }}
     >
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2 flex-wrap">
           <span style={{ color: "var(--cafyz-text)", fontFamily: "var(--font-mono)", fontWeight: 700, fontSize: "0.82rem" }}>{order.id}</span>
           {order.priority && (
-            <span className="text-xs px-1.5 py-0.5 rounded-full" style={{ background: "rgba(245,158,11,0.12)", color: "#f59e0b", fontSize: "0.62rem" }}>ASAP</span>
+            <span className="text-xs px-1.5 py-0.5 rounded-full" style={{ background: "rgba(255,170,0,0.12)", color: "#ffaa00", fontSize: "0.62rem" }}>ASAP</span>
           )}
           {order.parcel && (
-            <span className="flex items-center gap-0.5 text-xs px-1.5 py-0.5 rounded-full" style={{ background: "rgba(34,211,238,0.12)", color: "#22d3ee", fontSize: "0.62rem" }}>
+            <span className="flex items-center gap-0.5 text-xs px-1.5 py-0.5 rounded-full" style={{ background: "rgba(0,212,255,0.12)", color: "#00d4ff", fontSize: "0.62rem" }}>
               <Package size={10} /> Parcel
             </span>
           )}
@@ -120,14 +122,14 @@ function OrderCard({
 
       <div className="flex items-center gap-2">
         <span className="px-2 py-1 rounded-lg text-xs font-semibold"
-          style={{ background: "var(--cafyz-border)", color: "#1e7fff", fontFamily: "var(--font-mono)" }}>
+          style={{ background: "var(--cafyz-border)", color: "var(--cafyz-brand)", fontFamily: "var(--font-mono)" }}>
           {order.table}
         </span>
         {order.waiter && <span style={{ color: "var(--cafyz-muted)", fontSize: "0.72rem" }}>· {order.waiter}</span>}
       </div>
 
       {order.note && (
-        <p className="text-[0.68rem] px-2 py-1 rounded-lg" style={{ color: "var(--cafyz-text-secondary)", background: "rgba(30,127,255,0.05)" }}>
+        <p className="text-[0.68rem] px-2 py-1 rounded-lg" style={{ color: "var(--cafyz-text-secondary)", background: "rgba(var(--cafyz-brand-rgb),0.05)" }}>
           Note: {order.note}
         </p>
       )}
@@ -137,7 +139,7 @@ function OrderCard({
           <div key={i}>
             <div className="flex justify-between items-center">
               <span style={{ color: "var(--cafyz-text-secondary)", fontSize: "0.75rem" }}>
-                <span style={{ color: "#1e7fff", fontFamily: "var(--font-mono)" }}>×{item.qty}</span> {item.name}
+                <span style={{ color: "var(--cafyz-brand)", fontFamily: "var(--font-mono)" }}>×{item.qty}</span> {item.name}
               </span>
               <span style={{ color: "var(--cafyz-muted)", fontSize: "0.72rem", fontFamily: "var(--font-mono)" }}>{cur}{(item.price * item.qty).toFixed(2)}</span>
             </div>
@@ -148,7 +150,7 @@ function OrderCard({
         ))}
       </div>
 
-      <div className="pt-2 border-t border-[rgba(30,127,255,0.08)] flex items-center justify-between gap-2"
+      <div className="pt-2 border-t border-[rgba(var(--cafyz-brand-rgb),0.08)] flex items-center justify-between gap-2"
         onClick={e => e.stopPropagation()}>
         <div className="flex items-center gap-1.5 px-2 py-1 rounded-lg" style={{ background: cfg.bg }}>
           <Icon size={11} style={{ color: cfg.color }} />
@@ -160,7 +162,7 @@ function OrderCard({
             <motion.button whileTap={{ scale: 0.94 }}
               onClick={() => onAdvance(order)}
               className="px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all"
-              style={{ background: "linear-gradient(135deg, #1e7fff, #00c6ff)", color: "#fff", minHeight: 32 }}>
+              style={{ background: "var(--cafyz-gradient)", color: "#fff", minHeight: 32 }}>
               {next.label}
             </motion.button>
           )}
@@ -284,7 +286,7 @@ export function Orders() {
           const Icon = cfg.icon;
           return (
             <div key={key} className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl"
-              style={{ background: cfg.bg, border: `1px solid ${cfg.color}22` }}>
+              style={{ background: cfg.bg, border: `1px solid ${withAlpha(cfg.color, 0x22)}` }}>
               <Icon size={13} style={{ color: cfg.color }} />
               <span style={{ color: cfg.color, fontSize: "0.75rem", fontWeight: 600 }}>
                 {counts[key] ?? 0} {cfg.label}
@@ -302,34 +304,37 @@ export function Orders() {
             className="bg-transparent border-none outline-none text-sm flex-1 placeholder:text-[var(--cafyz-muted)]"
             style={{ color: "var(--cafyz-text)" }} />
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap sm:flex-nowrap gap-2">
           <div className="flex gap-1 p-1 rounded-xl flex-shrink-0"
             style={{ background: "var(--cafyz-surface)", border: "1px solid var(--cafyz-border)" }}>
             {(["active", "all"] as const).map(mode => (
               <button key={mode} onClick={() => setViewMode(mode)}
                 className="px-2.5 py-1.5 rounded-lg text-xs capitalize transition-all whitespace-nowrap"
                 style={viewMode === mode
-                  ? { background: "rgba(30,127,255,0.15)", color: "#1e7fff", fontWeight: 600 }
+                  ? { background: "rgba(var(--cafyz-brand-rgb),0.15)", color: "var(--cafyz-brand)", fontWeight: 600 }
                   : { color: "var(--cafyz-muted)" }}>
                 {mode === "active" ? "Active" : "All"}
               </button>
             ))}
           </div>
-          <div className="flex gap-1 p-1 rounded-xl overflow-x-auto scrollbar-hide flex-1 min-w-0"
+          {/* Phones: the status filter takes its own full-width row, so every status shows. */}
+          <div className="order-last basis-full grow sm:order-none sm:basis-0 min-w-0 p-1 rounded-xl"
             style={{ background: "var(--cafyz-surface)", border: "1px solid var(--cafyz-border)" }}>
+            <HScroll className="gap-1">
             {statuses.map(s => (
               <button key={s} onClick={() => setFilter(s)}
-                className="px-2.5 py-1.5 rounded-lg text-xs capitalize transition-all whitespace-nowrap flex-shrink-0"
+                className="flex-1 sm:flex-none px-1.5 sm:px-2.5 py-1.5 rounded-lg text-xs capitalize transition-all whitespace-nowrap flex-shrink-0"
                 style={filter === s
-                  ? { background: "linear-gradient(135deg, #1e7fff, #00c6ff)", color: "#fff", fontWeight: 600 }
+                  ? { background: "var(--cafyz-gradient)", color: "#fff", fontWeight: 600 }
                   : { color: "var(--cafyz-muted)" }}>
                 {s === "at_table" ? "At table" : s}
               </button>
             ))}
+            </HScroll>
           </div>
-          <motion.button whileTap={{ scale: 0.95 }} onClick={goToPos}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-semibold flex-shrink-0"
-            style={{ background: "linear-gradient(135deg, #1e7fff, #00c6ff)", color: "#fff" }}>
+          <motion.button whileTap={{ scale: 0.95 }} onClick={goToPos} aria-label="New order"
+            className="ms-auto sm:ms-0 flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-semibold flex-shrink-0"
+            style={{ background: "var(--cafyz-gradient)", color: "#fff" }}>
             <Plus size={16} />
             <span className="hidden sm:inline">New Order</span>
           </motion.button>
@@ -337,14 +342,14 @@ export function Orders() {
       </div>
 
       {loadError && (
-        <p className="px-3 py-2 rounded-lg text-sm" style={{ color: "#ff3b5c", background: "rgba(255,59,92,0.08)" }}>
+        <p className="px-3 py-2 rounded-lg text-sm" style={{ color: "#ff416c", background: "rgba(255,65,108,0.08)" }}>
           {loadError}
         </p>
       )}
 
       {loading && orders.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-20 gap-3">
-          <Loader2 size={28} className="animate-spin" style={{ color: "#1e7fff" }} />
+          <Loader2 size={28} className="animate-spin" style={{ color: "var(--cafyz-brand)" }} />
           <p style={{ color: "var(--cafyz-muted)", fontSize: "0.85rem" }}>Loading live orders…</p>
         </div>
       ) : (
@@ -355,7 +360,7 @@ export function Orders() {
             ))}
             {filtered.length === 0 && !loading && (
               <div key="empty" className="col-span-full flex flex-col items-center justify-center py-16 gap-3">
-                <div className="w-12 h-12 rounded-full flex items-center justify-center" style={{ background: "rgba(30,127,255,0.08)" }}>
+                <div className="w-12 h-12 rounded-full flex items-center justify-center" style={{ background: "rgba(var(--cafyz-brand-rgb),0.08)" }}>
                   <Filter size={22} style={{ color: "var(--cafyz-muted)" }} />
                 </div>
                 <p style={{ color: "var(--cafyz-muted)", fontSize: "0.85rem" }}>

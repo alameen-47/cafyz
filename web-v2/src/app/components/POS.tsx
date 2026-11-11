@@ -20,7 +20,9 @@ import { PrinterStatusBadge } from "./PrinterStatusBadge";
 import { demoMenuImage } from "../../utils/demoMenuImages";
 import { keepIfSame } from "../../utils/sameData";
 import { usePolling } from "../../hooks/usePolling";
+import { FoodTypeMark, foodTypeOf, type FoodType } from "./FoodTypeMark";
 
+import { HScroll } from "./HScroll";
 // ── Model ─────────────────────────────────────────────────────────────────────
 // A bill is a list of lines. Lines with an `orderItemId` are already saved on a
 // table's open order; lines without one are new and live only on this screen
@@ -31,7 +33,7 @@ interface CartLine {
   name: string;
   price: number;
   qty: number;
-  emoji: string;
+  foodType: FoodType | null;
   orderId?: string;
   orderItemId?: string;
 }
@@ -41,16 +43,14 @@ type Busy = null | "pay" | "send" | "load";
 type Totals = ReturnType<typeof computeBillTotals>;
 
 const PAY_OPTIONS: { method: PaymentMethod; label: string; Icon: typeof Banknote; style: React.CSSProperties }[] = [
-  { method: "cash", label: "Cash", Icon: Banknote, style: { background: "linear-gradient(135deg, #15803d, #22c55e)", color: "#fff" } },
-  { method: "upi", label: "UPI", Icon: QrCode, style: { background: "linear-gradient(135deg, #1565e0, #00b4ff)", color: "#fff" } },
-  { method: "card", label: "Card", Icon: CreditCard, style: { background: "linear-gradient(135deg, #4338ca, #7c3aed)", color: "#fff" } },
+  { method: "cash", label: "Cash", Icon: Banknote, style: { background: "linear-gradient(135deg, #15803d, #00d68f)", color: "#fff" } },
+  { method: "upi", label: "UPI", Icon: QrCode, style: { background: "linear-gradient(135deg, #1565e0, #00d4ff)", color: "#fff" } },
+  { method: "card", label: "Card", Icon: CreditCard, style: { background: "linear-gradient(135deg, #4338ca, var(--cafyz-brand-deep))", color: "#fff" } },
 ];
 const PAY_LABEL: Record<PaymentMethod, string> = { cash: "Cash", upi: "UPI", card: "Card" };
 
 const lineKey = (l: CartLine) => l.orderItemId ?? `new:${l.id}`;
 
-/** Menu symbols default to a plain "○"; only show real emoji. */
-const visibleSymbol = (symbol?: string | null) => (symbol && symbol.trim() !== "○" ? symbol : "");
 
 function formatMoney(cur: string, amount: number) {
   const rounded = Number.isInteger(amount) ? amount.toFixed(0) : amount.toFixed(2);
@@ -88,7 +88,7 @@ const MenuGrid = memo(function MenuGrid({
       {items.map(item => {
         const qty = qtyById.get(item.id) ?? 0;
         const photo = item.image_url || demoMenuImage(item);
-        const symbol = visibleSymbol(item.symbol);
+        const foodType = foodTypeOf(item.symbol);
         return (
           <button
             key={item.id}
@@ -96,15 +96,15 @@ const MenuGrid = memo(function MenuGrid({
             onClick={() => onAdd(item)}
             className={`rounded-2xl ${photo ? "p-2" : "p-3"} text-start relative select-none touch-manipulation transition-transform duration-100 active:scale-[0.96]`}
             style={{
-              background: qty ? "rgba(30,127,255,0.08)" : "var(--cafyz-surface)",
-              border: `1px solid ${qty ? "rgba(30,127,255,0.38)" : "var(--cafyz-border)"}`,
+              background: qty ? "rgba(var(--cafyz-brand-rgb),0.08)" : "var(--cafyz-surface)",
+              border: `1px solid ${qty ? "rgba(var(--cafyz-brand-rgb),0.38)" : "var(--cafyz-border)"}`,
               minHeight: 96,
             }}
           >
             {qty > 0 && (
               <span
                 className="absolute z-[1] top-2 right-2 min-w-[22px] h-[22px] px-1.5 rounded-full flex items-center justify-center"
-                style={{ background: "#1e7fff", color: "#fff", fontSize: "0.72rem", fontWeight: 700 }}
+                style={{ background: "var(--cafyz-brand)", color: "#fff", fontSize: "0.72rem", fontWeight: 700 }}
               >
                 {qty}
               </span>
@@ -113,13 +113,13 @@ const MenuGrid = memo(function MenuGrid({
               <img src={photo} alt="" loading="lazy" decoding="async" draggable={false}
                 className="w-full aspect-[4/3] object-cover rounded-xl mb-2"
                 style={{ background: "var(--cafyz-subtle-bg)" }} />
-            ) : symbol ? (
-              <div className="text-2xl mb-1.5" aria-hidden>{symbol}</div>
+            ) : foodType ? (
+              <FoodTypeMark type={foodType} size={18} className="mb-2" />
             ) : null}
             <p className={photo ? "px-1" : ""} style={{ color: "var(--cafyz-text)", fontSize: "0.8rem", fontWeight: 600, lineHeight: 1.3 }}>{item.name}</p>
             <p className={`flex items-center gap-1${photo ? " px-1" : ""}`} style={{ color: "var(--cafyz-brand)", fontFamily: "var(--font-mono)", fontWeight: 700, fontSize: "0.86rem", marginTop: 3 }}>
               {formatMoney(cur, item.price)}
-              {item.is_popular ? <Star size={11} fill="#f59e0b" stroke="#f59e0b" aria-label="Popular" /> : null}
+              {item.is_popular ? <Star size={11} fill="#ffaa00" stroke="#ffaa00" aria-label="Popular" /> : null}
             </p>
           </button>
         );
@@ -162,7 +162,7 @@ function BillPanel({
             <h3 className="truncate" style={{ color: "var(--cafyz-text)", fontFamily: "var(--font-display)", fontWeight: 700, fontSize: isMobile ? "1.05rem" : "0.98rem" }}>
               {tableName || (isParcel ? "Takeaway" : "Counter sale")}
             </h3>
-            <p style={{ color: liveBill ? "#16a34a" : "var(--cafyz-muted)", fontSize: "0.72rem", marginTop: 2, fontWeight: liveBill ? 600 : 400 }}>
+            <p style={{ color: liveBill ? "#00d68f" : "var(--cafyz-muted)", fontSize: "0.72rem", marginTop: 2, fontWeight: liveBill ? 600 : 400 }}>
               {busy === "load" ? "Loading table bill…" : subtitle}
             </p>
           </div>
@@ -229,7 +229,7 @@ function BillPanel({
               <li key={lineKey(line)} className="flex items-center gap-2 py-2.5 border-b" style={{ borderColor: "var(--cafyz-border)" }}>
                 <div className="min-w-0 flex-1">
                   <p className="truncate" style={{ color: "var(--cafyz-text)", fontSize: "0.83rem", fontWeight: 600, lineHeight: 1.3 }}>
-                    {line.emoji && <span className="me-1.5" aria-hidden>{line.emoji}</span>}{line.name}
+                    {line.foodType && <FoodTypeMark type={line.foodType} size={12} className="me-1.5 align-[-1px]" />}{line.name}
                   </p>
                   <p className="flex items-center gap-1.5" style={{ color: "var(--cafyz-muted)", fontSize: "0.7rem", marginTop: 2 }}>
                     {formatMoney(cur, line.price)} each
@@ -295,7 +295,7 @@ function BillPanel({
         {canSend && (
           <button type="button" onClick={onSend}
             className="w-full rounded-xl text-sm font-semibold flex items-center justify-center gap-2 min-h-[46px] touch-manipulation active:scale-[0.98] transition-transform"
-            style={{ background: "rgba(245,158,11,0.12)", color: "#c2410c", border: "1px solid rgba(245,158,11,0.4)" }}>
+            style={{ background: "rgba(255,170,0,0.12)", color: "#c2410c", border: "1px solid rgba(255,170,0,0.4)" }}>
             <ChefHat size={16} /> Send {newLines.length === cart.length ? "" : "new items "}to kitchen · pay later
           </button>
         )}
@@ -454,7 +454,7 @@ export function POS() {
     setCart(prev => {
       const idx = prev.findIndex(c => c.id === item.id && !c.orderItemId);
       if (idx >= 0) return prev.map((c, i) => (i === idx ? { ...c, qty: c.qty + 1 } : c));
-      return [...prev, { id: item.id, name: item.name, price: item.price, qty: 1, emoji: visibleSymbol(item.symbol) }];
+      return [...prev, { id: item.id, name: item.name, price: item.price, qty: 1, foodType: foodTypeOf(item.symbol) }];
     });
   }, []);
 
@@ -499,13 +499,13 @@ export function POS() {
       }
       const full = await Promise.all(open.map(o => ordersApi.get(o.id)));
       if (seq !== loadSeq.current) return;
-      const symbolOf = (menuId: string) => visibleSymbol(menu.find(m => m.id === menuId)?.symbol);
+      const foodTypeFor = (menuId: string) => foodTypeOf(menu.find(m => m.id === menuId)?.symbol);
       const saved: CartLine[] = full.flatMap(o => (o.items ?? []).map(it => ({
         id: it.menu_item_id,
         name: it.name ?? "Item",
         price: Number(it.price ?? 0),
         qty: it.qty,
-        emoji: symbolOf(it.menu_item_id),
+        foodType: foodTypeFor(it.menu_item_id),
         orderId: o.id,
         orderItemId: it.id,
       })));
@@ -701,7 +701,7 @@ export function POS() {
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         <div className="px-3 pt-3 pb-2 space-y-2 flex-shrink-0">
           {pending.length > 0 && (
-            <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-0.5" aria-label="Open table bills">
+            <HScroll className="gap-2 pb-0.5" aria-label="Open table bills">
               {pending.map(b => {
                 const active = tableId === b.table_id;
                 return (
@@ -712,7 +712,7 @@ export function POS() {
                       background: active ? "var(--cafyz-accent-bg)" : "var(--cafyz-surface)",
                       border: `1px solid ${active ? "var(--cafyz-border-focus)" : "var(--cafyz-border)"}`,
                     }}>
-                    <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: "#f59e0b" }} />
+                    <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: "#ffaa00" }} />
                     <span className="text-start">
                       <span className="block" style={{ color: "var(--cafyz-text)", fontSize: "0.78rem", fontWeight: 700 }}>{b.table_name}</span>
                       <span className="block" style={{ color: "var(--cafyz-muted)", fontSize: "0.66rem" }}>
@@ -725,7 +725,7 @@ export function POS() {
                   </button>
                 );
               })}
-            </div>
+            </HScroll>
           )}
 
           <div className="flex items-center gap-2 rounded-xl px-3 min-h-[42px]"
@@ -740,23 +740,23 @@ export function POS() {
               </button>
             )}
           </div>
-          <div className="flex gap-1.5 overflow-x-auto scrollbar-hide pb-0.5">
+          <HScroll className="gap-1.5 pb-0.5">
             {catTabs.map(c => (
               <button key={c.id} type="button" onClick={() => setActiveCat(c.id)}
                 className="px-3.5 rounded-full text-xs whitespace-nowrap flex-shrink-0 font-semibold min-h-[34px] touch-manipulation"
                 style={activeCat === c.id
-                  ? { background: "linear-gradient(135deg, #1e7fff, #00c6ff)", color: "#fff" }
+                  ? { background: "var(--cafyz-gradient)", color: "#fff" }
                   : { background: "var(--cafyz-surface)", color: "var(--cafyz-muted)", border: "1px solid var(--cafyz-border)" }}>
                 {c.label}
               </button>
             ))}
-          </div>
+          </HScroll>
         </div>
 
         <div className="flex-1 overflow-y-auto px-3 pb-24 md:pb-4 scrollbar-hide">
           {!loaded ? (
             <div className="flex items-center justify-center h-40">
-              <Loader2 size={24} className="animate-spin" style={{ color: "#1e7fff" }} />
+              <Loader2 size={24} className="animate-spin" style={{ color: "var(--cafyz-brand)" }} />
             </div>
           ) : (
             <MenuGrid
@@ -780,7 +780,7 @@ export function POS() {
       {!showMobileCart && (
         <button type="button" onClick={() => setShowMobileCart(true)} aria-label="View bill"
           className="md:hidden fixed right-4 left-4 z-30 pos-fab-bottom flex items-center gap-3 ps-3.5 pe-3 py-2.5 rounded-2xl min-h-[56px] touch-manipulation active:scale-[0.98] transition-transform"
-          style={{ background: "linear-gradient(135deg, #1e7fff, #00c6ff)", boxShadow: "0 8px 24px rgba(30,127,255,0.35)" }}>
+          style={{ background: "var(--cafyz-gradient)", boxShadow: "0 8px 24px rgba(var(--cafyz-brand-rgb),0.35)" }}>
           <span className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: "rgba(255,255,255,0.2)" }}>
             <ShoppingCart size={18} className="text-white" />
           </span>

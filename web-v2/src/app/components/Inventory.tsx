@@ -27,10 +27,10 @@ function getStockLevel(item: InventoryItem): StockLevel {
 }
 
 const stockConfig: Record<StockLevel, { color: string; bg: string; label: string; icon: React.ElementType }> = {
-  critical: { color: "#ff3b5c", bg: "rgba(255,59,92,0.1)",    label: "Critical",  icon: AlertTriangle },
-  low:      { color: "#f59e0b", bg: "rgba(245,158,11,0.1)",   label: "Low Stock", icon: TrendingDown },
-  ok:       { color: "#22c55e", bg: "rgba(34,197,94,0.1)",    label: "OK",        icon: CheckCircle2 },
-  surplus:  { color: "#1e7fff", bg: "var(--cafyz-badge-bg)",   label: "Surplus",   icon: Package },
+  critical: { color: "#ff416c", bg: "rgba(255,65,108,0.1)",    label: "Critical",  icon: AlertTriangle },
+  low:      { color: "#ffaa00", bg: "rgba(255,170,0,0.1)",   label: "Low Stock", icon: TrendingDown },
+  ok:       { color: "#00d68f", bg: "rgba(0,214,143,0.1)",    label: "OK",        icon: CheckCircle2 },
+  surplus:  { color: "var(--cafyz-brand)", bg: "var(--cafyz-badge-bg)",   label: "Surplus",   icon: Package },
 };
 
 function mapRow(r: ApiInventoryItem): InventoryItem {
@@ -172,7 +172,7 @@ export function Inventory() {
         </div>
         <div className="flex gap-2">
           <button onClick={openCreate} className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-semibold flex-shrink-0"
-            style={{ background: "linear-gradient(135deg, #1e7fff, #00c6ff)", color: "#fff" }}>
+            style={{ background: "var(--cafyz-gradient)", color: "#fff" }}>
             <Plus size={15} />
             <span className="hidden sm:inline">Add item</span>
           </button>
@@ -182,14 +182,14 @@ export function Inventory() {
       {/* Table */}
       <div className="rounded-2xl overflow-hidden" style={{ background: "var(--cafyz-surface)", border: "1px solid var(--cafyz-border)" }}>
         <div className="grid grid-cols-12 gap-2 px-3 sm:px-4 py-3 text-xs font-semibold uppercase tracking-wider border-b"
-          style={{ color: "var(--cafyz-muted)", borderColor: "rgba(30,127,255,0.08)", fontFamily: "var(--font-mono)" }}>
+          style={{ color: "var(--cafyz-muted)", borderColor: "rgba(var(--cafyz-brand-rgb),0.08)", fontFamily: "var(--font-mono)" }}>
           <div className="col-span-5 sm:col-span-4">Item</div>
           <div className="col-span-4 sm:col-span-4 md:col-span-3">Stock</div>
           <div className="col-span-2 hidden md:block">Par level</div>
           <div className="col-span-3 sm:col-span-4 md:col-span-3 text-end sm:text-start">Actions</div>
         </div>
 
-        <div className="divide-y divide-[rgba(30,127,255,0.05)]">
+        <div className="divide-y divide-[rgba(var(--cafyz-brand-rgb),0.05)]">
           {filtered.map((item, i) => {
             const level = getStockLevel(item);
             const cfg = stockConfig[level];
@@ -197,7 +197,7 @@ export function Inventory() {
             const pct = Math.min(100, (item.currentQty / item.maxQty) * 100);
             return (
               <motion.div key={item.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: i * 0.02 }}
-                className="grid grid-cols-12 gap-2 px-3 sm:px-4 py-3 items-center hover:bg-[rgba(30,127,255,0.02)] transition-all">
+                className="grid grid-cols-12 gap-2 px-3 sm:px-4 py-3 items-center hover:bg-[rgba(var(--cafyz-brand-rgb),0.02)] transition-all">
                 <div className="col-span-5 sm:col-span-4 min-w-0">
                   <p style={{ color: "var(--cafyz-text)", fontSize: "0.82rem", fontWeight: 500 }} className="truncate">{item.name}</p>
                 </div>
@@ -209,11 +209,11 @@ export function Inventory() {
                     </span>
                     <span style={{ color: "var(--cafyz-muted)", fontSize: "0.62rem" }}>/{item.minQty}</span>
                   </div>
-                  <div className="h-1.5 rounded-full overflow-hidden" style={{ background: "rgba(30,127,255,0.08)" }}>
+                  <div className="h-1.5 rounded-full overflow-hidden" style={{ background: "rgba(var(--cafyz-brand-rgb),0.08)" }}>
                     <div className="h-full rounded-full transition-all"
                       style={{
                         width: `${pct}%`,
-                        background: level === "critical" ? "#ff3b5c" : level === "low" ? "#f59e0b" : level === "surplus" ? "#1e7fff" : "#22c55e",
+                        background: level === "critical" ? "#ff416c" : level === "low" ? "#ffaa00" : level === "surplus" ? "var(--cafyz-brand)" : "#00d68f",
                       }} />
                   </div>
                 </div>
@@ -225,7 +225,7 @@ export function Inventory() {
                 <div className="col-span-3 sm:col-span-4 md:col-span-3 flex justify-end sm:justify-start gap-1 flex-wrap">
                   {(level === "critical" || level === "low") && (
                     <button className="px-2 py-1 rounded-lg text-xs font-semibold"
-                      style={{ background: "rgba(30,127,255,0.12)", color: "#1e7fff" }}
+                      style={{ background: "rgba(var(--cafyz-brand-rgb),0.12)", color: "var(--cafyz-brand)" }}
                       onClick={() => {
                         setRestockItem(item);
                         setRestockQty(String(Math.max(1, item.minQty - item.currentQty)));
@@ -233,11 +233,11 @@ export function Inventory() {
                       Restock
                     </button>
                   )}
-                  <button onClick={() => openEdit(item)} className="p-1.5 rounded-lg hover:bg-[rgba(30,127,255,0.08)]"
+                  <button onClick={() => openEdit(item)} className="p-1.5 rounded-lg hover:bg-[rgba(var(--cafyz-brand-rgb),0.08)]"
                     style={{ color: "var(--cafyz-muted)" }} title="Edit">
                     <Edit2 size={13} />
                   </button>
-                  <button onClick={() => void deleteItem(item)} className="p-1.5 rounded-lg hover:bg-[rgba(255,59,92,0.08)]"
+                  <button onClick={() => void deleteItem(item)} className="p-1.5 rounded-lg hover:bg-[rgba(255,65,108,0.08)]"
                     style={{ color: "var(--cafyz-muted)" }} title="Delete">
                     <Trash2 size={13} />
                   </button>
@@ -256,7 +256,7 @@ export function Inventory() {
             <motion.div
               initial={{ opacity: 0, scale: 0.92 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.92 }}
               className="w-full max-w-md rounded-2xl p-5 space-y-4"
-              style={{ background: "var(--cafyz-surface)", border: "1px solid rgba(30,127,255,0.2)" }}
+              style={{ background: "var(--cafyz-surface)", border: "1px solid rgba(var(--cafyz-brand-rgb),0.2)" }}
               onClick={e => e.stopPropagation()}>
               <div className="flex items-center justify-between">
                 <h3 style={{ fontFamily: "var(--font-display)", color: "var(--cafyz-text)", fontWeight: 700 }}>
@@ -269,39 +269,39 @@ export function Inventory() {
                   <label style={{ color: "var(--cafyz-text-secondary)", fontSize: "0.78rem", display: "block", marginBottom: 4 }}>Name</label>
                   <input type="text" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
                     className="w-full rounded-xl px-3 py-2.5 text-sm outline-none"
-                    style={{ background: "var(--cafyz-surface-2)", color: "var(--cafyz-text)", border: "1px solid rgba(30,127,255,0.12)" }} />
+                    style={{ background: "var(--cafyz-surface-2)", color: "var(--cafyz-text)", border: "1px solid rgba(var(--cafyz-brand-rgb),0.12)" }} />
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label style={{ color: "var(--cafyz-text-secondary)", fontSize: "0.78rem", display: "block", marginBottom: 4 }}>Par level</label>
                     <input type="number" min={0} value={form.par} onChange={e => setForm(f => ({ ...f, par: e.target.value }))}
                       className="w-full rounded-xl px-3 py-2.5 text-sm outline-none"
-                      style={{ background: "var(--cafyz-surface-2)", color: "var(--cafyz-text)", border: "1px solid rgba(30,127,255,0.12)" }} />
+                      style={{ background: "var(--cafyz-surface-2)", color: "var(--cafyz-text)", border: "1px solid rgba(var(--cafyz-brand-rgb),0.12)" }} />
                   </div>
                   <div>
                     <label style={{ color: "var(--cafyz-text-secondary)", fontSize: "0.78rem", display: "block", marginBottom: 4 }}>Current stock</label>
                     <input type="number" min={0} value={form.current} onChange={e => setForm(f => ({ ...f, current: e.target.value }))}
                       className="w-full rounded-xl px-3 py-2.5 text-sm outline-none"
-                      style={{ background: "var(--cafyz-surface-2)", color: "var(--cafyz-text)", border: "1px solid rgba(30,127,255,0.12)" }} />
+                      style={{ background: "var(--cafyz-surface-2)", color: "var(--cafyz-text)", border: "1px solid rgba(var(--cafyz-brand-rgb),0.12)" }} />
                   </div>
                 </div>
                 <div>
                   <label style={{ color: "var(--cafyz-text-secondary)", fontSize: "0.78rem", display: "block", marginBottom: 4 }}>Unit</label>
                   <select value={form.unit} onChange={e => setForm(f => ({ ...f, unit: e.target.value }))}
                     className="w-full rounded-xl px-3 py-2.5 text-sm outline-none"
-                    style={{ background: "var(--cafyz-surface-2)", color: "var(--cafyz-text)", border: "1px solid rgba(30,127,255,0.12)" }}>
+                    style={{ background: "var(--cafyz-surface-2)", color: "var(--cafyz-text)", border: "1px solid rgba(var(--cafyz-brand-rgb),0.12)" }}>
                     {UNITS.map(u => <option key={u} value={u}>{u}</option>)}
                   </select>
                 </div>
               </div>
               <div className="flex gap-2 pt-1">
                 <button onClick={() => setModal(null)} className="flex-1 py-2.5 rounded-xl text-sm font-semibold"
-                  style={{ background: "rgba(30,127,255,0.06)", color: "var(--cafyz-muted)", border: "1px solid var(--cafyz-border)" }}>
+                  style={{ background: "rgba(var(--cafyz-brand-rgb),0.06)", color: "var(--cafyz-muted)", border: "1px solid var(--cafyz-border)" }}>
                   Cancel
                 </button>
                 <button onClick={() => void saveItem()} disabled={saving}
                   className="flex-1 py-2.5 rounded-xl text-sm font-semibold flex items-center justify-center gap-2"
-                  style={{ background: "linear-gradient(135deg, #1e7fff, #00c6ff)", color: "#fff", opacity: saving ? 0.7 : 1 }}>
+                  style={{ background: "var(--cafyz-gradient)", color: "#fff", opacity: saving ? 0.7 : 1 }}>
                   <Save size={15} /> {modal.mode === "edit" ? "Save" : "Add"}
                 </button>
               </div>
@@ -318,7 +318,7 @@ export function Inventory() {
             <motion.div
               initial={{ opacity: 0, scale: 0.92 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.92 }}
               className="w-full max-w-sm rounded-2xl p-5 space-y-4"
-              style={{ background: "var(--cafyz-surface)", border: "1px solid rgba(30,127,255,0.2)" }}
+              style={{ background: "var(--cafyz-surface)", border: "1px solid rgba(var(--cafyz-brand-rgb),0.2)" }}
               onClick={e => e.stopPropagation()}>
               <div className="flex items-center justify-between">
                 <h3 style={{ fontFamily: "var(--font-display)", color: "var(--cafyz-text)", fontWeight: 700 }}>Restock</h3>
@@ -330,15 +330,15 @@ export function Inventory() {
               </p>
               <input type="number" min={1} value={restockQty} onChange={e => setRestockQty(e.target.value)}
                 className="w-full rounded-xl px-3 py-2.5 text-sm outline-none"
-                style={{ background: "var(--cafyz-surface-2)", color: "var(--cafyz-text)", border: "1px solid rgba(30,127,255,0.12)" }} />
+                style={{ background: "var(--cafyz-surface-2)", color: "var(--cafyz-text)", border: "1px solid rgba(var(--cafyz-brand-rgb),0.12)" }} />
               <div className="flex gap-2">
                 <button onClick={() => setRestockItem(null)} className="flex-1 py-2.5 rounded-xl text-sm font-semibold"
-                  style={{ background: "rgba(30,127,255,0.06)", color: "var(--cafyz-muted)", border: "1px solid var(--cafyz-border)" }}>
+                  style={{ background: "rgba(var(--cafyz-brand-rgb),0.06)", color: "var(--cafyz-muted)", border: "1px solid var(--cafyz-border)" }}>
                   Cancel
                 </button>
                 <button onClick={() => void applyRestock()}
                   className="flex-1 py-2.5 rounded-xl text-sm font-semibold"
-                  style={{ background: "linear-gradient(135deg, #1e7fff, #00c6ff)", color: "#fff" }}>
+                  style={{ background: "var(--cafyz-gradient)", color: "#fff" }}>
                   Add stock
                 </button>
               </div>

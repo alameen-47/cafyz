@@ -46,36 +46,107 @@ body.cap-native .app-native-inset-top {
   box-sizing: border-box;
 }
 
-/* Bottom tab bar sits above the OS nav bar; pad scrollable main content on phones only */
+/* ── Phone bottom stack ───────────────────────────────────────────────────────
+   One set of measurements, in the browser and in the apps alike:
+     tab bar   = a floating 66px bar, then the home-indicator inset (at least 0.625rem);
+                 New Bill sits inside the bar
+     floating  = 0.75rem above the tab bar (the POS bill bar, the help panel)
+     content   = scrolls clear of both, so the last row never sits under a button. */
+:root {
+  --app-mobile-nav-height: calc(66px + max(0.625rem, env(safe-area-inset-bottom, 0px)));
+  --app-fab-bottom: calc(var(--app-mobile-nav-height) + 0.75rem);
+  --app-fab-height: 3rem;
+}
+
+.app-mobile-nav {
+  padding-bottom: max(0.625rem, env(safe-area-inset-bottom, 0px));
+}
+
+.pos-fab-bottom {
+  bottom: var(--app-fab-bottom);
+}
+
 @media (max-width: 767px) {
-  body.cap-native .app-main-scroll {
-    padding-bottom: calc(4.75rem + env(safe-area-inset-bottom, 0px));
+  .app-fab {
+    bottom: var(--app-fab-bottom);
   }
 
-  body.cap-native .app-main-full {
-    padding-bottom: calc(4.75rem + env(safe-area-inset-bottom, 0px));
+  /* Scrolling pages end above the floating tab bar. */
+  .app-main-spacer {
+    height: calc(var(--app-mobile-nav-height) + 1rem);
   }
-}
 
-body.cap-native .app-mobile-nav {
-  padding-bottom: max(0.5rem, env(safe-area-inset-bottom, 0px));
-}
-
-body.cap-native .app-main-spacer {
-  display: none;
+  /* POS and the kitchen screen manage their own scrolling; they stop at the tab bar. */
+  .app-main-full {
+    padding-bottom: var(--app-mobile-nav-height);
+  }
 }
 
 .safe-area-pb {
   padding-bottom: max(0.75rem, env(safe-area-inset-bottom, 0px));
 }
 
-/* Floating controls above the mobile tab bar (POS bill FAB, etc.) */
-:root {
-  --app-mobile-nav-height: 4.75rem;
+/* The help panel stays below the top bar, above the tab bar, and clear of the keyboard. */
+.app-help-panel {
+  max-height: min(480px, calc(100vh - var(--app-fab-bottom) - 5.5rem));
+  max-height: min(480px, calc(100dvh - var(--app-fab-bottom) - 5.5rem - env(safe-area-inset-top, 0px)));
+}
+@media (min-width: 768px) {
+  .app-help-panel {
+    max-height: min(480px, calc(100vh - 7rem));
+    max-height: min(480px, calc(100dvh - 7rem));
+  }
 }
 
-.pos-fab-bottom {
-  bottom: calc(var(--app-mobile-nav-height) + env(safe-area-inset-bottom, 0px) + 0.625rem);
+/* ── App feel: no page bounce, no zoom into fields ──────────────────────────── */
+html,
+body {
+  overscroll-behavior: none;
+}
+
+/* iOS zooms the page into any field under 16px when it gets focus. Touch screens get 16px
+   fields everywhere (the sign-in screen sizes its own). */
+@media (pointer: coarse) {
+  input:not([type="checkbox"], [type="radio"], [type="range"], [type="color"], [type="file"], [type="hidden"]):not(.login-screen *),
+  select:not(.login-screen *),
+  textarea:not(.login-screen *) {
+    font-size: 16px;
+  }
+}
+
+/* ── Sideways rows (HScroll.tsx) ────────────────────────────────────────────────
+   The edge with more to show fades, so a cut-off chip reads as "swipe for more". */
+.cafyz-hscroll {
+  --hs-fade: 28px;
+  display: flex;
+  overflow-x: auto;
+  overflow-y: hidden;
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+.cafyz-hscroll::-webkit-scrollbar {
+  display: none;
+}
+.cafyz-hscroll[data-more="end"] {
+  -webkit-mask-image: linear-gradient(to right, #000 calc(100% - var(--hs-fade)), transparent);
+  mask-image: linear-gradient(to right, #000 calc(100% - var(--hs-fade)), transparent);
+}
+.cafyz-hscroll[data-more="start"] {
+  -webkit-mask-image: linear-gradient(to left, #000 calc(100% - var(--hs-fade)), transparent);
+  mask-image: linear-gradient(to left, #000 calc(100% - var(--hs-fade)), transparent);
+}
+.cafyz-hscroll[data-more="both"] {
+  -webkit-mask-image: linear-gradient(to right, transparent, #000 var(--hs-fade), #000 calc(100% - var(--hs-fade)), transparent);
+  mask-image: linear-gradient(to right, transparent, #000 var(--hs-fade), #000 calc(100% - var(--hs-fade)), transparent);
+}
+[dir="rtl"] .cafyz-hscroll[data-more="end"] {
+  -webkit-mask-image: linear-gradient(to left, #000 calc(100% - var(--hs-fade)), transparent);
+  mask-image: linear-gradient(to left, #000 calc(100% - var(--hs-fade)), transparent);
+}
+[dir="rtl"] .cafyz-hscroll[data-more="start"] {
+  -webkit-mask-image: linear-gradient(to right, #000 calc(100% - var(--hs-fade)), transparent);
+  mask-image: linear-gradient(to right, #000 calc(100% - var(--hs-fade)), transparent);
 }
 
 /* Login screen — 30% logo band + 70% fixed credentials panel (mobile) */

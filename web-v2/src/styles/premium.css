@@ -1,0 +1,1225 @@
+/* Cafyz design system layer.
+ *
+ * The tokens live in theme-modes.css. This file holds the reusable pieces built from them:
+ * the sidebar, shared control classes, and the global control behaviour (focus, press, hover)
+ * that every screen inherits without restyling each one.
+ */
+
+/* ── Typeface ─────────────────────────────────────────────────────────────── */
+/* One family for the whole app. Figures line up in columns wherever numbers are shown. */
+:root {
+  --font-display: 'Plus Jakarta Sans', 'DM Sans', system-ui, sans-serif;
+  --font-body: 'Plus Jakarta Sans', 'DM Sans', system-ui, sans-serif;
+  --font-mono: 'Plus Jakarta Sans', 'DM Sans', system-ui, sans-serif;
+  --ease-out: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+html.lang-hi {
+  --font-body: var(--font-hi);
+  --font-display: var(--font-hi);
+  --font-mono: var(--font-hi);
+}
+
+html.lang-kn {
+  --font-body: var(--font-kn);
+  --font-display: var(--font-kn);
+  --font-mono: var(--font-kn);
+}
+
+/* The sign-in screen is fitted to the phone's height with its own type; it keeps it. */
+.login-screen {
+  --font-display: 'Outfit', sans-serif;
+  --font-body: 'DM Sans', sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+}
+
+.cafyz-app-shell {
+  font-variant-numeric: tabular-nums;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ── Sidebar ──────────────────────────────────────────────────────────────── */
+.cafyz-sidebar {
+  isolation: isolate;
+  max-width: 86vw;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* The sidebar's ground: a painted wallpaper. Violet light falls from the top, one fine ribbon runs
+   down the left edge and soft waves fold along the bottom; the whole middle, where the menu
+   is read, is flat dark navy. Other themes turn the light to their own colour. */
+.cafyz-sidebar::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -2;
+  pointer-events: none;
+  background: url('/brand/sidebar-bg.webp') center bottom / cover no-repeat;
+  filter: var(--cafyz-art-filter, none);
+}
+
+/* A scrim over the wallpaper: it keeps the header and the footer controls as readable as the
+   menu, without flattening the light. */
+.cafyz-sidebar::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    linear-gradient(180deg, rgba(8, 6, 25, 0.1) 0%, rgba(8, 6, 25, 0.34) 18%, rgba(8, 6, 25, 0.34) 68%, rgba(8, 6, 25, 0.5) 100%);
+}
+
+/* The light theme keeps a clean sidebar with a quiet violet wash at the top. */
+html.light .cafyz-sidebar::before {
+  background: radial-gradient(ellipse 120% 28% at 20% 0%, rgba(var(--cafyz-brand-rgb), 0.12) 0%, transparent 70%),
+    radial-gradient(ellipse 120% 22% at 80% 100%, rgba(var(--cafyz-brand-2-rgb), 0.08) 0%, transparent 70%);
+  filter: none;
+}
+
+html.light .cafyz-sidebar::after {
+  display: none;
+}
+
+/* In the apps the status bar overlays the web view, so the drawer starts below it. */
+body.cap-native .cafyz-sidebar {
+  padding-top: var(--cap-status-bar-height, 0px);
+}
+
+/* Identity row at the top of the sidebar. The logo sits in an app-icon tile, the way an app
+   shows itself on a home screen; the name is set in type beside it, the restaurant beneath.
+   Nothing is boxed: the row rests on a soft wash of the theme's light that fades into the sidebar. */
+.cafyz-brand-head {
+  position: relative;
+  isolation: isolate;
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  padding: 1.1rem 1rem 1rem 1.1rem;
+  border-bottom: 1px solid var(--cafyz-sidebar-border-soft);
+}
+
+.cafyz-brand-head.is-collapsed {
+  justify-content: center;
+  padding: 0.9rem 0 0.85rem;
+}
+
+/* The app icon: a continuous-corner tile, dark in every theme so the silver logo always reads,
+   with a soft light from the top-left and a fine bright rim. */
+.cafyz-app-icon {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 3rem;
+  height: 3rem;
+  flex-shrink: 0;
+  border-radius: 28%;
+  background:
+    radial-gradient(circle at 28% 18%, rgba(255, 255, 255, 0.2) 0%, rgba(255, 255, 255, 0) 52%),
+    radial-gradient(circle at 80% 100%, rgba(var(--cafyz-brand-deep-rgb), 0.55) 0%, transparent 62%),
+    linear-gradient(160deg, #1b1440 0%, #0a0720 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.24),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.07),
+    0 8px 18px rgba(0, 0, 0, 0.32),
+    0 0 0 0.5px rgba(0, 0, 0, 0.4);
+}
+
+.cafyz-app-icon img {
+  width: 92%;
+  height: 92%;
+  object-fit: contain;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.45));
+}
+
+.cafyz-brand-head.is-collapsed .cafyz-app-icon {
+  width: 2.75rem;
+  height: 2.75rem;
+}
+
+.cafyz-brand-name {
+  color: var(--cafyz-text-strong);
+  font-family: var(--font-display);
+  font-size: 1.22rem;
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: -0.025em;
+}
+
+.cafyz-brand-sub {
+  margin-top: 0.15rem;
+  color: var(--cafyz-muted);
+  font-size: 0.76rem;
+  font-weight: 500;
+  line-height: 1.3;
+}
+
+.cafyz-brand-head-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  flex-shrink: 0;
+  border-radius: 999px;
+  color: var(--cafyz-muted);
+  background: var(--cafyz-surface-hover);
+}
+
+.cafyz-brand-head-close:hover {
+  color: var(--cafyz-text);
+}
+
+@media (min-width: 768px) {
+  .cafyz-brand-head-close {
+    display: none;
+  }
+}
+
+.cafyz-sidebar-group-label {
+  color: var(--cafyz-muted);
+  font-size: 0.66rem;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  opacity: 0.85;
+}
+
+.cafyz-sidebar-rule {
+  height: 1px;
+  background: var(--cafyz-sidebar-border-soft);
+}
+
+.cafyz-sidebar-vrule {
+  width: 1px;
+  height: 1.1rem;
+  background: var(--cafyz-sidebar-border);
+  flex-shrink: 0;
+}
+
+.cafyz-nav-item {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+  min-height: 2.75rem;
+  padding-top: 0.3rem;
+  padding-bottom: 0.3rem;
+  border-radius: 0.875rem;
+  border: 1px solid transparent;
+  color: var(--cafyz-muted);
+  transition: background-color 0.18s var(--ease-out), border-color 0.18s var(--ease-out),
+    color 0.18s var(--ease-out), box-shadow 0.22s var(--ease-out);
+}
+
+.cafyz-nav-item:hover {
+  background: var(--cafyz-nav-hover-bg);
+  color: var(--cafyz-nav-hover);
+}
+
+.cafyz-nav-item.is-active {
+  background: var(--cafyz-nav-active-bg);
+  border-color: var(--cafyz-nav-active-border);
+  box-shadow: var(--cafyz-nav-glow);
+  color: var(--cafyz-text-strong);
+}
+
+.cafyz-nav-item.is-locked {
+  opacity: 0.5;
+}
+
+.cafyz-nav-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.125rem;
+  height: 2.125rem;
+  flex-shrink: 0;
+  border-radius: 0.625rem;
+  background: var(--cafyz-icon-tile-bg);
+  border: 1px solid var(--cafyz-icon-tile-border);
+  color: inherit;
+  transition: color 0.18s var(--ease-out), border-color 0.18s var(--ease-out),
+    background-color 0.18s var(--ease-out);
+}
+
+.cafyz-nav-item.is-active .cafyz-nav-icon {
+  color: var(--cafyz-brand-bright);
+  border-color: rgba(var(--cafyz-brand-rgb), 0.38);
+  background: rgba(var(--cafyz-brand-rgb), 0.14);
+}
+
+.cafyz-nav-label {
+  font-size: 0.92rem;
+  font-weight: 500;
+  letter-spacing: -0.005em;
+}
+
+.cafyz-nav-item.is-active .cafyz-nav-label {
+  font-weight: 600;
+}
+
+/* A thin lit edge on the active item's leading side. */
+.cafyz-nav-accent {
+  position: absolute;
+  inset-inline-start: -1px;
+  top: 22%;
+  bottom: 22%;
+  width: 3px;
+  border-radius: 3px;
+  background: linear-gradient(180deg, var(--cafyz-brand-bright), var(--cafyz-brand-deep));
+  box-shadow: 0 0 10px rgba(var(--cafyz-brand-rgb), 0.6);
+}
+
+.cafyz-nav-lock {
+  padding: 0.1rem 0.45rem;
+  border-radius: 999px;
+  font-size: 0.62rem;
+  font-weight: 600;
+  text-transform: capitalize;
+  color: var(--cafyz-brand-bright);
+  background: rgba(var(--cafyz-brand-rgb), 0.12);
+  border: 1px solid rgba(var(--cafyz-brand-rgb), 0.2);
+}
+
+.cafyz-plan-card {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  border-radius: 1rem;
+  background: var(--cafyz-card-gradient);
+  border: 1px solid var(--cafyz-border-strong);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  transition: border-color 0.18s var(--ease-out), box-shadow 0.22s var(--ease-out);
+}
+
+button.cafyz-plan-card:hover {
+  border-color: rgba(var(--cafyz-brand-rgb), 0.6);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04), var(--cafyz-glow);
+}
+
+.cafyz-plan-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  flex-shrink: 0;
+  border-radius: 0.625rem;
+  color: var(--cafyz-brand-bright);
+  background: rgba(var(--cafyz-brand-rgb), 0.16);
+  border: 1px solid rgba(var(--cafyz-brand-rgb), 0.3);
+}
+
+.cafyz-plan-title {
+  color: var(--cafyz-brand-bright);
+  font-size: 0.84rem;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.cafyz-plan-sub {
+  color: var(--cafyz-muted);
+  font-size: 0.7rem;
+  line-height: 1.35;
+}
+
+.cafyz-plan-arrow {
+  color: var(--cafyz-brand-2);
+  transition: transform 0.18s var(--ease-out);
+}
+
+button.cafyz-plan-card:hover .cafyz-plan-arrow {
+  transform: translateX(2px);
+}
+
+.cafyz-avatar {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  flex-shrink: 0;
+  border-radius: 999px;
+  background: var(--cafyz-gradient);
+  color: #ffffff;
+  font-size: 0.74rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.08), var(--cafyz-glow);
+}
+
+.cafyz-avatar-status {
+  position: absolute;
+  inset-inline-end: -1px;
+  bottom: -1px;
+  width: 0.625rem;
+  height: 0.625rem;
+  border-radius: 999px;
+  background: var(--cafyz-success);
+  border: 2px solid var(--cafyz-sidebar-bg);
+}
+
+.cafyz-sidebar-action {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  min-width: 0;
+  min-height: 2.5rem;
+  padding: 0 0.75rem;
+  border-radius: 0.75rem;
+  color: var(--cafyz-muted);
+  font-size: 0.84rem;
+  font-weight: 500;
+  transition: background-color 0.18s var(--ease-out), color 0.18s var(--ease-out);
+}
+
+.cafyz-sidebar-action:hover {
+  color: var(--cafyz-nav-hover);
+  background: var(--cafyz-nav-hover-bg);
+}
+
+.cafyz-sidebar-action.is-danger:hover {
+  color: var(--cafyz-danger);
+  background: var(--cafyz-danger-bg);
+}
+
+.cafyz-sidebar-collapse-btn {
+  color: var(--cafyz-muted);
+  box-shadow: var(--cafyz-shadow-sm);
+  transition: color 0.18s var(--ease-out), border-color 0.18s var(--ease-out);
+}
+
+.cafyz-sidebar-collapse-btn:hover {
+  color: var(--cafyz-brand-bright);
+  border-color: var(--cafyz-border-strong);
+}
+
+.cafyz-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 0.625rem;
+  color: var(--cafyz-muted);
+  background: var(--cafyz-icon-tile-bg);
+  border: 1px solid var(--cafyz-icon-tile-border);
+  transition: color 0.18s var(--ease-out), border-color 0.18s var(--ease-out);
+}
+
+.cafyz-icon-btn:hover {
+  color: var(--cafyz-text);
+  border-color: var(--cafyz-border-strong);
+}
+
+.cafyz-drawer-overlay {
+  background: var(--cafyz-overlay);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+
+/* The active item keeps a quieter look in the light theme. */
+html.light .cafyz-nav-accent {
+  box-shadow: none;
+}
+
+/* ── Shared controls ──────────────────────────────────────────────────────── */
+.cafyz-btn-primary {
+  background: var(--cafyz-gradient);
+  color: var(--cafyz-on-gradient);
+  box-shadow: var(--cafyz-gradient-glow);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.cafyz-btn-secondary {
+  background: var(--cafyz-glass);
+  color: var(--cafyz-text-secondary);
+  border: 1px solid var(--cafyz-border-strong);
+}
+
+.cafyz-btn-ghost {
+  background: transparent;
+  color: var(--cafyz-muted);
+}
+
+.cafyz-btn-ghost:hover {
+  background: var(--cafyz-surface-hover);
+  color: var(--cafyz-text);
+}
+
+.cafyz-btn-danger {
+  background: var(--cafyz-danger-bg);
+  color: var(--cafyz-danger);
+  border: 1px solid rgba(240, 82, 112, 0.28);
+}
+
+.cafyz-card {
+  background: var(--cafyz-surface);
+  border: 1px solid var(--cafyz-border);
+  border-radius: 1.125rem;
+  box-shadow: var(--cafyz-shadow-md);
+}
+
+.cafyz-panel,
+.cafyz-panel-elevated {
+  border-radius: 1.125rem;
+}
+
+/* ── Global control behaviour ─────────────────────────────────────────────── */
+/* Every button, link-button and field in the signed-in app gets the same quiet motion. */
+.cafyz-app-shell button,
+.cafyz-app-shell [role="button"],
+.cafyz-app-shell [role="tab"] {
+  transition-property: background-color, border-color, color, box-shadow, opacity, transform;
+  transition-duration: 0.18s;
+  transition-timing-function: var(--ease-out);
+}
+
+.cafyz-app-shell button:not(:disabled):active {
+  transform: scale(0.98);
+}
+
+.cafyz-app-shell button:disabled {
+  cursor: not-allowed;
+}
+
+.cafyz-app-shell button:focus-visible,
+.cafyz-app-shell [role="button"]:focus-visible,
+.cafyz-app-shell a:focus-visible {
+  outline: 2px solid rgba(var(--cafyz-brand-rgb), 0.7);
+  outline-offset: 2px;
+}
+
+.cafyz-app-shell input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+.cafyz-app-shell textarea,
+.cafyz-app-shell select {
+  transition: border-color 0.18s var(--ease-out), box-shadow 0.18s var(--ease-out),
+    background-color 0.18s var(--ease-out);
+}
+
+.cafyz-app-shell input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):focus,
+.cafyz-app-shell textarea:focus,
+.cafyz-app-shell select:focus {
+  outline: none;
+  border-color: var(--cafyz-border-focus) !important;
+  box-shadow: 0 0 0 3px rgba(var(--cafyz-brand-rgb), 0.16);
+}
+
+.cafyz-app-shell input::placeholder,
+.cafyz-app-shell textarea::placeholder {
+  color: var(--cafyz-input-placeholder);
+  opacity: 1;
+}
+
+.cafyz-app-shell input[type="checkbox"],
+.cafyz-app-shell input[type="radio"],
+.cafyz-app-shell input[type="range"] {
+  accent-color: var(--cafyz-brand-deep);
+}
+
+.cafyz-app-shell ::selection {
+  background: rgba(var(--cafyz-brand-rgb), 0.35);
+  color: #ffffff;
+}
+
+/* Thin violet scrollbars on pointer devices. */
+@media (hover: hover) and (pointer: fine) {
+  .cafyz-app-shell * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--cafyz-scrollbar) transparent;
+  }
+}
+
+/* Loading skeleton. */
+.cafyz-skeleton {
+  border-radius: 0.75rem;
+  background: linear-gradient(100deg, var(--cafyz-surface) 20%, var(--cafyz-surface-2) 45%, var(--cafyz-surface) 70%);
+  background-size: 220% 100%;
+  animation: cafyz-skeleton 1.4s ease-in-out infinite;
+}
+
+@keyframes cafyz-skeleton {
+  0% { background-position: 120% 0; }
+  100% { background-position: -100% 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cafyz-app-shell *,
+  .cafyz-app-shell *::before,
+  .cafyz-app-shell *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+
+  .cafyz-app-shell button:not(:disabled):active {
+    transform: none;
+  }
+}
+
+/* The nav list fades out at the bottom edge while there is more to scroll to. */
+.cafyz-sidebar nav {
+  -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 1.5rem), transparent 100%);
+  mask-image: linear-gradient(to bottom, #000 calc(100% - 1.5rem), transparent 100%);
+  padding-bottom: 1.25rem;
+}
+
+/* ── Top bar ──────────────────────────────────────────────────────────────── */
+/* Transparent dark glass with the page's violet ambient light showing through. */
+.cafyz-topbar {
+  min-height: 4.5rem;
+  border-bottom: 1px solid transparent;
+}
+
+@media (min-width: 768px) {
+  .cafyz-topbar {
+    min-height: 4.25rem;
+    border-bottom-color: var(--cafyz-border);
+  }
+}
+
+.cafyz-topbar-title {
+  color: var(--cafyz-muted);
+  font-family: var(--font-display);
+  font-weight: 500;
+  font-size: 0.8rem;
+  line-height: 1.3;
+}
+
+@media (min-width: 768px) {
+  .cafyz-topbar-title {
+    color: var(--cafyz-text);
+    font-weight: 700;
+    font-size: 1.05rem;
+    line-height: 1.25;
+    letter-spacing: -0.01em;
+  }
+}
+
+/* The brand tile: the logo on a rounded glass square. On phones it opens the menu. */
+.cafyz-brand-tile {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.875rem;
+  height: 2.875rem;
+  border-radius: 0.95rem;
+  /* Dark in every theme, like the sidebar's app icon, so the white emblem always reads. */
+  background:
+    radial-gradient(circle at 28% 18%, rgba(255, 255, 255, 0.2) 0%, rgba(255, 255, 255, 0) 52%),
+    radial-gradient(circle at 80% 100%, rgba(var(--cafyz-brand-deep-rgb), 0.55) 0%, transparent 62%),
+    linear-gradient(160deg, #1b1440 0%, #0a0720 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.24), inset 0 0 0 1px rgba(255, 255, 255, 0.07), 0 6px 14px rgba(0, 0, 0, 0.3);
+}
+
+/* The emblem file is square with its ring centred, so centring the image centres the emblem. */
+.cafyz-brand-tile img {
+  width: 92%;
+  height: 92%;
+  object-fit: contain;
+}
+
+.cafyz-brand-tile-menu {
+  position: absolute;
+  inset-inline-end: -0.3rem;
+  bottom: -0.3rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.15rem;
+  height: 1.15rem;
+  border-radius: 999px;
+  color: #ffffff;
+  background: var(--cafyz-gradient);
+  border: 2px solid var(--cafyz-app-bg);
+}
+
+.cafyz-topbar-btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 999px;
+  color: var(--cafyz-text-secondary);
+  background: var(--cafyz-glass);
+  border: 1px solid var(--cafyz-border);
+}
+
+.cafyz-topbar-btn:hover,
+.cafyz-topbar-btn.is-open {
+  color: var(--cafyz-brand-bright);
+  border-color: var(--cafyz-border-strong);
+  box-shadow: var(--cafyz-glow);
+}
+
+.cafyz-topbar-dot {
+  position: absolute;
+  top: 0.05rem;
+  inset-inline-end: 0.05rem;
+  width: 0.625rem;
+  height: 0.625rem;
+  border-radius: 999px;
+  background: var(--cafyz-danger);
+  border: 2px solid var(--cafyz-app-bg);
+  box-shadow: 0 0 8px rgba(255, 65, 108, 0.7);
+}
+
+/* ── Phone tab bar ────────────────────────────────────────────────────────── */
+/* A floating bar of dark glass with a hairline of light round it. New Bill sits inside the bar,
+   level with the tabs: a rounded gradient tile, the one filled thing in the row. */
+.cafyz-tabbar {
+  --tab-h: 66px;
+  --tab-r: 1.5rem;
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 40;
+  padding-left: 0.875rem;
+  padding-right: 0.875rem;
+  pointer-events: none;
+}
+
+.cafyz-tabbar-inner {
+  pointer-events: auto;
+  position: relative;
+  isolation: isolate;
+  display: flex;
+  align-items: center;
+  height: var(--tab-h);
+  max-width: 28rem;
+  margin: 0 auto;
+  padding: 0.4rem;
+  border-radius: var(--tab-r);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.07) 0%, rgba(255, 255, 255, 0) 45%),
+    var(--cafyz-mobile-nav-bg);
+  box-shadow: 0 16px 34px rgba(0, 0, 0, 0.55), 0 2px 8px rgba(0, 0, 0, 0.35);
+}
+
+/* The hairline: bright along the top, fading down the sides. */
+.cafyz-tabbar-inner::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  padding: 1px;
+  border-radius: inherit;
+  pointer-events: none;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.28) 0%, rgba(var(--cafyz-brand-rgb), 0.34) 36%, rgba(var(--cafyz-brand-rgb), 0.1) 100%);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  mask-composite: exclude;
+}
+
+.cafyz-tabbar-side {
+  display: flex;
+  flex: 1 1 0;
+  min-width: 0;
+  height: 100%;
+  gap: 0.125rem;
+}
+
+.cafyz-tabbar-centre {
+  flex: 0 0 4.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.cafyz-tab {
+  position: relative;
+  flex: 1 1 0;
+  min-width: 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.22rem;
+  border-radius: 1.125rem;
+  color: var(--cafyz-muted);
+}
+
+.cafyz-tab.is-active {
+  color: #ffffff;
+}
+
+/* The active tab: a soft lit tile with a bright top edge, not a flat fill. */
+.cafyz-tab-pill {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background:
+    radial-gradient(ellipse 70% 60% at 50% 0%, rgba(255, 255, 255, 0.2) 0%, transparent 70%),
+    var(--cafyz-nav-pill-bg);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.28),
+    inset 0 0 0 1px rgba(var(--cafyz-brand-rgb), 0.45),
+    0 6px 18px rgba(var(--cafyz-brand-deep-rgb), 0.35);
+}
+
+.cafyz-tab-label {
+  font-family: var(--font-display);
+  font-size: 0.66rem;
+  font-weight: 500;
+  line-height: 1;
+  letter-spacing: 0.01em;
+}
+
+.cafyz-tab.is-active .cafyz-tab-label {
+  font-weight: 700;
+}
+
+/* New Bill: a rounded tile in the brand gradient, lit softly from above. */
+.cafyz-tab-plus {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 3.25rem;
+  height: 3rem;
+  border-radius: 1.05rem;
+  color: #ffffff;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.26) 0%, rgba(255, 255, 255, 0) 55%),
+    var(--cafyz-gradient);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.45),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.12),
+    0 6px 16px rgba(var(--cafyz-brand-deep-rgb), 0.5);
+}
+
+.cafyz-tab-plus.is-active {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.45),
+    0 0 0 2px var(--cafyz-app-bg),
+    0 0 0 3.5px rgba(var(--cafyz-brand-bright-rgb), 0.9),
+    0 6px 18px rgba(var(--cafyz-brand-deep-rgb), 0.6);
+}
+
+html.light .cafyz-tab.is-active {
+  color: var(--cafyz-brand);
+}
+
+html.light .cafyz-tabbar-inner::after {
+  background: linear-gradient(180deg, rgba(40, 20, 100, 0.16) 0%, rgba(40, 20, 100, 0.08) 100%);
+}
+
+html.light .cafyz-tabbar-inner {
+  box-shadow: 0 12px 26px rgba(40, 20, 100, 0.18);
+}
+
+/* ── Dashboard pieces ─────────────────────────────────────────────────────── */
+.cafyz-pill-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 2.5rem;
+  padding: 0 1rem;
+  border-radius: 999px;
+  color: var(--cafyz-brand-bright);
+  font-size: 0.84rem;
+  font-weight: 600;
+  background: var(--cafyz-glass);
+  border: 1px solid var(--cafyz-border-strong);
+}
+
+.cafyz-pill-btn:hover {
+  box-shadow: var(--cafyz-glow);
+}
+
+.cafyz-warn-banner {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.8rem 1rem;
+  border-radius: 1.125rem;
+  background: linear-gradient(100deg, rgba(255, 170, 0, 0.13) 0%, rgba(255, 170, 0, 0.05) 100%);
+  border: 1px solid rgba(255, 170, 0, 0.34);
+}
+
+.cafyz-demo-banner {
+  margin: 0.25rem 0.75rem 0;
+  padding: 0.5rem 0.625rem 0.5rem 0.75rem;
+  border-radius: 1.125rem;
+  background: linear-gradient(100deg, rgba(255, 170, 0, 0.14) 0%, rgba(var(--cafyz-brand-deep-rgb), 0.1) 100%);
+  border: 1px solid rgba(255, 170, 0, 0.3);
+}
+
+@media (min-width: 768px) {
+  .cafyz-demo-banner {
+    margin: 0.75rem 1.5rem 0;
+  }
+}
+
+/* Shortcut chips. The first one (Point of Sale) is the primary action. */
+.cafyz-shortcut {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  min-height: 2.875rem;
+  padding: 0 1.1rem;
+  border-radius: 1rem;
+  color: var(--cafyz-text);
+  font-size: 0.86rem;
+  font-weight: 600;
+  background: var(--cafyz-card-b);
+  border: 1px solid var(--cafyz-card-border);
+}
+
+.cafyz-shortcut:hover {
+  border-color: rgba(var(--cafyz-brand-rgb), 0.6);
+}
+
+.cafyz-shortcut.is-primary {
+  color: #ffffff;
+  background: var(--cafyz-active-gradient);
+  border-color: rgba(var(--cafyz-brand-rgb), 0.85);
+  box-shadow: var(--cafyz-glow);
+}
+
+.cafyz-shortcut.is-primary::after {
+  content: "";
+  position: absolute;
+  left: 22%;
+  right: 22%;
+  bottom: 3px;
+  height: 2px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, #ffffff 0%, var(--cafyz-brand-bright) 55%, rgba(var(--cafyz-brand-bright-rgb), 0.4) 100%);
+}
+
+html.light .cafyz-shortcut.is-primary {
+  background: var(--cafyz-gradient);
+}
+
+/* Metric cards: equal height, a violet or indigo wash, a round icon, one large figure. */
+.cafyz-metric {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  min-height: 9.25rem;
+  padding: 1rem;
+  text-align: start;
+  border-radius: 1.25rem;
+  background: var(--cafyz-card-a);
+  border: 1px solid var(--cafyz-card-border);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05), var(--cafyz-shadow-sm);
+}
+
+.cafyz-metric.is-alt {
+  background: var(--cafyz-card-b);
+}
+
+.cafyz-metric:hover {
+  border-color: rgba(var(--cafyz-brand-rgb), 0.6);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05), var(--cafyz-glow);
+}
+
+/* A soft curved sheen in the card's far corner. */
+.cafyz-metric-wave {
+  position: absolute;
+  z-index: -1;
+  inset-inline-end: -30%;
+  bottom: -55%;
+  width: 110%;
+  aspect-ratio: 1 / 1;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(255, 255, 255, 0.07), transparent 72%);
+  pointer-events: none;
+}
+
+.cafyz-metric-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  margin-bottom: 0.7rem;
+  border-radius: 999px;
+}
+
+.cafyz-metric-label {
+  color: var(--cafyz-text-secondary);
+  font-size: 0.8rem;
+  line-height: 1.3;
+}
+
+.cafyz-metric-value {
+  margin: 0.15rem 0 0.4rem;
+  color: var(--cafyz-text-strong);
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+}
+
+.cafyz-metric-status {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  max-width: 100%;
+  margin-top: auto;
+  font-size: 0.78rem;
+  font-weight: 500;
+}
+
+.cafyz-dash-card {
+  border-radius: 1.25rem;
+  background: var(--cafyz-surface);
+  border: 1px solid var(--cafyz-card-border);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04), var(--cafyz-shadow-sm);
+}
+
+/* On desktop the sidebar carries the brand, so the top bar's tile is for phones and tablets only. */
+@media (min-width: 768px) {
+  .cafyz-brand-tile {
+    display: none;
+  }
+}
+
+/* ── Account screen ───────────────────────────────────────────────────────── */
+.cafyz-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  min-height: 2.75rem;
+  padding: 0 1.25rem;
+  border-radius: 0.875rem;
+  font-size: 0.88rem;
+  font-weight: 600;
+}
+
+.cafyz-field-label {
+  display: block;
+  margin-bottom: 0.4rem;
+  color: var(--cafyz-text-secondary);
+  font-size: 0.78rem;
+  font-weight: 500;
+}
+
+.cafyz-field {
+  width: 100%;
+  min-height: 2.875rem;
+  padding: 0 0.9rem;
+  border-radius: 0.875rem;
+  color: var(--cafyz-text);
+  font-size: 0.9rem;
+  background: var(--cafyz-input-bg);
+  border: 1px solid var(--cafyz-border);
+  outline: none;
+}
+
+.cafyz-field:disabled {
+  opacity: 0.6;
+  text-transform: capitalize;
+}
+
+.cafyz-field-hint {
+  display: block;
+  margin-top: 0.4rem;
+  color: var(--cafyz-muted);
+  font-size: 0.72rem;
+  line-height: 1.45;
+}
+
+.cafyz-account-hero {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.875rem;
+  padding: 1rem;
+  border-radius: 1.25rem;
+  background: var(--cafyz-card-a);
+  border: 1px solid var(--cafyz-card-border);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05), var(--cafyz-shadow-sm);
+}
+
+@media (min-width: 640px) {
+  .cafyz-account-hero {
+    padding: 1.25rem 1.5rem;
+    gap: 1.125rem;
+  }
+}
+
+.cafyz-account-avatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 3.75rem;
+  height: 3.75rem;
+  flex-shrink: 0;
+  border-radius: 999px;
+  color: #ffffff;
+  background: var(--cafyz-gradient);
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.1), var(--cafyz-glow-strong);
+}
+
+.cafyz-chip {
+  display: inline-flex;
+  align-items: center;
+  max-width: 100%;
+  padding: 0.2rem 0.65rem;
+  border-radius: 999px;
+  color: var(--cafyz-text-secondary);
+  font-size: 0.72rem;
+  font-weight: 600;
+  background: var(--cafyz-glass);
+  border: 1px solid var(--cafyz-border);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cafyz-chip.is-brand {
+  color: var(--cafyz-brand-bright);
+  background: rgba(var(--cafyz-brand-rgb), 0.14);
+  border-color: rgba(var(--cafyz-brand-rgb), 0.4);
+}
+
+.cafyz-account-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 1.25rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--cafyz-border);
+}
+
+@media (max-width: 639px) {
+  .cafyz-account-actions .cafyz-btn {
+    width: 100%;
+  }
+}
+
+.cafyz-account-note {
+  padding: 0.9rem 1rem;
+  border-radius: 1rem;
+  background: var(--cafyz-surface-2);
+  border: 1px solid var(--cafyz-border);
+}
+
+/* Theme picker */
+.cafyz-theme-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 0.625rem 0.625rem 0.75rem;
+  border-radius: 1.125rem;
+  background: var(--cafyz-surface-2);
+  border: 1px solid var(--cafyz-border);
+}
+
+.cafyz-theme-card:hover {
+  border-color: var(--cafyz-border-strong);
+}
+
+.cafyz-theme-card.is-selected {
+  border-color: var(--cafyz-nav-active-border);
+  box-shadow: var(--cafyz-glow);
+}
+
+.cafyz-theme-check {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.375rem;
+  height: 1.375rem;
+  flex-shrink: 0;
+  border-radius: 999px;
+  color: #ffffff;
+  border: 1.5px solid var(--cafyz-border-strong);
+}
+
+.cafyz-theme-card.is-selected .cafyz-theme-check {
+  background: var(--cafyz-gradient);
+  border-color: transparent;
+}
+
+/* The preview is drawn in each theme's own fixed colours, so it never follows the live theme. */
+.cafyz-theme-preview {
+  display: flex;
+  width: 100%;
+  height: 6.25rem;
+  overflow: hidden;
+  border-radius: 0.75rem;
+  border: 1px solid rgba(127, 127, 127, 0.22);
+}
+
+.cafyz-theme-preview-rail {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  width: 22%;
+  padding: 0.5rem 0.35rem;
+}
+
+.cafyz-theme-preview-rail i {
+  display: block;
+  height: 0.4rem;
+  border-radius: 999px;
+}
+
+.cafyz-theme-preview-main {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 0.4rem;
+  padding: 0.55rem;
+}
+
+.cafyz-theme-preview-title {
+  width: 42%;
+  height: 0.4rem;
+  border-radius: 999px;
+  opacity: 0.9;
+}
+
+.cafyz-theme-preview-row {
+  display: flex;
+  flex: 1;
+  gap: 0.4rem;
+}
+
+.cafyz-theme-preview-row b {
+  flex: 1;
+  padding: 0.35rem;
+  border-radius: 0.4rem;
+}
+
+.cafyz-theme-preview-row b i {
+  display: block;
+  width: 0.7rem;
+  height: 0.7rem;
+  border-radius: 999px;
+}
+
+.cafyz-theme-preview-btn {
+  align-self: flex-end;
+  width: 34%;
+  height: 0.6rem;
+  border-radius: 999px;
+}
+
+/* ── Logo on light surfaces ───────────────────────────────────────────────── */
+/* The logo's wordmark is white, for dark grounds. In the light theme the ink-wordmark file is
+   swapped in, except where the surface is dark in both themes. */
+html.light .cafyz-logo:not(.cafyz-logo--on-dark) > img {
+  content: url('/cafyz-logo-light.png');
+}

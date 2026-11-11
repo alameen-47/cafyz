@@ -9,8 +9,8 @@ import { IN_STORE_APP, SHOW_PLAN_PRICING } from '../../config/features';
 
 const PLAN_META: Record<Plan, { label: string; color: string; icon: typeof Shield }> = {
   basic: { label: 'Basic', color: 'var(--cafyz-muted)', icon: Shield },
-  pro: { label: 'Pro', color: '#1e7fff', icon: Zap },
-  premium: { label: 'Premium', color: '#a855f7', icon: Crown },
+  pro: { label: 'Pro', color: 'var(--cafyz-brand)', icon: Zap },
+  premium: { label: 'Premium', color: 'var(--cafyz-brand)', icon: Crown },
 };
 
 interface Props {
@@ -40,7 +40,7 @@ export function UpgradeModal({ requiredPlan, featurePage, onClose, onGoLicense }
         initial={{ opacity: 0, y: 12, scale: 0.98 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         className="w-full max-w-lg rounded-2xl p-6"
-        style={{ background: 'var(--cafyz-surface)', border: '1px solid rgba(30,127,255,0.15)' }}
+        style={{ background: 'var(--cafyz-surface)', border: '1px solid rgba(var(--cafyz-brand-rgb),0.15)' }}
         onClick={e => e.stopPropagation()}
       >
         <div className="flex items-start justify-between gap-3 mb-4">
@@ -88,7 +88,7 @@ export function UpgradeModal({ requiredPlan, featurePage, onClose, onGoLicense }
           <button onClick={onClose} className="flex-1 py-2.5 rounded-xl text-sm" style={{ background: 'var(--cafyz-subtle-bg)', color: 'var(--cafyz-text-secondary)', border: '1px solid var(--cafyz-border)' }}>Maybe later</button>
           {managerUser && (
           <button onClick={() => { onGoLicense(); onClose(); }} className="flex-1 py-2.5 rounded-xl text-sm font-semibold"
-            style={{ background: 'linear-gradient(135deg, #1e7fff, #00c6ff)', color: '#fff' }}>
+            style={{ background: 'var(--cafyz-gradient)', color: '#fff' }}>
             Activate license →
           </button>
           )}

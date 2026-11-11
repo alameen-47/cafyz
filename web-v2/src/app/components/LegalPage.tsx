@@ -28,7 +28,7 @@ function privacyContent() {
         <p>
           Cafyz (“we”, “us”) provides restaurant management software for web and mobile.
           This policy explains how we handle information when you use the Cafyz app and website at{" "}
-          <a href={SITE_URL} style={{ color: "#1e7fff" }}>{SITE_URL}</a>.
+          <a href={SITE_URL} style={{ color: "var(--cafyz-brand)" }}>{SITE_URL}</a>.
         </p>
       </Section>
       <Section title="Information we collect">
@@ -60,7 +60,7 @@ function privacyContent() {
           We wait 7 days before deleting anything, and signing in again during that time cancels the request. After that, an owner&apos;s restaurant and all associated data, or a staff member&apos;s own login, is permanently deleted.
         </p>
         <p>
-          You may also email <a href={`mailto:${SUPPORT_EMAIL}`} style={{ color: "#1e7fff" }}>{SUPPORT_EMAIL}</a> to request deletion.
+          You may also email <a href={`mailto:${SUPPORT_EMAIL}`} style={{ color: "var(--cafyz-brand)" }}>{SUPPORT_EMAIL}</a> to request deletion.
         </p>
       </Section>
       <Section title="Security">
@@ -68,8 +68,8 @@ function privacyContent() {
       </Section>
       <Section title="Contact">
         <p>
-          Questions: <a href={`mailto:${SUPPORT_EMAIL}`} style={{ color: "#1e7fff" }}>{SUPPORT_EMAIL}</a> or{" "}
-          <a href={`mailto:${FOUNDER_EMAIL}`} style={{ color: "#1e7fff" }}>{FOUNDER_EMAIL}</a>.
+          Questions: <a href={`mailto:${SUPPORT_EMAIL}`} style={{ color: "var(--cafyz-brand)" }}>{SUPPORT_EMAIL}</a> or{" "}
+          <a href={`mailto:${FOUNDER_EMAIL}`} style={{ color: "var(--cafyz-brand)" }}>{FOUNDER_EMAIL}</a>.
         </p>
       </Section>
     </>
@@ -85,21 +85,21 @@ function supportContent() {
       <Section title="Contact us">
         <ul className="space-y-3">
           <li className="flex items-start gap-2">
-            <Mail size={16} className="mt-0.5 flex-shrink-0" style={{ color: "#1e7fff" }} />
+            <Mail size={16} className="mt-0.5 flex-shrink-0" style={{ color: "var(--cafyz-brand)" }} />
             <span>
-              Email: <a href={`mailto:${SUPPORT_EMAIL}`} style={{ color: "#1e7fff" }}>{SUPPORT_EMAIL}</a>
+              Email: <a href={`mailto:${SUPPORT_EMAIL}`} style={{ color: "var(--cafyz-brand)" }}>{SUPPORT_EMAIL}</a>
             </span>
           </li>
           <li className="flex items-start gap-2">
-            <Mail size={16} className="mt-0.5 flex-shrink-0" style={{ color: "#1e7fff" }} />
+            <Mail size={16} className="mt-0.5 flex-shrink-0" style={{ color: "var(--cafyz-brand)" }} />
             <span>
-              Billing & licensing: <a href={`mailto:${FOUNDER_EMAIL}`} style={{ color: "#1e7fff" }}>{FOUNDER_EMAIL}</a>
+              Billing & licensing: <a href={`mailto:${FOUNDER_EMAIL}`} style={{ color: "var(--cafyz-brand)" }}>{FOUNDER_EMAIL}</a>
             </span>
           </li>
           <li className="flex items-start gap-2">
-            <ExternalLink size={16} className="mt-0.5 flex-shrink-0" style={{ color: "#1e7fff" }} />
+            <ExternalLink size={16} className="mt-0.5 flex-shrink-0" style={{ color: "var(--cafyz-brand)" }} />
             <span>
-              Website: <a href={SITE_URL} style={{ color: "#1e7fff" }}>{SITE_URL}</a>
+              Website: <a href={SITE_URL} style={{ color: "var(--cafyz-brand)" }}>{SITE_URL}</a>
             </span>
           </li>
         </ul>
@@ -116,9 +116,9 @@ function supportContent() {
           Deletion happens 7 days after the request (sign in again to cancel). Owners remove the entire restaurant and all staff logins.
         </p>
         <p>
-          <strong>By email:</strong> contact <a href={`mailto:${SUPPORT_EMAIL}?subject=Account%20deletion%20request`} style={{ color: "#1e7fff" }}>{SUPPORT_EMAIL}</a> from your registered address.
+          <strong>By email:</strong> contact <a href={`mailto:${SUPPORT_EMAIL}?subject=Account%20deletion%20request`} style={{ color: "var(--cafyz-brand)" }}>{SUPPORT_EMAIL}</a> from your registered address.
         </p>
-        <p>See our <a href="/privacy#account-deletion" style={{ color: "#1e7fff" }}>Privacy Policy</a> for data retention details.</p>
+        <p>See our <a href="/privacy#account-deletion" style={{ color: "var(--cafyz-brand)" }}>Privacy Policy</a> for data retention details.</p>
       </Section>
       <Section title="Response times">
         <p>We aim to respond within 1–2 business days. Urgent production issues for paying customers are prioritized.</p>
@@ -150,7 +150,7 @@ function termsContent() {
         <p>The service is provided “as is” to the extent permitted by law. Cafyz is not liable for indirect damages arising from use of the software.</p>
       </Section>
       <Section title="Contact">
-        <p>Legal inquiries: <a href={`mailto:${SUPPORT_EMAIL}`} style={{ color: "#1e7fff" }}>{SUPPORT_EMAIL}</a></p>
+        <p>Legal inquiries: <a href={`mailto:${SUPPORT_EMAIL}`} style={{ color: "var(--cafyz-brand)" }}>{SUPPORT_EMAIL}</a></p>
       </Section>
     </>
   );
@@ -200,9 +200,9 @@ export function LegalPage({ page }: { page: LegalSlug }) {
       <main className="max-w-2xl mx-auto px-4 py-6 md:py-8 space-y-6">
         {meta.body()}
         <footer className="pt-4 border-t text-xs flex flex-wrap gap-3" style={{ borderColor: "var(--cafyz-border)", color: "var(--cafyz-muted)" }}>
-          <a href="/privacy" style={{ color: page === "privacy" ? "#1e7fff" : "var(--cafyz-muted)" }}>Privacy</a>
-          <a href="/support" style={{ color: page === "support" ? "#1e7fff" : "var(--cafyz-muted)" }}>Support</a>
-          <a href="/terms" style={{ color: page === "terms" ? "#1e7fff" : "var(--cafyz-muted)" }}>Terms</a>
+          <a href="/privacy" style={{ color: page === "privacy" ? "var(--cafyz-brand)" : "var(--cafyz-muted)" }}>Privacy</a>
+          <a href="/support" style={{ color: page === "support" ? "var(--cafyz-brand)" : "var(--cafyz-muted)" }}>Support</a>
+          <a href="/terms" style={{ color: page === "terms" ? "var(--cafyz-brand)" : "var(--cafyz-muted)" }}>Terms</a>
           <a href="/" style={{ color: "var(--cafyz-muted)" }}>App home</a>
         </footer>
       </main>

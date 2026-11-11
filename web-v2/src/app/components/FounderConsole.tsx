@@ -9,9 +9,10 @@ import {
 } from "../../services/api";
 import { notifyPlanConfigUpdated, parsePanelsJson, refreshPlanConfigs, formatPlanPrice, formatBillingSuffix } from "../../services/planConfigStore";
 import { secureCopyToClipboard, scheduleClipboardClear } from "../../utils/secureClipboard";
+import { withAlpha } from "../../utils/color";
 
 const tabs = ["Overview", "Restaurants", "Users", "Trial Requests", "License Keys", "Plan Config"];
-const planColors: Record<string, string> = { basic: "var(--cafyz-muted)", pro: "#1e7fff", premium: "#a855f7" };
+const planColors: Record<string, string> = { basic: "var(--cafyz-muted)", pro: "var(--cafyz-brand)", premium: "var(--cafyz-brand)" };
 const FALLBACK_PRICE: Record<string, number> = { basic: 49, pro: 99, premium: 199 };
 const ALL_PANELS = ["pos", "menu", "waiter", "kds", "manager", "inventory", "staff", "reports", "roles", "reservations", "license"];
 const PANEL_LABELS: Record<string, string> = {
@@ -38,8 +39,8 @@ function DeleteAction({ disabled, onClick, label = "Delete" }: { disabled?: bool
       type="button"
       disabled={disabled}
       onClick={onClick}
-      className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all hover:bg-[rgba(255,59,92,0.12)] disabled:opacity-50"
-      style={{ color: "#ff3b5c", border: "1px solid rgba(255,59,92,0.22)" }}
+      className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all hover:bg-[rgba(255,65,108,0.12)] disabled:opacity-50"
+      style={{ color: "#ff416c", border: "1px solid rgba(255,65,108,0.22)" }}
     >
       <Trash2 size={12} /> {label}
     </button>
@@ -410,9 +411,9 @@ export function FounderConsole() {
   return (
     <div className="p-3 sm:p-4 md:p-6 space-y-4 max-w-7xl mx-auto w-full">
       {/* Founder badge */}
-      <div className="flex items-center gap-2 px-3 py-2 rounded-xl w-fit" style={{ background: "rgba(168,85,247,0.12)", border: "1px solid rgba(168,85,247,0.25)" }}>
-        <Shield size={14} style={{ color: "#a855f7" }} />
-        <span style={{ color: "#a855f7", fontSize: "0.75rem", fontWeight: 700, letterSpacing: "0.05em" }}>SUPER ADMIN · FOUNDER CONSOLE</span>
+      <div className="flex items-center gap-2 px-3 py-2 rounded-xl w-fit" style={{ background: "rgba(var(--cafyz-brand-rgb),0.12)", border: "1px solid rgba(var(--cafyz-brand-rgb),0.25)" }}>
+        <Shield size={14} style={{ color: "var(--cafyz-brand)" }} />
+        <span style={{ color: "var(--cafyz-brand)", fontSize: "0.75rem", fontWeight: 700, letterSpacing: "0.05em" }}>SUPER ADMIN · FOUNDER CONSOLE</span>
       </div>
 
       {/* Tabs */}
@@ -420,7 +421,7 @@ export function FounderConsole() {
         {tabs.map(t => (
           <button key={t} onClick={() => setActiveTab(t)}
             className="px-3 py-2 rounded-lg text-xs font-medium whitespace-nowrap transition-all flex-shrink-0"
-            style={activeTab === t ? { background: "linear-gradient(135deg, #1e7fff, #00c6ff)", color: "#fff" } : { color: "var(--cafyz-muted)" }}>
+            style={activeTab === t ? { background: "var(--cafyz-gradient)", color: "#fff" } : { color: "var(--cafyz-muted)" }}>
             {t}
           </button>
         ))}
@@ -431,10 +432,10 @@ export function FounderConsole() {
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-5">
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             {[
-              { label: "Total Restaurants", value: String(totalRestaurants), icon: Building2, color: "#1e7fff" },
-              { label: "Est. Monthly Revenue", value: `${(totalMRR / 1000).toFixed(1)}k`, icon: TrendingUp, color: "#22c55e" },
-              { label: "Active Licenses", value: String(activeLicenses), icon: Key, color: "#00c6ff" },
-              { label: "Pending Trials", value: String(pendingTrials), icon: Zap, color: "#f59e0b" },
+              { label: "Total Restaurants", value: String(totalRestaurants), icon: Building2, color: "var(--cafyz-brand)" },
+              { label: "Est. Monthly Revenue", value: `${(totalMRR / 1000).toFixed(1)}k`, icon: TrendingUp, color: "#00d68f" },
+              { label: "Active Licenses", value: String(activeLicenses), icon: Key, color: "var(--cafyz-brand-2)" },
+              { label: "Pending Trials", value: String(pendingTrials), icon: Zap, color: "#ffaa00" },
             ].map((kpi, i) => {
               const Icon = kpi.icon;
               return (
@@ -442,7 +443,7 @@ export function FounderConsole() {
                   className="rounded-2xl p-4 relative overflow-hidden"
                   style={{ background: "var(--cafyz-surface)", border: "1px solid var(--cafyz-border)" }}>
                   <div className="absolute top-0 right-0 w-20 h-20 rounded-full opacity-10 blur-xl" style={{ background: kpi.color, transform: "translate(30%,-30%)" }} />
-                  <div className="w-9 h-9 rounded-xl flex items-center justify-center mb-3" style={{ background: `${kpi.color}15` }}>
+                  <div className="w-9 h-9 rounded-xl flex items-center justify-center mb-3" style={{ background: `${withAlpha(kpi.color, 0x15)}` }}>
                     <Icon size={18} style={{ color: kpi.color }} />
                   </div>
                   <div style={{ color: "var(--cafyz-muted)", fontSize: "0.7rem", marginBottom: 2 }}>{kpi.label}</div>
@@ -460,7 +461,7 @@ export function FounderConsole() {
                 return (
                   <div key={id} className="flex items-center gap-3">
                     <span style={{ color: planColors[id], fontSize: "0.78rem", fontWeight: 600, width: 64, textTransform: "capitalize" }}>{id}</span>
-                    <div className="flex-1 h-2 rounded-full" style={{ background: "rgba(30,127,255,0.08)" }}>
+                    <div className="flex-1 h-2 rounded-full" style={{ background: "rgba(var(--cafyz-brand-rgb),0.08)" }}>
                       <div className="h-full rounded-full" style={{ width: `${pct}%`, background: planColors[id] }} />
                     </div>
                     <span style={{ color: "var(--cafyz-muted)", fontFamily: "var(--font-mono)", fontSize: "0.75rem", width: 20 }}>{count}</span>
@@ -475,7 +476,7 @@ export function FounderConsole() {
       {/* Restaurants */}
       {activeTab === "Restaurants" && (
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="rounded-2xl overflow-hidden" style={{ background: "var(--cafyz-surface)", border: "1px solid var(--cafyz-border)" }}>
-          <div className="grid grid-cols-12 gap-2 px-4 py-3 border-b text-xs uppercase tracking-wider" style={{ color: "var(--cafyz-muted)", borderColor: "rgba(30,127,255,0.08)", fontFamily: "var(--font-mono)" }}>
+          <div className="grid grid-cols-12 gap-2 px-4 py-3 border-b text-xs uppercase tracking-wider" style={{ color: "var(--cafyz-muted)", borderColor: "rgba(var(--cafyz-brand-rgb),0.08)", fontFamily: "var(--font-mono)" }}>
             <div className="col-span-4 md:col-span-3">Restaurant</div>
             <div className="col-span-2 hidden sm:block">Plan</div>
             <div className="col-span-2 hidden md:block">Timezone</div>
@@ -486,14 +487,14 @@ export function FounderConsole() {
           {rests.length === 0 && <div className="px-4 py-8 text-center" style={{ color: "var(--cafyz-muted)", fontSize: "0.82rem" }}>No restaurants</div>}
           {rests.map((r, i) => (
             <motion.div key={r.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: i * 0.04 }}
-              className="grid grid-cols-12 gap-2 px-4 py-3 items-center border-b hover:bg-[rgba(30,127,255,0.03)] transition-all"
-              style={{ borderColor: "rgba(30,127,255,0.06)" }}>
+              className="grid grid-cols-12 gap-2 px-4 py-3 items-center border-b hover:bg-[rgba(var(--cafyz-brand-rgb),0.03)] transition-all"
+              style={{ borderColor: "rgba(var(--cafyz-brand-rgb),0.06)" }}>
               <div className="col-span-4 md:col-span-3 min-w-0">
                 <p className="truncate" style={{ color: "var(--cafyz-text)", fontSize: "0.85rem", fontWeight: 500 }}>{r.name}</p>
                 <p style={{ color: "var(--cafyz-muted)", fontSize: "0.7rem" }}>{r.slug}</p>
               </div>
               <div className="col-span-2 hidden sm:block">
-                <span className="text-xs px-2 py-0.5 rounded-full capitalize" style={{ background: `${planColors[r.plan]}15`, color: planColors[r.plan] }}>{r.plan}</span>
+                <span className="text-xs px-2 py-0.5 rounded-full capitalize" style={{ background: `${withAlpha(planColors[r.plan], 0x15)}`, color: planColors[r.plan] }}>{r.plan}</span>
               </div>
               <div className="col-span-2 hidden md:flex items-center gap-1" style={{ color: "var(--cafyz-muted)", fontSize: "0.78rem" }}>
                 <Globe size={11} /> {r.timezone}
@@ -504,11 +505,11 @@ export function FounderConsole() {
               <div className="col-span-2">
                 <div className="flex flex-col gap-1">
                   <span className="text-xs px-2 py-0.5 rounded-full w-fit"
-                    style={r.active_key ? { background: "rgba(34,197,94,0.1)", color: "#22c55e" } : { background: "rgba(245,158,11,0.1)", color: "#f59e0b" }}>
+                    style={r.active_key ? { background: "rgba(0,214,143,0.1)", color: "#00d68f" } : { background: "rgba(255,170,0,0.1)", color: "#ffaa00" }}>
                     {r.active_key ? "Licensed" : "No license"}
                   </span>
                   {Number(r.access_paused) === 1 && (
-                    <span className="text-xs px-2 py-0.5 rounded-full w-fit" style={{ background: "rgba(255,59,92,0.1)", color: "#ff3b5c" }}>
+                    <span className="text-xs px-2 py-0.5 rounded-full w-fit" style={{ background: "rgba(255,65,108,0.1)", color: "#ff416c" }}>
                       Paused
                     </span>
                   )}
@@ -520,7 +521,7 @@ export function FounderConsole() {
                   onClick={() => void toggleRestaurantAccess(r.id, r.name, Number(r.access_paused) !== 1)}
                   className="p-1.5 rounded-lg transition-all"
                   title={Number(r.access_paused) === 1 ? "Resume access" : "Pause access"}
-                  style={{ color: Number(r.access_paused) === 1 ? "#22c55e" : "#f59e0b", background: Number(r.access_paused) === 1 ? "rgba(34,197,94,0.1)" : "rgba(245,158,11,0.1)" }}
+                  style={{ color: Number(r.access_paused) === 1 ? "#00d68f" : "#ffaa00", background: Number(r.access_paused) === 1 ? "rgba(0,214,143,0.1)" : "rgba(255,170,0,0.1)" }}
                 >
                   {Number(r.access_paused) === 1 ? <Play size={14} /> : <Pause size={14} />}
                 </button>
@@ -529,16 +530,16 @@ export function FounderConsole() {
                   disabled={busy}
                   onChange={e => void changePlan(r.id, e.target.value)}
                   className="text-xs rounded-lg px-2 py-1 outline-none capitalize"
-                  style={{ background: "var(--cafyz-surface-2)", color: "var(--cafyz-text)", border: "1px solid rgba(30,127,255,0.15)" }}
+                  style={{ background: "var(--cafyz-surface-2)", color: "var(--cafyz-text)", border: "1px solid rgba(var(--cafyz-brand-rgb),0.15)" }}
                 >
                   {["basic", "pro", "premium"].map(p => <option key={p} value={p}>{p}</option>)}
                 </select>
                 <button
                   disabled={busy}
                   onClick={() => void removeRestaurant(r.id, r.name)}
-                  className="p-1.5 rounded-lg transition-all hover:bg-[rgba(255,59,92,0.1)]"
+                  className="p-1.5 rounded-lg transition-all hover:bg-[rgba(255,65,108,0.1)]"
                   title="Delete restaurant"
-                  style={{ color: "#ff3b5c" }}
+                  style={{ color: "#ff416c" }}
                 >
                   <Trash2 size={14} />
                 </button>
@@ -553,21 +554,21 @@ export function FounderConsole() {
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-3">
           <div className="flex flex-wrap items-center gap-3">
             <div className="flex items-center gap-2 px-3 py-2 rounded-xl" style={{ background: "var(--cafyz-surface)", border: "1px solid var(--cafyz-border)" }}>
-              <Users size={14} style={{ color: "#1e7fff" }} />
+              <Users size={14} style={{ color: "var(--cafyz-brand)" }} />
               <span style={{ color: "var(--cafyz-text)", fontSize: "0.82rem", fontWeight: 600 }}>{filteredUsers.length} users</span>
             </div>
             <select
               value={userFilter}
               onChange={e => setUserFilter(e.target.value)}
               className="text-sm rounded-xl px-3 py-2 outline-none"
-              style={{ background: "var(--cafyz-surface)", color: "var(--cafyz-text)", border: "1px solid rgba(30,127,255,0.15)" }}
+              style={{ background: "var(--cafyz-surface)", color: "var(--cafyz-text)", border: "1px solid rgba(var(--cafyz-brand-rgb),0.15)" }}
             >
               <option value="">All restaurants</option>
               {rests.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
             </select>
           </div>
           <div className="rounded-2xl overflow-hidden" style={{ background: "var(--cafyz-surface)", border: "1px solid var(--cafyz-border)" }}>
-            <div className="grid grid-cols-12 gap-2 px-4 py-3 border-b text-xs uppercase tracking-wider" style={{ color: "var(--cafyz-muted)", borderColor: "rgba(30,127,255,0.08)", fontFamily: "var(--font-mono)" }}>
+            <div className="grid grid-cols-12 gap-2 px-4 py-3 border-b text-xs uppercase tracking-wider" style={{ color: "var(--cafyz-muted)", borderColor: "rgba(var(--cafyz-brand-rgb),0.08)", fontFamily: "var(--font-mono)" }}>
               <div className="col-span-3">User</div>
               <div className="col-span-3 hidden sm:block">Restaurant</div>
               <div className="col-span-2 hidden md:block">Role</div>
@@ -582,8 +583,8 @@ export function FounderConsole() {
               const statusLabel = Number(u.access_paused) === 1 ? "tenant paused" : u.status;
               return (
                 <motion.div key={u.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: i * 0.02 }}
-                  className="grid grid-cols-12 gap-2 px-4 py-3 items-center border-b hover:bg-[rgba(30,127,255,0.03)] transition-all"
-                  style={{ borderColor: "rgba(30,127,255,0.06)" }}>
+                  className="grid grid-cols-12 gap-2 px-4 py-3 items-center border-b hover:bg-[rgba(var(--cafyz-brand-rgb),0.03)] transition-all"
+                  style={{ borderColor: "rgba(var(--cafyz-brand-rgb),0.06)" }}>
                   <div className="col-span-3 min-w-0">
                     <p className="truncate" style={{ color: "var(--cafyz-text)", fontSize: "0.85rem", fontWeight: 500 }}>{u.name}</p>
                     <p className="truncate" style={{ color: "var(--cafyz-muted)", fontSize: "0.7rem" }}>{u.email}</p>
@@ -596,10 +597,10 @@ export function FounderConsole() {
                   <div className="col-span-2">
                     <span className="text-xs px-2 py-0.5 rounded-full capitalize"
                       style={paused
-                        ? { background: "rgba(255,59,92,0.1)", color: "#ff3b5c" }
+                        ? { background: "rgba(255,65,108,0.1)", color: "#ff416c" }
                         : u.status === "break"
-                          ? { background: "rgba(245,158,11,0.1)", color: "#f59e0b" }
-                          : { background: "rgba(34,197,94,0.1)", color: "#22c55e" }}>
+                          ? { background: "rgba(255,170,0,0.1)", color: "#ffaa00" }
+                          : { background: "rgba(0,214,143,0.1)", color: "#00d68f" }}>
                       {statusLabel}
                     </span>
                   </div>
@@ -610,8 +611,8 @@ export function FounderConsole() {
                       className="p-1.5 rounded-lg transition-all"
                       title={Number(u.access_paused) === 1 ? "Resume the restaurant first" : u.status === "off" ? "Resume user" : "Pause user"}
                       style={{
-                        color: u.status === "off" ? "#22c55e" : "#f59e0b",
-                        background: u.status === "off" ? "rgba(34,197,94,0.1)" : "rgba(245,158,11,0.1)",
+                        color: u.status === "off" ? "#00d68f" : "#ffaa00",
+                        background: u.status === "off" ? "rgba(0,214,143,0.1)" : "rgba(255,170,0,0.1)",
                         opacity: Number(u.access_paused) === 1 ? 0.4 : 1,
                       }}
                     >
@@ -620,9 +621,9 @@ export function FounderConsole() {
                     <button
                       disabled={busy}
                       onClick={() => void removeUser(u)}
-                      className="p-1.5 rounded-lg transition-all hover:bg-[rgba(255,59,92,0.1)]"
+                      className="p-1.5 rounded-lg transition-all hover:bg-[rgba(255,65,108,0.1)]"
                       title="Delete user"
-                      style={{ color: "#ff3b5c" }}
+                      style={{ color: "#ff416c" }}
                     >
                       <Trash2 size={14} />
                     </button>
@@ -645,14 +646,14 @@ export function FounderConsole() {
               {resolvedLicReqCount > 0 && (
                 <button disabled={busy} onClick={() => void clearResolvedLicenseRequests()}
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold"
-                  style={{ color: "#ff3b5c", border: "1px solid rgba(255,59,92,0.22)", background: "rgba(255,59,92,0.06)" }}>
+                  style={{ color: "#ff416c", border: "1px solid rgba(255,65,108,0.22)", background: "rgba(255,65,108,0.06)" }}>
                   <Trash2 size={12} /> Clear {resolvedLicReqCount} license req.
                 </button>
               )}
               {resolvedInquiryCount > 0 && (
                 <button disabled={busy} onClick={() => void clearResolvedInquiries()}
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold"
-                  style={{ color: "#ff3b5c", border: "1px solid rgba(255,59,92,0.22)", background: "rgba(255,59,92,0.06)" }}>
+                  style={{ color: "#ff416c", border: "1px solid rgba(255,65,108,0.22)", background: "rgba(255,65,108,0.06)" }}>
                   <Trash2 size={12} /> Clear {resolvedInquiryCount} trial req.
                 </button>
               )}
@@ -660,17 +661,17 @@ export function FounderConsole() {
           </div>
           {licReqs.length > 0 && (
             <div className="space-y-2">
-              <p style={{ color: "#a855f7", fontSize: "0.7rem", fontWeight: 700, letterSpacing: "0.05em", textTransform: "uppercase" }}>Renewal / Purchase Requests</p>
+              <p style={{ color: "var(--cafyz-brand)", fontSize: "0.7rem", fontWeight: 700, letterSpacing: "0.05em", textTransform: "uppercase" }}>Renewal / Purchase Requests</p>
               {licReqs.map(req => (
                 <div key={req.id} className="rounded-2xl p-4 flex flex-wrap items-center gap-4"
-                  style={{ background: "var(--cafyz-surface)", border: "1px solid rgba(168,85,247,0.25)" }}>
+                  style={{ background: "var(--cafyz-surface)", border: "1px solid rgba(var(--cafyz-brand-rgb),0.25)" }}>
                   <div className="flex-1 min-w-0">
                     <p style={{ color: "var(--cafyz-text)", fontWeight: 600, fontSize: "0.9rem" }}>{req.restaurant_name ?? "Restaurant"}</p>
                     <p style={{ color: "var(--cafyz-muted)", fontSize: "0.75rem" }}>{req.email}</p>
                     <div className="flex items-center gap-2 mt-1 flex-wrap">
-                      <span className="text-xs px-2 py-0.5 rounded-full capitalize" style={{ background: `${planColors[req.plan]}15`, color: planColors[req.plan] }}>{req.plan}</span>
+                      <span className="text-xs px-2 py-0.5 rounded-full capitalize" style={{ background: `${withAlpha(planColors[req.plan], 0x15)}`, color: planColors[req.plan] }}>{req.plan}</span>
                       <span className="text-xs px-2 py-0.5 rounded-full capitalize"
-                        style={req.status === "pending" ? { background: "rgba(245,158,11,0.1)", color: "#f59e0b" } : { background: "rgba(107,130,160,0.15)", color: "var(--cafyz-muted)" }}>
+                        style={req.status === "pending" ? { background: "rgba(255,170,0,0.1)", color: "#ffaa00" } : { background: "rgba(166,160,199,0.15)", color: "var(--cafyz-muted)" }}>
                         {req.status}
                       </span>
                       <span style={{ color: "var(--cafyz-muted)", fontSize: "0.72rem" }}>{shortDate(req.created_at)}</span>
@@ -680,7 +681,7 @@ export function FounderConsole() {
                     {req.status === "pending" && (
                       <button disabled={busy} onClick={() => fulfillRequest(req.id)}
                         className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold"
-                        style={{ background: "rgba(34,197,94,0.12)", color: "#22c55e" }}>
+                        style={{ background: "rgba(0,214,143,0.12)", color: "#00d68f" }}>
                         <Key size={12} /> Fulfill & email key
                       </button>
                     )}
@@ -694,7 +695,7 @@ export function FounderConsole() {
             <div className="rounded-2xl py-10 text-center" style={{ background: "var(--cafyz-surface)", border: "1px solid var(--cafyz-border)", color: "var(--cafyz-muted)", fontSize: "0.82rem" }}>No trial or license requests</div>
           )}
           {inquiries.length > 0 && (
-            <p style={{ color: "#1e7fff", fontSize: "0.7rem", fontWeight: 700, letterSpacing: "0.05em", textTransform: "uppercase" }}>Trial Requests</p>
+            <p style={{ color: "var(--cafyz-brand)", fontSize: "0.7rem", fontWeight: 700, letterSpacing: "0.05em", textTransform: "uppercase" }}>Trial Requests</p>
           )}
           {inquiries.map((req, i) => (
             <motion.div key={req.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}
@@ -704,7 +705,7 @@ export function FounderConsole() {
                 <p style={{ color: "var(--cafyz-text)", fontWeight: 600, fontSize: "0.9rem" }}>{req.restaurant_name}</p>
                 <p style={{ color: "var(--cafyz-muted)", fontSize: "0.75rem" }}>{req.name} · {req.email}{req.phone ? ` · ${req.phone}` : ""}</p>
                 <div className="flex items-center gap-2 mt-1">
-                  <span className="text-xs px-2 py-0.5 rounded-full capitalize" style={{ background: `${planColors[req.plan]}15`, color: planColors[req.plan] }}>{req.plan}</span>
+                  <span className="text-xs px-2 py-0.5 rounded-full capitalize" style={{ background: `${withAlpha(planColors[req.plan], 0x15)}`, color: planColors[req.plan] }}>{req.plan}</span>
                   <span style={{ color: "var(--cafyz-muted)", fontSize: "0.72rem" }}>{shortDate(req.created_at)}</span>
                 </div>
               </div>
@@ -713,18 +714,18 @@ export function FounderConsole() {
                   <>
                     <button disabled={busy} onClick={() => decideInquiry(req.id, "approved")}
                       className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold"
-                      style={{ background: "rgba(34,197,94,0.1)", color: "#22c55e" }}>
+                      style={{ background: "rgba(0,214,143,0.1)", color: "#00d68f" }}>
                       <Check size={12} /> Approve
                     </button>
                     <button disabled={busy} onClick={() => decideInquiry(req.id, "denied")}
                       className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold"
-                      style={{ background: "rgba(255,59,92,0.08)", color: "#ff3b5c" }}>
+                      style={{ background: "rgba(255,65,108,0.08)", color: "#ff416c" }}>
                       <X size={12} /> Reject
                     </button>
                   </>
                 ) : (
                   <span className="text-xs px-2.5 py-1 rounded-full capitalize"
-                    style={req.status === "approved" ? { background: "rgba(34,197,94,0.1)", color: "#22c55e" } : { background: "rgba(255,59,92,0.1)", color: "#ff3b5c" }}>
+                    style={req.status === "approved" ? { background: "rgba(0,214,143,0.1)", color: "#00d68f" } : { background: "rgba(255,65,108,0.1)", color: "#ff416c" }}>
                     {req.status}
                   </span>
                 )}
@@ -743,7 +744,7 @@ export function FounderConsole() {
               {["Pro", "Premium", "Basic"].map(plan => (
                 <button key={plan} disabled={busy} onClick={() => generateKey(plan)}
                   className="flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-semibold"
-                  style={{ background: `${planColors[plan.toLowerCase()]}12`, color: planColors[plan.toLowerCase()], border: `1px solid ${planColors[plan.toLowerCase()]}25` }}>
+                  style={{ background: `${withAlpha(planColors[plan.toLowerCase()], 0x12)}`, color: planColors[plan.toLowerCase()], border: `1px solid ${withAlpha(planColors[plan.toLowerCase()], 0x25)}` }}>
                   <Key size={14} /> Generate {plan} Key
                 </button>
               ))}
@@ -753,7 +754,7 @@ export function FounderConsole() {
                 value={keyFilter}
                 onChange={e => setKeyFilter(e.target.value as KeyFilter)}
                 className="text-xs rounded-lg px-2.5 py-1.5 outline-none"
-                style={{ background: "var(--cafyz-surface-2)", color: "var(--cafyz-text)", border: "1px solid rgba(30,127,255,0.15)" }}
+                style={{ background: "var(--cafyz-surface-2)", color: "var(--cafyz-text)", border: "1px solid rgba(var(--cafyz-brand-rgb),0.15)" }}
               >
                 <option value="all">All keys ({keys.length})</option>
                 <option value="unused">Unused ({unusedKeyCount})</option>
@@ -763,14 +764,14 @@ export function FounderConsole() {
               {unusedKeyCount > 0 && (
                 <button disabled={busy} onClick={() => void deleteUnusedKeys()}
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold"
-                  style={{ color: "#ff3b5c", border: "1px solid rgba(255,59,92,0.22)", background: "rgba(255,59,92,0.06)" }}>
+                  style={{ color: "#ff416c", border: "1px solid rgba(255,65,108,0.22)", background: "rgba(255,65,108,0.06)" }}>
                   <Trash2 size={12} /> Delete unused ({unusedKeyCount})
                 </button>
               )}
               {revokedKeyCount > 0 && (
                 <button disabled={busy} onClick={() => void deleteRevokedKeys()}
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold"
-                  style={{ color: "#ff3b5c", border: "1px solid rgba(255,59,92,0.22)", background: "rgba(255,59,92,0.06)" }}>
+                  style={{ color: "#ff416c", border: "1px solid rgba(255,65,108,0.22)", background: "rgba(255,65,108,0.06)" }}>
                   <Trash2 size={12} /> Delete revoked ({revokedKeyCount})
                 </button>
               )}
@@ -778,21 +779,21 @@ export function FounderConsole() {
           </div>
           <div className="space-y-2">
             {filteredKeys.length === 0 && (
-              <div className="rounded-xl py-8 text-center" style={{ background: "var(--cafyz-surface)", border: "1px solid rgba(30,127,255,0.08)", color: "var(--cafyz-muted)", fontSize: "0.82rem" }}>
+              <div className="rounded-xl py-8 text-center" style={{ background: "var(--cafyz-surface)", border: "1px solid rgba(var(--cafyz-brand-rgb),0.08)", color: "var(--cafyz-muted)", fontSize: "0.82rem" }}>
                 {keys.length === 0 ? "No license keys yet" : "No keys match this filter"}
               </div>
             )}
             {filteredKeys.map((lk, i) => (
               <motion.div key={lk.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: i * 0.04 }}
                 className="flex items-center gap-3 p-3 rounded-xl"
-                style={{ background: "var(--cafyz-surface)", border: "1px solid rgba(30,127,255,0.08)" }}>
+                style={{ background: "var(--cafyz-surface)", border: "1px solid rgba(var(--cafyz-brand-rgb),0.08)" }}>
                 <div className="flex-1 min-w-0">
                   <p style={{ color: "var(--cafyz-text)", fontFamily: "var(--font-mono)", fontSize: "0.8rem" }}>{lk.key_code}</p>
                   <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                     <span className="text-xs capitalize" style={{ color: planColors[lk.plan] }}>{lk.plan}</span>
                     <span style={{ color: "var(--cafyz-muted)", fontSize: "0.7rem" }}>{lk.restaurant_id ? `Used by ${lk.restaurant_name ?? "a restaurant"}` : "Available"}</span>
                     {Number(lk.is_active) === 0 && (
-                      <span className="text-xs px-1.5 py-0.5 rounded-full" style={{ background: "rgba(255,59,92,0.1)", color: "#ff3b5c" }}>Revoked</span>
+                      <span className="text-xs px-1.5 py-0.5 rounded-full" style={{ background: "rgba(255,65,108,0.1)", color: "#ff416c" }}>Revoked</span>
                     )}
                     <span style={{ color: "var(--cafyz-muted)", fontSize: "0.7rem" }}>· {shortDate(lk.created_at)}</span>
                   </div>
@@ -802,8 +803,8 @@ export function FounderConsole() {
                     {lk.restaurant_id ? "Used" : "Available"}
                   </span>
                   <button onClick={() => void copyKey(lk.key_code)} className="w-7 h-7 rounded-lg flex items-center justify-center transition-all"
-                    style={{ background: copied === lk.key_code ? "rgba(34,197,94,0.1)" : "rgba(30,127,255,0.08)" }}>
-                    {copied === lk.key_code ? <Check size={13} style={{ color: "#22c55e" }} /> : <Copy size={13} style={{ color: "var(--cafyz-muted)" }} />}
+                    style={{ background: copied === lk.key_code ? "rgba(0,214,143,0.1)" : "rgba(var(--cafyz-brand-rgb),0.08)" }}>
+                    {copied === lk.key_code ? <Check size={13} style={{ color: "#00d68f" }} /> : <Copy size={13} style={{ color: "var(--cafyz-muted)" }} />}
                   </button>
                   <DeleteAction disabled={busy} onClick={() => void removeLicenseKey(lk)} />
                 </div>
@@ -925,10 +926,10 @@ export function FounderConsole() {
                           onClick={() => togglePanel(plan, panel)}
                           className="inline-flex items-center gap-1 text-xs px-2.5 py-1.5 rounded-lg font-medium cursor-pointer select-none active:scale-[0.96]"
                           style={{
-                            background: on ? `${color}22` : "var(--cafyz-subtle-bg)",
+                            background: on ? `${withAlpha(color, 0x22)}` : "var(--cafyz-subtle-bg)",
                             color: on ? color : "var(--cafyz-muted)",
-                            border: on ? `1px solid ${color}45` : "1px solid var(--cafyz-border)",
-                            boxShadow: on ? `0 0 0 1px ${color}18` : "none",
+                            border: on ? `1px solid ${withAlpha(color, 0x45)}` : "1px solid var(--cafyz-border)",
+                            boxShadow: on ? `0 0 0 1px ${withAlpha(color, 0x18)}` : "none",
                             transition: "transform 70ms ease, background-color 90ms ease, border-color 90ms ease, color 90ms ease, box-shadow 90ms ease",
                             WebkitTapHighlightColor: "transparent",
                           }}
@@ -945,7 +946,7 @@ export function FounderConsole() {
           })}
           <button onClick={() => void load()}
             className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold"
-            style={{ background: "linear-gradient(135deg, #1e7fff, #00c6ff)", color: "#fff" }}>
+            style={{ background: "var(--cafyz-gradient)", color: "#fff" }}>
             <RefreshCw size={15} /> Refresh
           </button>
         </motion.div>

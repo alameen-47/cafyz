@@ -317,6 +317,143 @@ router.post('/verify-otp', async (req, res, next) => {
   } catch (e) { next(e); }
 });
 
+// ── Email sign-in codes ─────────────────────────────────────────────────────────
+// A 6-digit code sent to the account's email address. Proving the code proves the
+// address, so what follows matches Google and Apple: a session, or a choice of
+// restaurant when the address belongs to accounts in several. The phone routes
+// above stay for app builds released before this.
+
+const EmailOtpRequestSchema = z.object({ email: z.string().trim().email().max(254) });
+const EmailOtpVerifySchema = z.object({
+  email: z.string().trim().email().max(254),
+  otp: z.string().regex(/^\d{6}$/),
+});
+const EMAIL_OTP_RESEND_SEC = 30;
+// The same answer whether or not the address has an account, so the form can't be
+// used to find out who uses Cafyz.
+const EMAIL_OTP_SENT_MSG = `Check your email for a 6-digit code. It expires in ${OTP_TTL_MINUTES} minutes.`;
+
+function emailOtpMail(name: string, otp: string) {
+  const safeName = name.replace(/[<>&"']/g, '');
+  return {
+    subject: `${otp} is your Cafyz sign-in code`,
+    text: `Hello ${safeName},\n\nYour Cafyz sign-in code is ${otp}. It expires in ${OTP_TTL_MINUTES} minutes.\n\nIf you didn't try to sign in, you can ignore this email.`,
+    html: `<div style="font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;max-width:440px;margin:0 auto;padding:24px;color:#0a0b2d">
+             <p style="margin:0 0 16px">Hello ${safeName},</p>
+             <p style="margin:0 0 12px">Your Cafyz sign-in code is:</p>
+             <p style="margin:0 0 20px;font-size:32px;font-weight:700;letter-spacing:8px;color:#641aff">${otp}</p>
+             <p style="margin:0 0 8px">It expires in ${OTP_TTL_MINUTES} minutes.</p>
+             <p style="margin:0;color:#6b6890;font-size:13px">If you didn't try to sign in, you can ignore this email.</p>
+           </div>`,
+  };
+}
+
+// POST /api/auth/email-otp/request
+router.post('/email-otp/request', async (req, res, next) => {
+  try {
+    const email = EmailOtpRequestSchema.parse(req.body).email.toLowerCase();
+    const isProd = process.env.NODE_ENV === 'production';
+    if (isProd && !isEmailConfigured()) {
+      res.status(503).json({ error: 'Email codes are unavailable right now. Sign in with your password.' });
+      return;
+    }
+
+    const rows = await findUsersForLogin({ kind: 'email', value: email });
+    const active = rows.rows.filter((r) => String((r as Record<string, unknown>).status) !== 'off');
+    if (!active.length) {
+      if (rows.rows.length) {
+        res.status(403).json({ error: 'This user is currently inactive. Contact your manager.' });
+        return;
+      }
+      res.json({ ok: true, message: EMAIL_OTP_SENT_MSG });
+      return;
+    }
+
+    const db = getDb();
+    const recent = await db.execute({
+      sql: `SELECT id FROM login_email_otp_codes
+            WHERE email=? AND used_at IS NULL AND created_at > datetime('now', ?)
+            LIMIT 1`,
+      args: [email, `-${EMAIL_OTP_RESEND_SEC} seconds`],
+    });
+    if (recent.rows.length) {
+      res.status(429).json({ error: `A code was just sent. Wait ${EMAIL_OTP_RESEND_SEC} seconds before asking for another.`, code: 'RATE_LIMITED' });
+      return;
+    }
+
+    const otp = secureOtp6();
+    await db.execute({
+      sql: `DELETE FROM login_email_otp_codes
+            WHERE email=? OR expires_at <= datetime('now') OR used_at IS NOT NULL`,
+      args: [email],
+    });
+    await db.execute({
+      sql: `INSERT INTO login_email_otp_codes(id,email,otp_hash,expires_at,used_at,attempt_count)
+            VALUES(?,?,?,datetime('now', ?),NULL,0)`,
+      args: [randomBytes(16).toString('hex'), email, hashOtp(otp), `+${OTP_TTL_MINUTES} minutes`],
+    });
+
+    if (isEmailConfigured()) {
+      const name = String((active[0] as Record<string, unknown>).name ?? '').trim() || 'there';
+      const sent = await sendMailReliable({ from: smtpFrom(false), to: email, ...emailOtpMail(name, otp) });
+      if (!sent.ok) {
+        // eslint-disable-next-line no-console
+        console.error('[email-otp] send failed:', sent.error);
+        await db.execute({ sql: 'DELETE FROM login_email_otp_codes WHERE email=?', args: [email] });
+        res.status(502).json({ error: 'Could not send the code. Try again in a moment.' });
+        return;
+      }
+    }
+
+    res.json({
+      ok: true,
+      message: EMAIL_OTP_SENT_MSG,
+      ...(!isProd && !isEmailConfigured() ? { dev_otp: otp } : {}),
+    });
+  } catch (e) { next(e); }
+});
+
+// POST /api/auth/email-otp/verify
+router.post('/email-otp/verify', async (req, res, next) => {
+  try {
+    const body = EmailOtpVerifySchema.parse(req.body);
+    const email = body.email.toLowerCase();
+    const db = getDb();
+    const row = await db.execute({
+      sql: `SELECT id, otp_hash, attempt_count
+            FROM login_email_otp_codes
+            WHERE email=? AND used_at IS NULL AND expires_at > datetime('now')
+            ORDER BY created_at DESC
+            LIMIT 1`,
+      args: [email],
+    });
+    if (!row.rows.length) {
+      res.status(400).json({ error: 'That code has expired. Request a new one.' });
+      return;
+    }
+    const codeRow = row.rows[0] as Record<string, unknown>;
+    const codeId = String(codeRow.id);
+    if (Number(codeRow.attempt_count ?? 0) >= OTP_MAX_ATTEMPTS) {
+      res.status(429).json({ error: 'Too many wrong codes. Request a new one.' });
+      return;
+    }
+    if (!otpHashMatches(body.otp, String(codeRow.otp_hash))) {
+      await db.execute({ sql: 'UPDATE login_email_otp_codes SET attempt_count=attempt_count+1 WHERE id=?', args: [codeId] });
+      res.status(401).json({ error: 'That code is not right. Check the email and try again.' });
+      return;
+    }
+    await db.execute({ sql: `UPDATE login_email_otp_codes SET used_at=datetime('now') WHERE id=?`, args: [codeId] });
+
+    const rows = await findUsersForLogin({ kind: 'email', value: email });
+    const active = rows.rows.filter((r) => String((r as Record<string, unknown>).status) !== 'off');
+    if (!active.length) {
+      res.status(403).json({ error: 'This user is currently inactive. Contact your manager.' });
+      return;
+    }
+    await respondWithAccounts(res, 'email', email, active);
+  } catch (e) { next(e); }
+});
+
 // POST /api/auth/pin  (mobile PIN login — email or phone + 4-digit PIN)
 router.post('/pin', async (req, res, next) => {
   try {
@@ -695,12 +832,14 @@ router.post('/account/cancel-deletion', requireAuth, async (req: AuthRequest, re
 // so the tokens and handlers below are shared. The purpose claim still names the
 // provider, so a token minted for one can never be replayed against the other.
 type SocialProvider = 'google' | 'apple';
+/** Anything that proves an email can end in a choice of restaurant, email codes included. */
+type SelectProvider = SocialProvider | 'email';
 
 const SOCIAL_SELECT_TTL_SEC = 300;
 
-interface SocialSelectClaims { email: string; purpose: `${SocialProvider}_select` }
+interface SocialSelectClaims { email: string; purpose: `${SelectProvider}_select` }
 
-function signSocialSelectToken(provider: SocialProvider, email: string): string {
+function signSocialSelectToken(provider: SelectProvider, email: string): string {
   return jwt.sign(
     { email, purpose: `${provider}_select` } satisfies SocialSelectClaims,
     JWT_SECRET,
@@ -805,6 +944,16 @@ async function respondToSocialLogin(
     return;
   }
 
+  await respondWithAccounts(res, provider, email, active);
+}
+
+/** A proven email with one account signs in; with several, the user picks a restaurant. */
+async function respondWithAccounts(
+  res: Response,
+  provider: SelectProvider,
+  email: string,
+  active: unknown[],
+): Promise<void> {
   if (active.length > 1) {
     // The same email can belong to accounts in several restaurants, and the provider
     // proves only the address — so the user picks which one to enter. This is
@@ -893,7 +1042,7 @@ router.post('/google/signup', socialSignupHandler('google', 'Google'));
 router.post('/apple/signup', socialSignupHandler('apple', 'Apple'));
 
 // POST /api/auth/<provider>/select — finish sign-in after the user picks a restaurant.
-function socialSelectHandler(provider: SocialProvider): RequestHandler {
+function socialSelectHandler(provider: SelectProvider): RequestHandler {
   return async (req, res, next) => {
   try {
     const { selection_token, restaurant_id } = z.object({
@@ -937,6 +1086,7 @@ function socialSelectHandler(provider: SocialProvider): RequestHandler {
 
 router.post('/google/select', socialSelectHandler('google'));
 router.post('/apple/select', socialSelectHandler('apple'));
+router.post('/email-otp/select', socialSelectHandler('email'));
 
 // ── Sign in with Apple ─────────────────────────────────────────────────────────
 // Apple proves the address on iOS and hands back an identity token. Apple only

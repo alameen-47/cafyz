@@ -32,8 +32,9 @@ const LOGO_SIZE: Record<CafyzLogoSize, string> = {
 };
 
 /**
- * The logo is silver and blue metal on a transparent canvas. A slowly morphing amoeba glow
- * (`.cafyz-logo-glow`, theme-modes.css) sits behind it so the silver reads in both themes.
+ * The logo is white, violet and blue on a transparent canvas, with a soft glow behind it
+ * (`.cafyz-logo-glow`, theme-modes.css). In the light theme CSS swaps in the ink-wordmark
+ * version (premium.css), unless the surface is dark in both themes (`tone="onDark"`).
  */
 export function CafyzLogo({
   size = 'md',
@@ -51,7 +52,7 @@ export function CafyzLogo({
       <span aria-hidden="true" className="cafyz-logo-glow" />
       <img
         src={CAFYZ_LOGO_SRC}
-        alt="Cafyz — Restaurant Management Solutions"
+        alt="Cafyz"
         className={`relative object-contain ${imageSized ? LOGO_SIZE[size] : 'w-full h-full'}`}
         draggable={false}
       />

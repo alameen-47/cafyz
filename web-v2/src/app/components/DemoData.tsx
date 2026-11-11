@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { motion } from "motion/react";
 import {
-  FlaskConical, Sparkles, X, ArrowRight, ShoppingCart, ChefHat, LayoutGrid, BarChart3, Loader2,
+  FlaskConical, X, ArrowRight, ShoppingCart, ChefHat, LayoutGrid, BarChart3, Loader2,
   UtensilsCrossed, Receipt, CalendarDays, Package, Users, Settings2, CheckCircle2,
 } from "lucide-react";
 import { demoApi, DEMO_DATA_CHANGED_EVENT, type ApiDemoStatus } from "../../services/api";
@@ -9,8 +9,8 @@ import { notifyMenuChanged } from "../../utils/menuEvents";
 import { ConfirmModal } from "./ConfirmModal";
 import { toast } from "./Toast";
 
-const BRAND_GRADIENT = "linear-gradient(135deg, #1e7fff, #00c6ff)";
-const AMBER = "#f59e0b";
+const BRAND_GRADIENT = "var(--cafyz-gradient)";
+const AMBER = "#ffaa00";
 
 function publishDemoStatus(status: ApiDemoStatus) {
   window.dispatchEvent(new CustomEvent(DEMO_DATA_CHANGED_EVENT, { detail: status }));
@@ -99,20 +99,20 @@ export function DemoWelcomeModal({ restaurantName, canManage, onNavigate, onClos
             type="button"
             onClick={onClose}
             aria-label="Close"
-            className="absolute top-3 right-3 p-1.5 rounded-lg transition-all hover:bg-[rgba(30,127,255,0.08)]"
+            className="absolute top-3 right-3 p-1.5 rounded-lg transition-all hover:bg-[rgba(var(--cafyz-brand-rgb),0.08)]"
             style={{ color: "var(--cafyz-muted)" }}
           >
             <X size={16} />
           </button>
           <div
             className="w-12 h-12 rounded-2xl flex items-center justify-center mb-3"
-            style={{ background: BRAND_GRADIENT, boxShadow: "0 8px 24px rgba(30,127,255,0.35)" }}
+            style={{ background: BRAND_GRADIENT, boxShadow: "0 8px 24px rgba(var(--cafyz-brand-rgb),0.35)" }}
           >
-            <Sparkles size={22} color="#fff" />
+            <ChefHat size={22} color="#fff" />
           </div>
           <span
             className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[0.65rem] font-semibold uppercase tracking-wide"
-            style={{ background: "rgba(245,158,11,0.14)", color: AMBER, border: "1px solid rgba(245,158,11,0.3)" }}
+            style={{ background: "rgba(255,170,0,0.14)", color: AMBER, border: "1px solid rgba(255,170,0,0.3)" }}
           >
             <FlaskConical size={11} /> Demo data
           </span>
@@ -121,7 +121,7 @@ export function DemoWelcomeModal({ restaurantName, canManage, onNavigate, onClos
             className="mt-2"
             style={{ color: "var(--cafyz-text)", fontFamily: "var(--font-display)", fontWeight: 700, fontSize: "1.25rem", lineHeight: 1.25 }}
           >
-            Welcome to {restaurantName || "Cafyz"} 👋
+            Welcome to {restaurantName || "Cafyz"}
           </h2>
           <p className="mt-1.5" style={{ color: "var(--cafyz-text-secondary)", fontSize: "0.85rem", lineHeight: 1.55 }}>
             We've filled your restaurant with <b>sample data</b> — menu, tables, orders, staff, bookings and stock — so you can
@@ -143,18 +143,18 @@ export function DemoWelcomeModal({ restaurantName, canManage, onNavigate, onClos
                 style={{ background: "var(--cafyz-surface-2)", border: "1px solid var(--cafyz-border)" }}
               >
                 <div className="flex items-center gap-2">
-                  <span className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: "rgba(30,127,255,0.12)" }}>
-                    <Icon size={15} color="#1e7fff" />
+                  <span className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: "rgba(var(--cafyz-brand-rgb),0.12)" }}>
+                    <Icon size={15} color="var(--cafyz-brand)" />
                   </span>
                   <span style={{ color: "var(--cafyz-text)", fontWeight: 600, fontSize: "0.85rem" }}>{title}</span>
-                  <ArrowRight size={14} color="#1e7fff" className="ml-auto opacity-0 group-hover:opacity-100 transition-opacity rtl:rotate-180" />
+                  <ArrowRight size={14} color="var(--cafyz-brand)" className="ml-auto opacity-0 group-hover:opacity-100 transition-opacity rtl:rotate-180" />
                 </div>
                 <p className="mt-1.5" style={{ color: "var(--cafyz-muted)", fontSize: "0.75rem", lineHeight: 1.45 }}>{body}</p>
               </button>
             ))}
           </div>
 
-          <div className="rounded-2xl p-3.5 flex gap-3" style={{ background: "rgba(245,158,11,0.08)", border: "1px solid rgba(245,158,11,0.25)" }}>
+          <div className="rounded-2xl p-3.5 flex gap-3" style={{ background: "rgba(255,170,0,0.08)", border: "1px solid rgba(255,170,0,0.25)" }}>
             <Settings2 size={18} color={AMBER} className="flex-shrink-0 mt-0.5" />
             <div>
               <p style={{ color: "var(--cafyz-text)", fontWeight: 600, fontSize: "0.83rem" }}>Ready to add your real data?</p>
@@ -173,7 +173,7 @@ export function DemoWelcomeModal({ restaurantName, canManage, onNavigate, onClos
               <button
                 type="button"
                 onClick={() => go("profile")}
-                className="flex-1 rounded-xl px-4 py-2.5 text-sm font-semibold transition-all hover:bg-[rgba(30,127,255,0.08)]"
+                className="flex-1 rounded-xl px-4 py-2.5 text-sm font-semibold transition-all hover:bg-[rgba(var(--cafyz-brand-rgb),0.08)]"
                 style={{ color: "var(--cafyz-text)", border: "1px solid var(--cafyz-border)" }}
               >
                 Show me the switch
@@ -184,7 +184,7 @@ export function DemoWelcomeModal({ restaurantName, canManage, onNavigate, onClos
               onClick={onClose}
               autoFocus
               className="flex-1 rounded-xl px-4 py-2.5 text-sm font-semibold inline-flex items-center justify-center gap-2 transition-all hover:opacity-90"
-              style={{ background: BRAND_GRADIENT, color: "#fff", boxShadow: "0 6px 18px rgba(30,127,255,0.3)" }}
+              style={{ background: BRAND_GRADIENT, color: "#fff", boxShadow: "0 6px 18px rgba(var(--cafyz-brand-rgb),0.3)" }}
             >
               Start exploring <ArrowRight size={15} className="rtl:rotate-180" />
             </button>
@@ -208,11 +208,10 @@ export function DemoBanner({ canManage, onOpenGuide, onManage, onDismiss }: Demo
   return (
     <div
       role="status"
-      className="flex items-center gap-2 sm:gap-3 px-3 sm:px-5 py-2 flex-shrink-0"
-      style={{ background: "linear-gradient(90deg, rgba(245,158,11,0.14), rgba(30,127,255,0.08))", borderBottom: "1px solid rgba(245,158,11,0.22)" }}
+      className="cafyz-demo-banner flex items-center gap-2 sm:gap-3 flex-shrink-0"
     >
-      <span className="w-6 h-6 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: "rgba(245,158,11,0.16)" }}>
-        <FlaskConical size={13} color={AMBER} />
+      <span className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: "rgba(255,170,0,0.14)" }}>
+        <FlaskConical size={16} color={AMBER} />
       </span>
       <button type="button" onClick={onOpenGuide} className="flex-1 min-w-0 text-left truncate" style={{ color: "var(--cafyz-text)", fontSize: "0.78rem" }}>
         <b>Demo mode</b>
@@ -224,7 +223,7 @@ export function DemoBanner({ canManage, onOpenGuide, onManage, onDismiss }: Demo
       <button
         type="button"
         onClick={onOpenGuide}
-        className="hidden sm:inline-flex rounded-lg px-2.5 py-1 text-xs font-semibold whitespace-nowrap transition-all hover:bg-[rgba(30,127,255,0.08)]"
+        className="hidden sm:inline-flex rounded-lg px-2.5 py-1 text-xs font-semibold whitespace-nowrap transition-all hover:bg-[rgba(var(--cafyz-brand-rgb),0.08)]"
         style={{ color: "var(--cafyz-text-secondary)" }}
       >
         How it works
@@ -233,8 +232,8 @@ export function DemoBanner({ canManage, onOpenGuide, onManage, onDismiss }: Demo
         <button
           type="button"
           onClick={onManage}
-          className="inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-xs font-semibold whitespace-nowrap transition-all hover:opacity-90"
-          style={{ background: "rgba(245,158,11,0.16)", color: AMBER, border: "1px solid rgba(245,158,11,0.3)" }}
+          className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold whitespace-nowrap transition-all hover:opacity-90"
+          style={{ background: "rgba(255,170,0,0.08)", color: AMBER, border: "1px solid rgba(255,170,0,0.6)" }}
         >
           Turn off demo <ArrowRight size={12} className="rtl:rotate-180" />
         </button>
@@ -243,7 +242,7 @@ export function DemoBanner({ canManage, onOpenGuide, onManage, onDismiss }: Demo
         type="button"
         onClick={onDismiss}
         aria-label="Hide demo banner"
-        className="p-1 rounded-lg flex-shrink-0 transition-all hover:bg-[rgba(30,127,255,0.08)]"
+        className="p-1 rounded-lg flex-shrink-0 transition-all hover:bg-[rgba(var(--cafyz-brand-rgb),0.08)]"
         style={{ color: "var(--cafyz-muted)" }}
       >
         <X size={14} />
@@ -278,14 +277,14 @@ function DemoSwitch({ on, busy, disabled, onToggle }: { on: boolean; busy: boole
       aria-label="Show demo data"
       disabled={busy || disabled}
       onClick={onToggle}
-      className="relative inline-flex h-7 w-12 flex-shrink-0 items-center rounded-full transition-all disabled:cursor-not-allowed disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(30,127,255,0.5)]"
+      className="relative inline-flex h-7 w-12 flex-shrink-0 items-center rounded-full transition-all disabled:cursor-not-allowed disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(var(--cafyz-brand-rgb),0.5)]"
       style={{ background: on ? BRAND_GRADIENT : "var(--cafyz-surface-2)", border: "1px solid var(--cafyz-border)" }}
     >
       <span
         className="flex h-5 w-5 items-center justify-center rounded-full bg-white shadow transition-transform"
         style={{ transform: on ? "translateX(24px)" : "translateX(3px)" }}
       >
-        {busy && <Loader2 size={12} color="#1e7fff" className="animate-spin" />}
+        {busy && <Loader2 size={12} color="var(--cafyz-brand)" className="animate-spin" />}
       </span>
     </button>
   );
@@ -339,15 +338,15 @@ export function DemoDataPanel() {
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
         className="rounded-2xl p-5 space-y-4"
-        style={{ background: "var(--cafyz-surface)", border: `1px solid ${on ? "rgba(245,158,11,0.35)" : "var(--cafyz-border)"}` }}
+        style={{ background: "var(--cafyz-surface)", border: `1px solid ${on ? "rgba(255,170,0,0.35)" : "var(--cafyz-border)"}` }}
       >
         <div className="flex items-center gap-2 pb-2 border-b" style={{ borderColor: "var(--cafyz-border)" }}>
-          <FlaskConical size={16} style={{ color: on ? AMBER : "#1e7fff" }} />
+          <FlaskConical size={16} style={{ color: on ? AMBER : "var(--cafyz-brand)" }} />
           <h3 style={{ color: "var(--cafyz-text)", fontFamily: "var(--font-display)", fontWeight: 600, fontSize: "0.95rem" }}>Demo Data</h3>
           <span
             className="ml-auto px-2 py-0.5 rounded-full text-[0.65rem] font-semibold"
             style={on
-              ? { background: "rgba(245,158,11,0.14)", color: AMBER, border: "1px solid rgba(245,158,11,0.3)" }
+              ? { background: "rgba(255,170,0,0.14)", color: AMBER, border: "1px solid rgba(255,170,0,0.3)" }
               : { background: "var(--cafyz-surface-2)", color: "var(--cafyz-muted)", border: "1px solid var(--cafyz-border)" }}
           >
             {on ? "ON · sample data visible" : "OFF"}
@@ -382,7 +381,7 @@ export function DemoDataPanel() {
                 className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5"
                 style={{ background: "var(--cafyz-surface-2)", border: "1px solid var(--cafyz-border)", color: "var(--cafyz-text-secondary)", fontSize: "0.75rem" }}
               >
-                <Icon size={13} color="#1e7fff" />
+                <Icon size={13} color="var(--cafyz-brand)" />
                 <b style={{ color: "var(--cafyz-text)" }}>{status.counts[key]}</b> {label}
               </span>
             ))}
@@ -407,8 +406,8 @@ export function DemoDataPanel() {
             ))}
           </ol>
         ) : (
-          <div className="flex items-center gap-2.5 rounded-xl p-3" style={{ background: "rgba(34,197,94,0.08)", border: "1px solid rgba(34,197,94,0.25)" }}>
-            <CheckCircle2 size={16} color="#22c55e" className="flex-shrink-0" />
+          <div className="flex items-center gap-2.5 rounded-xl p-3" style={{ background: "rgba(0,214,143,0.08)", border: "1px solid rgba(0,214,143,0.25)" }}>
+            <CheckCircle2 size={16} color="#00d68f" className="flex-shrink-0" />
             <p style={{ color: "var(--cafyz-text-secondary)", fontSize: "0.78rem", lineHeight: 1.5 }}>
               You're set up for real data. Add your menu, tables and staff from the sidebar.
             </p>

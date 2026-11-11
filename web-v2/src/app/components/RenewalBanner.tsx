@@ -75,11 +75,11 @@ export function RenewalBanner({
           className="mx-auto max-w-3xl rounded-2xl px-4 py-3 flex flex-wrap items-center gap-3 pointer-events-auto shadow-lg"
           style={{
             background: expired ? "var(--cafyz-banner-expired-bg)" : "var(--cafyz-banner-warn-bg)",
-            border: `1px solid ${expired ? "rgba(255,59,92,0.35)" : "var(--cafyz-accent-border)"}`,
+            border: `1px solid ${expired ? "rgba(255,65,108,0.35)" : "var(--cafyz-accent-border)"}`,
             boxShadow: "var(--cafyz-shadow-lg)",
           }}
         >
-          <AlertTriangle size={20} style={{ color: expired ? "#ff3b5c" : "#f59e0b", flexShrink: 0 }} />
+          <AlertTriangle size={20} style={{ color: expired ? "#ff416c" : "#ffaa00", flexShrink: 0 }} />
           <div className="flex-1 min-w-[200px]">
             <p style={{ color: "var(--cafyz-text)", fontWeight: 700, fontSize: "0.88rem" }}>{title}</p>
             <p style={{ color: "var(--cafyz-text-secondary)", fontSize: "0.75rem", marginTop: 2 }}>{detail}</p>
@@ -89,7 +89,7 @@ export function RenewalBanner({
               type="button"
               onClick={onGoLicense}
               className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold"
-              style={{ background: "linear-gradient(135deg, #1e7fff, #00c6ff)", color: "#fff" }}
+              style={{ background: "var(--cafyz-gradient)", color: "#fff" }}
             >
               <Key size={14} /> Enter key
             </button>
@@ -99,7 +99,7 @@ export function RenewalBanner({
               onClick={() => void requestKey()}
               disabled={requesting}
               className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold"
-              style={{ background: "rgba(30,127,255,0.12)", color: "#1e7fff", border: "1px solid rgba(30,127,255,0.25)", opacity: requesting ? 0.7 : 1 }}
+              style={{ background: "rgba(var(--cafyz-brand-rgb),0.12)", color: "var(--cafyz-brand)", border: "1px solid rgba(var(--cafyz-brand-rgb),0.25)", opacity: requesting ? 0.7 : 1 }}
             >
               {requesting ? <Loader2 size={14} className="animate-spin" /> : <Mail size={14} />}
               {requesting ? "Requesting…" : "Request key"}

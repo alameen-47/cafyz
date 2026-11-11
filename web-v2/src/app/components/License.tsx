@@ -1,17 +1,18 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { motion } from "motion/react";
-import { Shield, Check, X, Key, Zap, Crown, ArrowRight, Clock } from "lucide-react";
+import { Shield, Check, X, Key, Zap, Crown, ArrowRight, Clock, Star } from "lucide-react";
 import { toast } from "./Toast";
 import { licensesApi, billingApi, loadRazorpayCheckout, type ApiSubscriptionStatus, type ApiLicensePurchaseRequest } from "../../services/api";
 import { useAuth } from "../auth";
 import { usePlanConfig } from "../PlanConfigProvider";
 import { formatBillingSuffix, formatPlanPrice, isLifetimePlan, panelLabelsFromConfig } from "../../services/planConfigStore";
 import { IN_STORE_APP, SHOW_PLAN_PRICING } from "../../config/features";
+import { withAlpha } from "../../utils/color";
 
 const PLAN_STYLE: Record<string, { color: string; icon: typeof Shield; popular?: boolean }> = {
   basic: { color: "var(--cafyz-muted)", icon: Shield },
-  pro: { color: "#1e7fff", icon: Zap, popular: true },
-  premium: { color: "#a855f7", icon: Crown },
+  pro: { color: "var(--cafyz-brand)", icon: Zap, popular: true },
+  premium: { color: "var(--cafyz-brand)", icon: Crown },
 };
 
 // Only used if the plan config cannot be fetched. Every plan ships every
@@ -116,10 +117,10 @@ export function License() {
       ? (expired ? `License ended ${expiryDate}` : `License valid until ${expiryDate}`)
       : "Lifetime license · never expires";
   const statusChip = expired
-    ? { label: "Ended", color: "#ff3b5c" }
+    ? { label: "Ended", color: "#ff416c" }
     : onTrial
-      ? { label: "Free trial", color: "#f59e0b" }
-      : { label: "Active", color: "#22c55e" };
+      ? { label: "Free trial", color: "#ffaa00" }
+      : { label: "Active", color: "#00d68f" };
   const showStatusBanner = trialDaysLeft != null && (expired || onTrial || trialDaysLeft <= 14);
 
   const activate = async () => {
@@ -162,7 +163,7 @@ export function License() {
         name: order.name,
         description: order.description,
         prefill: order.prefill,
-        theme: { color: "#1e7fff" },
+        theme: { color: "var(--cafyz-brand)" },
         handler: async (resp: RzpResponse) => {
           try {
             const res = await billingApi.verify({
@@ -203,18 +204,18 @@ export function License() {
           initial={{ opacity: 0, y: -8 }}
           animate={{ opacity: 1, y: 0 }}
           className="flex flex-wrap items-center gap-3 px-4 py-3 rounded-2xl"
-          style={{ background: expired ? "var(--cafyz-danger-bg)" : "var(--cafyz-accent-bg)", border: `1px solid ${expired ? "rgba(220,38,38,0.22)" : "var(--cafyz-accent-border)"}` }}
+          style={{ background: expired ? "var(--cafyz-danger-bg)" : "var(--cafyz-accent-bg)", border: `1px solid ${expired ? "rgba(255,65,108,0.22)" : "var(--cafyz-accent-border)"}` }}
         >
-          <Clock size={18} style={{ color: expired ? "#ff3b5c" : "#1e7fff", flexShrink: 0 }} />
+          <Clock size={18} style={{ color: expired ? "#ff416c" : "var(--cafyz-brand)", flexShrink: 0 }} />
           <div className="flex-1 min-w-[200px]">
             <p style={{ color: "var(--cafyz-text)", fontSize: "0.85rem", fontWeight: 600 }}>
               {expired
-                ? <>Your {onTrial ? "free trial" : "license"} has <span style={{ color: "#ff3b5c", fontWeight: 800 }}>ended</span></>
+                ? <>Your {onTrial ? "free trial" : "license"} has <span style={{ color: "#ff416c", fontWeight: 800 }}>ended</span></>
                 : onTrial
                   ? (trialDaysLeft === 0
-                    ? <>Your free trial ends <span style={{ color: "#1e7fff", fontWeight: 800 }}>today</span></>
-                    : <>Free trial · <span style={{ color: "#1e7fff", fontFamily: "var(--font-mono)", fontWeight: 800 }}>{trialDaysLeft}</span> day{trialDaysLeft === 1 ? "" : "s"} left</>)
-                  : <>License renews in <span style={{ color: "#1e7fff", fontFamily: "var(--font-mono)", fontWeight: 800 }}>{trialDaysLeft}</span> day{trialDaysLeft === 1 ? "" : "s"}</>}
+                    ? <>Your free trial ends <span style={{ color: "var(--cafyz-brand)", fontWeight: 800 }}>today</span></>
+                    : <>Free trial · <span style={{ color: "var(--cafyz-brand)", fontFamily: "var(--font-mono)", fontWeight: 800 }}>{trialDaysLeft}</span> day{trialDaysLeft === 1 ? "" : "s"} left</>)
+                  : <>License renews in <span style={{ color: "var(--cafyz-brand)", fontFamily: "var(--font-mono)", fontWeight: 800 }}>{trialDaysLeft}</span> day{trialDaysLeft === 1 ? "" : "s"}</>}
             </p>
             <p style={{ color: "var(--cafyz-muted)", fontSize: "0.75rem" }}>
               {IN_STORE_APP
@@ -229,11 +230,11 @@ export function License() {
             </p>
           </div>
           {IN_STORE_APP ? null : pendingReq ? (
-            <span className="text-xs px-3 py-2 rounded-xl flex-shrink-0" style={{ background: "rgba(245,158,11,0.12)", color: "#f59e0b", fontWeight: 600 }}>Key requested</span>
+            <span className="text-xs px-3 py-2 rounded-xl flex-shrink-0" style={{ background: "rgba(255,170,0,0.12)", color: "#ffaa00", fontWeight: 600 }}>Key requested</span>
           ) : (
             <button onClick={() => startPurchase(currentPlan)} disabled={busy}
               className="px-4 py-2 rounded-xl text-sm font-semibold flex-shrink-0"
-              style={{ background: "linear-gradient(135deg, #1e7fff, #00c6ff)", color: "#fff", opacity: busy ? 0.6 : 1 }}>
+              style={{ background: "var(--cafyz-gradient)", color: "#fff", opacity: busy ? 0.6 : 1 }}>
               {paying ? "Opening…" : requesting ? "Requesting…" : onlinePayments ? "Pay & renew" : "Request license key"}
             </button>
           )}
@@ -243,7 +244,7 @@ export function License() {
       {/* License key activation — the one step that turns a trial into a subscription */}
       <div id="license-key" className="rounded-2xl p-5 space-y-4" style={{ background: "var(--cafyz-surface)", border: "1px solid var(--cafyz-accent-border)" }}>
         <div className="flex items-center gap-2">
-          <Key size={16} style={{ color: "#1e7fff" }} />
+          <Key size={16} style={{ color: "var(--cafyz-brand)" }} />
           <h3 style={{ color: "var(--cafyz-text)", fontFamily: "var(--font-display)", fontWeight: 600 }}>Activate your license key</h3>
         </div>
         <p style={{ color: "var(--cafyz-muted)", fontSize: "0.8rem", lineHeight: 1.5 }}>
@@ -256,7 +257,7 @@ export function License() {
           {KEY_STEPS.map((step, i) => (
             <li key={step.title} className="flex items-start gap-2.5 rounded-xl p-3" style={{ background: "var(--cafyz-surface-2)", border: "1px solid var(--cafyz-border)" }}>
               <span className="w-6 h-6 rounded-full flex items-center justify-center text-[0.7rem] font-bold flex-shrink-0"
-                style={{ background: "linear-gradient(135deg, #1e7fff, #00c6ff)", color: "#fff" }}>{i + 1}</span>
+                style={{ background: "var(--cafyz-gradient)", color: "#fff" }}>{i + 1}</span>
               <span>
                 <span style={{ color: "var(--cafyz-text)", fontWeight: 600, fontSize: "0.8rem", display: "block" }}>{step.title}</span>
                 <span style={{ color: "var(--cafyz-muted)", fontSize: "0.72rem", lineHeight: 1.4 }}>
@@ -275,7 +276,7 @@ export function License() {
             onChange={e => setLicenseKey(e.target.value.toUpperCase())}
             onKeyDown={e => { if (e.key === "Enter") void activate(); }}
             className="flex-1 min-w-0 rounded-xl px-3 py-2.5 text-sm outline-none placeholder:text-[var(--cafyz-muted)]"
-            style={{ background: "var(--cafyz-surface-2)", color: "var(--cafyz-text)", border: "1px solid rgba(30,127,255,0.15)", fontFamily: "var(--font-mono)", letterSpacing: "0.05em" }}
+            style={{ background: "var(--cafyz-surface-2)", color: "var(--cafyz-text)", border: "1px solid rgba(var(--cafyz-brand-rgb),0.15)", fontFamily: "var(--font-mono)", letterSpacing: "0.05em" }}
           />
           <motion.button
             whileTap={{ scale: 0.95 }}
@@ -283,8 +284,8 @@ export function License() {
             disabled={!licenseKey || activating}
             className="px-4 py-2.5 rounded-xl text-sm font-semibold flex items-center gap-2 flex-shrink-0"
             style={activated
-              ? { background: "rgba(34,197,94,0.12)", color: "#22c55e", border: "1px solid rgba(34,197,94,0.2)" }
-              : { background: "linear-gradient(135deg, #1e7fff, #00c6ff)", color: "#fff", opacity: !licenseKey ? 0.5 : 1 }
+              ? { background: "rgba(0,214,143,0.12)", color: "#00d68f", border: "1px solid rgba(0,214,143,0.2)" }
+              : { background: "var(--cafyz-gradient)", color: "#fff", opacity: !licenseKey ? 0.5 : 1 }
             }
           >
             {activating ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : activated ? <><Check size={15} /> Activated!</> : "Activate"}
@@ -293,13 +294,13 @@ export function License() {
       </div>
 
       {/* Current plan */}
-      <div className="rounded-2xl p-5" style={{ background: "var(--cafyz-surface)", border: "1px solid rgba(30,127,255,0.15)" }}>
+      <div className="rounded-2xl p-5" style={{ background: "var(--cafyz-surface)", border: "1px solid rgba(var(--cafyz-brand-rgb),0.15)" }}>
         <div className="flex items-center justify-between mb-4">
           <h3 style={{ color: "var(--cafyz-text)", fontFamily: "var(--font-display)", fontWeight: 600 }}>Current Plan</h3>
-          <span className="text-xs px-2.5 py-1 rounded-full font-semibold" style={{ background: `${statusChip.color}1f`, color: statusChip.color }}>{statusChip.label}</span>
+          <span className="text-xs px-2.5 py-1 rounded-full font-semibold" style={{ background: `${withAlpha(statusChip.color, 0x1f)}`, color: statusChip.color }}>{statusChip.label}</span>
         </div>
         <div className="flex items-center gap-4">
-          <div className="w-12 h-12 rounded-xl flex items-center justify-center" style={{ background: `${planDef.color}1f` }}>
+          <div className="w-12 h-12 rounded-xl flex items-center justify-center" style={{ background: `${withAlpha(planDef.color, 0x1f)}` }}>
             <PlanIcon size={22} style={{ color: planDef.color }} />
           </div>
           <div>
@@ -333,20 +334,20 @@ export function License() {
                 transition={{ delay: i * 0.08 }}
                 className="rounded-2xl p-5 relative overflow-hidden flex flex-col"
                 style={{
-                  background: isActive ? `${plan.color}08` : "var(--cafyz-surface)",
+                  background: isActive ? `${withAlpha(plan.color, 0x08)}` : "var(--cafyz-surface)",
                   border: `1px solid ${isActive ? plan.color + "35" : "var(--cafyz-border)"}`,
-                  boxShadow: isActive ? `0 0 24px ${plan.color}12` : "none",
+                  boxShadow: isActive ? `0 0 24px ${withAlpha(plan.color, 0x12)}` : "none",
                 }}
               >
                 {"popular" in plan && plan.popular && (
                   <div className="absolute top-3 right-3">
-                    <span className="text-xs px-2 py-0.5 rounded-full font-semibold" style={{ background: "rgba(30,127,255,0.15)", color: "#1e7fff" }}>
-                      ★ Popular
+                    <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full font-semibold" style={{ background: "rgba(var(--cafyz-brand-rgb),0.15)", color: "var(--cafyz-brand)" }}>
+                      <Star size={10} fill="currentColor" aria-hidden="true" /> Popular
                     </span>
                   </div>
                 )}
                 <div className="flex items-center gap-2 mb-3">
-                  <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: `${plan.color}15` }}>
+                  <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: `${withAlpha(plan.color, 0x15)}` }}>
                     <Icon size={18} style={{ color: plan.color }} />
                   </div>
                   <span style={{ color: "var(--cafyz-text)", fontFamily: "var(--font-display)", fontWeight: 700, fontSize: "0.95rem" }}>{plan.name}</span>
@@ -379,8 +380,8 @@ export function License() {
                   disabled={isActive || busy || !!pendingReq}
                   className="mt-4 w-full py-2.5 rounded-xl text-sm font-semibold flex items-center justify-center gap-2 transition-all"
                   style={isActive
-                    ? { background: `${plan.color}12`, color: plan.color, border: `1px solid ${plan.color}25` }
-                    : { background: `${plan.color}10`, color: plan.color, border: `1px solid ${plan.color}20`, opacity: (requesting || paying || pendingReq) ? 0.6 : 1 }
+                    ? { background: `${withAlpha(plan.color, 0x12)}`, color: plan.color, border: `1px solid ${withAlpha(plan.color, 0x25)}` }
+                    : { background: `${withAlpha(plan.color, 0x10)}`, color: plan.color, border: `1px solid ${withAlpha(plan.color, 0x20)}`, opacity: (requesting || paying || pendingReq) ? 0.6 : 1 }
                   }
                 >
                   {isActive ? "Current plan" : pendingReq ? "Key requested" : paying ? "Opening…" : requesting ? "Requesting…" : <>{onlinePayments ? "Subscribe to" : "Get"} {plan.name} <ArrowRight size={14} /></>}

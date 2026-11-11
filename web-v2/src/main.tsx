@@ -3,6 +3,7 @@ import { Capacitor } from "@capacitor/core";
 import { StatusBar, Style } from "@capacitor/status-bar";
 import { SplashScreen } from "@capacitor/splash-screen";
 import { applyNativeSafeAreas, watchNativeSafeAreas } from "./utils/nativeSafeArea";
+import { applyStatusBarLook } from "./utils/statusBarLook";
 import { hydrateDurableStorage } from "./utils/safeStorage";
 import App from "./app/App.tsx";
 import { ErrorBoundary } from "./app/components/ErrorBoundary.tsx";
@@ -22,9 +23,11 @@ function bootNativeShell() {
     try {
       await StatusBar.setOverlaysWebView({ overlay: false });
       await StatusBar.setStyle({ style: Style.Dark });
-      await StatusBar.setBackgroundColor({ color: "#06091a" });
+      await StatusBar.setBackgroundColor({ color: "#070511" });
       await applyNativeSafeAreas();
       watchNativeSafeAreas();
+      // The calls above can land after the first screen set its own look.
+      applyStatusBarLook();
     } catch {
       /* plugins optional during web dev */
     }

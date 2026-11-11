@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, Suspense, startTransition } from "react";
+import { useState, useEffect, useCallback, Suspense, startTransition, lazy } from "react";
 import { Toaster } from "sonner";
 import { Sidebar } from "./components/Sidebar";
 import { TopBar } from "./components/TopBar";
@@ -22,6 +22,7 @@ import { useKitchenPrintWorker } from "../hooks/useKitchenPrintWorker";
 import { usePlanConfig } from "./PlanConfigProvider";
 import { applyLanguageToDocument, getActiveLanguageCode } from "../i18n";
 import { lazyPage, PageLoadingFallback } from "./lazyPage";
+import { applyStatusBarLook } from "../utils/statusBarLook";
 import "../styles/fonts.css";
 
 const loadPOS = () => import("./components/POS");
@@ -42,6 +43,8 @@ const License = lazyPage(() => import("./components/License").then(m => ({ defau
 const Reservations = lazyPage(() => import("./components/Reservations").then(m => ({ default: m.Reservations })), "Reservations");
 const PublicMenu = lazyPage(() => import("./components/PublicMenu").then(m => ({ default: m.PublicMenu })), "Menu");
 const Analytics = lazyPage(() => import("./components/Analytics").then(m => ({ default: m.Analytics })), "Analytics");
+// Takes props, so it uses React.lazy directly (lazyPage is for pages without props).
+const AccountScreen = lazy(() => import("./components/AccountScreen").then(m => ({ default: m.AccountScreen })));
 const Profile = lazyPage(() => import("./components/Profile").then(m => ({ default: m.Profile })), "Profile");
 const FounderConsole = lazyPage(() => import("./components/FounderConsole").then(m => ({ default: m.FounderConsole })), "Founder Console");
 
@@ -75,6 +78,8 @@ export default function App() {
   const [activePage, setActivePage] = useState<PageId>("dashboard");
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  /** The Account screen sits over whichever page is open; it belongs to every role, so it is not a gated page. */
+  const [accountOpen, setAccountOpen] = useState(false);
   const [posTableId, setPosTableId] = useState<string | null>(null);
   const [subscription, setSubscription] = useState<ApiSubscriptionStatus | null>(null);
   const [accessPages, setAccessPages] = useState<PageId[] | null>(null);
@@ -85,6 +90,13 @@ export default function App() {
   const [demoBannerHidden, setDemoBannerHidden] = useState(false);
 
   useKitchenPrintWorker(Boolean(user && user.role !== "founder"));
+
+  // The chosen theme applies once someone is signed in; the sign-in screen keeps its own look.
+  useEffect(() => {
+    document.documentElement.toggleAttribute("data-signed-in", Boolean(user));
+    applyStatusBarLook();
+    if (!user) setAccountOpen(false);
+  }, [user?.id]);
 
   useEffect(() => {
     if (!user || isFounderRole(user.role)) return;
@@ -173,6 +185,7 @@ export default function App() {
   const navigate = useCallback((page: string) => {
     const p = page as PageId;
     if (!user) return;
+    setAccountOpen(false);
     if (isFounderRole(role)) {
       if (p === "founder") setActivePage("founder");
       return;
@@ -207,7 +220,7 @@ export default function App() {
     return (
       <div className="flex app-screen app-native-inset-top w-full flex-col items-center justify-center gap-4" style={{ background: "var(--cafyz-app-bg)" }}>
         <CafyzLogo size="lg" className="animate-pulse" />
-        <div className="w-8 h-8 border-2 border-[rgba(30,127,255,0.2)] border-t-[#1e7fff] rounded-full animate-spin" />
+        <div className="w-8 h-8 border-2 border-[rgba(var(--cafyz-brand-rgb),0.2)] border-t-[var(--cafyz-brand)] rounded-full animate-spin" />
       </div>
     );
   }
@@ -260,7 +273,9 @@ export default function App() {
   }
 
   const PageComponent = pages[activePage] || (isFounderRole(role) ? FounderConsole : Dashboard);
-  const isFullHeight = fullHeightPages.has(activePage);
+  const isFullHeight = !accountOpen && fullHeightPages.has(activePage);
+  /** What the navigation shows as current: no page is highlighted while Account is open. */
+  const shownPage = accountOpen ? "account" : activePage;
   const isFounder = isFounderRole(role);
 
   return (
@@ -305,7 +320,7 @@ export default function App() {
         )}
 
         <Sidebar
-          active={activePage}
+          active={shownPage}
           onNavigate={navigate}
           collapsed={sidebarCollapsed}
           onToggle={() => setSidebarCollapsed(c => !c)}
@@ -318,11 +333,13 @@ export default function App() {
           onLogout={logout}
           userName={user.name}
           userInitials={user.initials}
+          restaurantName={user.restaurant_name}
         />
 
         <div className={`flex-1 flex flex-col min-w-0 overflow-hidden${showRenewalBanner && !subscription?.trial_expired ? " pt-[4.5rem]" : ""}`}>
           <TopBar
-            active={activePage}
+            active={shownPage}
+            onOpenAccount={() => setAccountOpen(true)}
             onMobileMenuOpen={() => setMobileMenuOpen(true)}
             onNavigate={navigate}
             onLogout={logout}
@@ -344,7 +361,11 @@ export default function App() {
           )}
 
           <main className={`flex-1 cafyz-main-scroll ${isFullHeight ? "app-main-full overflow-hidden" : "app-main-scroll overflow-y-auto"}`}>
-            {permitted.includes(activePage) ? (
+            {accountOpen ? (
+              <Suspense fallback={<PageLoadingFallback />}>
+                <AccountScreen onClose={() => setAccountOpen(false)} />
+              </Suspense>
+            ) : permitted.includes(activePage) ? (
               <Suspense fallback={<PageLoadingFallback />}>
                 <PageComponent />
               </Suspense>
@@ -353,12 +374,12 @@ export default function App() {
                 <FounderConsole />
               </Suspense>
             ) : <Dashboard />)}
-            {!isFullHeight && !isFounder && <div className="app-main-spacer md:hidden h-20" />}
+            {!isFullHeight && !isFounder && <div className="app-main-spacer md:hidden" aria-hidden />}
           </main>
         </div>
 
-        {!isFounder && <MobileNav active={activePage} onNavigate={navigate} permittedPages={permitted} />}
-        {!isFounder && <AIAssistantWidget screen={activePage} onNewBill={goToPos} />}
+        {!isFounder && <MobileNav active={shownPage} onNavigate={navigate} onNewBill={goToPos} permittedPages={permitted} />}
+        {!isFounder && <AIAssistantWidget screen={shownPage} onNewBill={goToPos} />}
       </div>
     </NavContext.Provider>
   );

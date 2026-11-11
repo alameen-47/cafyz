@@ -2,6 +2,7 @@ import { motion, AnimatePresence } from "motion/react";
 import { User, Settings, Shield, LogOut, ChevronRight, Crown, Printer, CreditCard } from "lucide-react";
 import { isFounderRole, canManagePlan, type PageId } from "../../config/access";
 import { nameInitials } from "../../utils/initials";
+import { withAlpha } from "../../utils/color";
 
 interface UserProfileDropdownProps {
   open: boolean;
@@ -18,8 +19,8 @@ interface UserProfileDropdownProps {
 }
 
 const roleColors: Record<string, string> = {
-  owner: "#a855f7", manager: "#1e7fff", cashier: "#22d3ee",
-  waiter: "#00c6ff", kitchen: "#f59e0b", founder: "#ff3b5c",
+  owner: "var(--cafyz-brand-bright)", manager: "var(--cafyz-brand)", cashier: "#b9a7e8",
+  waiter: "#9188b8", kitchen: "var(--cafyz-brand-deep)", founder: "var(--cafyz-brand-bright)",
 };
 
 export function UserProfileDropdown({
@@ -66,7 +67,7 @@ export function UserProfileDropdown({
             <div className="px-4 py-4 border-b" style={{ borderColor: "var(--cafyz-border)" }}>
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-xl flex items-center justify-center"
-                  style={{ background: "linear-gradient(135deg, #1e7fff, #00c6ff)", boxShadow: "0 0 12px rgba(30,127,255,0.35)" }}>
+                  style={{ background: "var(--cafyz-gradient)", boxShadow: "0 0 12px rgba(var(--cafyz-brand-rgb),0.35)" }}>
                   <span style={{ color: "var(--cafyz-text-strong)", fontWeight: 800, fontSize: "0.8rem" }}>{initials}</span>
                 </div>
                 <div>
@@ -74,7 +75,7 @@ export function UserProfileDropdown({
                   <p style={{ color: "var(--cafyz-muted)", fontSize: "0.7rem" }}>{userEmail || "—"}</p>
                   <div className="flex items-center gap-2 mt-1">
                     <span className="text-xs px-1.5 py-0.5 rounded-full capitalize"
-                      style={{ background: `${roleColors[role] || "#1e7fff"}15`, color: roleColors[role] || "#1e7fff" }}>
+                      style={{ background: `${withAlpha(roleColors[role] || "var(--cafyz-brand)", 0x15)}`, color: roleColors[role] || "var(--cafyz-brand)" }}>
                       {founderUser ? "Super Admin" : role}
                     </span>
                   </div>
@@ -102,7 +103,7 @@ export function UserProfileDropdown({
             {founderUser && (
               <div className="px-4 py-3 border-b" style={{ borderColor: "var(--cafyz-border)" }}>
                 <div className="flex items-center gap-2 text-xs" style={{ color: "var(--cafyz-muted)" }}>
-                  <Crown size={14} style={{ color: "#ff3b5c" }} />
+                  <Crown size={14} style={{ color: "#ff416c" }} />
                   Founder console — platform administration only
                 </div>
               </div>
@@ -110,9 +111,9 @@ export function UserProfileDropdown({
 
             <div className={`${menuItems.length > 0 || founderUser ? "border-t" : ""} py-1`} style={{ borderColor: "var(--cafyz-border)" }}>
               <button onClick={() => { onLogout(); onClose(); }}
-                className="w-full flex items-center gap-3 px-4 py-2.5 text-sm transition-all hover:bg-[rgba(255,59,92,0.06)]">
-                <LogOut size={15} style={{ color: "#ff3b5c", flexShrink: 0 }} />
-                <span style={{ color: "#ff3b5c" }}>Sign Out</span>
+                className="w-full flex items-center gap-3 px-4 py-2.5 text-sm transition-all hover:bg-[rgba(255,65,108,0.06)]">
+                <LogOut size={15} style={{ color: "#ff416c", flexShrink: 0 }} />
+                <span style={{ color: "#ff416c" }}>Sign Out</span>
               </button>
             </div>
           </motion.div>

@@ -1,10 +1,13 @@
-import { LayoutDashboard, ShoppingBag, Grid3X3, UtensilsCrossed, BarChart3, MonitorSpeaker, ChefHat } from "lucide-react";
+import { House, ShoppingBag, Grid3X3, UtensilsCrossed, Plus } from "lucide-react";
 import { motion } from "motion/react";
 
-const mobileNavItems = [
-  { id: "dashboard", label: "Home",   icon: LayoutDashboard },
-  { id: "pos",       label: "POS",    icon: MonitorSpeaker },
+// Two destinations either side of the centre tile. The centre button starts a new bill,
+// which is the Point of Sale screen, so every destination the old bar had is still here.
+const leftItems = [
+  { id: "dashboard", label: "Home",   icon: House },
   { id: "orders",    label: "Orders", icon: ShoppingBag },
+];
+const rightItems = [
   { id: "tables",    label: "Tables", icon: Grid3X3 },
   { id: "menu",      label: "Menu",   icon: UtensilsCrossed },
 ];
@@ -12,53 +15,61 @@ const mobileNavItems = [
 interface MobileNavProps {
   active: string;
   onNavigate: (id: string) => void;
+  /** Starts a new bill in the Point of Sale. */
+  onNewBill: () => void;
   permittedPages?: string[];
 }
 
-export function MobileNav({ active, onNavigate, permittedPages }: MobileNavProps) {
-  const items = mobileNavItems.filter(i => !permittedPages?.length || permittedPages.includes(i.id));
+export function MobileNav({ active, onNavigate, onNewBill, permittedPages }: MobileNavProps) {
+  const allowed = (id: string) => !permittedPages?.length || permittedPages.includes(id);
+  const canBill = allowed("pos");
+  const posActive = active === "pos";
+
+  const renderItem = (item: (typeof leftItems)[number]) => {
+    if (!allowed(item.id)) return null;
+    const Icon = item.icon;
+    const isActive = active === item.id;
+    return (
+      <button
+        key={item.id}
+        type="button"
+        onClick={() => onNavigate(item.id)}
+        aria-current={isActive ? "page" : undefined}
+        className={`cafyz-tab ${isActive ? "is-active" : ""}`}
+      >
+        {isActive && (
+          <motion.span
+            layoutId="mobileActiveIndicator"
+            aria-hidden
+            className="cafyz-tab-pill"
+            transition={{ type: "spring", damping: 30, stiffness: 380 }}
+          />
+        )}
+        <Icon size={20} strokeWidth={isActive ? 2.2 : 1.8} className="relative" />
+        <span className="cafyz-tab-label relative">{item.label}</span>
+      </button>
+    );
+  };
+
   return (
-    <nav
-      className="app-mobile-nav md:hidden fixed bottom-0 left-0 right-0 z-40 flex items-center justify-around px-1"
-      style={{
-        background: "var(--cafyz-mobile-nav-bg)",
-        backdropFilter: "blur(20px)",
-        borderTop: "1px solid var(--cafyz-sidebar-border)",
-        paddingTop: "0.375rem",
-      }}
-    >
-      {items.map(item => {
-        const Icon = item.icon;
-        const isActive = active === item.id;
-        return (
-          <button
-            key={item.id}
-            onClick={() => onNavigate(item.id)}
-            className="flex flex-col items-center gap-0.5 px-2 py-2 rounded-xl transition-all relative flex-1"
-            style={{ minHeight: 52 }}
-          >
-            {isActive && (
-              <motion.div
-                layoutId="mobileActiveIndicator"
-                className="absolute inset-0 rounded-xl"
-                style={{ background: "var(--cafyz-nav-pill-bg)" }}
-              />
-            )}
-            <Icon size={20} style={{ color: isActive ? "var(--cafyz-brand)" : "var(--cafyz-muted)", position: "relative", zIndex: 1 }} />
-            <span style={{
-              color: isActive ? "var(--cafyz-brand)" : "var(--cafyz-muted)",
-              fontSize: "0.6rem",
-              fontWeight: isActive ? 700 : 400,
-              fontFamily: "var(--font-display)",
-              position: "relative",
-              zIndex: 1,
-              lineHeight: 1,
-            }}>
-              {item.label}
-            </span>
-          </button>
-        );
-      })}
+    <nav className="app-mobile-nav cafyz-tabbar md:hidden" aria-label="Main">
+      <div className="cafyz-tabbar-inner">
+        <div className="cafyz-tabbar-side">{leftItems.map(renderItem)}</div>
+        {canBill && (
+          <div className="cafyz-tabbar-centre">
+            <button
+              type="button"
+              onClick={onNewBill}
+              aria-label="New bill"
+              title="New bill"
+              className={`cafyz-tab-plus ${posActive ? "is-active" : ""}`}
+            >
+              <Plus size={22} strokeWidth={2.25} />
+            </button>
+          </div>
+        )}
+        <div className="cafyz-tabbar-side">{rightItems.map(renderItem)}</div>
+      </div>
     </nav>
   );
 }

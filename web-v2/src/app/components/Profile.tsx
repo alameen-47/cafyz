@@ -54,7 +54,7 @@ function InputField({ label, value, onChange, type = "text", placeholder = "", d
         placeholder={placeholder}
         disabled={disabled}
         onChange={e => onChange(e.target.value)}
-        className="w-full rounded-xl px-3 py-2.5 text-sm outline-none placeholder:text-[var(--cafyz-muted)] transition-all focus:ring-1 focus:ring-[rgba(30,127,255,0.4)] disabled:opacity-60"
+        className="w-full rounded-xl px-3 py-2.5 text-sm outline-none placeholder:text-[var(--cafyz-muted)] transition-all focus:ring-1 focus:ring-[rgba(var(--cafyz-brand-rgb),0.4)] disabled:opacity-60"
         style={{ background: "var(--cafyz-surface-2)", color: "var(--cafyz-text)", border: "1px solid var(--cafyz-border)" }}
       />
     </div>
@@ -70,7 +70,7 @@ function Section({ title, icon: Icon, children, subtitle }: { title: string; ico
       style={{ background: "var(--cafyz-surface)", border: "1px solid var(--cafyz-border)" }}
     >
       <div className="flex items-center gap-2 pb-2 border-b" style={{ borderColor: "var(--cafyz-border)" }}>
-        <Icon size={16} style={{ color: "#1e7fff" }} />
+        <Icon size={16} style={{ color: "var(--cafyz-brand)" }} />
         <h3 style={{ color: "var(--cafyz-text)", fontFamily: "var(--font-display)", fontWeight: 600, fontSize: "0.95rem" }}>{title}</h3>
         {subtitle && <span style={{ color: "var(--cafyz-muted)", fontSize: "0.72rem", marginLeft: "auto" }}>{subtitle}</span>}
       </div>
@@ -153,7 +153,7 @@ export function Profile() {
     try {
       const dataUrl = await QRCode.toDataURL(url, {
         width: 256, margin: 2,
-        color: { dark: theme === "light" ? "#0f172a" : "#06091a", light: "#ffffff" },
+        color: { dark: theme === "light" ? "#0f172a" : "#070511", light: "#ffffff" },
       });
       setQrDataUrl(dataUrl);
     } catch { /* non-fatal */ }
@@ -462,10 +462,10 @@ export function Profile() {
               style={{
                 background: logoUrl
                   ? `url(${logoUrl}) center/cover no-repeat`
-                  : "linear-gradient(135deg, #1e7fff, #00c6ff)",
+                  : "var(--cafyz-gradient)",
                 color: logoUrl ? "var(--cafyz-text-strong)" : "var(--cafyz-on-gradient)",
-                border: "1px solid rgba(30,127,255,0.25)",
-                boxShadow: "0 4px 16px rgba(30,127,255,0.2)",
+                border: "1px solid rgba(var(--cafyz-brand-rgb),0.25)",
+                boxShadow: "0 4px 16px rgba(var(--cafyz-brand-rgb),0.2)",
               }}
             >
               {!logoUrl && initials}
@@ -504,7 +504,7 @@ export function Profile() {
           >
             <div
               className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 text-xs font-bold"
-              style={{ background: "rgba(30,127,255,0.12)", color: "#1e7fff" }}
+              style={{ background: "rgba(var(--cafyz-brand-rgb),0.12)", color: "var(--cafyz-brand)" }}
             >
               {(user?.name || "?").slice(0, 2).toUpperCase()}
             </div>
@@ -520,9 +520,9 @@ export function Profile() {
               <span
                 className="px-2 py-1 rounded-lg text-[0.65rem] font-semibold flex-shrink-0"
                 style={{
-                  background: user.role === "owner" ? "rgba(168,85,247,0.14)" : "var(--cafyz-badge-bg)",
-                  color: user.role === "owner" ? "#a855f7" : "var(--cafyz-brand)",
-                  border: `1px solid ${user.role === "owner" ? "rgba(168,85,247,0.25)" : "var(--cafyz-accent-border)"}`,
+                  background: user.role === "owner" ? "rgba(var(--cafyz-brand-rgb),0.14)" : "var(--cafyz-badge-bg)",
+                  color: user.role === "owner" ? "var(--cafyz-brand)" : "var(--cafyz-brand)",
+                  border: `1px solid ${user.role === "owner" ? "rgba(var(--cafyz-brand-rgb),0.25)" : "var(--cafyz-accent-border)"}`,
                 }}
               >
                 {ROLE_LABEL[user.role] ?? user.role}
@@ -536,7 +536,7 @@ export function Profile() {
           style={{ background: "var(--cafyz-hero-footer-bg)", borderTop: "1px solid var(--cafyz-border)" }}
         >
           <span className="flex items-center gap-1.5" style={{ color: "var(--cafyz-muted)", fontSize: "0.7rem" }}>
-            <Shield size={12} style={{ color: "#1e7fff", flexShrink: 0 }} />
+            <Shield size={12} style={{ color: "var(--cafyz-brand)", flexShrink: 0 }} />
             All settings on this page apply only to this restaurant.
           </span>
           {slug && (
@@ -561,8 +561,8 @@ export function Profile() {
               disabled={uploadingLogo}
               className="w-20 h-20 rounded-2xl flex items-center justify-center overflow-hidden"
               style={{
-                background: logoUrl ? "var(--cafyz-logo-plate-bg)" : "linear-gradient(135deg, #1e7fff, #00c6ff)",
-                boxShadow: logoUrl ? "var(--cafyz-shadow-sm)" : "0 0 20px rgba(30,127,255,0.3)",
+                background: logoUrl ? "var(--cafyz-logo-plate-bg)" : "var(--cafyz-gradient)",
+                boxShadow: logoUrl ? "var(--cafyz-shadow-sm)" : "0 0 20px rgba(var(--cafyz-brand-rgb),0.3)",
                 border: logoUrl ? "1px solid var(--cafyz-border)" : "none",
                 cursor: uploadingLogo ? "wait" : "pointer",
               }}
@@ -578,7 +578,7 @@ export function Profile() {
               onClick={onPickLogo}
               disabled={uploadingLogo}
               className="absolute -bottom-1 -right-1 w-7 h-7 rounded-full flex items-center justify-center"
-              style={{ background: "#1e7fff", boxShadow: "0 2px 8px rgba(30,127,255,0.4)" }}
+              style={{ background: "var(--cafyz-brand)", boxShadow: "0 2px 8px rgba(var(--cafyz-brand-rgb),0.4)" }}
             >
               <Camera size={13} className="text-white" />
             </button>
@@ -588,7 +588,7 @@ export function Profile() {
             <InputField label="Tagline" value={profile.tagline} onChange={v => update("tagline", v)} placeholder="A short brand tagline (shown on your QR menu)" />
             {logoUrl && (
               <button onClick={handleRemoveLogo} disabled={uploadingLogo}
-                className="flex items-center gap-1.5 text-xs font-semibold" style={{ color: "#f87171" }}>
+                className="flex items-center gap-1.5 text-xs font-semibold" style={{ color: "#ff416c" }}>
                 <Trash2 size={12} /> Remove logo
               </button>
             )}
@@ -610,7 +610,7 @@ export function Profile() {
               value={profile.website}
               placeholder="https://your-restaurant.com"
               onChange={e => update("website", e.target.value)}
-              className="w-full rounded-xl px-3 py-2.5 text-sm outline-none placeholder:text-[var(--cafyz-muted)] transition-all focus:ring-1 focus:ring-[rgba(30,127,255,0.4)]"
+              className="w-full rounded-xl px-3 py-2.5 text-sm outline-none placeholder:text-[var(--cafyz-muted)] transition-all focus:ring-1 focus:ring-[rgba(var(--cafyz-brand-rgb),0.4)]"
               style={{ background: "var(--cafyz-surface-2)", color: "var(--cafyz-text)", border: "1px solid var(--cafyz-border)" }}
             />
           </div>
@@ -688,9 +688,9 @@ export function Profile() {
               onClick={() => setProfile(p => ({ ...p, taxIncluded: false }))}
               className="px-3 py-2 rounded-lg text-xs font-semibold transition-all"
               style={{
-                background: !profile.taxIncluded ? "rgba(30,127,255,0.15)" : "var(--cafyz-badge-bg)",
-                color: !profile.taxIncluded ? "#1e7fff" : "var(--cafyz-muted)",
-                border: `1px solid ${!profile.taxIncluded ? "rgba(30,127,255,0.35)" : "var(--cafyz-border)"}`,
+                background: !profile.taxIncluded ? "rgba(var(--cafyz-brand-rgb),0.15)" : "var(--cafyz-badge-bg)",
+                color: !profile.taxIncluded ? "var(--cafyz-brand)" : "var(--cafyz-muted)",
+                border: `1px solid ${!profile.taxIncluded ? "rgba(var(--cafyz-brand-rgb),0.35)" : "var(--cafyz-border)"}`,
               }}
             >
               Tax excluded
@@ -700,9 +700,9 @@ export function Profile() {
               onClick={() => setProfile(p => ({ ...p, taxIncluded: true }))}
               className="px-3 py-2 rounded-lg text-xs font-semibold transition-all"
               style={{
-                background: profile.taxIncluded ? "rgba(34,197,94,0.12)" : "var(--cafyz-badge-bg)",
-                color: profile.taxIncluded ? "#22c55e" : "var(--cafyz-muted)",
-                border: `1px solid ${profile.taxIncluded ? "rgba(34,197,94,0.3)" : "var(--cafyz-border)"}`,
+                background: profile.taxIncluded ? "rgba(0,214,143,0.12)" : "var(--cafyz-badge-bg)",
+                color: profile.taxIncluded ? "#00d68f" : "var(--cafyz-muted)",
+                border: `1px solid ${profile.taxIncluded ? "rgba(0,214,143,0.3)" : "var(--cafyz-border)"}`,
               }}
             >
               Tax included
@@ -733,7 +733,7 @@ export function Profile() {
         <div className="rounded-xl px-3 py-2.5 flex flex-wrap items-center gap-x-3 gap-y-1"
           style={{ background: "var(--cafyz-surface-2)", border: "1px solid var(--cafyz-border)" }}>
           <span style={{ color: "var(--cafyz-muted)", fontSize: "0.72rem" }}>Printer</span>
-          <span style={{ color: livePrinter.type === "none" ? "#fbbf24" : "#22c55e", fontSize: "0.78rem", fontWeight: 600 }}>
+          <span style={{ color: livePrinter.type === "none" ? "#ffaa00" : "#00d68f", fontSize: "0.78rem", fontWeight: 600 }}>
             {livePrinter.type === "none"
               ? "Not connected — browser preview available"
               : `Connected · ${livePrinter.name} (${livePrinter.type})`}
@@ -762,7 +762,7 @@ export function Profile() {
             onClick={handlePrintReceipt}
             disabled={printBusy}
             className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold transition-all"
-            style={{ background: "linear-gradient(135deg, #1e7fff, #00c6ff)", color: "#fff", opacity: printBusy ? 0.6 : 1 }}
+            style={{ background: "var(--cafyz-gradient)", color: "#fff", opacity: printBusy ? 0.6 : 1 }}
           >
             {printBusy ? <Loader2 size={13} className="animate-spin" /> : <Printer size={13} />}
             Print test receipt
@@ -781,7 +781,7 @@ export function Profile() {
             type="button"
             onClick={() => setShowPrinterModal(true)}
             className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold transition-all"
-            style={{ background: "rgba(30,127,255,0.06)", color: "var(--cafyz-muted)", border: "1px solid var(--cafyz-border)" }}
+            style={{ background: "rgba(var(--cafyz-brand-rgb),0.06)", color: "var(--cafyz-muted)", border: "1px solid var(--cafyz-border)" }}
           >
             <Printer size={13} /> Configure printers
           </button>
@@ -812,7 +812,7 @@ export function Profile() {
               ? <img src={qrDataUrl} alt="QR code for customer menu" className="w-full h-full object-contain" style={{ imageRendering: "pixelated" }} />
               : (
                 <div className="w-full h-full flex items-center justify-center">
-                  <Loader2 size={24} className="animate-spin" style={{ color: "#1e7fff" }} />
+                  <Loader2 size={24} className="animate-spin" style={{ color: "var(--cafyz-brand)" }} />
                 </div>
               )}
           </div>
@@ -835,11 +835,11 @@ export function Profile() {
                     <Loader2 size={12} className="animate-spin" /> Checking menu…
                   </span>
                 ) : menuSync.valid ? (
-                  <span className="flex items-center gap-1.5" style={{ color: "#22c55e", fontSize: "0.75rem", fontWeight: 600 }}>
+                  <span className="flex items-center gap-1.5" style={{ color: "#00d68f", fontSize: "0.75rem", fontWeight: 600 }}>
                     <CheckCircle2 size={13} /> Valid · {menuSync.itemCount} item{menuSync.itemCount === 1 ? "" : "s"} live
                   </span>
                 ) : (
-                  <span className="flex items-center gap-1.5" style={{ color: "#fbbf24", fontSize: "0.75rem", fontWeight: 600 }}>
+                  <span className="flex items-center gap-1.5" style={{ color: "#ffaa00", fontSize: "0.75rem", fontWeight: 600 }}>
                     <AlertCircle size={13} /> {menuSync.error || "Menu unavailable"}
                   </span>
                 )}
@@ -854,9 +854,9 @@ export function Profile() {
                   disabled={!menuIdentifier || menuSync.loading}
                   className="ml-auto flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all"
                   style={{
-                    background: "rgba(30,127,255,0.12)",
-                    color: "#1e7fff",
-                    border: "1px solid rgba(30,127,255,0.2)",
+                    background: "rgba(var(--cafyz-brand-rgb),0.12)",
+                    color: "var(--cafyz-brand)",
+                    border: "1px solid rgba(var(--cafyz-brand-rgb),0.2)",
                     opacity: !menuIdentifier || menuSync.loading ? 0.5 : 1,
                   }}
                 >
@@ -891,7 +891,7 @@ export function Profile() {
         onClick={handleSave}
         disabled={busy}
         className="flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-semibold transition-all"
-        style={{ background: saved ? "rgba(34,197,94,0.15)" : "linear-gradient(135deg, #1e7fff, #00c6ff)", color: saved ? "#22c55e" : "#fff", border: saved ? "1px solid rgba(34,197,94,0.3)" : "none", opacity: busy ? 0.6 : 1 }}
+        style={{ background: saved ? "rgba(0,214,143,0.15)" : "var(--cafyz-gradient)", color: saved ? "#00d68f" : "#fff", border: saved ? "1px solid rgba(0,214,143,0.3)" : "none", opacity: busy ? 0.6 : 1 }}
       >
         <Save size={16} /> {saved ? "Saved!" : busy ? "Saving…" : "Save Changes"}
       </motion.button>

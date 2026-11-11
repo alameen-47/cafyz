@@ -20,13 +20,13 @@ export const toast = {
     sonnerToast.success(tt(msg), {
       description: desc ? tt(desc) : undefined,
       ...base,
-      style: { ...base.style, borderColor: "rgba(34,197,94,0.3)" },
+      style: { ...base.style, borderColor: "rgba(0,214,143,0.3)" },
     }),
   error: (msg: string, desc?: string) =>
     sonnerToast.error(tt(msg), {
       description: desc ? tt(desc) : undefined,
       ...base,
-      style: { ...base.style, borderColor: "rgba(255,59,92,0.3)" },
+      style: { ...base.style, borderColor: "rgba(255,65,108,0.3)" },
     }),
   info: (msg: string, desc?: string) =>
     sonnerToast(tt(msg), {
@@ -37,7 +37,7 @@ export const toast = {
     sonnerToast.warning(tt(msg), {
       description: desc ? tt(desc) : undefined,
       ...base,
-      style: { ...base.style, borderColor: "rgba(245,158,11,0.3)" },
+      style: { ...base.style, borderColor: "rgba(255,170,0,0.3)" },
     }),
   loading: (msg: string) =>
     sonnerToast.loading(tt(msg), { ...base }),

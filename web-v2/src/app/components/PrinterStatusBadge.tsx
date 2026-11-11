@@ -29,8 +29,8 @@ const LABEL: Record<Status, string> = {
 
 const COLOR: Record<Status, string> = {
   none: 'var(--cafyz-muted)',
-  configured: '#f59e0b',
-  connected: '#22c55e',
+  configured: '#ffaa00',
+  connected: '#00d68f',
 };
 
 /** Compact kitchen/cashier printer status for POS bill sheet — no configuration UI. */
@@ -60,7 +60,7 @@ export function PrinterStatusBadge({
       className="flex flex-wrap items-center gap-2 px-2.5 py-2 rounded-xl"
       style={{ background: 'var(--cafyz-surface)', border: '1px solid var(--cafyz-border)' }}
     >
-      <Printer size={13} style={{ color: '#1e7fff', flexShrink: 0 }} />
+      <Printer size={13} style={{ color: 'var(--cafyz-brand)', flexShrink: 0 }} />
       {rows.map(({ role, name }) => {
         const status = roleStatus(name, live);
         return (

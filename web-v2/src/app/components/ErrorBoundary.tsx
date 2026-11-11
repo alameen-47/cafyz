@@ -35,7 +35,7 @@ export class ErrorBoundary extends Component<Props, State> {
     return (
       <div
         className="min-h-screen flex flex-col items-center justify-center gap-4 p-6 text-center"
-        style={{ background: "var(--cafyz-app-bg, #06091a)", color: "var(--cafyz-text, #e8eef8)" }}
+        style={{ background: "var(--cafyz-app-bg, #070511)", color: "var(--cafyz-text, #f5f2ff)" }}
       >
         <h1 className="text-lg font-semibold">Something went wrong</h1>
         <p className="text-sm max-w-sm opacity-80">
@@ -45,7 +45,7 @@ export class ErrorBoundary extends Component<Props, State> {
           type="button"
           onClick={this.reload}
           className="px-5 py-2.5 rounded-xl text-sm font-semibold"
-          style={{ background: "var(--cafyz-accent, #1e7fff)", color: "#fff" }}
+          style={{ background: "var(--cafyz-accent, var(--cafyz-brand))", color: "#fff" }}
         >
           Reload Cafyz
         </button>
