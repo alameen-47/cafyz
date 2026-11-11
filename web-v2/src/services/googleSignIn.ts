@@ -18,7 +18,9 @@ async function ensureNativeInitialised(cfg: GoogleConfig): Promise<void> {
       // The WEB client id is the "server client id" both platforms send to
       // Google so the ID token comes back with an aud our API accepts.
       webClientId: cfg.clientId,
-      ...(cfg.iosClientId ? { iOSClientId: cfg.iosClientId } : {}),
+      // iOS ignores webClientId; iOSServerClientId is its equivalent, so the
+      // iPhone's ID token is issued to the web client exactly like Android's.
+      ...(cfg.iosClientId ? { iOSClientId: cfg.iosClientId, iOSServerClientId: cfg.clientId } : {}),
     },
   });
   nativeReady = true;

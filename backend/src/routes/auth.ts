@@ -736,11 +736,16 @@ function sessionResponse(user: Record<string, unknown>) {
 }
 
 // GET /api/auth/google/config — lets clients discover the mode without a rebuild.
-router.get('/google/config', (_req, res) => {
+// iPhone builds up to 1.0 (4) lack the iOS client's URL scheme in Info.plist, and
+// Google's SDK crashes the app when asked to sign in without it. Those builds hide
+// the button when ios_client_id is empty, so only builds that send
+// `ios_url_scheme=1` (and so carry the scheme) are given the iOS client ID.
+router.get('/google/config', (req, res) => {
+  const iosReady = req.query.ios_url_scheme === '1';
   res.json({
     enabled: isGoogleAuthConfigured(),
     client_id: googleWebClientId(),
-    ios_client_id: googleIosClientId(),
+    ios_client_id: iosReady ? googleIosClientId() : '',
     trial_days: TRIAL_DAYS,
   });
 });

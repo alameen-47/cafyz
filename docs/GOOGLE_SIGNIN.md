@@ -23,6 +23,24 @@ The selection token is a 5-minute JWT bound to the *verified* email. `/select`
 re-resolves the user from that signed email, so a client cannot substitute a
 different account by editing `restaurant_id`.
 
+## Live setup (since 11 Nov 2026)
+
+All clients live in Google Cloud project **`cafyz-514414`** (number 480834985589),
+owned by the ametronyx Google account and published to production. The older
+web client in project 947256486794 is no longer used.
+
+| Client | Used for | Render variable |
+|---|---|---|
+| Cafyz web | Website button; server client ID for both apps | `GOOGLE_CLIENT_ID` |
+| Cafyz Android (Play signing) | Play installs of `com.ametronyx.cafyz` | `GOOGLE_CLIENT_ID_ANDROID` |
+| Cafyz Android (upload key) | Locally signed release builds | — |
+| Cafyz iOS | `com.cafyz.app`, team 647MZ9QGZJ | `GOOGLE_CLIENT_ID_IOS` |
+
+`/api/auth/google/config` returns `ios_client_id` only when the request carries
+`?ios_url_scheme=1`. iPhone builds up to 1.0 (4) have no Google URL scheme in
+Info.plist, and Google's SDK crashes the app when signing in without it; those
+builds never send the flag, so their button stays hidden.
+
 ## 1. Create the OAuth clients
 
 Google Cloud Console → APIs & Services → Credentials → **Create OAuth client ID**.

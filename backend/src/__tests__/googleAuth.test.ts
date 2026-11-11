@@ -41,6 +41,19 @@ describe('GET /api/auth/google/config', () => {
     expect(res.body.enabled).toBe(true);
     expect(res.body.client_id).toBe('test-client.apps.googleusercontent.com');
   });
+
+  it('gives the iOS client id only to builds that register its URL scheme', async () => {
+    process.env.GOOGLE_CLIENT_ID_IOS = 'test-ios.apps.googleusercontent.com';
+    try {
+      // Builds up to 1.0 (4) would crash in Google's SDK, so they must see none.
+      const old = await request(app).get('/api/auth/google/config');
+      expect(old.body.ios_client_id).toBe('');
+      const ready = await request(app).get('/api/auth/google/config?ios_url_scheme=1');
+      expect(ready.body.ios_client_id).toBe('test-ios.apps.googleusercontent.com');
+    } finally {
+      delete process.env.GOOGLE_CLIENT_ID_IOS;
+    }
+  });
 });
 
 describe('when Google sign-in is not configured', () => {

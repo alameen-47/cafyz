@@ -233,7 +233,11 @@ export const authApi = {
   resetPassword: (token: string, password: string) =>
     post<{ ok: boolean; message: string }>('/api/auth/reset-password', { token, password }),
   googleConfig: () =>
-    get<{ enabled: boolean; client_id: string; ios_client_id: string; trial_days?: number }>('/api/auth/google/config'),
+    // ios_url_scheme=1: this build's iPhone app registers the Google URL scheme, so
+    // the API may hand it the iOS client ID (older builds would crash using it).
+    get<{ enabled: boolean; client_id: string; ios_client_id: string; trial_days?: number }>(
+      '/api/auth/google/config?ios_url_scheme=1',
+    ),
   google: (id_token: string) =>
     post<SocialLoginResult>('/api/auth/google', { id_token }),
   googleSelect: (selection_token: string, restaurant_id: string) =>
