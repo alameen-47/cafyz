@@ -255,6 +255,16 @@ export async function runMigrations() {
     CREATE INDEX IF NOT EXISTS idx_kds_tickets_order        ON kds_tickets(order_id, restaurant_id);
     CREATE INDEX IF NOT EXISTS idx_license_keys_rest_active ON license_keys(restaurant_id, is_active);
 
+    -- Closed-test testers: a SHA-256 of each email that gets a longer free trial, given once.
+    CREATE TABLE IF NOT EXISTS tester_access (
+      email_hash    TEXT PRIMARY KEY,
+      days          INTEGER NOT NULL DEFAULT 30,
+      applied_at    TEXT,
+      restaurant_id TEXT,
+      expires_at    TEXT,
+      created_at    TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+
     CREATE TABLE IF NOT EXISTS app_settings (
       key         TEXT PRIMARY KEY,
       value       TEXT NOT NULL,

@@ -10,6 +10,7 @@ import { ensureStoreDemoAccount } from './services/ensureStoreDemo.js';
 import { startTrialReminderScheduler } from './services/trialReminderScheduler.js';
 import { startAccountDeletionScheduler } from './services/accountDeletion.js';
 import { startKeepAwake } from './services/keepAwake.js';
+import { syncTesters } from './services/testerAccess.js';
 
 const PORT = Number(process.env.PORT ?? 4000);
 
@@ -18,6 +19,7 @@ async function start() {
   console.log('✓ Migrations complete');
   await ensureFounderAccount();
   await ensureStoreDemoAccount();
+  await syncTesters().catch(e => console.error('✖ Tester list sync failed:', e instanceof Error ? e.message : e));
   startTrialReminderScheduler();
   startAccountDeletionScheduler();
   startKeepAwake();

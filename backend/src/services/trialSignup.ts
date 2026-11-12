@@ -5,6 +5,7 @@ import { uid } from '../utils.js';
 import { trialEndsAt, TRIAL_DAYS } from '../config/site.js';
 import { BCRYPT_ROUNDS } from '../constants/security.js';
 import { enableDemoDataForNewRestaurant } from './demoData.js';
+import { applyTesterAccess } from './testerAccess.js';
 
 export type TrialPlan = 'basic' | 'pro' | 'premium';
 
@@ -59,6 +60,10 @@ export async function createTrialRestaurant(input: TrialRestaurantInput): Promis
       ],
     },
   ], 'write');
+
+  // Closed-test testers get a longer trial than the public one.
+  await applyTesterAccess(input.email, restaurantId).catch(e =>
+    console.error(`[testers] Trial for restaurant ${restaurantId} failed:`, e instanceof Error ? e.message : e));
 
   await enableDemoDataForNewRestaurant(restaurantId);
   return { restaurantId, ownerId };
