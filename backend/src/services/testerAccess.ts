@@ -43,8 +43,8 @@ export function testerHash(email: string): string {
 
 /**
  * Gives a tester's restaurant its longer trial, once. Returns the new end (ISO), or null when the
- * email is not a tester, has already had it, or the restaurant is not on a trial licence.
- * Never shortens a trial and never touches a paid licence.
+ * email is not a tester, has already had it, or the restaurant has a paid licence still running.
+ * Never shortens a licence.
  */
 export async function applyTesterAccess(email: string, restaurantId: string, now = new Date()): Promise<string | null> {
   if (!email || !restaurantId) return null;
@@ -63,7 +63,10 @@ export async function applyTesterAccess(email: string, restaurantId: string, now
   if (!row) return null;
   const isTrial = String(row.key_code ?? '').startsWith('TRIAL-') || /trial/i.test(String(row.note ?? ''));
   const currentEnd = new Date(String(row.expires_at ?? ''));
-  if (!isTrial || Number.isNaN(currentEnd.getTime())) return null;
+  if (Number.isNaN(currentEnd.getTime())) return null;
+  // A licence that is still running and is not a trial is a paid one: leave it alone. One that has
+  // already run out locks the tester out whatever kind it was, so it is reopened.
+  if (!isTrial && currentEnd > now) return null;
 
   const claim = await db.execute({
     sql: `UPDATE tester_access SET applied_at=?, restaurant_id=? WHERE email_hash=? AND applied_at IS NULL RETURNING days`,
@@ -94,7 +97,8 @@ export async function syncTesters(now = new Date()): Promise<void> {
   if (!waiting.rows.length) return;
   const open = new Set(waiting.rows.map(r => String(r.email_hash)));
   // Hashes can't be matched in SQL, so each owner's email is hashed here.
-  const owners = await db.execute(`SELECT email, restaurant_id FROM users WHERE role='owner' AND email IS NOT NULL`);
+  // Older restaurants (made from an approved trial request) are run by a manager, not an owner.
+  const owners = await db.execute(`SELECT email, restaurant_id FROM users WHERE role IN ('owner','manager') AND email IS NOT NULL`);
   let given = 0;
   for (const o of owners.rows) {
     const email = String(o.email ?? '');

@@ -3,6 +3,7 @@ import type { AuthRequest } from './auth.js';
 import { getDb } from '../db.js';
 import { appPath } from '../config/site.js';
 import { cacheGet, cacheSet } from '../cache.js';
+import { applyTesterAccess } from '../services/testerAccess.js';
 
 const PURCHASE_URL = appPath('/license');
 
@@ -64,6 +65,14 @@ export async function requireActiveSubscription(req: AuthRequest, res: Response,
 
     const expiry = new Date(expiresAt);
     if (Number.isNaN(expiry.getTime()) || expiry.getTime() > Date.now()) {
+      cacheSet(cacheKey, { ok: true }, SUB_TTL);
+      next();
+      return;
+    }
+
+    // A closed-test tester who was missed when the list was loaded gets their longer trial here.
+    if (['owner', 'manager'].includes(req.user.role)
+      && await applyTesterAccess(req.user.email, req.user.restaurant_id).catch(() => null)) {
       cacheSet(cacheKey, { ok: true }, SUB_TTL);
       next();
       return;

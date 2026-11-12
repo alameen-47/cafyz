@@ -3,6 +3,7 @@ import { getDb } from '../src/db.js';
 import { setupTestDb } from './setup.js';
 import { createTrialRestaurant } from '../src/services/trialSignup.js';
 import { applyTesterAccess, syncTesters, testerHash, TESTER_DAYS } from '../src/services/testerAccess.js';
+import { requireActiveSubscription } from '../src/middleware/subscriptionGuard.js';
 
 const DAY = 86_400_000;
 const TESTER = 'tester.one@example.com';
@@ -49,6 +50,40 @@ describe('closed-test tester trials', () => {
     await addTester(EARLY);
     await syncTesters();
     expect(await trialDaysLeft(e.restaurantId)).toBeGreaterThan(29.9);
+  });
+
+  it('extends a tester whose restaurant is run by a manager', async () => {
+    const m = await createTrialRestaurant({ restaurantName: 'Manager Cafe', ownerName: 'Manager One', email: 'tester.manager@example.com', phone: '+919000000005' });
+    await getDb().execute({ sql: `UPDATE users SET role='manager' WHERE restaurant_id=?`, args: [m.restaurantId] });
+    await getDb().execute({ sql: `UPDATE license_keys SET expires_at=? WHERE restaurant_id=?`, args: [new Date(Date.now() - DAY).toISOString(), m.restaurantId] });
+    await addTester('tester.manager@example.com');
+    await syncTesters();
+    expect(await trialDaysLeft(m.restaurantId)).toBeGreaterThan(29.9);
+  });
+
+  it('reopens a tester whose licence of any kind has run out', async () => {
+    const x = await createTrialRestaurant({ restaurantName: 'Lapsed Cafe', ownerName: 'Lapsed One', email: 'tester.lapsed@example.com', phone: '+919000000006' });
+    await getDb().execute({ sql: `UPDATE license_keys SET key_code='CAFYZ-OLD-1', note='Issued by founder', expires_at=? WHERE restaurant_id=?`, args: [new Date(Date.now() - 40 * DAY).toISOString(), x.restaurantId] });
+    await addTester('tester.lapsed@example.com');
+    expect(await applyTesterAccess('tester.lapsed@example.com', x.restaurantId)).not.toBeNull();
+    expect(await trialDaysLeft(x.restaurantId)).toBeGreaterThan(29.9);
+  });
+
+  it('lets a locked-out tester back in on their next request, and keeps others locked', async () => {
+    const run = async (email: string, restaurantId: string) => {
+      let status = 200; let passed = false;
+      const res = { status(c: number) { status = c; return this; }, json() { return this; } };
+      await requireActiveSubscription({ user: { id: 'u', role: 'manager', email, restaurant_id: restaurantId } } as never, res as never, () => { passed = true; });
+      return { status, passed };
+    };
+    const lapse = (rid: string) => getDb().execute({ sql: `UPDATE license_keys SET expires_at=? WHERE restaurant_id=?`, args: [new Date(Date.now() - DAY).toISOString(), rid] });
+    const t = await createTrialRestaurant({ restaurantName: 'Guard Cafe', ownerName: 'Guard One', email: 'tester.guard@example.com', phone: '+919000000007' });
+    const p = await createTrialRestaurant({ restaurantName: 'Guard Public', ownerName: 'Guard Two', email: 'public.guard@example.com', phone: '+919000000008' });
+    await lapse(t.restaurantId); await lapse(p.restaurantId);
+    await addTester('tester.guard@example.com');
+    expect(await run('tester.guard@example.com', t.restaurantId)).toEqual({ status: 200, passed: true });
+    expect(await trialDaysLeft(t.restaurantId)).toBeGreaterThan(29.9);
+    expect(await run('public.guard@example.com', p.restaurantId)).toEqual({ status: 402, passed: false });
   });
 
   it('leaves a paid licence alone', async () => {
