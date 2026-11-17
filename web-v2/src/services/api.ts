@@ -13,7 +13,7 @@ import { storageGet, storageRemove, storageSet } from '../utils/safeStorage';
 const ENV = (import.meta as any).env ?? {};
 const ENV_BASE = String(ENV.VITE_API_URL ?? '').trim();
 const IS_DEV = Boolean(ENV.DEV);
-const DEFAULT_RENDER_BASE = String(ENV.VITE_NATIVE_API_URL ?? 'https://cafyz.onrender.com').trim();
+const DEFAULT_RENDER_BASE = String(ENV.VITE_NATIVE_API_URL ?? 'https://cafyz-ungy.onrender.com').trim();
 
 function resolveApiBase(): string {
   const explicit = ENV_BASE.replace(/\/$/, '');
