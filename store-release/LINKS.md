@@ -7,7 +7,7 @@ All URLs, portals, and contacts for App Store and Play Store submission.
 | What | URL |
 |------|-----|
 | **Web app** | https://cafyz.ametronyx.com |
-| **API (production)** | https://cafyz.onrender.com |
+| **API (production)** | https://cafyz-ungy.onrender.com |
 | **API health** | https://cafyz.ametronyx.com/api/health (via Vercel proxy) |
 
 ## Legal pages (required by Apple & Google)

@@ -184,9 +184,9 @@ projects are marked **Warned / Appeal**. Not touched.
   `.github/workflows/keep-api-awake.yml`, which pings the API every 10 minutes.
   Confirmed live: `/api/auth/config` answered instantly.
 - **Cafyz: fixed in the repo, BUT NOT LIVE UNTIL PUSHED.**
-  `cafyz.onrender.com` took **51.9 seconds** to answer a cold request today.
+  `cafyz-ungy.onrender.com` took **51.9 seconds** to answer a cold request today.
   `.github/workflows/keep-api-awake.yml` now pings
-  `https://cafyz.onrender.com/health` every 10 minutes, same as Coorg's.
+  `https://cafyz-ungy.onrender.com/health` every 10 minutes, same as Coorg's.
   Health is at **`/health`** (root), not `/api/health` — Render's
   `healthCheckPath` in `render.yaml`; `/api/health` returns 404.
   ⚠️ **CORRECTED 23 Oct 16:00 — the schedule does not hold 10 minutes.**
@@ -273,7 +273,7 @@ Minimum length is 8 characters or the account is skipped.
    Save. Render redeploys; the new hash is written on boot.
 3. **Verify** (reads the password from your shell, never hardcode it):
    ```bash
-   read -rs CAFYZ_DEMO_PW && curl -s -X POST https://cafyz.onrender.com/api/auth/login \
+   read -rs CAFYZ_DEMO_PW && curl -s -X POST https://cafyz-ungy.onrender.com/api/auth/login \
      -H 'Content-Type: application/json' \
      -d "{\"email\":\"reviewer@cafyz.com\",\"password\":\"$CAFYZ_DEMO_PW\"}" \
      | head -c 120; unset CAFYZ_DEMO_PW

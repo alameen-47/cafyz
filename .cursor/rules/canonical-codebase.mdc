@@ -9,4 +9,4 @@ alwaysApply: true
 - **Canonical UI:** `web-v2/` only — used for Vercel, Capacitor (Android/iOS), and local dev (`npm run dev`).
 - **Do not add or restore** other UI trees (`web/`, React Native `src/`, root `android/`/`ios/`, `electron/`, static `public/` prototype).
 - **Capacitor:** `web-v2/dist` via `npm run cap:sync`. Native shells: `cap-android/`, `cap-ios/`.
-- **API:** `backend/` — local dev on `:4000`; production `https://cafyz.onrender.com`.
+- **API:** `backend/` — local dev on `:4000`; production `https://cafyz-ungy.onrender.com`.

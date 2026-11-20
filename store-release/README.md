@@ -72,7 +72,7 @@ Or step by step: `npm run sync:store-release` · `npm run capture:android-screen
 | Privacy | https://cafyz.ametronyx.com/privacy |
 | Support | https://cafyz.ametronyx.com/support |
 | Account deletion | https://cafyz.ametronyx.com/support#account-deletion |
-| API | https://cafyz.onrender.com |
+| API | https://cafyz-ungy.onrender.com |
 
 ## Folder tree
 

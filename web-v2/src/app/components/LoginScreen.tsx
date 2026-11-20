@@ -455,11 +455,11 @@ export function LoginScreen({ onLogin }: { onLogin?: () => void }) {
     try {
       const r = await authApi.forgotPassword(forgotEmail.trim());
       if (import.meta.env.DEV && r.dev_reset_url) {
-        toast.success("Reset link ready", { description: "Opening the password reset page…" });
+        toast.success("Reset link ready", "Opening the password reset page…");
         window.location.assign(r.dev_reset_url);
         return;
       }
-      toast.success("Check your email", { description: r.message || "If that address is registered, a reset link is on its way." });
+      toast.success("Check your email", r.message || "If that address is registered, a reset link is on its way.");
       setAuthState("login");
     } catch (e) { toast.error(errMsg(e)); }
     finally { setLoading(false); }
@@ -468,11 +468,11 @@ export function LoginScreen({ onLogin }: { onLogin?: () => void }) {
   // Reset password — set a new password using the emailed token.
   const submitReset = async () => {
     if (newPw.length < 8) { toast.error("Password must be at least 8 characters"); return; }
-    if (!resetToken) { toast.error("Invalid or expired reset link", { description: "Request a new link from “Forgot password?”" }); return; }
+    if (!resetToken) { toast.error("Invalid or expired reset link", "Request a new link from “Forgot password?”"); return; }
     setLoading(true);
     try {
       await authApi.resetPassword(resetToken, newPw);
-      toast.success("Password updated", { description: "Sign in with your new password." });
+      toast.success("Password updated", "Sign in with your new password.");
       window.history.replaceState({}, "", window.location.pathname); // drop ?token from the URL
       setResetToken(null); setNewPw("");
       setAuthState("login");

@@ -82,7 +82,7 @@ Demo account:
 Email: reviewer@cafyz.com
 Password: set on Render as STORE_DEMO_PASSWORD (not stored in git)
 
-API: https://cafyz.onrender.com
+API: https://cafyz-ungy.onrender.com
 Bluetooth: optional, ESC/POS thermal printers only.
 No in-app purchases. Subscription sold outside App Store.
 Account deletion: Account Settings → Delete account.

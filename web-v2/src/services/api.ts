@@ -28,7 +28,7 @@ function resolveApiBase(): string {
 const BASE = resolveApiBase();
 let sessionToastShown = false;
 // The API sleeps on Render's free tier after 15 idle minutes, and the first
-// request then waits while it boots — measured at 51.9 s on cafyz.onrender.com,
+// request then waits while it boots — measured at 51.9 s on cafyz-ungy.onrender.com,
 // and Render's own figure is "about a minute". At the old 30 s this aborted
 // before the server ever answered, so the first person to open the app after a
 // quiet spell was told to check their internet. A request to a host that is

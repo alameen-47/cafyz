@@ -52,7 +52,7 @@ in the provisioning profile.
 
 ### 3. Set the backend env var on Render
 
-The service is named `cafyz` in the dashboard (it serves cafyz.onrender.com),
+The service is named `cafyz` in the dashboard (it served the old address; the live service is cafyz-ungy.onrender.com),
 not `cafyz-api` as `render.yaml` says — it was created by hand. → Environment:
 
 ```
@@ -64,7 +64,7 @@ button stays hidden — by design, so a half-configured deploy shows nothing
 rather than a broken button. Verify after the redeploy:
 
 ```bash
-curl -s https://cafyz.onrender.com/api/auth/apple/config
+curl -s https://cafyz-ungy.onrender.com/api/auth/apple/config
 ```
 
 Expect `{"enabled":true,"client_id":"com.cafyz.app",...}`.

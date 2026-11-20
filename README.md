@@ -46,4 +46,4 @@ rebuild needed. See [docs/GOOGLE_SIGNIN.md](docs/GOOGLE_SIGNIN.md).
 ## Production
 
 - **Web:** Vercel builds `web-v2/` (see `vercel.json`)
-- **API:** Render — `https://cafyz.onrender.com`
+- **API:** Render — `https://cafyz-ungy.onrender.com`

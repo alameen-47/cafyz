@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, '..');
-const API = process.env.VITE_API_URL || 'https://cafyz.onrender.com';
+const API = process.env.VITE_API_URL || 'https://cafyz-ungy.onrender.com';
 const APP = process.env.VITE_APP_URL || 'https://cafyz.ametronyx.com';
 const EMAIL = process.env.STORE_DEMO_EMAIL || 'reviewer@cafyz.com';
 const PASSWORD = process.env.STORE_DEMO_PASSWORD;
